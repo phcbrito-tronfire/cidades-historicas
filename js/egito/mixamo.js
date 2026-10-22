@@ -24,9 +24,10 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   TEX = tex;
   const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const names = ['explorador', ...MEN, ...WOMEN];
-  let done = 0; const total = names.length + ANIMS.length;
+  let done = 0; const total = names.length + ANIMS.length + 1;
   const tick = () => onProgress && onProgress(++done / total);
   await Promise.all([
+    loadHat(L).then(tick),
     ...names.map(async (n) => { const g = await L.loadAsync(ver(DIR + n + '.glb')); BASES[n] = g.scene; tick(); }),
     ...ANIMS.map(async (n) => {
       const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb'));
@@ -45,6 +46,23 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   for (const b of Object.values(BASES)) b.traverse((o) => { o.name = o.name.replace(/^mixamorig\d+/, 'mixamorig'); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
   for (const c of Object.values(CLIPS)) for (const tr of c.tracks) tr.name = tr.name.replace(/^mixamorig\d+/, 'mixamorig');
   calibrateLocomotion();
+}
+
+// chapéu fedora modelado (Sketchfab, CC BY): mede a copa na base (altura 20–30% do chapéu) para encaixar na cabeça
+let HAT = null;
+async function loadHat(L) {
+  try {
+    const g = await L.loadAsync(ver('assets/models/estatuas/chapeu.glb'));
+    const sc = g.scene; sc.updateMatrixWorld(true);
+    const v = new THREE.Vector3(), pts = [];
+    sc.traverse((o) => { if (o.isMesh) { const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone()); o.castShadow = true; } });
+    const b = new THREE.Box3().setFromPoints(pts), h = b.max.y - b.min.y;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= 0.2 && f < 0.35) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
+    // eixo comprido da copa = frente-trás da cabeça
+    const alongX = x1 - x0 >= z1 - z0;
+    HAT = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, baseY: b.min.y + 0.2 * h, len: Math.max(x1 - x0, z1 - z0), wid: Math.min(x1 - x0, z1 - z0), alongX };
+  } catch (e) { console.warn('chapéu', e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +212,24 @@ export function makeHumanoid(o = {}) {
   const cap = (mat, sc = [1, 1, 1], off = [0, 0.015, -0.01], cut = 0.52) =>
     headPart(new THREE.SphereGeometry(1, 22, 14, 0, Math.PI * 2, 0, Math.PI * cut), mat, off, [0, 0, 0], [R * 0.86 * sc[0], R * 1.02 * sc[1], R * 1.02 * sc[2]]);
 
+  // contorno real da cabeça (rosto + cabelo) na pose T, numa faixa 'below' abaixo do topo: largura, profundidade e centro
+  const headFit = (below) => {
+    const hb = bonePos('Head'), v = new THREE.Vector3();
+    const pts = [];
+    for (const me of meshes) {
+      if (!/Body|Hair/.test(me.name) || !me.visible) continue;
+      const pa = me.geometry.attributes.position;
+      const toModel = new THREE.Matrix4().multiplyMatrices(rootInv, me.matrixWorld);
+      for (let i = 0; i < pa.count; i++) {
+        v.fromBufferAttribute(pa, i); me.applyBoneTransform(i, v); v.applyMatrix4(toModel);
+        if (v.y > hb.y - 0.02 && Math.abs(v.x - hb.x) < 0.16 && Math.abs(v.z - hb.z) < 0.17) pts.push(v.clone());
+      }
+    }
+    const top = pts.reduce((t, q) => Math.max(t, q.y), -Infinity);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const q of pts) if (q.y > top - below - 0.025 && q.y < top - below + 0.025) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+    return { top, rx: (x1 - x0) / 2, rz: (z1 - z0) / 2, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
+  };
   const hair = o.hair || (isExp ? 'fedora' : 'short');
   const black = m(0x15100c, { roughness: 0.85 });
   switch (hair) {
@@ -233,12 +269,27 @@ export function makeHumanoid(o = {}) {
       headPart(new THREE.CylinderGeometry(0.016, 0.011, 0.09, 6), m(0x2c5d9c), [0, -R * 1.05, R * 0.75], [0.2, 0, 0]);
     } break;
     case 'fedora': {
+      // chapéu feito na medida da cabeça: mede os vértices reais de rosto e cabelo (pose T) na altura da fita
+      const fit = headFit(0.115);
+      if (HAT) { // chapéu modelado, escalado para a copa abraçar a cabeça com 1 cm de folga
+        const sL = (fit.rz * 2 + 0.02) / HAT.len, sW = (fit.rx * 2 + 0.02) / HAT.wid, sH = (sL + sW) / 2;
+        const inner = HAT.scene.clone(); inner.position.set(-HAT.cx, -HAT.baseY, -HAT.cz);
+        const scaler = new THREE.Group(); scaler.add(inner);
+        if (HAT.alongX) scaler.scale.set(sL, sH, sW); else scaler.scale.set(sW, sH, sL);
+        const hat = new THREE.Group(); hat.add(scaler);
+        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.085, fit.cz), [0.04, HAT.alongX ? Math.PI / 2 : 0, 0]); // base da copa 8,5 cm abaixo do topo: aba na testa, olhos livres
+        break;
+      }
       const felt = m(0x6b4a2e, { roughness: 0.85 });
-      const y0 = headTop - HC.y - R * 0.42; // topo da cabeça em relação ao centro, descontada a folga do osso HeadTop_End (o chapéu assenta no cabelo)
-      headPart(new THREE.CylinderGeometry(R * 0.86, R * 1.02, R * 0.95, 22), felt, [0, y0 - R * 0.15, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
-      headPart(new THREE.CylinderGeometry(R * 1.72, R * 1.78, 0.012, 28), felt, [0, y0 - R * 0.6, 0.0], [-0.06, 0, 0], [1, 1, 1.1]);
-      headPart(new THREE.CylinderGeometry(R * 1.04, R * 1.04, R * 0.24, 22), m(0x2a1a0e), [0, y0 - R * 0.5, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
-      headPart(new THREE.BoxGeometry(R * 0.3, R * 0.16, R * 1.4), m(0x5a3d24), [0, y0 + R * 0.3, -0.01]); // vinco da copa
+      const band = m(0x2a1a0e, { roughness: 0.7 });
+      const rx = fit.rx + 0.01, rz = fit.rz + 0.01, yB = fit.top - 0.115, hC = fit.top + 0.02 - yB; // fita logo acima das sobrancelhas
+      const hat = new THREE.Group();
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(rx * 0.92, rx, hC, 36), felt); crown.position.y = hC / 2; crown.scale.z = rz / rx;
+      const dent = new THREE.Mesh(new THREE.BoxGeometry(rx * 0.22, 0.02, rz * 1.2), m(0x5a3d24, { roughness: 0.85 })); dent.position.y = hC - 0.006; // vinco da copa
+      const ribbon = new THREE.Mesh(new THREE.CylinderGeometry(rx * 1.015, rx * 1.02, 0.03, 36, 1, true), band); ribbon.position.y = 0.022; ribbon.scale.z = rz / rx;
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(rx * 1.75, rx * 1.8, 0.012, 40), felt); brim.position.y = 0.004; brim.scale.z = rz / rx;
+      hat.add(crown, dent, ribbon, brim);
+      attach('Head', hat, new THREE.Vector3(fit.cx, yB, fit.cz), [0.04, 0, 0]); // aba levemente baixa na frente
     } break;
     default: break; // careca (sacerdotes)
   }
