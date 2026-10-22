@@ -280,6 +280,7 @@ export function makeHumanoid(o = {}) {
     return sm;
   };
   const useCloth = iH >= 0 && iL >= 0 && iR >= 0;
+  let skirt = null; // saiote de tecido (sentado, some: o linho justo nas coxas dobra melhor com as pernas)
   // cinto de linho dobrado com a ponta do nó caindo na frente (shendyt)
   const belt = () => {
     hipsPart(new THREE.CylinderGeometry(0.163, 0.168, 0.05, 32, 1, true), linenM, 0.035, [0, 0, 0], [1, 1, 0.88]);
@@ -287,7 +288,7 @@ export function makeHumanoid(o = {}) {
   };
   switch (outfit) {
     case 'kilt': case 'soldier': case 'pharaoh':
-      if (useCloth) { cloth(clothGeometry('kilt', KILT), linenM, -0.04); belt(); } else hipsPart(new THREE.CylinderGeometry(0.18, 0.24, 0.5, 24, 1, true), linenM, -0.2);
+      if (useCloth) { skirt = cloth(clothGeometry('kilt', KILT), linenM, -0.04); belt(); } else hipsPart(new THREE.CylinderGeometry(0.18, 0.24, 0.5, 24, 1, true), linenM, -0.2);
       break;
     case 'worker':
       if (useCloth) cloth(clothGeometry('worker', KILT.slice(0, 5), 20), linenM, -0.04); else hipsPart(new THREE.CylinderGeometry(0.175, 0.23, 0.42, 22, 1, true), linenM, -0.16);
@@ -300,11 +301,12 @@ export function makeHumanoid(o = {}) {
       hipsPart(new THREE.CylinderGeometry(0.158, 0.162, 0.045, 28, 1, true), m(o.sash ?? 0xa8402c, { roughness: 0.8, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
     } break;
   }
+  let tail = null; // cauda de touro cerimonial (some quando o rei está sentado)
   if (outfit === 'pharaoh') {
     // avental de ouro plissado na frente do saiote, cauda de touro cerimonial atrás e braceletes
     const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.15, 0.38, 3, 1, true, -Math.PI / 6, Math.PI / 3), m(0xffffff, { map: stripeTex('apron'), metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide }));
     attach('Hips', apron, new THREE.Vector3(0, hips.y - 0.22, hips.z + 0.075), [0.1, 0, 0], [1.3, 1, 1.3]);
-    attach('Hips', new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 0.55, 6), m(0x6b4a2a, { roughness: 0.9 })), new THREE.Vector3(0, hips.y - 0.32, hips.z - 0.17), [-0.08, 0, 0]);
+    tail = attach('Hips', new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 0.55, 6), m(0x6b4a2a, { roughness: 0.9 })), new THREE.Vector3(0, hips.y - 0.32, hips.z - 0.17), [-0.08, 0, 0]);
     for (const side of ['Left', 'Right']) {
       const fa = bones[side + 'ForeArm'], hand = bones[side + 'Hand'];
       if (!fa || !hand) continue;
@@ -403,7 +405,7 @@ export function makeHumanoid(o = {}) {
     if (!actions[name]) { const c = CLIPS[name]; if (!c) return null; actions[name] = mixer.clipAction(c); }
     return actions[name];
   };
-  return { root, model, mixer, act, handR, handL, armR: { hand: handR }, bones, holding: false, pose: o.pose || null, walkClip: female ? 'andar_f' : 'andar', once: null };
+  return { root, model, mixer, act, handR, handL, armR: { hand: handR }, bones, tail, skirt, holding: false, pose: o.pose || null, walkClip: female ? 'andar_f' : 'andar', once: null };
 }
 
 // ---------------------------------------------------------------------------

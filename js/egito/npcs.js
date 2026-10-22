@@ -59,7 +59,7 @@ export class Actors {
       marker.scale.setScalar(0.8); marker.position.y = 2.95; h.rig.root.add(marker);
       const k = { def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: 'idle' };
       // Ramsés recebe sentado no trono
-      if (def.id === 'ramses' && S.throneSeat) { h.rig.root.position.copy(S.throneSeat); k.seated = true; }
+      if (def.id === 'ramses' && S.throneSeat) { h.rig.root.position.copy(S.throneSeat); k.seated = true; for (const o of [h.rig.tail, h.rig.skirt]) if (o) o.visible = false; }
       this.key.push(k);
     }
     // guardas do palácio e do templo

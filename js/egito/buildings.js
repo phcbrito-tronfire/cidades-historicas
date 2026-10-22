@@ -629,14 +629,17 @@ export function buildCity(scene, tex) {
   // estrado e trono
   B.box(M.sandstone, 8, 0.4, 16, -7, PY - 0.3, -132.5); addBox(-7, -132.5, 8, 16, -5, PY + 0.1);
   B.box(M.sandstone, 4.5, 0.4, 10, -8.5, PY + 0.1, -132.5); addBox(-8.5, -132.5, 4.5, 10, -5, PY + 0.5);
-  // trono (modelo 3D em sculptures.js): assento a ~0,5 m do estrado, para o rei sentar de verdade
-  SCULPT.push({ model: 'trono', x: -9.25, y: PY + 0.5, z: -132.5, ry: 0, length: 1.75 });
+  // trono (modelo 3D em sculptures.js): com 1,55 m de altura o assento fica a 0,71 m do estrado; o rei senta
+  // um pouco mais alto que uma cadeira comum e apoia os pés num escabelo, como nas pinturas
+  SCULPT.push({ model: 'trono', x: -9.25, y: PY + 0.5, z: -132.5, ry: 0, length: 1.55 });
+  B.box(M.wood, 0.42, 0.26, 0.7, -8.62, PY + 0.5, -132.5);
+  B.box(M.gold, 0.44, 0.04, 0.72, -8.62, PY + 0.76, -132.5);
   addBox(-9.3, -132.5, 1.6, 1.6, -5, PY + 2.6);
   for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 1.4, z); torch(-5.5, PY + 0.1, z, false); }
   torch(18, PY - 0.3, -146); torch(18, PY - 0.3, -119);
   out.lights.push({ pos: new V3(2, PY + 5, -132.5), color: 0xffb070, intensity: 150, dist: 30 });
   out.spots.throne = new V3(-6, PY + 0.5, -132.5);
-  out.spots.throneSeat = new V3(-9.15, PY + 0.5, -132.5); // onde fica o rei sentado (raiz do corpo no estrado)
+  out.spots.throneSeat = new V3(-9.12, PY + 0.72, -132.5); // raiz do corpo do rei sentado: quadril sobre o assento, pés no escabelo
   out.zones.trono = [TX0, TX1, TZ0, TZ1];
 
   // jardim com piscina em T
