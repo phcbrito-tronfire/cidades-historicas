@@ -151,6 +151,8 @@ export function makeHumanoid(o = {}) {
   // tom médio da textura de pele do Mixamo (linear): peças repintadas de "pele" ficam iguais aos braços
   const SKIN_TINT = new THREE.Color().setRGB(0.62, 0.42, 0.36);
   const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
+  // pele: o material do Mixamo vem como metal (metalness 1), o que embranquece o rosto sob luz pontual (tochas)
+  const skinMat = (mat) => { const c = mat.clone(); c.metalness = 0; c.roughness = 0.62; return c; };
   for (const me of meshes) {
     const p = part(me.name);
     const mat = me.material;
@@ -158,9 +160,10 @@ export function makeHumanoid(o = {}) {
       if (/Suit/.test(p)) me.material = fold(mat, 0x6e4528, 0.62);
       if (/Pants/.test(p)) me.material = fold(mat, 0x8f7a54, 0.9);
       if (/Shoes/.test(p)) me.material = fold(mat, 0x3a2616, 0.7);
+      if (/Body/.test(p)) me.material = skinMat(mat);
       continue;
     }
-    if (/Body/.test(p)) { const c = mat.clone(); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
+    if (/Body/.test(p)) { const c = skinMat(mat); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
     if (/Hair/.test(p)) { me.visible = !!o.keepHair; continue; }
     if (/Eyelash/.test(p)) continue;
     if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
@@ -231,7 +234,7 @@ export function makeHumanoid(o = {}) {
     } break;
     case 'fedora': {
       const felt = m(0x6b4a2e, { roughness: 0.85 });
-      const y0 = headTop - HC.y; // topo da cabeça em relação ao centro
+      const y0 = headTop - HC.y - R * 0.42; // topo da cabeça em relação ao centro, descontada a folga do osso HeadTop_End (o chapéu assenta no cabelo)
       headPart(new THREE.CylinderGeometry(R * 0.86, R * 1.02, R * 0.95, 22), felt, [0, y0 - R * 0.15, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
       headPart(new THREE.CylinderGeometry(R * 1.72, R * 1.78, 0.012, 28), felt, [0, y0 - R * 0.6, 0.0], [-0.06, 0, 0], [1, 1, 1.1]);
       headPart(new THREE.CylinderGeometry(R * 1.04, R * 1.04, R * 0.24, 22), m(0x2a1a0e), [0, y0 - R * 0.5, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
@@ -493,7 +496,7 @@ export function animateHumanoid(r, dt, speed, mode, t) {
     a.setEffectiveWeight(r.w[n] / (sum || 1));
     const loco = LOCO.find((l) => l.name === walkAlias(n) && l.speed > 0);
     if (loco && !isOnce) { a.timeScale = 0; a.time = r.locoPhase * a.getClip().duration; }
-    else if (!isOnce) a.timeScale = n === 'nadar' ? Math.max(0.6, Math.min(1.6, Math.abs(speed) / 2.6)) : 1;
+    else if (!isOnce) a.timeScale = n === 'nadar' ? Math.max(0.6, Math.min(3, Math.abs(speed) * 0.8)) : 1; // ritmo da braçada acompanha a velocidade (~1,1 m por braçada)
   }
   r.mixer.update(dt);
 }

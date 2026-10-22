@@ -40,7 +40,7 @@ export function makeWaterFX(scene) {
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), life = new Float32Array(N);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const dropMat = new THREE.PointsMaterial({ color: 0xeaf6ff, size: 0.09, transparent: true, opacity: 0.85, depthWrite: false, map: blobTex, alphaTest: 0.02 });
+  const dropMat = new THREE.PointsMaterial({ color: 0xeaf6ff, size: 0.075, transparent: true, opacity: 0.85, depthWrite: false, map: blobTex, alphaTest: 0.02 });
   const drops = new THREE.Points(geo, dropMat); drops.frustumCulled = false; drops.layers.set(1); scene.add(drops);
   let di = 0;
   for (let i = 0; i < N; i++) pos[i * 3 + 1] = -1000;
@@ -51,6 +51,16 @@ export function makeWaterFX(scene) {
       pos[i * 3] = p.x + rr(-spread, spread) * 0.3; pos[i * 3 + 1] = p.y + 0.05; pos[i * 3 + 2] = p.z + rr(-spread, spread) * 0.3;
       vel[i * 3] = rr(-spread, spread); vel[i * 3 + 1] = rr(up * 0.5, up); vel[i * 3 + 2] = rr(-spread, spread);
       life[i] = rr(0.5, 1.1);
+    }
+  };
+  // gotas lançadas numa direção (o respingo da braçada vai para a frente e para os lados)
+  const emitDir = (p, n, dx, dz, along, up) => {
+    for (let k = 0; k < n; k++) {
+      const i = di++ % N;
+      pos[i * 3] = p.x + rr(-0.08, 0.08); pos[i * 3 + 1] = p.y + 0.04; pos[i * 3 + 2] = p.z + rr(-0.08, 0.08);
+      const a = rr(0.2, 1) * along, side = rr(-0.7, 0.7);
+      vel[i * 3] = dx * a + dz * side; vel[i * 3 + 1] = rr(up * 0.45, up); vel[i * 3 + 2] = dz * a - dx * side;
+      life[i] = rr(0.4, 0.9);
     }
   };
   const spawn = (pool, idx, p, o) => {
@@ -84,14 +94,21 @@ export function makeWaterFX(scene) {
           spawn(blobs, bi++, { x: px, y: p.y, z: pz }, { life: 2.4, s0: 0.5, s1: 1.8, a: 0.42, vx: fz * side * 0.55 - fx * 0.2, vz: -fx * side * 0.55 - fz * 0.2 });
         }
       }
-      this._stroke = (this._stroke || 0) - dt;
-      if (speed > 0.4 && this._stroke <= 0) {
-        this._stroke = 0.95 / Math.max(0.8, speed / 2.2);
-        const side = (this._side = -(this._side || 1));
-        const hp = { x: p.x + fx * 0.8 + fz * side * 0.3, y: p.y, z: p.z + fz * 0.8 - fx * side * 0.3 };
-        emit(hp, 10, 0.9, 2.2);
-        spawn(rings, ri++, hp, { life: 1.4, s0: 0.3, s1: 1.6, a: 0.45 });
-      }
+    },
+    // mão entrando na água (braçada): respingo para a frente, coroa de gotas e anel no ponto exato
+    handIn(p, facing, power) {
+      const fx = Math.sin(facing), fz = Math.cos(facing);
+      emitDir(p, 14 + Math.round(power * 10), fx, fz, 1.4 + power * 0.8, 1.6 + power * 1.4);
+      spawn(rings, ri++, p, { life: 1.3, s0: 0.25, s1: 1.3 + power * 0.6, a: 0.5 });
+      spawn(blobs, bi++, p, { life: 1.1, s0: 0.35, s1: 0.9, a: 0.55, vx: -fx * 0.3, vz: -fz * 0.3 });
+    },
+    // mão saindo da água: a água escorre do braço em gotas
+    handOut(p) { emit(p, 6, 0.25, 0.8); },
+    // pernada: espuma batida atrás dos pés
+    kick(p, facing) {
+      const fx = Math.sin(facing), fz = Math.cos(facing);
+      spawn(blobs, bi++, p, { life: 1.0, s0: 0.3, s1: 0.8, a: 0.5, vx: -fx * 0.4, vz: -fz * 0.4 });
+      emit(p, 3, 0.4, 1.1);
     },
     stopSwim() { body.material.opacity = 0; },
     update(dt) {

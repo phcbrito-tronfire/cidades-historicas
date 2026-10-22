@@ -95,10 +95,14 @@ async function main() {
 
   await step(0.8, 'Preparando o explorador...');
   const player = new Player(scene, camera);
+  player.makeTorch(tex.glow);
   player.place(84, 0, -Math.PI / 2);
   const fx = makeWaterFX(scene);
   player.events.swim = (p, f, sp, dt, t) => fx.swim(p, f, sp, dt, t);
   player.events.stopSwim = () => fx.stopSwim();
+  player.events.handIn = (p, f, pw) => fx.handIn(p, f, pw);
+  player.events.handOut = (p) => fx.handOut(p);
+  player.events.kick = (p, f) => fx.kick(p, f);
   player.events.ripple = (p, s) => fx.ripple(p, s);
   player.events.splash = (p) => { fx.splash(p); audio.splash(); };
   player.events.step = (jump, run) => audio.step(jump, run);
@@ -336,6 +340,7 @@ async function main() {
     const dt = Math.min(clock.getDelta(), 0.05);
     if (paused) { post.render(dt, sky.state.night); return; }
     t += dt;
+    player.night = sky.state.night;
     if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt);
     if (started) {
       for (const h of city.visitHouses) {
@@ -446,9 +451,10 @@ function makeBoats(scene, city) {
   };
   const ship = (x, z, ry, sailUp, crew) => {
     const g = new THREE.Group();
-    const DECK = sailUp ? 0.43 : 2.78; // altura do convés de cada modelo, para a tripulação
+    // calado: o casco do navio a remo é alto, então afunda ~1 m (carregado); DECK = convés de cada modelo
+    const SINK = sailUp ? -0.55 : -1.05, DECK = sailUp ? 0.43 : 2.78 + SINK + 0.35;
     // navio modelado (sculptures.js): à vela, o de casco de madeira e vela de linho; a remo, o de vela listrada e remos
-    sculptureInstance(sailUp ? 'navio' : 'navio2', 15).then((o) => { o.position.y = sailUp ? -0.55 : -0.35; g.add(o); });
+    sculptureInstance(sailUp ? 'navio' : 'navio2', 15).then((o) => { o.position.y = SINK; g.add(o); });
     const oars = [];
     const people = [];
     for (let i = 0; i < crew; i++) {
@@ -465,6 +471,12 @@ function makeBoats(scene, city) {
   skiff(riverX(pz) - 28, pz - 4.2, 0.05);
   skiff(riverX(pz) - 33, pz + 4.2, -0.1);
   const cargo = ship(riverX(p2) - 30, p2 + 6, 0, false, 2); boats.push(cargo);
+  // amarra do navio de carga ao cais
+  {
+    const a = new THREE.Vector3(riverX(p2) - 33, 1.15, p2 + 1.9), b = new THREE.Vector3(riverX(p2) - 34, 2.0, p2 + 3.6);
+    const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a, a.clone().lerp(b, 0.5).add(new THREE.Vector3(0, -0.35, 0)), b), 12, 0.025, 5), new THREE.MeshStandardMaterial({ color: 0x8a7350, roughness: 1 }));
+    scene.add(rope);
+  }
   // navegando
   const sailing = [];
   const s1 = ship(0, -150, 0, true, 3); s1.dir = 1; s1.off = 12; s1.speed = 3.2; sailing.push(s1);

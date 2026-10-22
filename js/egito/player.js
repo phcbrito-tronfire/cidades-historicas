@@ -5,6 +5,10 @@ import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt } from './coll
 import { WORLD } from './terrain.js';
 import { clamp, lerp, angleLerp } from './util.js';
 
+// tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
+// inclinado para a frente e para cima (~50°), sem atravessar o braço
+const TORCH_ROT = [1.15, 0, 0], TORCH_GRIP = [0, -0.04, 0.06];
+
 export class Player {
   constructor(scene, camera) {
     this.scene = scene; this.camera = camera;
@@ -19,11 +23,77 @@ export class Player {
     this.lastMouse = -10; this.dragging = false;
     this.camPos = new THREE.Vector3();
     this.holding = null;
+    this.night = 0; // 0 = dia, 1 = noite (vem do céu a cada quadro)
     this.locked = false; // durante diálogos
     this.speed = 0; this.mode = 'idle';
     this.events = { splash: () => {}, ripple: () => {}, step: () => {} };
     this.rippleT = 0; this.stepT = 0; this.swingT = 0;
     this.bindInput();
+  }
+
+// tocha na mão esquerda, acesa sozinha à noite (a direita fica livre para os objetos pegos com P).
+  // A luz já existe desde o início (só a intensidade muda): ligar/desligar uma luz recompila os shaders e trava.
+  makeTorch(glowTex) {
+    const mount = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.9 });
+    const cloth = new THREE.MeshStandardMaterial({ color: 0x2a1c12, roughness: 1 });
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.028, 0.55, 8), wood); stick.position.y = 0.16;
+    const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.034, 0.13, 10), cloth); wrap.position.y = 0.45;
+    const flame = new THREE.Group(); flame.position.y = 0.51;
+    const fm = new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.92, depthWrite: false });
+    const fm2 = new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.95, depthWrite: false });
+    const g1 = new THREE.ConeGeometry(0.07, 0.3, 8); g1.translate(0, 0.15, 0);
+    const g2 = new THREE.ConeGeometry(0.035, 0.18, 6); g2.translate(0, 0.09, 0);
+    const f1 = new THREE.Mesh(g1, fm), f2 = new THREE.Mesh(g2, fm2);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff9a40, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.scale.setScalar(0.75); glow.position.y = 0.14;
+    // queda suave (decay 1): ilumina o entorno sem estourar o rosto, que fica a meio metro da chama
+    const light = new THREE.PointLight(0xffa050, 0, 14, 1); light.position.y = 0.3;
+    flame.add(f1, f2, glow, light);
+    mount.add(stick, wrap, flame);
+    mount.rotation.set(...TORCH_ROT); mount.position.set(...TORCH_GRIP);
+    mount.traverse((n) => { n.layers.set(n.isSprite ? 1 : 0); if (n.isMesh) n.castShadow = n === stick || n === wrap; });
+    this.rig.handL.add(mount);
+    this.torch = { mount, flame, f1, glow, light, on: 0, wq: new THREE.Quaternion() };
+    mount.visible = false;
+  }
+
+  updateTorch(dt, t) {
+    const T = this.torch; if (!T) return;
+    // acende quando escurece; apaga na água (e reacende ao sair)
+    const want = this.night > 0.5 && !this.swimming ? 1 : 0;
+    T.on = want ? Math.min(1, T.on + dt * 2.5) : Math.max(0, T.on - dt * (this.swimming ? 8 : 2));
+    T.mount.visible = T.on > 0.01;
+    T.light.intensity = 2.0 * T.on * (0.88 + Math.sin(t * 12.3) * 0.07 + Math.sin(t * 27.1) * 0.05);
+    if (!T.mount.visible) return;
+    // a chama fica sempre de pé, mesmo com o braço balançando
+    T.mount.parent.updateWorldMatrix(true, false);
+    T.mount.getWorldQuaternion(T.wq).invert();
+    T.flame.quaternion.copy(T.wq);
+    const k = T.on * (0.9 + Math.sin(t * 14 + 1) * 0.08 + Math.sin(t * 31) * 0.05);
+    T.f1.scale.set(1, k, 1); T.f1.parent.scale.setScalar(Math.max(0.05, T.on));
+    T.glow.material.opacity = 0.45 * T.on;
+  }
+
+
+  // braçadas e pernadas de verdade: os respingos saem de onde a mão entra na água e a espuma de onde os pés batem
+  trackSwimLimbs(wl, speed, dt) {
+    const B = this.rig.bones;
+    if (!this.limbs) this.limbs = ['LeftHand', 'RightHand', 'LeftFoot', 'RightFoot'].filter((n) => B[n]).map((n) => ({ n, hand: /Hand/.test(n), prev: null, cd: 0, v: new THREE.Vector3() }));
+    this.rig.root.updateMatrixWorld(true);
+    const power = Math.min(1, speed / 5);
+    for (const L of this.limbs) {
+      B[L.n].getWorldPosition(L.v);
+      const h = L.v.y - wl;
+      L.cd -= dt;
+      if (L.prev !== null && speed > 0.3) {
+        if (L.hand) {
+          if (L.prev > 0.03 && h <= 0.03 && L.cd <= 0) { this.events.handIn?.({ x: L.v.x, y: wl, z: L.v.z }, this.facing, power); L.cd = 0.25; }
+          else if (L.prev < -0.02 && h >= -0.02) this.events.handOut?.({ x: L.v.x, y: wl, z: L.v.z });
+        } else if (Math.abs(h) < 0.22 && L.cd <= 0) { this.events.kick?.({ x: L.v.x, y: wl, z: L.v.z }, this.facing); L.cd = 0.16 / (0.5 + power); }
+      }
+      L.prev = h;
+    }
   }
 
   place(x, z, facing) {
@@ -86,11 +156,16 @@ export class Player {
 
     // aceleração e freada (nada de parar ou arrancar seco)
     let target = 0;
-    if (has) target = (this.swimming ? (run ? 5.2 : 3.4) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
+    if (has) target = (this.swimming ? (run ? 3.8 : 2.2) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
     if (this.wading) target *= 0.55;
     if (has && turnDiff > 1.2 && this.onGround) target *= 0.35; // meia-volta: desacelera e gira
-    const accel = target > this.speed ? (this.onGround || this.swimming ? 9 : 2) : (this.onGround || this.swimming ? 12 : 1);
-    this.speed += Math.sign(target - this.speed) * Math.min(Math.abs(target - this.speed), accel * dt);
+    // curva suave (arranque progressivo, sem degrau) com um piso linear para não ficar eterna no fim
+    const grounded = this.onGround || this.swimming;
+    const k = target > this.speed ? (grounded ? (this.swimming ? 1.6 : 3.2) : 0.6) : (grounded ? (this.swimming ? 2.2 : 4) : 0.3);
+    const prevSpeed = this.speed;
+    const dv = target - this.speed;
+    this.speed += Math.sign(dv) * Math.min(Math.abs(dv), Math.abs(dv) * (1 - Math.exp(-dt * k)) + dt * (grounded ? 1.2 : 0.2));
+    this.accelNow = (this.speed - prevSpeed) / Math.max(dt, 1e-4);
 
     const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
     const before = p.clone();
@@ -105,7 +180,7 @@ export class Player {
     const depth = wl - ground;
 
     if (this.swimming) {
-      const ty = wl - 0.8; // costas e cabeça acima da linha d'água
+      const ty = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
       p.y = lerp(p.y, ty, Math.min(1, dt * 4));
       this.vy = 0;
       if (depth < 1.0) { this.swimming = false; p.y = Math.max(ground, p.y); }
@@ -158,12 +233,22 @@ export class Player {
     if (this.swingT > 0) { this.swingT = 0; playOnce(this.rig, 'Sword_Attack', 0.9); }
     if (this.pickT > 0) { this.pickT = 0; playOnce(this.rig, 'PickUp_Table', 0.8); }
     animateHumanoid(this.rig, dt, realSpeed, mode, t);
+    if (this.swimming) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
     this.rig.root.rotation.y = this.facing;
     // inclina o corpo nas curvas e ao acelerar
     const leanT = this.swimming ? 0 : clamp(-omega * realSpeed * 0.018, -0.22, 0.22);
     this.lean = lerp(this.lean || 0, leanT, Math.min(1, dt * 6));
     this.rig.model.rotation.z = this.lean;
+    // inclina o tronco para a frente na arrancada e no sprint, e para trás ao frear
+    // nadando: cabeça um pouco acima e pernas mais fundas (os calcanhares não furam a superfície a cada pernada)
+    const pitchT = this.swimming ? -0.13 : !this.onGround ? 0 : clamp(this.accelNow * 0.012, -0.07, 0.1) + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 0.07;
+    this.pitch = lerp(this.pitch || 0, pitchT, Math.min(1, dt * 5));
+    this.rig.model.rotation.x = this.pitch;
+    // a câmera abre um pouco no sprint (sensação de velocidade)
+    const fovT = 60 + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 6;
+    if (Math.abs(this.camera.fov - fovT) > 0.05) { this.camera.fov = lerp(this.camera.fov, fovT, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix(); }
     if (this.holding) this.holding.mesh.visible = !this.swimming;
+    this.updateTorch(dt, t);
 
     // câmera acompanha por trás com atraso, se o mouse estiver parado
     const idleMouse = t - this.lastMouse > 1.5;
