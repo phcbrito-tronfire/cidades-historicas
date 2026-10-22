@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { rr, rand, pick } from './util.js';
+import { rr, rand, pick, ver } from './util.js';
 
 const BASES = {};
 const CLIPS = {};
@@ -27,9 +27,9 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   let done = 0; const total = names.length + ANIMS.length;
   const tick = () => onProgress && onProgress(++done / total);
   await Promise.all([
-    ...names.map(async (n) => { const g = await L.loadAsync(DIR + n + '.glb'); BASES[n] = g.scene; tick(); }),
+    ...names.map(async (n) => { const g = await L.loadAsync(ver(DIR + n + '.glb')); BASES[n] = g.scene; tick(); }),
     ...ANIMS.map(async (n) => {
-      const g = await L.loadAsync(DIR + 'anim/' + n + '.glb');
+      const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb'));
       const clip = g.animations[0];
       clip.name = n;
       // laços de locomoção: remove o deslocamento horizontal do quadril (o jogo é quem move)

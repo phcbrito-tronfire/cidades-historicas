@@ -1,5 +1,10 @@
 // Utilidades matemáticas e ruído procedural (sem dependências)
 
+// versão da publicação (tools/versao.mjs): vem no ?v= da URL deste módulo; ver(url) a acrescenta aos arquivos
+// carregados à parte (modelos 3D), para o navegador não reaproveitar cópias antigas do cache
+export const VERSION = new URL(import.meta.url).searchParams.get('v') || '';
+export const ver = (url) => (VERSION ? url + (url.includes('?') ? '&' : '?') + 'v=' + VERSION : url);
+
 export function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;

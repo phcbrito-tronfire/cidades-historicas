@@ -34,6 +34,14 @@ Depois abra http://localhost:8123 no Chrome ou no Edge (computador).
 | J / K / M | diário · coleção de artefatos · mapa |
 | Mouse (arrastar) e roda | câmera e zoom |
 
+## Publicar
+
+Antes de cada envio ao GitHub, carimbe uma versão nova (faz o navegador de quem joga buscar os arquivos novos em vez de usar o cache):
+
+```bash
+node tools/versao.mjs
+```
+
 ## Estrutura
 
 - `index.html`, `css/home.css`, `js/home.js` — tela de entrada e escolha da cidade

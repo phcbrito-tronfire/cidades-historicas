@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { ver } from './util.js';
 
 const DIR = 'assets/models/estatuas/';
 // rot: corrige a orientação de origem; yaw: gira para o rosto apontar para +x; layer: 0 = com reflexo e AO,
@@ -22,7 +23,7 @@ const MODELS = {
 
 async function loadModel(L, name) {
   const def = MODELS[name];
-  const g = await L.loadAsync(DIR + name + '.glb');
+  const g = await L.loadAsync(ver(DIR + name + '.glb'));
   const inner = g.scene;
   inner.rotation.set(...def.rot);
   const turn = new THREE.Group(); turn.rotation.y = def.yaw; turn.add(inner);
