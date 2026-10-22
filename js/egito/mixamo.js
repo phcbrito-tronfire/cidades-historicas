@@ -58,21 +58,46 @@ export const gold = () => m(0xffc64a, { metalness: 1, roughness: 0.3 });
 const bronze = () => m(0xb87333, { metalness: 0.9, roughness: 0.35 });
 const part = (name) => name.replace(/^Ch\d+_+/, '').replace(/\d+$/, '');
 
-// vestido: perfil de torno (justo na cintura, solto nas pernas, barra levemente aberta) com pregas verticais
-let dressGeo = null;
-function dressGeometry() {
-  if (dressGeo) return dressGeo;
-  const prof = [[0.152, 0.09], [0.165, 0], [0.188, -0.18], [0.212, -0.42], [0.238, -0.66], [0.27, -0.9], [0.282, -0.96]];
-  const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 48);
+// tecido de torno (saiote, vestido) com pregas verticais; prof = [raio, y] de cima para baixo, y=0 na cintura.
+// Achatado na frente/atrás como um quadril de verdade, e um pouco mais aberto na frente, onde as coxas avançam.
+const clothCache = new Map();
+function clothGeometry(key, prof, pleats = 26, depth = 0.86) {
+  if (clothCache.has(key)) return clothCache.get(key);
+  const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 56);
   const p = g.attributes.position;
+  const yEnd = prof[prof.length - 1][1];
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    const t = Math.min(1, Math.max(0, -y / 0.9)); // pregas crescem em direção à barra
-    const k = 1 + 0.03 * t * Math.sin(Math.atan2(z, x) * 26);
-    p.setX(i, x * k); p.setZ(i, z * k);
+    const t = Math.min(1, Math.max(0, y / yEnd)); // 0 na cintura, 1 na barra
+    const a = Math.atan2(z, x);
+    const k = 1 + 0.028 * Math.sqrt(t) * Math.sin(a * pleats); // pregas crescem em direção à barra
+    p.setX(i, x * k); p.setZ(i, z * k * depth + (z > 0 ? 0.02 * t : 0));
   }
   g.computeVertexNormals();
-  return (dressGeo = g);
+  clothCache.set(key, g);
+  return g;
+}
+const KILT = [[0.158, 0.07], [0.172, 0], [0.19, -0.12], [0.205, -0.26], [0.213, -0.4], [0.218, -0.48]];
+const LONGKILT = [[0.158, 0.07], [0.172, 0], [0.19, -0.14], [0.205, -0.34], [0.215, -0.6], [0.225, -0.82]];
+const DRESS = [[0.15, 0.1], [0.163, 0], [0.185, -0.16], [0.2, -0.36], [0.212, -0.6], [0.226, -0.84], [0.232, -0.94]];
+
+// escudo: retângulo com topo em arco, extrudado e levemente curvo; UV de 0 a 1 em toda a face
+const shieldCache = new Map();
+function shieldGeometry(hw, h, depth) {
+  const key = hw + '|' + h + '|' + depth;
+  if (shieldCache.has(key)) return shieldCache.get(key);
+  const sh = new THREE.Shape();
+  sh.moveTo(-hw, 0); sh.lineTo(hw, 0); sh.lineTo(hw, h - hw); sh.absarc(0, h - hw, hw, 0, Math.PI, false); sh.lineTo(-hw, 0);
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 1, curveSegments: 14 });
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i);
+    uv.setXY(i, (x + hw) / (2 * hw), y / h);
+    p.setZ(i, p.getZ(i) - (x * x) * 1.6); // curva para acompanhar as costas
+  }
+  g.computeVertexNormals();
+  shieldCache.set(key, g);
+  return g;
 }
 
 function meshAt(geo, mat, x, y, z, rot) {
@@ -186,12 +211,59 @@ export function makeHumanoid(o = {}) {
   const hips = bonePos('Hips');
   const hipsPart = (geo, mat, dy, rot, sc) => attach('Hips', new THREE.Mesh(geo, mat), new THREE.Vector3(0, hips.y + dy, hips.z + 0.01), rot, sc);
   const linenM = m(linen, { roughness: 0.95, side: THREE.DoubleSide });
+  // tecido que veste o quadril e acompanha as coxas: malha com pele (skin) no mesmo esqueleto do corpo.
+  // Cada vértice segue o quadril na cintura e, descendo, cada vez mais a coxa do seu lado (no meio, as duas).
+  const ref = meshes.find((me) => /Body/.test(me.name)) || meshes[0];
+  const skel = ref.skeleton;
+  const bi = (n) => skel.bones.findIndex((b) => b.name.replace(/^mixamorig\d*:?/, '') === n);
+  const iH = bi('Hips'), iL = bi('LeftUpLeg'), iR = bi('RightUpLeg');
+  const xL = bones.LeftUpLeg ? Math.sign(bonePos('LeftUpLeg').x - hips.x) || 1 : 1;
+  // as malhas vêm quantizadas e a desquantização mora nas boneInverses: na pose T, um vértice cru v vai para
+  // (osso do quadril no modelo) × boneInverse × bindMatrix × v. A inversa disso leva o tecido para o espaço cru.
+  const toRef = iH >= 0 ? new THREE.Matrix4().multiplyMatrices(rootInv, skel.bones[iH].matrixWorld).multiply(skel.boneInverses[iH]).multiply(ref.bindMatrix).invert() : new THREE.Matrix4();
+  const cloth = (geo, mat, dy, follow = 0.85) => {
+    const g = geo.clone();
+    g.translate(hips.x, hips.y + dy, hips.z + 0.01);
+    const p = g.attributes.position, n = p.count;
+    const yTop = hips.y + dy;
+    g.computeBoundingBox();
+    const span = yTop - g.boundingBox.min.y;
+    const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) {
+      const t = THREE.MathUtils.clamp((yTop - p.getY(i)) / span, 0, 1);
+      const s = THREE.MathUtils.clamp(((p.getX(i) - hips.x) * xL) / 0.11, -1, 1); // +1 lado esquerdo
+      const leg = follow * THREE.MathUtils.smoothstep(t, 0.05, 1);
+      const wL = leg * (0.5 + 0.5 * s), wR = leg * (0.5 - 0.5 * s);
+      si.set([iH, iL, iR, iH], i * 4); sw.set([1 - wL - wR, wL, wR, 0], i * 4);
+    }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    g.applyMatrix4(toRef);
+    const sm = new THREE.SkinnedMesh(g, mat);
+    sm.castShadow = true; sm.receiveShadow = true; sm.frustumCulled = false;
+    sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale);
+    ref.parent.add(sm);
+    sm.bind(skel, ref.bindMatrix);
+    return sm;
+  };
+  const useCloth = iH >= 0 && iL >= 0 && iR >= 0;
+  // cinto de linho dobrado com a ponta do nó caindo na frente (shendyt)
+  const belt = () => {
+    hipsPart(new THREE.CylinderGeometry(0.163, 0.168, 0.05, 32, 1, true), linenM, 0.035, [0, 0, 0], [1, 1, 0.88]);
+    hipsPart(new THREE.BoxGeometry(0.05, 0.13, 0.012), linenM, -0.03, [-0.12, 0, 0]).position.z += 0.15;
+  };
   switch (outfit) {
-    case 'kilt': case 'soldier': case 'pharaoh': hipsPart(new THREE.CylinderGeometry(0.18, 0.3, 0.58, 24, 1, true), linenM, -0.2); break;
-    case 'worker': hipsPart(new THREE.CylinderGeometry(0.175, 0.29, 0.5, 22, 1, true), linenM, -0.16); break;
-    case 'longkilt': case 'priest': hipsPart(new THREE.CylinderGeometry(0.175, 0.3, 0.86, 22, 1, true), linenM, -0.35); break;
+    case 'kilt': case 'soldier': case 'pharaoh':
+      if (useCloth) { cloth(clothGeometry('kilt', KILT), linenM, -0.04); belt(); } else hipsPart(new THREE.CylinderGeometry(0.18, 0.24, 0.5, 24, 1, true), linenM, -0.2);
+      break;
+    case 'worker':
+      if (useCloth) cloth(clothGeometry('worker', KILT.slice(0, 5), 20), linenM, -0.04); else hipsPart(new THREE.CylinderGeometry(0.175, 0.23, 0.42, 22, 1, true), linenM, -0.16);
+      break;
+    case 'longkilt': case 'priest':
+      if (useCloth) { cloth(clothGeometry('longkilt', LONGKILT, 30), linenM, -0.04, 0.8); belt(); } else hipsPart(new THREE.CylinderGeometry(0.175, 0.26, 0.86, 22, 1, true), linenM, -0.35);
+      break;
     case 'dress': { // kalasíris: linho plissado justo na cintura, solto nas pernas, com faixa colorida
-      hipsPart(dressGeometry(), linenM, -0.04, [0, 0, 0], [1, 1, 0.86]);
+      if (useCloth) cloth(clothGeometry('dress', DRESS, 34), linenM, -0.04, 0.8); else hipsPart(clothGeometry('dress', DRESS, 34), linenM, -0.04);
       hipsPart(new THREE.CylinderGeometry(0.158, 0.162, 0.045, 28, 1, true), m(o.sash ?? 0xa8402c, { roughness: 0.8, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
     } break;
   }
@@ -201,7 +273,8 @@ export function makeHumanoid(o = {}) {
   const chest = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
   const neckY = bones.Neck ? bonePos('Neck').y : chest.y + 0.15;
   if (outfit === 'soldier') attach('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.015), m(0xffffff, { map: TEX.hide })), new THREE.Vector3(0, hips.y - 0.16, hips.z + 0.24), [-0.15, 0, 0]);
-  if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.27), m(0xffffff, { map: TEX.leopard, roughness: 0.9 })), new THREE.Vector3(0.02, chest.y - 0.05, chest.z), [0, 0, 0.35]);
+  // pele de leopardo do sacerdote: envolve o tronco em diagonal, junto ao corpo (antes era uma placa que o cajado atravessava)
+  if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.19, 0.42, 36, 1, true), m(0xffffff, { map: TEX.leopard, roughness: 0.9, side: THREE.DoubleSide })), new THREE.Vector3(0, chest.y - 0.1, chest.z + 0.005), [0, 0, 0.22], [1, 1, 0.78]);
   const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar;
   if (collar && !isExp) {
     const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffc64a, { metalness: 1, roughness: 0.3, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
@@ -223,7 +296,13 @@ export function makeHumanoid(o = {}) {
   if (bones.LeftHand) attach('LeftHand', handL, bonePos('LeftHand').add(new THREE.Vector3(0.07, -0.01, 0.02)), [0, 0, Math.PI / 2]);
   for (const e of o.extras || []) {
     if (e === 'spear') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.014, 0.014, 2.0, 6), m(0x7a5a36), 0, 0.55, 0)); g.add(meshAt(new THREE.ConeGeometry(0.03, 0.17, 6), bronze(), 0, 1.62, 0)); handR.add(g); }
-    if (e === 'shield') { const sh = meshAt(new THREE.BoxGeometry(0.38, 0.58, 0.03), m(0xffffff, { map: TEX.hide }), 0.0, 0.05, 0.07); sh.add(meshAt(new THREE.CylinderGeometry(0.19, 0.19, 0.03, 14, 1, false, 0, Math.PI), sh.material, 0, 0.29, 0, [Math.PI / 2, 0, 0])); handL.add(sh); }
+    if (e === 'shield') { // escudo egípcio de couro de boi, topo arredondado e aro de madeira, levado às costas
+      const sh = new THREE.Group();
+      sh.add(meshAt(shieldGeometry(0.2, 0.6, 0.018), m(0xd9b48a, { map: TEX.hide, roughness: 0.85 }), 0, 0, 0.004));
+      sh.add(meshAt(shieldGeometry(0.218, 0.625, 0.012), m(0x6a4526, { roughness: 0.7 }), 0, -0.012, -0.006));
+      sh.add(meshAt(new THREE.SphereGeometry(0.03, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), bronze(), 0, 0.33, 0.012, [Math.PI / 2, 0, 0]));
+      attach('Spine2', sh, new THREE.Vector3(0.03, chest.y - 0.36, chest.z - 0.17), [0.12, Math.PI, 0.1]);
+    }
     if (e === 'staff') handR.add(meshAt(new THREE.CylinderGeometry(0.013, 0.017, 1.7, 6), m(0x6b4a2e), 0, 0.3, 0));
     if (e === 'crook') { handR.add(meshAt(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6), m(0x2c5d9c), 0, 0.12, 0)); handR.add(meshAt(new THREE.TorusGeometry(0.05, 0.014, 5, 10, Math.PI), gold(), 0.05, 0.32, 0)); handL.add(meshAt(new THREE.CylinderGeometry(0.013, 0.013, 0.35, 6), gold(), 0, 0.1, 0)); }
     if (e === 'scroll') handL.add(meshAt(new THREE.CylinderGeometry(0.028, 0.028, 0.2, 8), m(0xe9dcb4), 0, 0.0, 0.04, [0, 0, Math.PI / 2]));
