@@ -6,7 +6,6 @@ import { rand, rr, ri, pick } from './util.js';
 import { addBox, addCircle, addPyramid } from './collision.js';
 import { terrainHeight, riverX, LAKE } from './terrain.js';
 import { pbrSet } from './textures.js';
-import { stoneHeadGeometry } from './mixamo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { fbm } from './util.js';
 
@@ -186,9 +185,6 @@ export function createMaterials(tex) {
     nemes: std({ map: tex.nemes, roughness: 0.6 }),
     hide: std({ map: tex.hide }),
     stoneGrey: std({ color: 0xbfb6a4, roughness: 0.85 }),
-    lion: std({ map: tex.sandstone, color: 0xe8d2a8, roughness: 0.8 }),
-    stoneHead: std({ color: 0xd9c49e, roughness: 0.82 }),
-    paintedFace: std({ color: 0xc8936a, roughness: 0.85 }),
   };
   M.sandstone.userData.uv = { s: 6 };
   M.relief.userData.uv = { s: 9 };
@@ -254,13 +250,9 @@ export function createMaterials(tex) {
     set(M.column, { map: tex.column, normalMap: pbrSet(P.sandstone_blocks_08, [2, 4]).normalMap, roughnessMap: pbrSet(P.sandstone_blocks_08, [2, 4]).roughnessMap });
     set(M.granite, rep(P.rock_boulder_dry, 1), { color: 0xc98a78, roughness: 1, roughnessMap: rep(P.rock_boulder_dry, 1).roughnessMap });
     M.granite.userData.uv = { s: 2.5 };
-    set(M.lion, rep(P.rock_boulder_dry, 1), { color: 0xf2d6a6 });
-    M.lion.userData.uv = { s: 3 };
     M.awnings.forEach((m, i) => set(m, { map: tex.awnings[i], normalMap: rep(P.rough_linen, 1).normalMap }));
     set(M.linen, rep(P.rough_linen, 1), { color: 0xffffff });
     M.linen.userData.uv = { s: 1 };
-    set(M.paintedFace, { normalMap: rep(P.rock_boulder_dry, 1).normalMap });
-    M.paintedFace.userData.uv = { s: 3 };
     set(M.basalt, { normalMap: rep(P.rock_boulder_dry, 1).normalMap });
     M.basalt.userData.uv = { s: 2 };
   } else M.pyramid = M.limestone;
@@ -440,16 +432,17 @@ export function buildCity(scene, tex) {
   // colossos sentados de Ramsés II
   // colossos de Ramsés II em pé (as figuras são criadas depois, a partir do corpo humano)
   out.statues = [];
+  out.sculptures = SCULPT = []; // modelos 3D esculpidos (esfinges), carregados à parte em sculptures.js
   for (const z of [-7.5, 7.5]) {
     B.box(M.granite, 3.2, 1.6, 3.2, 9.5, TY, z);
     B.box(M.gold, 3.3, 0.18, 3.3, 9.5, TY + 1.5, z);
     addBox(9.5, z, 3.2, 3.2, -5, TY + 10);
-    out.statues.push({ x: 9.5, y: TY + 1.6, z, ry: Math.PI / 2, h: 8.5, painted: true });
+    SCULPT.push({ model: 'anubis', x: 9.5, y: TY + 1.6, z, ry: 0, length: 8.5 }); // Anúbis guardando o pilone
   }
   for (const z of [-15.5, 15.5]) {
     B.box(M.granite, 2.6, 1.2, 2.6, 8.6, TY, z);
     addBox(8.6, z, 2.6, 2.6, -5, TY + 8);
-    out.statues.push({ x: 8.6, y: TY + 1.2, z, ry: Math.PI / 2, h: 6.5, painted: true });
+    SCULPT.push({ model: 'anubis', x: 8.6, y: TY + 1.2, z, ry: 0, length: 6.5 });
   }
   // obeliscos
   for (const z of [-11.5, 11.5]) {
@@ -472,6 +465,11 @@ export function buildCity(scene, tex) {
   B.box(M.granite, 3, 1.1, 2, -22, TY, 0);
   B.box(M.gold, 0.5, 0.4, 0.5, -22.6, TY + 1.1, 0.3);
   offerings(B, M, -22, TY + 1.1, 0);
+  // Anúbis deitado sobre o cofre (como o do túmulo de Tutancâmon), um de cada lado do altar
+  for (const z of [-4.6, 4.6]) {
+    B.box(M.granite, 2.4, 0.6, 1.6, -22, TY, z); addBox(-22, z, 2.4, 1.6, -5, TY + 2.4);
+    SCULPT.push({ model: 'anubis_deitado', x: -22, y: TY + 0.6, z, ry: 0, length: 2.2 });
+  }
   addBox(-22, 0, 3, 2, -2, TY + 1.1);
   torch(-19, TY, 3); torch(-19, TY, -3); torch(-25, TY, 3); torch(-25, TY, -3);
   out.zones.templo = [-84, 8, -21, 21];
@@ -572,19 +570,20 @@ export function buildCity(scene, tex) {
   // Esfinge
   // Grande Esfinge: corpo de leão esculpido na rocha e rosto humano (de frente para o nascer do sol)
   {
-    const SX = -163, SZ = 22, SS = 8, gy = G(-158, 22) - 0.3;
-    const F = mat4(SX, gy, SZ, 0, 0, 0);
-    lionSphinx(B, M, F, SS, { body: M.lion, head: M.paintedFace, great: true });
-    // estela do sonho de Tutmés IV e a estátua do rei entre as patas
-    B.box(M.relief, 0.5, 3.6, 2.4, SX + 1.12 * SS, gy, SZ, { uv: { s: 3 } });
-    addBox(SX + 1.12 * SS, SZ, 0.6, 2.4, -5, gy + 3.6);
-    const sx = SX + 1.36 * SS;
+    // modelo 3D esculpido (Sketchfab, CC BY): comprimento L, largura ~0,59 L, altura ~0,53 L; olha para +x
+    const SX = -166, SZ = 22, L = 32, gy = G(-158, 22) - 0.3;
+    SCULPT.push({ model: 'esfinge_giza', x: SX, y: gy, z: SZ, ry: 0, length: L });
+    // estela do sonho de Tutmés IV e a estátua do rei diante das patas
+    const fx = SX + 0.5 * L;
+    B.box(M.relief, 0.5, 3.6, 2.4, fx + 2.6, gy, SZ, { uv: { s: 3 } });
+    addBox(fx + 2.6, SZ, 0.6, 2.4, -5, gy + 3.6);
+    const sx = fx + 4.8;
     B.box(M.limestone, 1.1, 0.5, 1.1, sx, gy, SZ); addBox(sx, SZ, 1.1, 1.1, -5, gy + 3.4);
     out.statues.push({ x: sx, y: gy + 0.5, z: SZ, ry: Math.PI / 2, h: 2.8, painted: true });
-    out.spots.sphinx = new V3(SX + 1.52 * SS, G(SX + 1.52 * SS, SZ), SZ);
-    // colisão: tronco/cabeça e as duas patas (o espaço entre as patas é livre)
-    addBox(SX + -0.15 * SS, SZ, 2.2 * SS, 1.2 * SS, -5, gy + 1.65 * SS);
-    for (const z of [-1, 1]) addBox(SX + 1.08 * SS, SZ + z * 0.27 * SS, 0.95 * SS, 0.3 * SS, -5, gy + 0.3 * SS);
+    out.spots.sphinx = new V3(fx + 8, G(fx + 8, SZ), SZ);
+    // colisão: tronco e cabeça, e as patas estendidas
+    addBox(SX - 0.15 * L, SZ, 0.7 * L, 0.6 * L, -5, gy + 0.53 * L);
+    addBox(SX + 0.33 * L, SZ, 0.34 * L, 0.42 * L, -5, gy + 0.1 * L);
   }
   out.zones.piramides = [-320, -150, -130, 190];
 
@@ -1009,42 +1008,14 @@ function colossus(B, M, x, y, z, ry) {
   addBox(wpos.x - 0.5, wpos.z, 5, 3.8, -5, y + 9);
 }
 
+let SCULPT = [];
 function miniSphinx(B, M, x, y, z, ry) {
   const F = mat4(x, y, z, 0, ry, 0);
   B.box(M.sandstone, 3, 1, 1.4, 0, 0, 0, { frame: F });
   B.box(M.blue, 3.04, 0.12, 1.44, 0, 0.88, 0, { frame: F, uv: false });
-  lionSphinx(B, M, F.clone().multiply(mat4(-0.1, 1.0, 0)), 1.0, { body: M.stoneHead, head: M.stoneHead });
   const p = new V3(0, 0, 0).applyMatrix4(F);
+  SCULPT.push({ model: 'esfinge_avenida', x: p.x, y: y + 1.0, z: p.z, ry, length: 2.9 }); // escultura (modelo 3D) sobre o pedestal
   addBox(p.x, p.z, 1.6, 3.1, -5, y + 2.8);
-}
-
-// Leão deitado com cabeça humana e nemes (s = escala; 1 ≈ 2,8 m de comprimento)
-function lionSphinx(B, M, F, s, { body, head, great = false }) {
-  const g = (geo, mat, x, y, z, o = {}) => B.geo(geo, mat, x * s, y * s, z * s, { ...o, frame: F, sx: (o.sx || 1) * s, sy: (o.sy || 1) * s, sz: (o.sz || 1) * s, uv: o.uv ?? { s: 2.5 * s } });
-  const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 6, 14);
-  const sph = (r) => new THREE.SphereGeometry(r, 20, 14);
-  g(cap(0.34, 1.25), body, -0.25, 0.4, 0, { rz: Math.PI / 2, sy: 0.92, sz: 1.08 });   // tronco
-  g(sph(0.42), body, -0.98, 0.4, 0, { sx: 1.1, sy: 0.92, sz: 1.15 });                   // ancas
-  g(sph(0.34), body, 0.38, 0.46, 0, { sx: 1.0, sy: 1.12, sz: 1.08 });                   // peito / ombros
-  for (const z of [-0.24, 0.24]) {
-    g(cap(0.085, 0.62), body, 0.85, 0.1, z, { rz: Math.PI / 2 });                       // patas dianteiras estendidas
-    g(sph(0.1), body, 1.24, 0.07, z, { sx: 1.7, sy: 0.62, sz: 1.05 });                  // garras
-    g(cap(0.12, 0.42), body, -0.72, 0.12, z * 1.6, { rz: Math.PI / 2 });                // patas traseiras dobradas
-    g(sph(0.11), body, -0.42, 0.07, z * 1.6, { sx: 1.6, sy: 0.6, sz: 1.0 });
-  }
-  g(new THREE.TorusGeometry(0.28, 0.04, 8, 18, Math.PI), body, -1.2, 0.06, 0.24, { rx: Math.PI / 2, rz: 0.4 }); // cauda
-  // cabeça humana esculpida, à frente e acima dos ombros
-  const hg = stoneHeadGeometry('brian');
-  const hh = hg.boundingBox.max.y, hd = hg.boundingBox.max.z, k = 0.62 / hh;
-  const HX = 0.44, HY = 0.5;
-  B.geo(hg, head, HX * s, HY * s, 0, { frame: F, ry: Math.PI / 2, s: k * s, uv: false });
-  // nemes: touca listrada sobre o alto e a nuca, abas caindo ao lado do rosto, trança nas costas
-  const top = HY + 0.62, hc = HY + 0.62 * 0.66, back = HX - hd * k * 0.35;
-  B.geo(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.48), M.nemes, back * s, hc * s, 0, { frame: F, sx: 0.26 * s, sy: (top - hc + 0.02) * s, sz: 0.25 * s, uv: false });
-  for (const z of [-1, 1]) B.geo(taper(0.07, 0.42, 0.11, 1, 1.6), M.nemes, (HX - 0.02) * s, (hc - 0.3) * s, z * 0.19 * s, { frame: F, s: s, uv: false });
-  B.geo(taper(0.16, 0.36, 0.3, 0.7, 0.7), M.nemes, (back - 0.12) * s, (hc - 0.14) * s, 0, { frame: F, s: s, uv: false });
-  B.geo(new THREE.CylinderGeometry(0.012, 0.022, 0.08, 8), M.gold, (HX + hd * k * 0.85) * s, (top - 0.1) * s, 0, { frame: F, s: s, rz: -0.3 }); // ureu
-  if (great) B.geo(new THREE.CylinderGeometry(0.03, 0.045, 0.2, 10), head, (HX + hd * k * 0.75) * s, (HY - 0.06) * s, 0, { frame: F, s: s, rz: 0.15 }); // barba cerimonial
 }
 
 function ptahStatue(B, M, x, y, z) {

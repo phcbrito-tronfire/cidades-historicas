@@ -150,7 +150,7 @@ export function makeHumanoid(o = {}) {
       continue;
     }
     if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, linen, 0.95); continue; }
-    if (/Shoes|Sneakers|Heels/.test(p)) { me.material = fold(mat, outfit === 'pharaoh' ? 0xd9a23e : 0x8a6a42, 0.8); continue; }
+    if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; } // trocados por pés com sandália (abaixo)
   }
 
   // prende um objeto a um osso, a partir de posição/rotação no espaço do modelo (pose T)
@@ -275,7 +275,7 @@ export function makeHumanoid(o = {}) {
   if (outfit === 'soldier') attach('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.015), m(0xffffff, { map: TEX.hide })), new THREE.Vector3(0, hips.y - 0.16, hips.z + 0.24), [-0.15, 0, 0]);
   // pele de leopardo do sacerdote: envolve o tronco em diagonal, junto ao corpo (antes era uma placa que o cajado atravessava)
   if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.19, 0.42, 36, 1, true), m(0xffffff, { map: TEX.leopard, roughness: 0.9, side: THREE.DoubleSide })), new THREE.Vector3(0, chest.y - 0.1, chest.z + 0.005), [0, 0, 0.22], [1, 1, 0.78]);
-  const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar;
+  const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar ?? (female ? pick([0x2f7f8a, 0xa8402c, 0x3a5fa8, 0xc9963a]) : undefined); // mulheres: colar largo de contas por cima da gola da blusa do modelo
   if (collar && !isExp) {
     const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffc64a, { metalness: 1, roughness: 0.3, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
@@ -288,6 +288,38 @@ export function makeHumanoid(o = {}) {
     attach('Hips', bag, new THREE.Vector3(-0.2, hips.y - 0.1, hips.z - 0.03));
     const whip = attach('Hips', new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 16), m(0x2a1a0e)), new THREE.Vector3(0.2, hips.y - 0.04, hips.z + 0.02), [0, Math.PI / 2, 0]);
     void whip;
+  }
+
+  // ---- pés descalços com sandália de couro (no lugar dos tênis do Mixamo, que escondem pés só esboçados)
+  if (!isExp) {
+    const skinFlat = m(new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 });
+    const sandal = m(outfit === 'pharaoh' ? 0xd9a23e : 0x8a6a42, { roughness: outfit === 'pharaoh' ? 0.35 : 0.85, metalness: outfit === 'pharaoh' ? 0.8 : 0 });
+    for (const side of ['Left', 'Right']) {
+      if (!bones[side + 'Foot']) continue;
+      const ank = bonePos(side + 'Foot');
+      const toe = bones[side + 'Toe_End'] ? bonePos(side + 'Toe_End') : bones[side + 'ToeBase'] ? bonePos(side + 'ToeBase').add(new THREE.Vector3(0, 0, 0.06)) : ank.clone().add(new THREE.Vector3(0, 0, 0.2));
+      const heelZ = ank.z - 0.05, toeZ = toe.z - 0.005, L = toeZ - heelZ, cx = (ank.x + toe.x) / 2;
+      const g = new THREE.Group();
+      // dorso do pé: elipsoide achatado, mais largo nos dedos; tornozelo liga a perna ao pé
+      const footG = new THREE.SphereGeometry(1, 18, 12);
+      const fp = footG.attributes.position;
+      for (let i = 0; i < fp.count; i++) {
+        const z = fp.getZ(i), y = fp.getY(i);
+        const t = (z + 1) / 2; // 0 calcanhar, 1 dedos
+        fp.setX(i, fp.getX(i) * (0.033 + 0.02 * Math.sqrt(t)) * (t > 0.85 ? 1 - (t - 0.85) * 1.2 : 1));
+        fp.setY(i, Math.max(y, -0.35) * (0.068 - 0.046 * t));
+        fp.setZ(i, z * L / 2);
+      }
+      footG.computeVertexNormals();
+      g.add(meshAt(footG, skinFlat, cx, 0.03, heelZ + L / 2));
+      g.add(meshAt(new THREE.CylinderGeometry(0.026, 0.046, Math.max(0.07, ank.y + 0.03), 16), skinFlat, ank.x, Math.max(0.07, ank.y + 0.03) / 2 + 0.015, ank.z - 0.015, [0, 0, 0]));
+      // sola, tira sobre o peito do pé e tira do calcanhar
+      g.add(meshAt(new THREE.BoxGeometry(0.1, 0.012, L + 0.025), sandal, cx, 0.006, heelZ + L / 2));
+      g.add(meshAt(new THREE.TorusGeometry(0.043, 0.007, 5, 16, Math.PI), sandal, cx, 0.012, heelZ + L * 0.62, [0, 0, 0]));
+      g.add(meshAt(new THREE.TorusGeometry(0.04, 0.006, 5, 14, Math.PI), sandal, cx, 0.02, ank.z - 0.02, [0, 0, 0]));
+      g.traverse((n) => { if (n.material === skinFlat) n.userData.skinPart = true; });
+      attach(side + 'Foot', g, new THREE.Vector3(0, 0, 0));
+    }
   }
 
   // ---- mãos (o +y do objeto aponta para o ombro, como no sistema anterior)
@@ -426,6 +458,7 @@ export function makeStatue({ h = 8 } = {}) {
   rig.root.traverse((n) => {
     if (!n.isMesh) return;
     n.layers.set(2);
+    if (n.userData.skinPart) { n.material = skinP; return; }
     if (!n.isSkinnedMesh) { if (n.material && n.material.transparent) n.material = white; return; }
     const p = part(n.name);
     if (/Body|Shirt|Tops/.test(p)) n.material = skinP;

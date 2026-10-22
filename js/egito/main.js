@@ -8,6 +8,7 @@ import { isTouch, canTouch, setupTouch } from './touch.js';
 import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight } from './terrain.js';
 import { buildCity, hullGeometry } from './buildings.js';
 import { setCharTextures } from './characters.js';
+import { placeSculptures, sculptureInstance } from './sculptures.js';
 import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from './mixamo.js';
 import { Actors } from './npcs.js';
 import { Player } from './player.js';
@@ -79,6 +80,7 @@ async function main() {
   if (city.pool) { city.pool.children.forEach((m) => (m.material = world.calmWater)); scene.add(city.pool); }
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');
   buildVegetation(scene, tex, city.exclusions);
+  await placeSculptures(scene, city.sculptures);
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);
   const boats = makeBoats(scene, city);
@@ -434,14 +436,13 @@ function makeFlags(scene, defs) {
 
 function makeBoats(scene, city) {
   const M = city.M;
-  const reed = new THREE.MeshStandardMaterial({ color: 0xc2a462, roughness: 0.95 });
   const painted = new THREE.MeshStandardMaterial({ map: M.wood.map, color: 0xd9c49a, roughness: 0.8 });
   const sailM = new THREE.MeshStandardMaterial({ color: 0xf1ead8, roughness: 0.95, side: THREE.DoubleSide });
   const boats = [];
   const skiff = (x, z, ry) => {
     const g = new THREE.Group();
-    const h = new THREE.Mesh(hullGeometry(5, 1.2, 0.45, 1.6), reed); h.castShadow = true; g.add(h);
-    for (let i = -2; i <= 2; i++) { const b = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 4, 10, Math.PI), M.rope); b.position.x = i * 0.9; b.rotation.y = Math.PI / 2; b.position.y = 0.1; g.add(b); }
+    // barquinho de papiro modelado (sculptures.js); chega assim que o modelo carregar
+    sculptureInstance('barco', 5).then((o) => { o.position.y = -0.18; g.add(o); });
     g.position.set(x, 0.05, z); g.rotation.y = ry; scene.add(g);
     boats.push({ g, bob: rand() * 6, y: 0.05 });
     return g;
