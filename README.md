@@ -3,6 +3,10 @@
 Viagem interativa no tempo: explore em 3D, no navegador, grandes cidades da história no auge do seu esplendor.
 Converse com quem viveu lá, colete artefatos reais e descubra como era a vida, a comida e a fé de cada época.
 
+### ▶ Jogar agora: https://phcbrito-tronfire.github.io/cidades-historicas/
+
+Funciona no navegador do computador (Chrome ou Edge atualizados). O primeiro carregamento baixa uns 45 MB.
+
 **Disponível:** Mênfis, Egito Antigo (c. 1250 a.C., 30º ano de Ramsés II).
 **Em produção:** Roma, Atenas, Tenochtitlan, Babilônia, Cusco, Constantinopla e Chang'an.
 
