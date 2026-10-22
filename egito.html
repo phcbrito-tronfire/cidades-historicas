@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mênfis, 1250 a.C. — Cidades Históricas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="loading">
+    <div class="load-inner">
+      <div class="eyebrow">Cidades Históricas</div>
+      <h1>Mênfis</h1>
+      <div class="era">Egito · Novo Império · c. 1250 a.C.</div>
+      <div class="bar"><div id="load-fill"></div></div>
+      <div id="load-step">Preparando a viagem no tempo...</div>
+      <p class="tip" id="load-tip"></p>
+    </div>
+  </div>
+
+  <div id="intro" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Ano 30 de Ramsés II</div>
+      <h2>Bem-vindo a Mênfis</h2>
+      <p>Você é um explorador que atravessou os séculos. Diante de você está <b>Mênfis</b>, a cidade mais antiga do Egito, no auge do Novo Império. A oeste, as <b>pirâmides de Gizé</b> brilham com seu revestimento branco; a leste corre o <b>Nilo</b>.</p>
+      <p>Converse com o povo, descubra como viviam, comiam e rezavam, e conquiste uma audiência com o <b>faraó</b>.</p>
+      <div class="controls">
+        <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mover (relativo à câmera)</div>
+        <div><kbd>Shift</kbd> correr / nadar forte</div>
+        <div><kbd>Ctrl</kbd> caminhar devagar</div>
+        <div><kbd>Espaço</kbd> pular</div>
+        <div><kbd>E</kbd> conversar</div>
+        <div><kbd>P</kbd> pegar / soltar</div>
+        <div><kbd>R</kbd> usar / comer</div>
+        <div><kbd>C</kbd> manhã · tarde · noite</div>
+        <div><kbd>J</kbd> diário · <kbd>K</kbd> artefatos</div>
+        <div><kbd>M</kbd> mapa</div>
+        <div><kbd>Mouse</kbd> arrastar gira a câmera</div>
+        <div><kbd>Roda</kbd> zoom</div>
+      </div>
+      <button id="btn-start" class="gold-btn">Começar a explorar</button>
+      <a class="back-link" href="index.html">← Escolher outra cidade</a>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <div id="loc"><div id="loc-place">Avenida das Esfinges</div><div id="loc-time">Tarde</div></div>
+    <div id="journal">
+      <div class="j-head"><span>Diário de viagem</span><span id="j-count"></span></div>
+      <ul id="j-list"></ul>
+      <div class="j-foot">J para esconder</div>
+    </div>
+    <div id="hand" hidden></div>
+    <div id="prompt" hidden></div>
+    <div id="mini-wrap"><canvas id="minimap" width="200" height="200"></canvas><div class="mini-n">N</div></div>
+    <div id="keys">Setas mover · Shift correr · Ctrl caminhar · Espaço pular · E falar · P pegar · R usar · C clima · K artefatos · M mapa · Esc menu</div>
+    <div id="toasts"></div>
+  </div>
+
+  <div id="dialog" hidden>
+    <div class="d-box">
+      <div class="d-head"><span id="d-name"></span><span id="d-title"></span></div>
+      <div id="d-text"></div>
+      <div id="d-options"></div>
+    </div>
+  </div>
+
+  <div id="itemcard" hidden>
+    <div class="ic-name"></div>
+    <div class="ic-desc"></div>
+  </div>
+
+  <div id="bigmap" hidden>
+    <div class="bm-box">
+      <div class="bm-title">Mênfis e o planalto de Gizé</div>
+      <canvas id="bigmap-canvas" width="760" height="760"></canvas>
+      <div class="bm-foot">M para fechar</div>
+    </div>
+  </div>
+
+  <div id="pause" hidden>
+    <div class="scroll small">
+      <h2>Pausa</h2>
+      <button class="gold-btn" data-act="resume">Continuar</button>
+      <button class="ghost-btn" data-act="sound">Som: ligado</button>
+      <button class="ghost-btn" data-act="music">Música: ligada</button>
+      <button class="ghost-btn" data-act="quality">Gráficos: alto</button>
+      <button class="ghost-btn" data-act="reset">Recomeçar a jornada</button>
+      <a class="ghost-btn" href="index.html">Voltar à escolha de cidades</a>
+      <p style="font-size:.95rem;margin-top:1rem;opacity:.8">Créditos: texturas de <a href="https://polyhaven.com" target="_blank">Poly Haven</a> (CC0) · personagens e animações de <a href="https://quaternius.com" target="_blank">Quaternius</a> (CC0) · cabeça escaneada "Infinite, 3D Head Scan" de Lee Perry-Smith (Infinite Realities), CC BY 3.0 · motor 3D <a href="https://threejs.org" target="_blank">three.js</a>.</p>
+    </div>
+  </div>
+
+  <div id="ending" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Jornada concluída</div>
+      <h2>Que seu nome viva</h2>
+      <p id="end-text"></p>
+      <button class="gold-btn" id="btn-continue">Continuar explorando</button>
+      <a class="back-link" href="index.html">← Voltar às Cidades Históricas</a>
+    </div>
+  </div>
+
+  <div id="fallback" hidden>
+    <div class="scroll small"><h2>Ops!</h2><p id="fallback-text">Seu navegador não conseguiu iniciar o 3D (WebGL). Tente o Chrome ou o Edge atualizados, em um computador.</p><a class="gold-btn" href="index.html">Voltar</a></div>
+  </div>
+
+  <script type="module" src="js/egito/main.js"></script>
+</body>
+</html>

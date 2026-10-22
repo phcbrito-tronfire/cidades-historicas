@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cidades Históricas</title>
+  <meta name="description" content="Viaje no tempo e explore, em 3D no navegador, grandes cidades da história no seu auge.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+  <canvas id="sky"></canvas>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="ornament"><span></span>𓂀<span></span></div>
+      <p class="kicker">Uma viagem interativa no tempo</p>
+      <h1 class="title"><span>Cidades</span><span>Históricas</span></h1>
+      <p class="subtitle">Caminhe pelas maiores civilizações da humanidade no auge do seu esplendor. Converse com o povo, descubra seus costumes e desvende seus segredos.</p>
+      <a href="#cidades" class="cta">Escolher destino</a>
+    </div>
+    <svg class="skyline" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="sk1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2210"/><stop offset="1" stop-color="#140b05"/></linearGradient>
+        <linearGradient id="sk2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e1209"/><stop offset="1" stop-color="#0b0704"/></linearGradient>
+      </defs>
+      <g fill="url(#sk1)" opacity="0.9">
+        <path d="M60 260 L230 70 L400 260Z"/><path d="M330 260 L460 120 L590 260Z"/><path d="M560 260 L620 190 L680 260Z"/>
+        <rect x="1080" y="150" width="300" height="110"/><path d="M1060 150 L1230 95 L1400 150Z"/>
+        <g><rect x="1310" y="60" width="18" height="200"/><path d="M1310 60 L1319 40 L1328 60Z"/></g>
+      </g>
+      <g fill="url(#sk2)">
+        <path d="M0 260 V200 Q200 185 420 205 T900 195 T1600 205 V260Z"/>
+        <g transform="translate(700 120)"><rect x="0" y="0" width="210" height="140"/><g fill="#1e1209"><rect x="15" y="20" width="22" height="40" rx="11"/><rect x="60" y="20" width="22" height="40" rx="11"/><rect x="105" y="20" width="22" height="40" rx="11"/><rect x="150" y="20" width="22" height="40" rx="11"/><rect x="15" y="80" width="22" height="40" rx="11"/><rect x="60" y="80" width="22" height="40" rx="11"/><rect x="105" y="80" width="22" height="40" rx="11"/><rect x="150" y="80" width="22" height="40" rx="11"/></g></g>
+        <g transform="translate(940 140)"><path d="M0 120 V30 L80 0 L160 30 V120Z"/><g fill="#1e1209"><rect x="14" y="40" width="10" height="80"/><rect x="40" y="40" width="10" height="80"/><rect x="66" y="40" width="10" height="80"/><rect x="92" y="40" width="10" height="80"/><rect x="118" y="40" width="10" height="80"/></g></g>
+        <path d="M1420 260 V190 H1450 V165 H1475 V140 H1500 V165 H1525 V190 H1555 V260Z"/>
+        <g transform="translate(150 210)"><path d="M0 50 C20 10 40 0 60 0 L70 20 L58 22 L60 50Z"/></g>
+        <path d="M480 260 V230 Q486 150 492 230 V260Z"/><path d="M500 260 V235 Q503 190 506 235 V260Z"/>
+      </g>
+    </svg>
+  </header>
+
+  <main>
+    <section class="features">
+      <div class="feat"><div class="ico">𓀀</div><h3>Explore</h3><p>Cidades recriadas em 3D, com templos, mercados, rios e palácios para percorrer livremente.</p></div>
+      <div class="feat"><div class="ico">𓏞</div><h3>Converse</h3><p>Sacerdotes, soldados, mercadores e reis contam como era a vida, a comida e a fé do seu tempo.</p></div>
+      <div class="feat"><div class="ico">𓆣</div><h3>Descubra</h3><p>Cumpra objetivos, encontre tesouros escondidos e conquiste uma audiência com quem governa.</p></div>
+    </section>
+
+    <section id="cidades" class="cities">
+      <div class="section-head">
+        <div class="ornament"><span></span>✦<span></span></div>
+        <h2>Escolha seu destino</h2>
+        <p>Uma nova cidade é aberta a cada expedição.</p>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="ornament"><span></span>𓋹<span></span></div>
+    <p>Cidades Históricas · reconstruções baseadas em pesquisa histórica, com liberdades artísticas para a exploração.</p>
+    <p class="small">Funciona melhor em computador, no Chrome ou Edge atualizados.</p>
+  </footer>
+
+  <script src="js/home.js"></script>
+</body>
+</html>

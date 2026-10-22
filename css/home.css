@@ -1,0 +1,69 @@
+:root {
+  --gold: #e8b84a;
+  --gold-2: #ffe3a0;
+  --gold-3: #9a6a1c;
+  --bg: #0a0705;
+  --text: #f1e4c6;
+  --muted: #bfae8c;
+  --card: #15100a;
+  --line: rgba(232, 184, 74, 0.35);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; overflow-x: hidden; }
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+header, main, footer { position: relative; z-index: 1; }
+
+.hero { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 16px; overflow: hidden; }
+.hero-inner { max-width: 980px; padding-bottom: 14vh; animation: rise 1.6s ease-out both; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.ornament { display: flex; align-items: center; justify-content: center; gap: 18px; color: var(--gold); font-size: 1.6rem; font-family: 'Segoe UI Historic', 'Noto Sans Egyptian Hieroglyphs', serif; }
+.ornament span { width: min(140px, 22vw); height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.kicker { font-family: 'Cinzel', serif; letter-spacing: 0.45em; text-transform: uppercase; font-size: clamp(0.7rem, 1.6vw, 0.95rem); color: var(--gold); margin: 1.2rem 0 0.4rem; }
+.title { margin: 0; font-family: 'Cinzel Decorative', 'Cinzel', serif; font-weight: 900; line-height: 1.08; letter-spacing: 0.04em; display: flex; flex-direction: column; }
+.title span { font-size: clamp(3rem, 12vw, 9.5rem);
+  background: linear-gradient(180deg, #fff6d6 0%, #ffd98a 30%, #e8b84a 55%, #9a6a1c 80%, #e8b84a 100%);
+  background-size: 100% 200%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 6px 24px rgba(232, 184, 74, 0.25)); animation: shine 7s ease-in-out infinite alternate; }
+.title span + span { font-size: clamp(2.4rem, 10vw, 7.6rem); }
+@keyframes shine { from { background-position: 0 0; } to { background-position: 0 100%; } }
+.subtitle { font-size: clamp(1.15rem, 2.4vw, 1.55rem); line-height: 1.45; color: var(--text); opacity: 0.9; max-width: 720px; margin: 1.4rem auto 2.2rem; }
+.cta { display: inline-block; padding: 1rem 2.6rem; border-radius: 60px; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; color: #2a1806;
+  background: linear-gradient(180deg, #ffe7a8, #e8b84a 60%, #b8832a); box-shadow: 0 0 0 1px #ffe3a0 inset, 0 10px 40px rgba(232, 184, 74, 0.35); transition: transform 0.2s, box-shadow 0.2s; }
+.cta:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px #fff2c8 inset, 0 16px 50px rgba(232, 184, 74, 0.5); }
+.skyline { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 34vh; pointer-events: none; }
+
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; max-width: 1180px; margin: 0 auto; padding: 0 16px 80px; }
+.feat { text-align: center; padding: 26px 22px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, rgba(40, 26, 12, 0.6), rgba(15, 10, 6, 0.6)); backdrop-filter: blur(3px); }
+.feat .ico { font-size: 2.4rem; color: var(--gold); font-family: 'Segoe UI Historic', 'Noto Sans Egyptian Hieroglyphs', serif; }
+.feat h3 { font-family: 'Cinzel', serif; color: var(--gold-2); margin: 0.4rem 0; letter-spacing: 0.08em; }
+.feat p { margin: 0; font-size: 1.15rem; color: var(--muted); line-height: 1.4; }
+
+.cities { max-width: 1240px; margin: 0 auto; padding: 0 16px 100px; }
+.section-head { text-align: center; margin-bottom: 36px; }
+.section-head h2 { font-family: 'Cinzel', serif; font-size: clamp(2rem, 5vw, 3.2rem); margin: 0.6rem 0 0.2rem; color: var(--gold-2); letter-spacing: 0.06em; }
+.section-head p { margin: 0; font-size: 1.25rem; color: var(--muted); font-style: italic; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 22px; }
+
+.card { position: relative; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--line); text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: transform 0.35s, box-shadow 0.35s, border-color 0.35s; }
+.card .art { position: relative; height: 210px; overflow: hidden; }
+.card .art svg { width: 100%; height: 100%; display: block; transition: transform 0.8s; }
+.card .body { padding: 16px 18px 20px; }
+.card .era { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+.card h3 { font-family: 'Cinzel', serif; font-size: 1.7rem; margin: 0.25rem 0 0.35rem; color: var(--gold-2); }
+.card p { margin: 0; font-size: 1.1rem; line-height: 1.35; color: var(--muted); }
+.card .go { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.1em; color: #2a1806; background: linear-gradient(180deg, #ffe7a8, #e8b84a); padding: 0.55rem 1.2rem; border-radius: 40px; font-size: 0.9rem; }
+.card.open:hover { transform: translateY(-6px); border-color: var(--gold); box-shadow: 0 20px 60px rgba(232, 184, 74, 0.25); }
+.card.open:hover .art svg { transform: scale(1.06); }
+.card.open::after { content: 'Disponível'; position: absolute; top: 14px; left: 14px; font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; padding: 5px 10px; border-radius: 30px; background: #2f6b3a; color: #eaffe9; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+.card.locked { cursor: not-allowed; }
+.card.locked .art svg { filter: grayscale(0.85) brightness(0.55) sepia(0.3); }
+.card.locked .body { opacity: 0.75; }
+.card.locked .badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-6deg); padding: 8px 18px; border: 2px solid var(--gold); color: var(--gold-2); font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; font-size: 0.85rem; background: rgba(10, 7, 5, 0.75); border-radius: 6px; white-space: nowrap; }
+.card.locked .soon { margin-top: 14px; font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.1em; color: var(--muted); }
+.card.locked:hover .badge { animation: wiggle 0.5s; }
+@keyframes wiggle { 0%, 100% { transform: translate(-50%, -50%) rotate(-6deg); } 30% { transform: translate(-50%, -50%) rotate(-2deg); } 60% { transform: translate(-50%, -50%) rotate(-9deg); } }
+
+footer { text-align: center; padding: 40px 16px 50px; color: var(--muted); border-top: 1px solid var(--line); background: rgba(10, 7, 5, 0.75); }
+footer p { margin: 0.6rem 0 0; font-size: 1.1rem; }
+footer .small { font-size: 0.95rem; opacity: 0.7; }

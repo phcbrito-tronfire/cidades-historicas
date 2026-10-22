@@ -1,0 +1,111 @@
+:root {
+  --gold: #e8b84a;
+  --gold-2: #ffd98a;
+  --ink: #1d140c;
+  --papyrus: #efe0bd;
+  --papyrus-2: #e2cc9c;
+  --lapis: #1f3f8c;
+  --panel: rgba(22, 15, 8, 0.72);
+  --line: rgba(232, 184, 74, 0.45);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0805; color: var(--papyrus); font-family: 'Cormorant Garamond', Georgia, serif; }
+#game, #game canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+[hidden] { display: none !important; }
+kbd { display: inline-block; min-width: 1.7em; padding: 1px 6px; margin-right: 3px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: rgba(0,0,0,0.25); font-family: 'Cinzel', serif; font-size: 0.8em; text-align: center; color: var(--gold-2); }
+
+/* ---------- carregamento ---------- */
+#loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 120%, #7a4a1c 0%, #2a1709 45%, #0b0805 80%); }
+.load-inner { text-align: center; width: min(560px, 90vw); }
+.eyebrow { font-family: 'Cinzel', serif; letter-spacing: 0.35em; text-transform: uppercase; font-size: 0.8rem; color: var(--gold); }
+#loading h1 { font-family: 'Cinzel', serif; font-weight: 900; font-size: clamp(3rem, 10vw, 6rem); margin: 0.1em 0 0; letter-spacing: 0.08em;
+  background: linear-gradient(180deg, #fff1c2, #e8b84a 55%, #9a6a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.era { font-style: italic; font-size: 1.2rem; opacity: 0.85; margin-bottom: 2rem; }
+.bar { height: 6px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.4); }
+#load-fill { height: 100%; width: 0; background: linear-gradient(90deg, #9a6a1c, #ffd98a); transition: width 0.25s; }
+#load-step { margin-top: 0.8rem; font-size: 1.05rem; opacity: 0.85; }
+.tip { margin-top: 2rem; font-size: 1.05rem; font-style: italic; opacity: 0.7; min-height: 3em; }
+
+/* ---------- pergaminhos ---------- */
+#intro, #pause, #ending, #fallback { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8, 5, 2, 0.55); backdrop-filter: blur(3px); padding: 16px; }
+.scroll { width: min(680px, 100%); max-height: 92vh; overflow: auto; color: var(--ink); padding: 2.2rem 2.6rem; border-radius: 10px; text-align: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(0,0,0,0.05)), radial-gradient(ellipse at 30% 20%, #f6ead0, var(--papyrus) 50%, var(--papyrus-2));
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 0 60px rgba(120, 80, 30, 0.35); border: 1px solid #b8914c; }
+.scroll.small { width: min(420px, 100%); }
+.scroll h2 { font-family: 'Cinzel', serif; font-size: 2.1rem; margin: 0.2em 0 0.6em; color: #3a2410; }
+.scroll p { font-size: 1.2rem; line-height: 1.45; margin: 0.6em 0; }
+.scroll .eyebrow { color: #8a5a14; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.45rem 1rem; margin: 1.4rem 0; text-align: left; font-size: 1.05rem; }
+.controls kbd { color: #6a4310; border-color: #b8914c; background: rgba(255,255,255,0.35); }
+.gold-btn, .ghost-btn { display: block; width: 100%; margin: 0.6rem auto 0; padding: 0.85rem 1.2rem; border-radius: 8px; cursor: pointer; font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.05rem; letter-spacing: 0.06em; text-decoration: none; text-align: center; }
+.gold-btn { border: 1px solid #8a5a14; color: #2a1806; background: linear-gradient(180deg, #ffe39a, #e8b84a 60%, #b8832a); box-shadow: 0 4px 0 #7a4f12, 0 10px 20px rgba(0,0,0,0.25); }
+.gold-btn:hover { filter: brightness(1.07); }
+.gold-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #7a4f12; }
+.ghost-btn { border: 1px solid #b8914c; color: #4a2e10; background: rgba(255,255,255,0.25); font-weight: 500; }
+.ghost-btn:hover { background: rgba(255,255,255,0.45); }
+.back-link { display: inline-block; margin-top: 1rem; color: #6a4310; font-size: 1.05rem; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#loc { position: absolute; top: 18px; left: 22px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+#loc-place { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.5rem; color: var(--gold-2); letter-spacing: 0.04em; transition: opacity 0.4s; }
+#loc-time { font-style: italic; font-size: 1.05rem; opacity: 0.9; }
+#journal { position: absolute; top: 16px; right: 16px; width: 340px; max-height: calc(100vh - 290px); overflow: auto; padding: 12px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(4px); }
+.j-head { display: flex; justify-content: space-between; font-family: 'Cinzel', serif; font-weight: 700; color: var(--gold); font-size: 0.95rem; letter-spacing: 0.05em; margin-bottom: 6px; }
+#j-list { list-style: none; margin: 0; padding: 0; font-size: 1.02rem; line-height: 1.25; }
+#j-list li { padding: 4px 0 4px 22px; position: relative; }
+#j-list li::before { content: '𓋹'; position: absolute; left: 0; top: 3px; color: var(--gold); font-size: 0.95rem; }
+#j-list li.done { opacity: 0.5; text-decoration: line-through; }
+#j-list li.done::before { content: '✓'; }
+#j-list li.locked { opacity: 0.55; font-style: italic; }
+.j-foot { margin-top: 6px; font-size: 0.8rem; opacity: 0.55; text-align: right; }
+#hand { position: absolute; left: 22px; bottom: 60px; padding: 8px 14px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); font-size: 1.05rem; }
+#hand b { color: var(--gold-2); font-family: 'Cinzel', serif; }
+#prompt { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); padding: 9px 18px; border-radius: 30px; background: var(--panel); border: 1px solid var(--line); font-size: 1.15rem; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+#prompt kbd { font-size: 0.85em; }
+#mini-wrap { position: absolute; right: 16px; bottom: 16px; width: 200px; height: 200px; border-radius: 50%; overflow: hidden; border: 2px solid var(--gold); box-shadow: 0 6px 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.6); }
+#minimap { width: 100%; height: 100%; display: block; }
+.mini-n { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-family: 'Cinzel', serif; font-weight: 700; color: var(--gold-2); text-shadow: 0 0 4px #000; font-size: 0.9rem; }
+#keys { position: absolute; left: 22px; bottom: 16px; font-size: 0.95rem; opacity: 0.8; text-shadow: 0 1px 4px #000; }
+#toasts { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; width: min(620px, 90vw); }
+.toast { padding: 10px 18px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); font-size: 1.12rem; text-align: center; text-shadow: 0 1px 3px #000; animation: toastIn 0.35s ease-out; }
+.toast.quest { border-color: var(--gold); background: linear-gradient(180deg, rgba(60,40,10,0.9), rgba(30,20,8,0.85)); color: var(--gold-2); font-family: 'Cinzel', serif; font-size: 1.02rem; }
+.toast.royal { border-color: #6a8ed8; background: linear-gradient(180deg, rgba(31,63,140,0.92), rgba(16,32,80,0.88)); }
+.toast.scarab { border-color: #ffd36a; color: #fff1c2; }
+.toast.out { opacity: 0; transform: translateY(-8px); transition: all 0.5s; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+/* ---------- diálogo ---------- */
+#dialog { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: center; padding: 0 16px 22px; }
+.d-box { width: min(860px, 100%); color: var(--ink); border-radius: 10px; padding: 18px 24px 16px;
+  background: radial-gradient(ellipse at 20% 0%, #f8eed6, var(--papyrus) 55%, var(--papyrus-2)); border: 1px solid #b8914c;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(120,80,30,0.3); }
+.d-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid rgba(120,80,30,0.35); padding-bottom: 6px; margin-bottom: 10px; }
+#d-name { font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.45rem; color: #5a3410; }
+#d-title { font-style: italic; font-size: 1.1rem; color: #7a5a30; }
+#d-text { font-size: 1.28rem; line-height: 1.45; min-height: 3.2em; }
+#d-options { display: grid; gap: 6px; margin-top: 12px; }
+#d-options button { text-align: left; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(120,80,30,0.35); background: rgba(255,255,255,0.3); cursor: pointer; font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; color: #2a1806; font-weight: 600; }
+#d-options button:hover, #d-options button:focus { background: rgba(232,184,74,0.35); outline: none; }
+#d-options button .n { display: inline-block; width: 1.6em; color: #8a5a14; font-family: 'Cinzel', serif; }
+#d-options button.read { opacity: 0.6; font-weight: 500; }
+#d-options button.special { border-color: #8a5a14; background: rgba(232,184,74,0.3); }
+
+/* ---------- item ---------- */
+#itemcard { position: fixed; left: 22px; bottom: 110px; z-index: 12; width: 360px; padding: 12px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--gold); backdrop-filter: blur(4px); animation: toastIn 0.3s; }
+.ic-name { font-family: 'Cinzel', serif; font-weight: 700; color: var(--gold-2); margin-bottom: 4px; }
+.ic-desc { font-size: 1.05rem; line-height: 1.35; }
+
+/* ---------- mapa ---------- */
+#bigmap { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; background: rgba(8,5,2,0.6); backdrop-filter: blur(3px); padding: 16px; }
+.bm-box { padding: 16px; border-radius: 12px; background: radial-gradient(ellipse, #f3e4c2, var(--papyrus-2)); border: 1px solid #b8914c; color: var(--ink); text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+.bm-title { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.3rem; margin-bottom: 8px; color: #5a3410; }
+#bigmap-canvas { width: min(760px, 86vh, 90vw); height: min(760px, 86vh, 90vw); border-radius: 8px; display: block; }
+.bm-foot { margin-top: 6px; font-size: 0.95rem; opacity: 0.7; }
+
+@media (max-width: 900px) {
+  #journal { width: 250px; font-size: 0.9rem; }
+  #keys { display: none; }
+  #mini-wrap { width: 140px; height: 140px; }
+}

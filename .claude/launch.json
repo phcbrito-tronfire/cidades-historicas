@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cidades-historicas",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:\\Users\\phcbr\\Documents\\Cidades Historicas\\serve.js"],
+      "port": 8123
+    }
+  ]
+}
