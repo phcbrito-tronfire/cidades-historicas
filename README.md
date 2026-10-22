@@ -45,7 +45,7 @@ Depois abra http://localhost:8123 no Chrome ou no Edge (computador).
 ## Créditos e licenças
 
 - Texturas: [Poly Haven](https://polyhaven.com) — CC0
-- Personagens e animações: [Quaternius](https://quaternius.com), Universal Animation Library — CC0
+- Personagens e animações: [Mixamo](https://www.mixamo.com) (Adobe) — explorador e moradores, com animações de captura de movimento; versões anteriores usaram a Universal Animation Library da [Quaternius](https://quaternius.com) (CC0)
 - Cabeça escaneada "Infinite, 3D Head Scan" de Lee Perry-Smith (Infinite Realities), via repositório do three.js — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
 - Motor 3D: [three.js](https://threejs.org) — MIT
 - Conteúdo histórico (diálogos e fichas de artefatos): escrito para o projeto, com base em fatos do Novo Império egípcio; reconstruções com liberdades artísticas para a exploração.

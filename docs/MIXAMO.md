@@ -1,48 +1,27 @@
-# Personagens realistas pelo Mixamo — o que baixar
+# Personagens do Mixamo — o que já está no jogo
 
-O Mixamo (https://www.mixamo.com) é gratuito e liberado para uso em jogos, mas exige login com uma conta Adobe
-(pode ser gratuita). Baixe os arquivos abaixo e coloque **tudo** na pasta:
+Baixados em 22/10/2026 pela conta do Pedro no Mixamo (Adobe) e convertidos para GLB compactado
+(texturas WebP 1024, malha meshopt): `assets/models/mixamo/`. Os FBX originais (~400 MB) ficam só no
+computador, em `assets/mixamo/` (fora do git).
 
-`Cidades Historicas\assets\mixamo\`
+| Arquivo | Personagem Mixamo | Uso no jogo |
+|---|---|---|
+| explorador.glb | Josh | o explorador (jaqueta de couro, calça cáqui, chapéu, bolsa e chicote adicionados) |
+| bryce.glb | Bryce | homens egípcios (bermuda vira saiote de linho) |
+| brian.glb | Brian | sacerdotes (cabeça raspada) e homens |
+| joe.glb | Joe | homens |
+| kate.glb, megan.glb, elizabeth.glb | Kate, Megan, Elizabeth | mulheres (vestido de linho) |
 
-Depois é só me avisar: eu converto, encaixo as roupas de época e ligo no jogo.
+Animações (`anim/`, exportadas no Josh, sem pele, 30 fps; as de locomoção "In Place"):
+idle (Breathing Idle), andar (Standard Walk), andar_f (Female Walk), trotar (Jogging), correr (Fast Run),
+pular (Jump In Place), caindo (Falling Idle), aterrissar (Falling To Landing), nadar (Swimming),
+boiar (Treading Water), conversar (Talking – General Conversation), pegar (Picking Up),
+espada (Sword And Shield Slash), ajoelhado (Kneeling Inspecting), sentado (Sitting Idle).
 
-## 1. Personagens (aba "Characters")
+Observação técnica: o corpo dos modelos do Mixamo é só cabeça, mãos e pés — o resto é a roupa. Por isso
+os egípcios são feitos repintando as peças (camisa = torso nu, calça/bermuda = linho) e adicionando
+saiotes, vestidos, perucas e coroas presos aos ossos (`js/egito/mixamo.js`). Alguns modelos vêm com
+os ossos prefixados (`mixamorig12Hips`); o carregador padroniza para as animações encaixarem.
 
-Para cada personagem: selecione-o → **Download** → Format **FBX Binary (.fbx)** → Pose **T-pose** → baixar.
-
-1. **Explorador** (estilo Indiana Jones / Nathan Drake): um homem adulto de **camisa e calça**, com aparência
-   realista. Escolha o que mais lembrar o Drake ou o Indy (camisa clara/azulada, calça cáqui ou jeans).
-   Eu acrescento o chapéu, a bolsa a tiracolo, o coldre e o chicote. Salve como `explorador.fbx`.
-2. **Homem 1, Homem 2, Homem 3** — homens com corpo realista e roupas simples (camiseta/regata, calça lisa).
-   Eles viram sacerdotes, soldados, mercadores e o faraó (eu visto o saiote de linho, perucas e coroas por cima).
-   Salve como `homem1.fbx`, `homem2.fbx`, `homem3.fbx`.
-3. **Mulher 1, Mulher 2** — mulheres com corpo realista e roupas simples. Viram a rainha, a padeira, a lavradora.
-   Salve como `mulher1.fbx`, `mulher2.fbx`.
-
-Dica: no campo de busca do Mixamo, procure por "peasant", "casual" ou "survivor" para achar roupas mais neutras.
-
-## 2. Animações (aba "Animations")
-
-Com **qualquer um** dos personagens selecionado, baixe cada animação abaixo com:
-Format **FBX Binary** · Skin **Without Skin** · Frames per Second **30** · marque **In Place** quando aparecer.
-
-| Procure no Mixamo | Salve como |
-|---|---|
-| Idle (respirando, parado) | `idle.fbx` |
-| Walking | `andar.fbx` |
-| Jogging (ou Running) | `trotar.fbx` |
-| Fast Run (ou Sprint) | `correr.fbx` |
-| Jump (com "In Place") | `pular.fbx` |
-| Falling Idle | `caindo.fbx` |
-| Landing (ou Hard Landing) | `aterrissar.fbx` |
-| Swimming | `nadar.fbx` |
-| Treading Water | `boiar.fbx` |
-| Talking (um idle conversando) | `conversar.fbx` |
-| Picking Up | `pegar.fbx` |
-| Sword Slash (ou Great Sword Slash) | `espada.fbx` |
-| Kneeling (trabalhando ajoelhado, ex.: "Gathering Objects") | `ajoelhado.fbx` |
-| Sitting Idle | `sentado.fbx` |
-| Left Turn / Right Turn (opcional) | `virar_esq.fbx`, `virar_dir.fbx` |
-
-São uns 20–25 arquivos, cerca de 60–120 MB no total (eu comprimo depois).
+Para trocar ou acrescentar personagens: baixar FBX (T-pose), converter com FBX2glTF e otimizar
+(script de conversão usado: texturas WebP 1024 + meshopt, sem `dedup/prune`, que quebram os esqueletos).

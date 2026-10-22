@@ -1,6 +1,6 @@
 // O explorador: movimento (setas), pulo (espaço), nado no Nilo e câmera em terceira pessoa
 import * as THREE from 'three';
-import { makeHumanoid, animateHumanoid, playOnce } from './humans.js';
+import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
 import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt } from './collision.js';
 import { WORLD } from './terrain.js';
 import { clamp, lerp, angleLerp } from './util.js';

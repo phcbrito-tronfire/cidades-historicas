@@ -2,4 +2,5 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
-assets/mixamo/*.fbx
+# arquivos brutos do Mixamo (FBX, ~400 MB): ficam só no computador; o site usa os GLB compactados em assets/models/mixamo
+assets/mixamo/

@@ -1,7 +1,7 @@
 // Gente e bichos de Mênfis: NPCs principais, moradores, soldados, crianças e animais
 import * as THREE from 'three';
 import { makeAnimal, animateAnimal, makeBird } from './characters.js';
-import { makeHumanoid, animateHumanoid } from './humans.js';
+import { makeHumanoid, animateHumanoid } from './mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
 import { groundAt, moveWithCollision, terrainAt } from './collision.js';
 import { riverX, terrainHeight } from './terrain.js';

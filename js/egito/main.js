@@ -8,7 +8,7 @@ import { isTouch, canTouch, setupTouch } from './touch.js';
 import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight } from './terrain.js';
 import { buildCity, hullGeometry } from './buildings.js';
 import { setCharTextures } from './characters.js';
-import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from './humans.js';
+import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from './mixamo.js';
 import { Actors } from './npcs.js';
 import { Player } from './player.js';
 import { Quests, OBJECTIVES } from './quests.js';
