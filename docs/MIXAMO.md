@@ -9,7 +9,7 @@ computador, em `assets/mixamo/` (fora do git).
 | explorador.glb | Josh | o explorador (jaqueta de couro, calça cáqui, chapéu, bolsa e chicote adicionados) |
 | bryce.glb | Bryce | homens egípcios (bermuda vira saiote de linho) |
 | brian.glb | Brian | sacerdotes (cabeça raspada) e homens |
-| joe.glb | Joe | homens |
+| joe.glb | Joe | não usado (sem o terno, o tronco fica oco) |
 | kate.glb, megan.glb, elizabeth.glb | Kate, Megan, Elizabeth | mulheres (vestido de linho) |
 
 Animações (`anim/`, exportadas no Josh, sem pele, 30 fps; as de locomoção "In Place"):
