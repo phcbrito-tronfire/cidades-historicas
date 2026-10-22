@@ -58,6 +58,23 @@ export const gold = () => m(0xffc64a, { metalness: 1, roughness: 0.3 });
 const bronze = () => m(0xb87333, { metalness: 0.9, roughness: 0.35 });
 const part = (name) => name.replace(/^Ch\d+_+/, '').replace(/\d+$/, '');
 
+// vestido: perfil de torno (justo na cintura, solto nas pernas, barra levemente aberta) com pregas verticais
+let dressGeo = null;
+function dressGeometry() {
+  if (dressGeo) return dressGeo;
+  const prof = [[0.152, 0.09], [0.165, 0], [0.188, -0.18], [0.212, -0.42], [0.238, -0.66], [0.27, -0.9], [0.282, -0.96]];
+  const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 48);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const t = Math.min(1, Math.max(0, -y / 0.9)); // pregas crescem em direção à barra
+    const k = 1 + 0.03 * t * Math.sin(Math.atan2(z, x) * 26);
+    p.setX(i, x * k); p.setZ(i, z * k);
+  }
+  g.computeVertexNormals();
+  return (dressGeo = g);
+}
+
 function meshAt(geo, mat, x, y, z, rot) {
   const me = new THREE.Mesh(geo, mat); me.position.set(x, y, z); if (rot) me.rotation.set(...rot); me.castShadow = true; return me;
 }
@@ -85,6 +102,8 @@ export function makeHumanoid(o = {}) {
   // ---- repinta as peças para os egípcios
   const skin = o.skin ?? pick(SKINS);
   const linen = o.linen ?? 0xf1ead8;
+  // tom médio da textura de pele do Mixamo (linear): peças repintadas de "pele" ficam iguais aos braços
+  const SKIN_TINT = new THREE.Color().setRGB(0.62, 0.42, 0.36);
   const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
   for (const me of meshes) {
     const p = part(me.name);
@@ -102,10 +121,10 @@ export function makeHumanoid(o = {}) {
     if (/Shirt|Tops/.test(p)) {
       if (female) me.material = fold(mat, linen);
       else if (outfit === 'soldier') me.material = fold(mat, 0xd8c8a0);
-      else me.material = fold(mat, new THREE.Color(skin).multiplyScalar(0.92), 0.6); // torso nu
+      else me.material = fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6); // torso nu, no mesmo tom da pele texturizada
       continue;
     }
-    if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, female || outfit === 'longkilt' || outfit === 'priest' ? linen : new THREE.Color(skin).multiplyScalar(0.92), female ? 0.95 : 0.6); continue; }
+    if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, linen, 0.95); continue; }
     if (/Shoes|Sneakers|Heels/.test(p)) { me.material = fold(mat, outfit === 'pharaoh' ? 0xd9a23e : 0x8a6a42, 0.8); continue; }
   }
 
@@ -168,10 +187,13 @@ export function makeHumanoid(o = {}) {
   const hipsPart = (geo, mat, dy, rot, sc) => attach('Hips', new THREE.Mesh(geo, mat), new THREE.Vector3(0, hips.y + dy, hips.z + 0.01), rot, sc);
   const linenM = m(linen, { roughness: 0.95, side: THREE.DoubleSide });
   switch (outfit) {
-    case 'kilt': case 'soldier': case 'pharaoh': hipsPart(new THREE.CylinderGeometry(0.175, 0.245, 0.44, 22, 1, true), linenM, -0.14); break;
-    case 'worker': hipsPart(new THREE.CylinderGeometry(0.17, 0.22, 0.34, 20, 1, true), linenM, -0.1); break;
+    case 'kilt': case 'soldier': case 'pharaoh': hipsPart(new THREE.CylinderGeometry(0.18, 0.3, 0.58, 24, 1, true), linenM, -0.2); break;
+    case 'worker': hipsPart(new THREE.CylinderGeometry(0.175, 0.29, 0.5, 22, 1, true), linenM, -0.16); break;
     case 'longkilt': case 'priest': hipsPart(new THREE.CylinderGeometry(0.175, 0.3, 0.86, 22, 1, true), linenM, -0.35); break;
-    case 'dress': hipsPart(new THREE.CylinderGeometry(0.17, 0.3, 0.92, 24, 1, true), linenM, -0.36); break;
+    case 'dress': { // kalasíris: linho plissado justo na cintura, solto nas pernas, com faixa colorida
+      hipsPart(dressGeometry(), linenM, -0.04, [0, 0, 0], [1, 1, 0.86]);
+      hipsPart(new THREE.CylinderGeometry(0.158, 0.162, 0.045, 28, 1, true), m(o.sash ?? 0xa8402c, { roughness: 0.8, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
+    } break;
   }
   if (outfit === 'pharaoh') {
     hipsPart(new THREE.BoxGeometry(0.13, 0.36, 0.015), gold(), -0.16, [-0.1, 0, 0]).position.z += 0;
