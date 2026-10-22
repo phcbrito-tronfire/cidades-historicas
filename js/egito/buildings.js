@@ -120,7 +120,8 @@ function pyramidGeo(half, h, uvS = 18, y0 = 0, y1 = h) {
     const A0 = [a[0] * half * k0, y0, a[1] * half * k0], B0 = [b[0] * half * k0, y0, b[1] * half * k0];
     const A1 = [a[0] * half * k1, y1, a[1] * half * k1], B1 = [b[0] * half * k1, y1, b[1] * half * k1];
     const uA0 = 0, uB0 = (2 * half * k0) / uvS, off = (half * (k0 - k1)) / uvS;
-    const quad = [[A0, uA0, y0], [B0, uB0, y0], [B1, uB0 - off, y1], [A0, uA0, y0], [B1, uB0 - off, y1], [A1, uA0 + off, y1]];
+    // ordem anti-horária vista de fora (antes estava invertida e as faces externas sumiam)
+    const quad = [[A0, uA0, y0], [B1, uB0 - off, y1], [B0, uB0, y0], [A0, uA0, y0], [A1, uA0 + off, y1], [B1, uB0 - off, y1]];
     if (y1 >= h - 0.001) quad.splice(3, 3);
     for (const [v, u, y] of quad) { pos.push(v[0], v[1], v[2]); uv.push(u, (y / uvS) * 2.2); }
   }
@@ -213,8 +214,32 @@ export function createMaterials(tex) {
     M.relief.userData.uv = { s: 9.6 };
     set(M.limestone, rep(P.white_sandstone_blocks_02, 1), { color: 0xf4ecdc });
     M.limestone.userData.uv = { s: 3 };
-    M.pyramid = std(pbrSet(P.white_sandstone_blocks_02, [12, 5]));
-    M.pyramid.color.set(0xf6eedf);
+    // revestimento de calcário de Tura: polido, claro e brilhante, com juntas finas quase invisíveis
+    {
+      const c = document.createElement('canvas'); c.width = c.height = 1024;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#efe7d6'; ctx.fillRect(0, 0, 1024, 1024);
+      // leve variação de tom entre blocos e manchas de tempo
+      const rows = 9, cols = 12;
+      for (let r = 0; r < rows; r++) {
+        const off = (r % 2) * (1024 / cols / 2);
+        for (let k = -1; k < cols; k++) {
+          const v = 228 + Math.floor(Math.random() * 18);
+          ctx.fillStyle = `rgb(${v + 6},${v},${v - 14})`;
+          ctx.fillRect(k * (1024 / cols) + off, r * (1024 / rows), 1024 / cols, 1024 / rows);
+        }
+      }
+      ctx.globalAlpha = 0.07; ctx.drawImage(P.white_sandstone_blocks_02.map.image, 0, 0, 1024, 1024); ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(150,130,100,0.35)'; ctx.lineWidth = 1.5;
+      for (let r = 0; r <= rows; r++) { const y = r * (1024 / rows); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1024, y); ctx.stroke();
+        const off = (r % 2) * (1024 / cols / 2);
+        for (let k = 0; k <= cols; k++) { const x = k * (1024 / cols) + off; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 1024 / rows); ctx.stroke(); } }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+      t.repeat.set(1.5, 1);
+      const n = P.white_sandstone_blocks_02.normalMap.clone(); n.repeat.set(6, 3); n.needsUpdate = true;
+      M.pyramid = std({ map: t, normalMap: n, normalScale: new THREE.Vector2(0.18, 0.18), roughness: 0.32, metalness: 0, envMapIntensity: 1.2 });
+      M.pyramid.userData.keepEnv = true;
+    }
     set(M.mud, rep(P.rough_plaster_brick, 1), { color: 0xf2cf9c });
     M.mud.userData.uv = { s: 3 };
     M.clay = std({ ...rep(P.clay_plaster, 1), color: 0xd9c3a6 });
@@ -502,8 +527,14 @@ export function buildCity(scene, tex) {
   const pyramidAt = (cx, cz, half, h, opts = {}) => {
     let base = Infinity;
     for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) base = Math.min(base, G(cx + i * half / 2, cz + j * half / 2));
-    base -= 0.4;
+    base -= 0.05;
     B.geo(pyramidGeo(half, h, 18), M.pyramid, cx, base, cz, { uv: false });
+    // pátio de calcário ao redor da base e o degrau de fundação
+    const pw = Math.max(4, half * 0.14);
+    for (const [ox, oz, w, d] of [[0, half + pw / 2, half * 2 + pw * 2, pw], [0, -half - pw / 2, half * 2 + pw * 2, pw], [half + pw / 2, 0, pw, half * 2], [-half - pw / 2, 0, pw, half * 2]]) {
+      B.box(M.limestone, w, 1.2, d, cx + ox, base - 1.0, cz + oz);
+      addBox(cx + ox, cz + oz, w, d, -5, base + 0.2);
+    }
     if (opts.granite) B.geo(pyramidGeo(half * 1.004, h * 1.004, 18, 0, h * 0.16), M.granite, cx, base - 0.05, cz, { uv: false });
     const capH = h * 0.045;
     B.geo(pyramidGeo(half * (capH / h) * 1.06, capH * 1.06, 4), M.capGold, cx, base + h - capH, cz, { uv: false });
@@ -738,6 +769,26 @@ export function buildCity(scene, tex) {
     out.exclusions.push([x - 4, x + 4, z - 4, z + 4]);
   }
 
+  // ======================= CASAS VISITÁVEIS ================================
+  out.visitHouses = [];
+  const VH = [
+    { x: 12, z: 140, ry: Math.PI, name: 'Casa de Nofret', tag: 'Casa de família', mat: M.white,
+      text: 'Uma casa típica de família de Mênfis. Na entrada fica o altar dos ancestrais: os egípcios guardavam bustos dos parentes falecidos e lhes ofereciam pão e cerveja. A sala principal, com uma coluna de madeira no centro, era onde se recebia visitas e se trabalhava no tear. No fundo, o quarto e a cozinha a céu aberto, com o forno de pão e o moinho de pedra. Pela escada se chega ao terraço, onde a família secava grãos e dormia nas noites quentes.' },
+    { x: 40, z: -21, ry: 0, name: 'Casa do escriba', tag: 'Casa de um escriba', mat: M.white,
+      text: 'Escribas viviam bem: casa caiada, banco de adobe forrado de almofadas, cadeiras de madeira e um baú para os rolos de papiro. No quarto, a cama com pés de leão e o apoio de cabeça. Muitas casas de escribas tinham uma pequena biblioteca de textos antigos, copiados para estudo.' },
+    { x: 24, z: 62, ry: Math.PI / 2, name: 'Casa da padeira', tag: 'Casa e padaria', mat: M.mud,
+      text: 'Nesta casa se faz o pão vendido no mercado. Na cozinha a céu aberto, os grãos de emmer e cevada eram moídos de joelhos, esfregando uma pedra sobre outra — trabalho pesado, quase sempre feito por mulheres. A massa assava no forno de barro em forma de cone. Os jarros guardam grãos, água e cerveja.' },
+    { x: -62, z: -104, ry: 0, name: 'Casa do artesão', tag: 'Casa de um artesão', mat: M.clay,
+      text: 'Casa de um escultor do templo de Ptah, o deus padroeiro dos artesãos. Casas assim, parecidas com as da vila de Deir el-Medina, tinham poucos cômodos em fila, paredes de adobe rebocadas e pinturas simples. Na sala, ferramentas de cobre, pigmentos e uma estatueta em preparação.' },
+    { x: -58, z: 92, ry: Math.PI, name: 'Casa do oleiro', tag: 'Casa de um oleiro', mat: M.mud,
+      text: 'Família de oleiros: os potes de barro do Nilo eram moldados à mão ou no torno lento e queimados em fornos. Toda casa egípcia estava cheia de jarros — para água, grãos, óleo, cerveja e vinho. Repare no apanhador de vento e no terraço, por onde entra a brisa do norte.' },
+  ];
+  for (const h of VH) {
+    const y = G(h.x, h.z);
+    visitHouse(B, M, h.x, y, h.z, h.ry, h.mat, out, h);
+    out.exclusions.push([h.x - 8, h.x + 8, h.z - 8, h.z + 8]);
+  }
+
   // ======================= BAIRROS RESIDENCIAIS =============================
   out.exclusions.push([2, 22, 108, 132]); // praça de Nofret
   out.spots.nofret = new V3(12, G(12, 120), 120);
@@ -758,6 +809,126 @@ export function buildCity(scene, tex) {
   }
   B.build(scene);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Casa visitável (planta típica do Novo Império): entrada com altar dos ancestrais,
+// sala com coluna, quarto e cozinha a céu aberto com escada para o terraço.
+// Coordenadas locais: frente (porta) em +z, largura em x.
+// ---------------------------------------------------------------------------
+function visitHouse(B, M, x, y, z, ry, mat, out, info) {
+  const W = 11, D = 9, H = 3.2, t = 0.45;
+  const F = mat4(x, y, z, 0, ry, 0);
+  const c = Math.cos(ry), s = Math.sin(ry);
+  const toW = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
+  const box = (m, w, h, d, lx, ly, lz, o = {}) => B.box(m, w, h, d, lx, ly, lz, { ...o, frame: F });
+  const geo = (g, m, lx, ly, lz, o = {}) => B.geo(g, m, lx, ly, lz, { ...o, frame: F });
+  const col = (lx, lz, w, d, b, tp) => { const [wx, wz] = toW(lx, lz); const sw = Math.abs(c) > 0.5; addBox(wx, wz, sw ? w : d, sw ? d : w, y + b, y + tp); };
+  const solid = (m, w, h, d, lx, ly, lz, o) => { box(m, w, h, d, lx, ly, lz, o); col(lx, lz, w, d, ly - 0.01, ly + h); };
+  const ljar = (lx, lz, sc = 1) => { const [wx, wz] = toW(lx, lz); jar(B, M, wx, y + 0.08, wz, sc); col(lx, lz, 0.5 * sc, 0.5 * sc, -1, 0.8 * sc); };
+  const wallX = (lz, x0, x1, gaps = []) => {
+    let cur = x0;
+    for (const [g0, g1] of [...gaps, [x1, x1]]) {
+      if (g0 > cur) solid(mat, g0 - cur, H, t, (cur + g0) / 2, 0, lz);
+      if (g1 > g0) { box(mat, g1 - g0, H - 2.15, t, (g0 + g1) / 2, 2.15, lz); col((g0 + g1) / 2, lz, g1 - g0, t, 2.15, H); box(M.wood, g1 - g0 + 0.2, 0.14, t + 0.06, (g0 + g1) / 2, 2.05, lz); }
+      cur = Math.max(cur, g1);
+    }
+  };
+  const wallZ = (lx, z0, z1, gaps = []) => {
+    let cur = z0;
+    for (const [g0, g1] of [...gaps, [z1, z1]]) {
+      if (g0 > cur) solid(mat, t, H, g0 - cur, lx, 0, (cur + g0) / 2);
+      if (g1 > g0) { box(mat, t, H - 2.15, g1 - g0, lx, 2.15, (g0 + g1) / 2); col(lx, (g0 + g1) / 2, t, g1 - g0, 2.15, H); }
+      cur = Math.max(cur, g1);
+    }
+  };
+  // piso de barro batido
+  box(M.clay, W, 0.1, D, 0, -0.02, 0); col(0, 0, W - 0.1, D - 0.1, -1, 0.08);
+  // paredes externas e internas
+  wallX(D / 2 - t / 2, -W / 2, W / 2, [[-0.6, 0.6]]);
+  wallX(-D / 2 + t / 2, -W / 2, W / 2);
+  wallZ(-W / 2 + t / 2, -D / 2 + t, D / 2 - t);
+  wallZ(W / 2 - t / 2, -D / 2 + t, D / 2 - t);
+  wallX(1.8, -W / 2 + t, W / 2 - t, [[-0.55, 0.55]]);
+  wallX(-1.6, -W / 2 + t, W / 2 - t, [[-3.6, -2.6], [2.4, 3.4]]);
+  wallZ(0, -D / 2 + t, -1.6 - t / 2);
+  // friso pintado na sala principal
+  for (const sx of [-1, 1]) box(M.palaceWall, 0.02, H - 0.1, 2.9, sx * (W / 2 - t - 0.012), 0.05, 0.1, { uv: { s: 6, sv: H, y0: y } });
+  // telhado (sala da frente, sala principal e quarto) — a cozinha fica a céu aberto
+  const rf = (w, d, lx, lz) => { box(M.reed, w, 0.08, d, lx, H - 0.08, lz); box(mat, w, 0.25, d, lx, H, lz); col(lx, lz, w, d, H, H + 0.25); };
+  rf(W, D / 2 + 1.6 + t / 2, 0, (D / 2 - 1.6 - t / 2) / 2);
+  rf(W / 2, D / 2 - 1.6 - t / 2, -W / 4, (-D / 2 - 1.6 - t / 2) / 2);
+  for (const [w, d, lx, lz] of [[W, 0.25, 0, D / 2 - 0.125], [0.25, 6.3, -W / 2 + 0.125, 1.34], [0.25, 6.3, W / 2 - 0.125, 1.34]]) solid(mat, w, 0.55, d, lx, H + 0.25, lz);
+  // vigas aparentes
+  for (let i = -2; i <= 2; i++) box(M.wood, 0.14, 0.14, D / 2 + 1.4, i * 2, H - 0.22, 1.4);
+
+  // ---- entrada: altar dos ancestrais e banco
+  solid(M.white, 1.1, 1.0, 0.5, -4.3, 0, 2.35);
+  box(M.relief, 0.9, 1.5, 0.06, -4.3, 1.0, 2.07, { uv: { s: 3 } }); // estela de "porta falsa"
+  geo(new THREE.CylinderGeometry(0.1, 0.13, 0.22, 10), M.limestone, -4.3, 1.11, 2.4);
+  geo(new THREE.SphereGeometry(0.12, 12, 10), M.limestone, -4.3, 1.33, 2.4, { sy: 1.15 }); // busto do ancestral
+  geo(new THREE.CylinderGeometry(0.16, 0.1, 0.06, 12), M.terracotta, -3.95, 1.03, 2.45);
+  for (let i = 0; i < 3; i++) geo(new THREE.SphereGeometry(0.06, 8, 6), M.bread, -3.95 + (i - 1) * 0.07, 1.08, 2.45, { sy: 0.6 });
+  solid(mat, 0.55, 0.45, 2.2, 4.85, 0, 3.15);
+  ljar(-0.9, 4.0, 1.2); ljar(0.9, 3.95, 1.0);
+
+  // ---- sala principal
+  box(M.reed, 4.2, 0.02, 2.4, 0.3, 0.08, 0.1); // esteira de junco
+  geo(new THREE.CylinderGeometry(0.17, 0.2, H, 12), M.red, 0, H / 2, 0.1); col(0, 0.1, 0.4, 0.4, -1, H);
+  geo(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 12), M.sandstone, 0, 0.06, 0.1);
+  solid(M.white, 1.2, 0.42, 3.0, -4.6, 0, 0.1); // divã de adobe
+  for (const lz of [-0.6, 0.3, 1.1]) box(M.awnings[1], 0.9, 0.16, 0.6, -4.6, 0.42, lz, { uv: false });
+  const stool = (lx, lz) => { for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.05, 0.42, 0.05, lx + a * 0.17, 0, lz + b * 0.17); box(M.wood, 0.42, 0.06, 0.42, lx, 0.42, lz); col(lx, lz, 0.45, 0.45, -1, 0.48); };
+  stool(1.6, -0.6); stool(2.6, 0.9);
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.05, 0.55, 0.05, 2.2 + a * 0.35, 0, 0.1 + b * 0.25);
+  box(M.wood, 0.8, 0.05, 0.6, 2.2, 0.55, 0.1); col(2.2, 0.1, 0.8, 0.6, -1, 0.6);
+  geo(new THREE.SphereGeometry(0.1, 10, 8), M.bread, 2.05, 0.66, 0.05, { sy: 0.6 });
+  geo(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 12), M.terracotta, 2.4, 0.65, 0.2);
+  for (const [lx, lz] of [[-3.3, 1.3], [3.9, -1.0]]) { // lamparinas
+    box(M.wood, 0.06, 1.1, 0.06, lx, 0, lz);
+    geo(new THREE.CylinderGeometry(0.12, 0.06, 0.08, 10), M.terracotta, lx, 1.14, lz);
+    const [wx, wz] = toW(lx, lz); out.torches.push(new V3(wx, y + 1.2, wz));
+  }
+  // tear vertical (tecelagem de linho)
+  for (const lx of [3.5, 4.8]) box(M.wood, 0.08, 2.2, 0.08, lx, 0, 1.2);
+  box(M.wood, 1.5, 0.08, 0.08, 4.15, 2.1, 1.2); box(M.wood, 1.5, 0.08, 0.08, 4.15, 0.35, 1.2);
+  box(M.linen, 1.2, 1.2, 0.02, 4.15, 0.8, 1.2, { uv: false });
+  col(4.15, 1.2, 1.6, 0.3, -1, 2.3);
+
+  // ---- quarto
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.07, 0.42, 0.07, -3.4 + a * 0.45, 0, -3.1 + b * 0.9);
+  box(M.wood, 1.0, 0.08, 2.0, -3.4, 0.42, -3.1); box(M.linen, 0.9, 0.06, 1.85, -3.4, 0.5, -3.1);
+  col(-3.4, -3.1, 1.0, 2.0, -1, 0.56);
+  geo(new THREE.TorusGeometry(0.11, 0.03, 6, 12, Math.PI), M.wood, -3.4, 0.72, -3.95, { rz: Math.PI });
+  box(M.wood, 0.05, 0.14, 0.05, -3.4, 0.56, -3.95);
+  solid(M.wood, 0.8, 0.55, 0.5, -1.0, 0, -3.95);
+  box(M.blue, 0.82, 0.06, 0.52, -1.0, 0.55, -3.95, { uv: false });
+
+  // ---- cozinha a céu aberto
+  geo(new THREE.CylinderGeometry(0.45, 0.6, 1.1, 14), M.mud, 1.2, 0.55, -3.7); col(1.2, -3.7, 1.2, 1.2, -1, 1.1);
+  box(M.dark, 0.35, 0.35, 0.05, 1.2, 0.25, -3.1, { uv: false }); // boca do forno
+  box(M.granite, 0.55, 0.22, 0.85, 2.5, 0, -3.9, { rx: 0.18 }); geo(new THREE.CapsuleGeometry(0.07, 0.3, 4, 8), M.granite, 2.5, 0.3, -3.8, { rz: Math.PI / 2 }); // moinho
+  col(2.5, -3.9, 0.6, 0.9, -1, 0.35);
+  for (let i = 0; i < 4; i++) geo(new THREE.DodecahedronGeometry(0.1, 0), M.stoneGrey, 1.3 + Math.cos(i * 1.6) * 0.3, 0.06, -2.4 + Math.sin(i * 1.6) * 0.3);
+  box(M.dark, 0.5, 0.02, 0.5, 1.3, 0.02, -2.4, { uv: false }); // cinzas do fogo
+  ljar(3.6, -4.0, 1.3); ljar(3.0, -2.2, 1.1); ljar(1.9, -2.0, 0.8);
+  geo(new THREE.CylinderGeometry(0.3, 0.24, 0.35, 12), M.reed, 2.3, 0.18, -2.5); // cesto de grãos
+  // escada para o terraço (sobe em direção à sala principal)
+  for (let i = 0; i < 10; i++) {
+    const top = ((i + 1) / 10) * (H + 0.25);
+    solid(mat, 0.9, top, 0.24, 4.85, 0, -4.15 + i * 0.235);
+  }
+
+  const [dx, dz] = toW(0, D / 2 + 0.8);
+  const hw = Math.abs(c) > 0.5 ? [W, D] : [D, W];
+  out.visitHouses.push({ ...info, rect: [x - hw[0] / 2, x + hw[0] / 2, z - hw[1] / 2, z + hw[1] / 2], door: new V3(dx, y, dz) });
+  torchAt(out, B, M, toW(1.0, D / 2 + 0.5), y);
+}
+function torchAt(out, B, M, [x, z], y) {
+  B.box(M.wood, 0.14, 1.7, 0.14, x, y, z);
+  B.geo(new THREE.CylinderGeometry(0.28, 0.14, 0.26, 8), M.terracotta, x, y + 1.82, z);
+  addCircle(x, z, 0.22, y - 1, y + 2);
+  out.torches.push(new V3(x, y + 2.0, z));
 }
 
 // ---------------------------------------------------------------------------

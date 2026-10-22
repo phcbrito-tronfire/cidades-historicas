@@ -61,8 +61,11 @@ export class Player {
 
   update(dt, t) {
     // entrada relativa à câmera (estilo Uncharted): ↑ vai para onde a câmera olha, ← → para os lados
-    const f = this.locked ? 0 : (this.key('ArrowUp', 'KeyW') ? 1 : 0) - (this.key('ArrowDown', 'KeyS') ? 1 : 0);
-    const s = this.locked ? 0 : (this.key('ArrowRight', 'KeyD') ? 1 : 0) - (this.key('ArrowLeft', 'KeyA') ? 1 : 0);
+    let f = this.locked ? 0 : (this.key('ArrowUp', 'KeyW') ? 1 : 0) - (this.key('ArrowDown', 'KeyS') ? 1 : 0);
+    let s = this.locked ? 0 : (this.key('ArrowRight', 'KeyD') ? 1 : 0) - (this.key('ArrowLeft', 'KeyA') ? 1 : 0);
+    // joystick do celular (analógico: quanto mais longe do centro, mais rápido)
+    let analog = 1;
+    if (!this.locked && this.touch && Math.hypot(this.touch.x, this.touch.y) > 0.15) { f = -this.touch.y; s = this.touch.x; analog = Math.min(1, Math.hypot(f, s)); }
     const run = this.key('ShiftLeft', 'ShiftRight');
     const walk = this.key('ControlLeft', 'ControlRight');
     const p = this.pos;
@@ -83,7 +86,7 @@ export class Player {
 
     // aceleração e freada (nada de parar ou arrancar seco)
     let target = 0;
-    if (has) target = this.swimming ? (run ? 5.2 : 3.4) : walk ? 1.6 : run ? 8.6 : 4.8;
+    if (has) target = (this.swimming ? (run ? 5.2 : 3.4) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
     if (this.wading) target *= 0.55;
     if (has && turnDiff > 1.2 && this.onGround) target *= 0.35; // meia-volta: desacelera e gira
     const accel = target > this.speed ? (this.onGround || this.swimming ? 9 : 2) : (this.onGround || this.swimming ? 12 : 1);

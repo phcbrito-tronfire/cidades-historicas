@@ -253,8 +253,10 @@ export class TimeOfDay {
     // a luz direcional acompanha o jogador para a sombra ficar nítida
     const L = this.sunLight;
     const dir = this.sunDir;
-    L.target.position.copy(playerPos);
-    L.position.copy(playerPos).addScaledVector(dir, 150);
+    // centro da sombra arredondado em passos de 2 m (evita tremulação das bordas ao andar)
+    const cx = Math.round(playerPos.x / 2) * 2, cz = Math.round(playerPos.z / 2) * 2;
+    L.target.position.set(cx, playerPos.y, cz);
+    L.position.set(cx, playerPos.y, cz).addScaledVector(dir, 320);
     L.target.updateMatrixWorld();
 
     // tochas tremulando

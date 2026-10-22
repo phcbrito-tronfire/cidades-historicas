@@ -9,6 +9,10 @@ export const WATER_Y = 0;
 export const RIVER_HALF = 38;
 export const WORLD = 370; // limite que o jogador pode andar
 export const LAKE = { x0: -50, x1: -14, z0: -62, z1: -40, y: 0.55 };
+// x, z, meia-largura do pátio, altura do pátio (Quéops, Quéfren, Miquerinos e pirâmides das rainhas)
+export const PYRAMID_PADS = [
+  { x: -258, z: -70, r: 56, y: 7.0 }, { x: -246, z: 52, r: 52, y: 7.4 }, { x: -228, z: 152, r: 28, y: 6.6 }, { x: -196, z: -86, r: 30, y: 6.2 },
+];
 
 export function riverX(z) {
   return 150 + 18 * Math.sin(z / 110) + 8 * Math.sin(z / 37 + 1.3);
@@ -53,6 +57,11 @@ export function terrainHeight(x, z) {
   const e = Math.max(Math.abs(x), Math.abs(z));
   const riverFree = 1 - smoothstep(RIVER_HALF + 40, RIVER_HALF + 5, ad);
   h += smoothstep(340, 410, e) * (22 + n1 * 16) * riverFree;
+  // pátios nivelados ao redor das pirâmides
+  for (const p of PYRAMID_PADS) {
+    const m = Math.max(Math.abs(x - p.x), Math.abs(z - p.z)) - p.r;
+    if (m < 14) h = lerp(h, p.y, smoothstep(14, 0, m));
+  }
   // lago sagrado do templo
   if (x > LAKE.x0 && x < LAKE.x1 && z > LAKE.z0 && z < LAKE.z1) h = Math.min(h, -1.1);
   return h;

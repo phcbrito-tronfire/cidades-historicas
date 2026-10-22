@@ -1,9 +1,10 @@
 // Mênfis, c. 1250 a.C. — inicialização e laço principal
 import * as THREE from 'three';
-import { getTextures, setAniso, loadPBR, buildPhotoComposites } from './textures.js';
+import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { createPost } from './post.js';
 import { makeWaterFX } from './waterfx.js';
 import { Artifacts } from './artifacts.js';
+import { isTouch, canTouch, setupTouch } from './touch.js';
 import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight } from './terrain.js';
 import { buildCity, hullGeometry } from './buildings.js';
 import { setCharTextures } from './characters.js';
@@ -28,8 +29,14 @@ async function main() {
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   } catch (e) { ui.fail(); return; }
-  let quality = 'alto';
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  // no celular: qualidade leve automática (a placa de vídeo é bem mais fraca)
+  let quality = isTouch ? 'leve' : 'alto';
+  renderer.setPixelRatio(isTouch ? Math.min(devicePixelRatio, 1) : Math.min(devicePixelRatio, 1.5));
+  if (isTouch) {
+    document.querySelector('#intro .controls').innerHTML = '<div><b>Joystick</b> (esquerda): mover</div><div><b>Arrastar</b> (direita): girar a câmera</div><div><b>Pinça</b>: zoom</div><div><b>Pular · Correr</b></div><div><b>Falar · Pegar · Usar</b></div><div><b>Clima · Diário · Artefatos · Mapa · Menu</b> (no topo)</div>';
+    const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = 'Gráficos: leve';
+  }
+  if (isTouch) document.getElementById('load-tip').textContent = 'No celular, prefira o Wi-Fi: o primeiro acesso baixa cerca de 45 MB. Jogue com o celular deitado.';
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
@@ -43,8 +50,8 @@ async function main() {
 
   const sun = new THREE.DirectionalLight(0xffffff, 3);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  const sc = sun.shadow.camera; sc.left = -70; sc.right = 70; sc.top = 70; sc.bottom = -70; sc.near = 10; sc.far = 400;
+  sun.shadow.mapSize.set(4096, 4096); // sombras nítidas num raio bem maior
+  const sc = sun.shadow.camera; sc.left = -140; sc.right = 140; sc.top = 140; sc.bottom = -140; sc.near = 10; sc.far = 700;
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
   sun.shadow.camera.layers.enable(2); // personagens projetam sombra
   scene.add(sun, sun.target);
@@ -103,18 +110,25 @@ async function main() {
   quests.listeners.push(() => { if (quests.pharaohUnlocked() && !actors.gateOpen) actors.openGate(true); });
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   quests.artifactCount = artifacts.count;
+  // placas sobre as portas das casas visitáveis
+  const seenHouses = new Set();
+  for (const h of city.visitHouses) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(h.name, 'Pode entrar'), transparent: true, depthWrite: false }));
+    sp.scale.set(3.2, 0.8, 1); sp.position.copy(h.door).add(new THREE.Vector3(0, 3.9, 0)); sp.layers.set(1); scene.add(sp); h.sign = sp;
+  }
 
   await step(0.95, 'Desenhando o mapa da cidade...');
   ui.buildMapBackground();
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
   const post = await createPost(renderer, scene, camera);
+  if (isTouch) { post.setQuality('leve'); sun.shadow.mapSize.set(2048, 2048); const sc2 = sun.shadow.camera; sc2.left = -70; sc2.right = 70; sc2.top = 70; sc2.bottom = -70; sc2.updateProjectionMatrix(); }
   // camada 3: aparece na tela e projeta sombra, mas fica fora do reflexo do Nilo e da oclusão (desempenho)
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.material.flatShading || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });
   // objetos "flutuantes" fora da oclusão de ambiente; reflexo do céu mais suave nos materiais foscos
   scene.traverse((o) => {
-    if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.metalness < 0.5) o.material.envMapIntensity = 0.55;
+    if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.metalness < 0.5 && !o.material.userData.keepEnv) o.material.envMapIntensity = 0.55;
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   renderer.compile(scene, camera);
@@ -127,6 +141,8 @@ async function main() {
 
   ui.showIntro(() => {
     started = true;
+    if (isTouch) { setupTouch(player); ui.toggleJournal(); }
+    else if (canTouch) addEventListener('touchstart', () => setupTouch(player), { once: true, passive: true });
     audio.start();
     if (quests.done.size === 0) ui.toast('Fale com Nebamun, o escriba, logo à frente na avenida.', 'quest', 6000);
   });
@@ -250,7 +266,7 @@ async function main() {
     if (act === 'quality') {
       quality = quality === 'alto' ? 'leve' : 'alto';
       renderer.setPixelRatio(quality === 'alto' ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio, 1) * 0.8);
-      sun.shadow.mapSize.set(quality === 'alto' ? 2048 : 1024, quality === 'alto' ? 2048 : 1024);
+      sun.shadow.mapSize.set(quality === 'alto' ? 4096 : 2048, quality === 'alto' ? 4096 : 2048);
       if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
       post.setQuality(quality);
       e.target.textContent = `Gráficos: ${quality}`;
@@ -285,6 +301,7 @@ async function main() {
     const inR = (a) => x > a[0] && x < a[1] && z > a[2] && z < a[3];
     const dR = x - riverX(z);
     if (player.swimming && Math.abs(dR) < 46) return 'Rio Nilo';
+    for (const h of city.visitHouses) if (inR(h.rect)) return h.name;
     if (inR([-84, -66, -9, 9])) return 'Santuário de Ptah';
     if (inR([-67, -41, -21, 21])) return 'Sala Hipostila';
     if (inR([-41, -3, -21, 21])) return 'Pátio do Templo de Ptah';
@@ -318,6 +335,16 @@ async function main() {
     if (paused) { post.render(dt, sky.state.night); return; }
     t += dt;
     if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt);
+    if (started) {
+      for (const h of city.visitHouses) {
+        const r = h.rect, pp = player.pos;
+        h.sign.visible = (pp.x - h.door.x) ** 2 + (pp.z - h.door.z) ** 2 < 40 * 40;
+        if (!seenHouses.has(h.name) && pp.x > r[0] + 0.6 && pp.x < r[1] - 0.6 && pp.z > r[2] + 0.6 && pp.z < r[3] - 0.6 && pp.y < h.door.y + 2) {
+          seenHouses.add(h.name);
+          artifacts.showInfo({ tag: h.tag, name: h.name, era: 'Mênfis, Novo Império', story: h.text, foot: 'Explore os cômodos: entrada, sala principal, quarto e cozinha. A escada leva ao terraço.' });
+        }
+      }
+    }
     if (started) { artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
     actors.update(dt, t, player, quests, sky.state.night);
     items.update(t, player.pos);

@@ -141,9 +141,20 @@ export class Artifacts {
     this.card.querySelector('.era').textContent = def.era;
     this.card.querySelector('.st').textContent = def.story;
     this.card.querySelector('.mus').textContent = def.museum;
+    this.card.querySelector('button').textContent = fresh ? 'Guardar na coleção (Enter)' : 'Fechar (Enter)';
     this.card.hidden = false;
   }
   closeCard() { this.card.hidden = true; }
+  // ficha genérica (ex.: ao entrar numa casa visitável)
+  showInfo({ tag, name, era, story, foot }) {
+    this.card.querySelector('.tag').textContent = tag;
+    this.card.querySelector('h2').textContent = name;
+    this.card.querySelector('.era').textContent = era || '';
+    this.card.querySelector('.st').textContent = story;
+    this.card.querySelector('.mus').textContent = foot || '';
+    this.card.querySelector('button').textContent = 'Continuar (Enter)';
+    this.card.hidden = false;
+  }
   toggleCollection() {
     if (!this.col.hidden) { this.col.hidden = true; return; }
     const cells = ARTIFACTS.map((d, i) => this.found.has(d.id)
