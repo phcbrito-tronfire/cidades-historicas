@@ -13,7 +13,8 @@ const CLIPS = {};
 let TEX = null;
 const DIR = 'assets/models/mixamo/';
 export const SKINS = [0xb98a68, 0xa87652, 0xc39675, 0x9a6a48, 0xb07a58, 0x8e5f40];
-const MEN = ['bryce', 'brian', 'joe'];
+// (o Joe, de terno, ficou de fora: sem o paletó o tronco dele é oco)
+const MEN = ['bryce', 'brian'];
 const WOMEN = ['kate', 'megan', 'elizabeth'];
 const ANIMS = ['idle', 'andar', 'andar_f', 'trotar', 'correr', 'pular', 'caindo', 'aterrissar', 'nadar', 'boiar', 'conversar', 'pegar', 'espada', 'ajoelhado', 'sentado'];
 // nomes antigos usados pelo resto do jogo → animações do Mixamo
@@ -65,7 +66,7 @@ export function makeHumanoid(o = {}) {
   const outfit = o.outfit || 'kilt';
   const isExp = outfit === 'explorer';
   const female = outfit === 'dress';
-  const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : pick(['bryce', 'bryce', 'brian', 'joe']));
+  const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group();
   const model = SkeletonUtils.clone(BASES[baseName]);
   root.add(model);
@@ -75,25 +76,26 @@ export function makeHumanoid(o = {}) {
   const meshes = [];
   model.traverse((n) => {
     if (n.isBone) bones[n.name.replace(/^mixamorig\d*:?/, '')] = n;
-    if (n.isSkinnedMesh) { meshes.push(n); n.geometry.computeBoundingBox(); if (/Body|Hair/.test(part(n.name))) headTop = Math.max(headTop, n.geometry.boundingBox.max.y); }
+    if (n.isSkinnedMesh) meshes.push(n);
   });
   const rootInv = new THREE.Matrix4().copy(model.matrixWorld).invert();
   const bonePos = (b) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(rootInv, bones[b].matrixWorld));
+  if (bones.HeadTop_End) headTop = bonePos('HeadTop_End').y; // topo do crânio (o osso do Mixamo)
 
   // ---- repinta as peças para os egípcios
   const skin = o.skin ?? pick(SKINS);
   const linen = o.linen ?? 0xf1ead8;
-  const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; return c; };
+  const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
   for (const me of meshes) {
     const p = part(me.name);
     const mat = me.material;
     if (isExp) { // visual de aventureiro: jaqueta de couro marrom e calça cáqui (estilo Indiana Jones / Nathan Drake)
       if (/Suit/.test(p)) me.material = fold(mat, 0x6e4528, 0.62);
-      if (/Pants/.test(p)) me.material = fold(mat, 0xb39a6c, 0.9);
+      if (/Pants/.test(p)) me.material = fold(mat, 0x8f7a54, 0.9);
       if (/Shoes/.test(p)) me.material = fold(mat, 0x3a2616, 0.7);
       continue;
     }
-    if (/Body/.test(p)) { const c = mat.clone(); c.color.set(skin); me.material = c; continue; }
+    if (/Body/.test(p)) { const c = mat.clone(); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
     if (/Hair/.test(p)) { me.visible = !!o.keepHair; continue; }
     if (/Eyelash/.test(p)) continue;
     if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
@@ -154,7 +156,7 @@ export function makeHumanoid(o = {}) {
       const felt = m(0x6b4a2e, { roughness: 0.85 });
       const y0 = headTop - HC.y; // topo da cabeça em relação ao centro
       headPart(new THREE.CylinderGeometry(R * 0.86, R * 1.02, R * 0.95, 22), felt, [0, y0 - R * 0.15, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
-      headPart(new THREE.CylinderGeometry(R * 2.05, R * 2.1, 0.012, 28), felt, [0, y0 - R * 0.6, 0.0], [-0.06, 0, 0], [1, 1, 1.1]);
+      headPart(new THREE.CylinderGeometry(R * 1.72, R * 1.78, 0.012, 28), felt, [0, y0 - R * 0.6, 0.0], [-0.06, 0, 0], [1, 1, 1.1]);
       headPart(new THREE.CylinderGeometry(R * 1.04, R * 1.04, R * 0.24, 22), m(0x2a1a0e), [0, y0 - R * 0.5, -0.01], [-0.06, 0, 0], [1, 1, 1.12]);
       headPart(new THREE.BoxGeometry(R * 0.3, R * 0.16, R * 1.4), m(0x5a3d24), [0, y0 + R * 0.3, -0.01]); // vinco da copa
     } break;
@@ -180,12 +182,15 @@ export function makeHumanoid(o = {}) {
   if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.27), m(0xffffff, { map: TEX.leopard, roughness: 0.9 })), new THREE.Vector3(0.02, chest.y - 0.05, chest.z), [0, 0, 0.35]);
   const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar;
   if (collar && !isExp) {
-    const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.24, 0.06, 24, 1, true), collar === 'royal' ? gold() : m(collar, { side: THREE.DoubleSide })), new THREE.Vector3(0, neckY - 0.06, chest.z + 0.01), [0, 0, 0], [1, 1, 0.82]);
+    const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffc64a, { metalness: 1, roughness: 0.3, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
   }
   if (isExp) { // bolsa a tiracolo, alça e chicote
-    attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.02), m(0x4a2e18)), new THREE.Vector3(0, chest.y - 0.12, chest.z + 0.13), [0, 0, 0.7]);
-    attach('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.09), m(0x6b4a2a, { roughness: 0.8 })), new THREE.Vector3(-0.2, hips.y - 0.02, hips.z + 0.05));
+    // bolsa de couro junto ao quadril direito, um pouco para trás (sem alça atravessando o corpo)
+    const bag = new THREE.Group();
+    bag.add(meshAt(new THREE.BoxGeometry(0.07, 0.2, 0.24), m(0x6b4a2a, { roughness: 0.8 }), 0, 0, 0));
+    bag.add(meshAt(new THREE.BoxGeometry(0.075, 0.08, 0.245), m(0x5a3d22, { roughness: 0.8 }), 0.002, 0.065, 0));
+    attach('Hips', bag, new THREE.Vector3(-0.2, hips.y - 0.1, hips.z - 0.03));
     const whip = attach('Hips', new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 16), m(0x2a1a0e)), new THREE.Vector3(0.2, hips.y - 0.04, hips.z + 0.02), [0, Math.PI / 2, 0]);
     void whip;
   }
@@ -312,19 +317,65 @@ export function animateHumanoid(r, dt, speed, mode, t) {
 }
 
 // Estátua: corpo congelado em pé, em granito escuro (ou pintado), com ouro
-export function makeStatue({ h = 8, painted = false } = {}) {
+export function makeStatue({ h = 8 } = {}) {
+  // estátua de calcário pintada, como as egípcias: pele ocre avermelhada, saiote branco, nemes e ouro
   const rig = makeHumanoid({ outfit: 'pharaoh', hair: 'nemes', extras: ['crook'], height: h, base: 'bryce', collar: 'royal' });
-  const stone = new THREE.MeshStandardMaterial({ color: painted ? 0xe8d8bc : 0x3b3632, roughness: painted ? 0.85 : 0.42 });
-  const g = gold();
+  const paint = (c, r = 0.88) => new THREE.MeshStandardMaterial({ color: c, roughness: r, side: THREE.DoubleSide });
+  const skinP = paint(0x9c5536), white = paint(0xf0e8d6), goldP = gold();
   rig.root.traverse((n) => {
     if (!n.isMesh) return;
     n.layers.set(2);
-    if (n.material === g) return;
-    if (painted && !n.isSkinnedMesh) return;
-    n.material = stone;
+    if (!n.isSkinnedMesh) { if (n.material && n.material.transparent) n.material = white; return; }
+    const p = part(n.name);
+    if (/Body|Shirt|Tops/.test(p)) n.material = skinP;
+    else if (/Pants|Shorts|Bottoms/.test(p)) n.material = white;
+    else if (/Shoes|Sneakers|Heels/.test(p)) n.material = skinP; // estátuas egípcias são descalças
   });
   const a = rig.act('idle'); a.play(); rig.mixer.update(0.3);
   rig.root.updateMatrixWorld(true);
   rig.statue = true;
   return rig.root;
+}
+
+// ---------------------------------------------------------------------------
+// Cabeça humana esculpida (malha estática do modelo realista, só cabeça e pescoço)
+// usada como rosto de pedra das esfinges. Origem: base do pescoço; altura ~0,3 m.
+// ---------------------------------------------------------------------------
+const headCache = {};
+export function stoneHeadGeometry(base = 'brian') {
+  if (headCache[base]) return headCache[base];
+  const sc = BASES[base]; sc.updateMatrixWorld(true);
+  let body = null, neck = null;
+  sc.traverse((n) => { if (n.isSkinnedMesh && /Body/.test(part(n.name))) body = n; if (n.isBone && /Neck$/.test(n.name)) neck = n; });
+  const ny = new THREE.Vector3().setFromMatrixPosition(neck.matrixWorld).y - 0.03;
+  // as posições vêm comprimidas; a posição real sai do esqueleto em repouso (pose T)
+  body.skeleton.update();
+  const src = body.geometry, cnt = src.attributes.position.count;
+  const real = new Float32Array(cnt * 3), v = new THREE.Vector3();
+  for (let i = 0; i < cnt; i++) { v.fromBufferAttribute(src.attributes.position, i); body.applyBoneTransform(i, v); v.applyMatrix4(body.matrixWorld); real.set([v.x, v.y, v.z], i * 3); }
+  const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.BufferAttribute(real, 3));
+  if (src.attributes.uv) g1.setAttribute('uv', src.attributes.uv);
+  if (src.index) g1.setIndex(src.index);
+  const g0 = g1.index ? g1.toNonIndexed() : g1;
+  const p = g0.attributes.position;
+  const keep = [];
+  for (let i = 0; i < p.count; i += 3) {
+    let ok = true;
+    for (let j = 0; j < 3; j++) if (p.getY(i + j) < ny || Math.abs(p.getX(i + j)) > 0.16) ok = false;
+    if (ok) keep.push(i);
+  }
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'uv']) {
+    const a = g0.attributes[name]; if (!a) continue;
+    const n = a.itemSize, arr = new Float32Array(keep.length * 3 * n);
+    keep.forEach((i, k) => { for (let j = 0; j < 3; j++) for (let c = 0; c < n; c++) arr[(k * 3 + j) * n + c] = c === 0 ? a.getX(i + j) : c === 1 ? a.getY(i + j) : a.getZ(i + j); });
+    out.setAttribute(name, new THREE.BufferAttribute(arr, n));
+  }
+  out.computeBoundingBox();
+  const bb = out.boundingBox, c = bb.getCenter(new THREE.Vector3());
+  out.translate(-c.x, -bb.min.y, -c.z);
+  out.computeVertexNormals();
+  out.computeBoundingBox();
+  headCache[base] = out;
+  return out;
 }

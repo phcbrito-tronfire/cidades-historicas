@@ -6,6 +6,7 @@ import { rand, rr, ri, pick } from './util.js';
 import { addBox, addCircle, addPyramid } from './collision.js';
 import { terrainHeight, riverX, LAKE } from './terrain.js';
 import { pbrSet } from './textures.js';
+import { stoneHeadGeometry } from './mixamo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { fbm } from './util.js';
 
@@ -186,6 +187,7 @@ export function createMaterials(tex) {
     hide: std({ map: tex.hide }),
     stoneGrey: std({ color: 0xbfb6a4, roughness: 0.85 }),
     lion: std({ map: tex.sandstone, color: 0xe8d2a8, roughness: 0.8 }),
+    stoneHead: std({ color: 0xd9c49e, roughness: 0.82 }),
     paintedFace: std({ color: 0xc8936a, roughness: 0.85 }),
   };
   M.sandstone.userData.uv = { s: 6 };
@@ -442,12 +444,12 @@ export function buildCity(scene, tex) {
     B.box(M.granite, 3.2, 1.6, 3.2, 9.5, TY, z);
     B.box(M.gold, 3.3, 0.18, 3.3, 9.5, TY + 1.5, z);
     addBox(9.5, z, 3.2, 3.2, -5, TY + 10);
-    out.statues.push({ x: 9.5, y: TY + 1.6, z, ry: Math.PI / 2, h: 8.5 });
+    out.statues.push({ x: 9.5, y: TY + 1.6, z, ry: Math.PI / 2, h: 8.5, painted: true });
   }
   for (const z of [-15.5, 15.5]) {
     B.box(M.granite, 2.6, 1.2, 2.6, 8.6, TY, z);
     addBox(8.6, z, 2.6, 2.6, -5, TY + 8);
-    out.statues.push({ x: 8.6, y: TY + 1.2, z, ry: Math.PI / 2, h: 6.5 });
+    out.statues.push({ x: 8.6, y: TY + 1.2, z, ry: Math.PI / 2, h: 6.5, painted: true });
   }
   // obeliscos
   for (const z of [-11.5, 11.5]) {
@@ -457,7 +459,7 @@ export function buildCity(scene, tex) {
     addBox(15, z, 2.6, 2.6, -2, TY + 22);
   }
   // avenida de esfinges
-  for (let x = 24; x < quayX - 4; x += 9) for (const s of [-1, 1]) miniSphinx(B, M, x, TY - 0.05, s * 6.2, s > 0 ? -Math.PI / 2 : Math.PI / 2);
+  for (let x = 24; x < quayX - 4; x += 9) for (const s of [-1, 1]) miniSphinx(B, M, x, TY - 0.05, s * 6.2, s > 0 ? Math.PI / 2 : -Math.PI / 2);
 
   // pátio com colunatas
   const wallH = 8;
@@ -568,16 +570,22 @@ export function buildCity(scene, tex) {
   addBox(khufu.x + khufu.half + 8, khufu.z, 14, 24, -5, G(khufu.x + khufu.half + 8, khufu.z) + 4.5);
 
   // Esfinge
-  out.spots.sphinx = sphinx(B, M, -158, 22);
-  { // estátua do rei entre as patas da Esfinge
-    const gy = G(-146.6, 22);
-    B.box(M.limestone, 1.2, 0.6, 1.2, -146.6, gy - 0.2, 22);
-    addBox(-146.6, 22, 1.2, 1.2, -5, gy + 3.4);
-    out.statues.push({ x: -146.6, y: gy + 0.4, z: 22, ry: Math.PI / 2, h: 3, painted: true });
+  // Grande Esfinge: corpo de leão esculpido na rocha e rosto humano (de frente para o nascer do sol)
+  {
+    const SX = -163, SZ = 22, SS = 8, gy = G(-158, 22) - 0.3;
+    const F = mat4(SX, gy, SZ, 0, 0, 0);
+    lionSphinx(B, M, F, SS, { body: M.lion, head: M.paintedFace, great: true });
+    // estela do sonho de Tutmés IV e a estátua do rei entre as patas
+    B.box(M.relief, 0.5, 3.6, 2.4, SX + 1.12 * SS, gy, SZ, { uv: { s: 3 } });
+    addBox(SX + 1.12 * SS, SZ, 0.6, 2.4, -5, gy + 3.6);
+    const sx = SX + 1.36 * SS;
+    B.box(M.limestone, 1.1, 0.5, 1.1, sx, gy, SZ); addBox(sx, SZ, 1.1, 1.1, -5, gy + 3.4);
+    out.statues.push({ x: sx, y: gy + 0.5, z: SZ, ry: Math.PI / 2, h: 2.8, painted: true });
+    out.spots.sphinx = new V3(SX + 1.52 * SS, G(SX + 1.52 * SS, SZ), SZ);
+    // colisão: tronco/cabeça e as duas patas (o espaço entre as patas é livre)
+    addBox(SX + -0.15 * SS, SZ, 2.2 * SS, 1.2 * SS, -5, gy + 1.65 * SS);
+    for (const z of [-1, 1]) addBox(SX + 1.08 * SS, SZ + z * 0.27 * SS, 0.95 * SS, 0.3 * SS, -5, gy + 0.3 * SS);
   }
-  addBox(-163, 22, 22, 7, -5, G(-160, 22) + 8);
-  addBox(-148.8, 22, 3, 5.6, -5, G(-150, 22) + 8);
-  for (const s of [-1, 1]) addBox(-146.5, 22 + s * 2.1, 9, 1.8, -5, G(-146, 22) + 1.4);
   out.zones.piramides = [-320, -150, -130, 190];
 
   // canteiro da restauração do príncipe Khaemwaset
@@ -1003,21 +1011,40 @@ function colossus(B, M, x, y, z, ry) {
 
 function miniSphinx(B, M, x, y, z, ry) {
   const F = mat4(x, y, z, 0, ry, 0);
-  const o = { frame: F };
-  const S = M.lion;
-  B.box(M.sandstone, 3, 1, 1.4, 0, 0, 0, o);
+  B.box(M.sandstone, 3, 1, 1.4, 0, 0, 0, { frame: F });
   B.box(M.blue, 3.04, 0.12, 1.44, 0, 0.88, 0, { frame: F, uv: false });
-  B.geo(new THREE.CapsuleGeometry(0.42, 1.3, 4, 10), S, -0.25, 1.42, 0, { frame: F, rz: Math.PI / 2, sz: 1.05 });
-  B.geo(new THREE.SphereGeometry(0.4, 10, 8), S, -0.9, 1.38, 0, { frame: F, sx: 1.1, sy: 0.95 });
-  for (const z of [-0.26, 0.26]) B.box(S, 0.95, 0.22, 0.24, 1.0, 1.0, z, o);
-  B.box(S, 0.5, 0.75, 0.75, 0.6, 1.1, 0, o); // peito
-  B.geo(new THREE.SphereGeometry(0.27, 12, 10), S, 0.85, 2.05, 0, { frame: F, sx: 0.9, sy: 1.1 });
-  B.geo(taper(0.62, 0.55, 0.72, 0.7), M.nemes, 0.72, 2.12, 0, { frame: F, uv: false });
-  for (const z of [-0.27, 0.27]) B.box(M.nemes, 0.16, 0.5, 0.14, 0.95, 1.55, z, { frame: F, uv: false });
-  B.box(S, 0.1, 0.22, 0.08, 1.1, 1.72, 0, o);
-  B.box(M.gold, 0.08, 0.12, 0.08, 1.08, 2.32, 0, o);
+  lionSphinx(B, M, F.clone().multiply(mat4(-0.1, 1.0, 0)), 1.0, { body: M.stoneHead, head: M.stoneHead });
   const p = new V3(0, 0, 0).applyMatrix4(F);
   addBox(p.x, p.z, 1.6, 3.1, -5, y + 2.8);
+}
+
+// Leão deitado com cabeça humana e nemes (s = escala; 1 ≈ 2,8 m de comprimento)
+function lionSphinx(B, M, F, s, { body, head, great = false }) {
+  const g = (geo, mat, x, y, z, o = {}) => B.geo(geo, mat, x * s, y * s, z * s, { ...o, frame: F, sx: (o.sx || 1) * s, sy: (o.sy || 1) * s, sz: (o.sz || 1) * s, uv: o.uv ?? { s: 2.5 * s } });
+  const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 6, 14);
+  const sph = (r) => new THREE.SphereGeometry(r, 20, 14);
+  g(cap(0.34, 1.25), body, -0.25, 0.4, 0, { rz: Math.PI / 2, sy: 0.92, sz: 1.08 });   // tronco
+  g(sph(0.42), body, -0.98, 0.4, 0, { sx: 1.1, sy: 0.92, sz: 1.15 });                   // ancas
+  g(sph(0.34), body, 0.38, 0.46, 0, { sx: 1.0, sy: 1.12, sz: 1.08 });                   // peito / ombros
+  for (const z of [-0.24, 0.24]) {
+    g(cap(0.085, 0.62), body, 0.85, 0.1, z, { rz: Math.PI / 2 });                       // patas dianteiras estendidas
+    g(sph(0.1), body, 1.24, 0.07, z, { sx: 1.7, sy: 0.62, sz: 1.05 });                  // garras
+    g(cap(0.12, 0.42), body, -0.72, 0.12, z * 1.6, { rz: Math.PI / 2 });                // patas traseiras dobradas
+    g(sph(0.11), body, -0.42, 0.07, z * 1.6, { sx: 1.6, sy: 0.6, sz: 1.0 });
+  }
+  g(new THREE.TorusGeometry(0.28, 0.04, 8, 18, Math.PI), body, -1.2, 0.06, 0.24, { rx: Math.PI / 2, rz: 0.4 }); // cauda
+  // cabeça humana esculpida, à frente e acima dos ombros
+  const hg = stoneHeadGeometry('brian');
+  const hh = hg.boundingBox.max.y, hd = hg.boundingBox.max.z, k = 0.62 / hh;
+  const HX = 0.44, HY = 0.5;
+  B.geo(hg, head, HX * s, HY * s, 0, { frame: F, ry: Math.PI / 2, s: k * s, uv: false });
+  // nemes: touca listrada sobre o alto e a nuca, abas caindo ao lado do rosto, trança nas costas
+  const top = HY + 0.62, hc = HY + 0.62 * 0.66, back = HX - hd * k * 0.35;
+  B.geo(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.48), M.nemes, back * s, hc * s, 0, { frame: F, sx: 0.26 * s, sy: (top - hc + 0.02) * s, sz: 0.25 * s, uv: false });
+  for (const z of [-1, 1]) B.geo(taper(0.07, 0.42, 0.11, 1, 1.6), M.nemes, (HX - 0.02) * s, (hc - 0.3) * s, z * 0.19 * s, { frame: F, s: s, uv: false });
+  B.geo(taper(0.16, 0.36, 0.3, 0.7, 0.7), M.nemes, (back - 0.12) * s, (hc - 0.14) * s, 0, { frame: F, s: s, uv: false });
+  B.geo(new THREE.CylinderGeometry(0.012, 0.022, 0.08, 8), M.gold, (HX + hd * k * 0.85) * s, (top - 0.1) * s, 0, { frame: F, s: s, rz: -0.3 }); // ureu
+  if (great) B.geo(new THREE.CylinderGeometry(0.03, 0.045, 0.2, 10), head, (HX + hd * k * 0.75) * s, (HY - 0.06) * s, 0, { frame: F, s: s, rz: 0.15 }); // barba cerimonial
 }
 
 function ptahStatue(B, M, x, y, z) {
@@ -1037,33 +1064,6 @@ function offerings(B, M, x, y, z) {
   for (let i = 0; i < 3; i++) B.geo(new THREE.SphereGeometry(0.1, 8, 6), pick([M.fruitRed, M.fruitPurple, M.fruitGreen]), x + rr(-0.6, 0.6), y + 0.1, z + rr(-0.5, 0.5));
   B.geo(new THREE.CylinderGeometry(0.12, 0.07, 0.4, 8), M.gold, x + 0.4, y + 0.2, z - 0.5);
   for (let i = 0; i < 3; i++) B.geo(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 4), M.green, x - 0.5 + i * 0.1, y + 0.15, z + 0.6, { rz: 0.2 });
-}
-
-function sphinx(B, M, x, z) {
-  const y = terrainHeight(x, z) - 0.5;
-  const F = mat4(x, y, z, 0, 0, 0);
-  const o = { frame: F };
-  B.box(M.sandstone, 3.2, 1.2, 8, -2, -0.5, 0, o); // embasamento rochoso
-  B.box(M.sandstone, 17, 5.4, 6.4, -2, 0.5, 0, o);  // corpo
-  B.box(M.sandstone, 5, 6.5, 6, -9, 0.3, 0, o);     // ancas
-  B.box(M.sandstone, 4.5, 7.2, 5.4, 5.5, 0.5, 0, o);  // peito
-  for (const s of [-1, 1]) {
-    B.box(M.sandstone, 9, 1.7, 1.7, 11.5, 0.5, s * 2.1, o); // patas
-    B.box(M.sandstone, 3.5, 1.2, 1.5, -7.5, 0.5, s * 3.6, o); // patas traseiras
-  }
-  // cabeça: rosto arredondado, nemes listrado com abas laterais
-  B.geo(new THREE.SphereGeometry(1.7, 20, 16), M.paintedFace, 6.9, 9.8, 0, { frame: F, sx: 0.95, sy: 1.2, sz: 0.92, uv: false });
-  B.geo(new THREE.SphereGeometry(1.95, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), M.nemes, 6.4, 10.3, 0, { frame: F, sx: 1.05, sy: 1.1, sz: 1.08, uv: false });
-  for (const s of [-1, 1]) B.geo(taper(1.1, 4.2, 0.8, 1.0, 1.6), M.nemes, 6.6, 8.3, s * 1.95, { frame: F, uv: false });
-  B.geo(taper(3.2, 3.6, 3.4, 0.6), M.nemes, 4.6, 9.6, 0, { frame: F, uv: false });
-  B.box(M.paintedFace, 0.6, 0.95, 0.7, 8.3, 9.4, 0, o); // nariz
-  for (const s of [-1, 1]) { B.box(M.dark, 0.25, 0.22, 0.75, 8.35, 10.5, s * 0.75, o); B.box(M.dark, 0.25, 0.08, 1.0, 8.42, 10.85, s * 0.75, o); }
-  B.box(M.red, 0.25, 0.22, 1.2, 8.25, 8.55, 0, o);
-  B.geo(new THREE.CylinderGeometry(0.22, 0.32, 1.6, 10), M.paintedFace, 8.0, 7.2, 0, { frame: F }); // barba
-  B.box(M.gold, 0.6, 1.0, 0.45, 8.15, 11.9, 0, o); // ureu
-  // estela do sonho de Tutmés IV entre as patas
-  B.box(M.relief, 0.5, 3.6, 3.2, 10.4, 0.5, 0, o);
-  return new V3(x + 14.5, terrainHeight(x + 14.5, z), z);
 }
 
 function stall(B, M, x, y, z, type, seed) {
