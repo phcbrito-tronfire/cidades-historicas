@@ -100,6 +100,27 @@ function shieldGeometry(hw, h, depth) {
   return g;
 }
 
+// faixas pintadas das joias reais: ouro, lápis-lazúli (azul), cornalina (vermelho) e turquesa
+const stripeCache = {};
+function stripeTex(kind) {
+  if (stripeCache[kind]) return stripeCache[kind];
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const g = c.getContext('2d');
+  const bands = kind === 'collar' ? ['#e9b949', '#1f4fa8', '#e9b949', '#b8402c', '#e9b949', '#2f9a8a', '#e9b949', '#1f4fa8', '#e9b949']
+    : kind === 'band' ? ['#e9b949', '#1f4fa8', '#e9b949', '#b8402c', '#e9b949']
+    : kind === 'vulture' ? ['#e9b949', '#1f4fa8', '#e9b949', '#1f4fa8', '#e9b949', '#b8402c', '#e9b949', '#1f4fa8', '#e9b949', '#1f4fa8', '#e9b949']
+    : kind === 'plume' ? ['#f4efe2', '#1f4fa8', '#f4efe2', '#b8402c', '#f4efe2', '#1f4fa8', '#f4efe2', '#b8402c', '#f4efe2'] : null;
+  if (bands) { // faixas horizontais (anéis no cilindro), com contas
+    const h = 256 / bands.length;
+    bands.forEach((col, i) => { g.fillStyle = col; g.fillRect(0, i * h, 64, h); if (col !== '#e9b949') for (let x = 0; x < 64; x += 8) { g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 1, i * h + 1, 5, h - 2); } });
+  } else { // avental: pregas verticais de ouro e azul
+    for (let x = 0; x < 64; x += 8) { g.fillStyle = (x / 8) % 2 ? '#1f4fa8' : '#e9b949'; g.fillRect(x, 0, 8, 256); }
+    g.fillStyle = '#b8402c'; g.fillRect(0, 0, 64, 18);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (stripeCache[kind] = t);
+}
+
 function meshAt(geo, mat, x, y, z, rot) {
   const me = new THREE.Mesh(geo, mat); me.position.set(x, y, z); if (rot) me.rotation.set(...rot); me.castShadow = true; return me;
 }
@@ -180,6 +201,18 @@ export function makeHumanoid(o = {}) {
       for (const s of [-1, 1]) headPart(new THREE.BoxGeometry(R * 0.42, R * 2.0, R * 0.42), black, [s * R * 0.82, -R * 1.1, R * 0.3]);
       headPart(new THREE.TorusGeometry(R * 0.92, R * 0.06, 5, 22), gold(), [0, R * 0.45, -0.005], [Math.PI / 2, 0, 0], [1, 1.12, 1]);
       break;
+    case 'queen': { // peruca longa, coroa de abutre (asas de ouro caindo pelos lados), módio com duas plumas e ureu
+      cap(black, [1.12, 1.06, 1.1], [0, 0.015, -0.015], 0.6);
+      headPart(new THREE.BoxGeometry(R * 1.75, R * 2.2, R * 0.8), black, [0, -R * 1.05, -R * 0.55]);
+      for (const s of [-1, 1]) headPart(new THREE.BoxGeometry(R * 0.42, R * 2.0, R * 0.42), black, [s * R * 0.82, -R * 1.1, R * 0.3]);
+      const vg = m(0xffffff, { map: stripeTex('vulture'), metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide });
+      cap(vg, [1.17, 1.1, 1.15], [0, 0.02, -0.015], 0.42);
+      for (const s of [-1, 1]) headPart(new THREE.BoxGeometry(R * 0.08, R * 1.3, R * 1.5), vg, [s * R * 1.0, -R * 0.35, -R * 0.15], [0, 0, s * 0.08]);
+      headPart(new THREE.CylinderGeometry(R * 0.55, R * 0.5, R * 0.45, 20), gold(), [0, R * 1.05, -R * 0.05]); // módio
+      for (const s of [-1, 1]) headPart(new THREE.BoxGeometry(R * 0.5, R * 2.8, R * 0.04), m(0xffffff, { map: stripeTex('plume'), roughness: 0.6, side: THREE.DoubleSide }), [s * R * 0.26, R * 2.55, -R * 0.05], [0, 0, -s * 0.06]);
+      headPart(new THREE.CylinderGeometry(0.011, 0.018, 0.065, 6), gold(), [0, R * 0.85, R * 0.98], [0.35, 0, 0]); // ureu
+      headPart(new THREE.SphereGeometry(0.018, 8, 6), gold(), [0, R * 0.62, R * 1.02]); // cabeça do abutre
+    } break;
     case 'sidelock': headPart(new THREE.CylinderGeometry(0.014, 0.02, 0.18, 6), black, [R * 0.82, -R * 0.55, 0], [0, 0, 0.15]); break;
     case 'khat': {
       const cl = m(o.khat ?? 0xe8dcc0, { roughness: 0.95 });
@@ -268,7 +301,21 @@ export function makeHumanoid(o = {}) {
     } break;
   }
   if (outfit === 'pharaoh') {
-    hipsPart(new THREE.BoxGeometry(0.13, 0.36, 0.015), gold(), -0.16, [-0.1, 0, 0]).position.z += 0;
+    // avental de ouro plissado na frente do saiote, cauda de touro cerimonial atrás e braceletes
+    const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.15, 0.38, 3, 1, true, -Math.PI / 6, Math.PI / 3), m(0xffffff, { map: stripeTex('apron'), metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide }));
+    attach('Hips', apron, new THREE.Vector3(0, hips.y - 0.22, hips.z + 0.075), [0.1, 0, 0], [1.3, 1, 1.3]);
+    attach('Hips', new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 0.55, 6), m(0x6b4a2a, { roughness: 0.9 })), new THREE.Vector3(0, hips.y - 0.32, hips.z - 0.17), [-0.08, 0, 0]);
+    for (const side of ['Left', 'Right']) {
+      const fa = bones[side + 'ForeArm'], hand = bones[side + 'Hand'];
+      if (!fa || !hand) continue;
+      const a = bonePos(side + 'ForeArm'), b = bonePos(side + 'Hand');
+      const dir = b.clone().sub(a).normalize();
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.034, 0.05, 16, 1, true), m(0xffffff, { map: stripeTex('band'), metalness: 0.8, roughness: 0.3, side: THREE.DoubleSide }));
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const e = new THREE.Euler().setFromQuaternion(q);
+      attach(side + 'ForeArm', band, a.clone().lerp(b, 0.78), [e.x, e.y, e.z]);
+      attach(side + 'Arm', band.clone(), bonePos(side + 'Arm').lerp(a, 0.35), [e.x, e.y, e.z], [1.35, 1, 1.35]);
+    }
   }
   const chest = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
   const neckY = bones.Neck ? bonePos('Neck').y : chest.y + 0.15;
@@ -277,7 +324,7 @@ export function makeHumanoid(o = {}) {
   if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.19, 0.42, 36, 1, true), m(0xffffff, { map: TEX.leopard, roughness: 0.9, side: THREE.DoubleSide })), new THREE.Vector3(0, chest.y - 0.1, chest.z + 0.005), [0, 0, 0.22], [1, 1, 0.78]);
   const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar ?? (female ? pick([0x2f7f8a, 0xa8402c, 0x3a5fa8, 0xc9963a]) : undefined); // mulheres: colar largo de contas por cima da gola da blusa do modelo
   if (collar && !isExp) {
-    const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffc64a, { metalness: 1, roughness: 0.3, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
+    const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffffff, { map: stripeTex('collar'), metalness: 0.75, roughness: 0.32, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
   }
   if (isExp) { // bolsa a tiracolo, alça e chicote

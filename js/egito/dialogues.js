@@ -241,7 +241,7 @@ export const NPCS = [
   },
   {
     id: 'isetnofret', name: 'Isetnofret', title: 'Grande Esposa Real', objective: 'isetnofret',
-    look: { outfit: 'dress', hair: 'long', skin: 0xa8724c, collar: 'royal', linen: 0xfbf6ea, height: 1.68 },
+    look: { outfit: 'dress', hair: 'queen', skin: 0xa8724c, collar: 'royal', linen: 0xfbf6ea, sash: 0xb8402c, height: 1.68 },
     greet: 'Aproxime-se, viajante. Sou Isetnofret, Grande Esposa Real do Senhor das Duas Terras. Meus filhos falaram de você.',
     topics: [
       { q: 'Qual é o papel da rainha?', a: [

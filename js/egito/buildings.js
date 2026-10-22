@@ -132,20 +132,6 @@ function pyramidGeo(half, h, uvS = 18, y0 = 0, y1 = h) {
   return g;
 }
 
-// Casco curvo de barco egípcio (proa e popa levantadas)
-export function hullGeometry(L, W, H, curl = 1.2) {
-  const g = new THREE.BoxGeometry(L, H, W, 24, 2, 2);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i) / (L / 2), y = p.getY(i) / (H / 2);
-    const taperW = Math.max(0.06, 1 - x * x) * (y < 0 ? 0.65 : 1);
-    p.setZ(i, p.getZ(i) * taperW);
-    p.setY(i, p.getY(i) + curl * Math.pow(Math.abs(x), 4) * H * 2);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-
 // ---------------------------------------------------------------------------
 export function createMaterials(tex) {
   const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0, ...o });
@@ -643,15 +629,14 @@ export function buildCity(scene, tex) {
   // estrado e trono
   B.box(M.sandstone, 8, 0.4, 16, -7, PY - 0.3, -132.5); addBox(-7, -132.5, 8, 16, -5, PY + 0.1);
   B.box(M.sandstone, 4.5, 0.4, 10, -8.5, PY + 0.1, -132.5); addBox(-8.5, -132.5, 4.5, 10, -5, PY + 0.5);
-  B.box(M.gold, 1.3, 0.8, 1.4, -9.2, PY + 0.5, -132.5);
-  B.box(M.gold, 0.25, 2.2, 1.4, -9.9, PY + 0.5, -132.5);
-  B.box(M.blue, 1.2, 0.15, 1.3, -9.2, PY + 1.3, -132.5, { uv: false });
-  for (const z of [-133.3, -131.7]) B.box(M.gold, 1.2, 0.5, 0.1, -9.2, PY + 1.3, z);
+  // trono (modelo 3D em sculptures.js): assento a ~0,5 m do estrado, para o rei sentar de verdade
+  SCULPT.push({ model: 'trono', x: -9.25, y: PY + 0.5, z: -132.5, ry: 0, length: 1.75 });
   addBox(-9.3, -132.5, 1.6, 1.6, -5, PY + 2.6);
   for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 1.4, z); torch(-5.5, PY + 0.1, z, false); }
   torch(18, PY - 0.3, -146); torch(18, PY - 0.3, -119);
   out.lights.push({ pos: new V3(2, PY + 5, -132.5), color: 0xffb070, intensity: 150, dist: 30 });
   out.spots.throne = new V3(-6, PY + 0.5, -132.5);
+  out.spots.throneSeat = new V3(-9.15, PY + 0.5, -132.5); // onde fica o rei sentado (raiz do corpo no estrado)
   out.zones.trono = [TX0, TX1, TZ0, TZ1];
 
   // jardim com piscina em T

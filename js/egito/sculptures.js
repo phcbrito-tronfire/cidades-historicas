@@ -14,6 +14,9 @@ const MODELS = {
   // fit 'y': o tamanho pedido é a altura (estátuas em pé)
   anubis: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.45, fit: 'y', tint: [2.4, 2.25, 2.1], env: 1.2 }, // textura muito escura: clareia (granito preto, mas com o entalhe visível)
   barco: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.85 }, // barquinho de papiro com toldo
+  trono: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.4, fit: 'y', keepMetal: true },
+  navio: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.8 },
+  navio2: { rot: [0, 0, 0], yaw: 0, layer: 0, rough: 0.8 },
   anubis_deitado: { rot: [Math.PI / 2, 0, 0], yaw: Math.PI, layer: 0, rough: 0.6, tint: [1.5, 1.45, 1.4] },
 };
 
@@ -35,7 +38,7 @@ async function loadModel(L, name) {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
     o.layers.set(def.layer);
-    const m = o.material; m.roughness = def.rough; m.metalness = 0; m.envMapIntensity = def.env ?? 0.6;
+    const m = o.material; if (!def.keepMetal) { m.roughness = def.rough; m.metalness = 0; } m.envMapIntensity = def.env ?? 0.6;
     if (def.tint) m.color.setRGB(...def.tint);
   });
   return unit;
@@ -43,11 +46,13 @@ async function loadModel(L, name) {
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
-const unitModel = (n) => (cache[n] ??= loadModel(loader, n));
+// um modelo que falhe ao carregar não derruba o jogo: aquela escultura só não aparece
+const unitModel = (n) => (cache[n] ??= loadModel(loader, n).catch((e) => { console.warn('escultura', n, e); return null; }));
 
 // uma cópia do modelo com o tamanho pedido (comprimento, ou altura se fit 'y'), olhando para +x
 export async function sculptureInstance(name, size) {
   const u = await unitModel(name);
+  if (!u) return new THREE.Group();
   const o = u.clone();
   o.scale.setScalar(size * u.scale.x);
   return o;
@@ -58,6 +63,7 @@ export async function placeSculptures(scene, list) {
   const base = {};
   await Promise.all(names.map(async (n) => { base[n] = await unitModel(n); }));
   for (const s of list) {
+    if (!base[s.model]) continue;
     const o = base[s.model].clone();
     o.scale.setScalar(s.length * base[s.model].scale.x);
     const holder = new THREE.Group();

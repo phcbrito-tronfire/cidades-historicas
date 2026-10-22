@@ -57,7 +57,10 @@ export class Actors {
       h.rig.root.add(label);
       const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false }));
       marker.scale.setScalar(0.8); marker.position.y = 2.95; h.rig.root.add(marker);
-      this.key.push({ def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: def.id === 'tiy' ? 'idle' : 'idle' });
+      const k = { def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: 'idle' };
+      // Ramsés recebe sentado no trono
+      if (def.id === 'ramses' && S.throneSeat) { h.rig.root.position.copy(S.throneSeat); k.seated = true; }
+      this.key.push(k);
     }
     // guardas do palácio e do templo
     const G = S.gate;
@@ -226,9 +229,9 @@ export class Actors {
       k.rig.root.visible = vis;
       if (!vis) continue;
       const close = near(k, 5);
-      if (k.talking || close) face(k, pp, 5);
+      if (!k.seated && (k.talking || close)) face(k, pp, 5);
       else k.rig.root.rotation.y = angleLerp(k.rig.root.rotation.y, k.ry, dt * 2);
-      animateHumanoid(k.rig, dt, 0, k.talking ? 'talk' : 'idle', t);
+      animateHumanoid(k.rig, dt, 0, k.seated ? 'sit' : k.talking ? 'talk' : 'idle', t);
       k.label.visible = near(k, 20);
       const pending = !quests.isDone(k.def.objective) && k.def.objective && !((k.def.id === 'ramses' || k.def.id === 'isetnofret') && !this.gateOpen);
       const beerPending = k.def.id === 'hori' && player.holding && player.holding.type === 'cerveja' && !quests.isDone('cerveja');

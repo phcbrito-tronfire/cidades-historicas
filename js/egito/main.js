@@ -6,7 +6,7 @@ import { makeWaterFX } from './waterfx.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from './touch.js';
 import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight } from './terrain.js';
-import { buildCity, hullGeometry } from './buildings.js';
+import { buildCity } from './buildings.js';
 import { setCharTextures } from './characters.js';
 import { placeSculptures, sculptureInstance } from './sculptures.js';
 import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from './mixamo.js';
@@ -435,9 +435,6 @@ function makeFlags(scene, defs) {
 }
 
 function makeBoats(scene, city) {
-  const M = city.M;
-  const painted = new THREE.MeshStandardMaterial({ map: M.wood.map, color: 0xd9c49a, roughness: 0.8 });
-  const sailM = new THREE.MeshStandardMaterial({ color: 0xf1ead8, roughness: 0.95, side: THREE.DoubleSide });
   const boats = [];
   const skiff = (x, z, ry) => {
     const g = new THREE.Group();
@@ -449,34 +446,14 @@ function makeBoats(scene, city) {
   };
   const ship = (x, z, ry, sailUp, crew) => {
     const g = new THREE.Group();
-    const h = new THREE.Mesh(hullGeometry(15, 3.8, 1.3, 1.1), painted); h.castShadow = true; h.receiveShadow = true; g.add(h);
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(12, 0.15, 2.6), M.wood); deck.position.y = 0.6; g.add(deck);
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3, 1.3, 2), M.white); cabin.position.set(-3.2, 1.3, 0); g.add(cabin);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.12, 2.3), M.awnings[1]); roof.position.set(-3.2, 2.0, 0); g.add(roof);
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 9, 8), M.wood); mast.position.set(1.5, 5, 0); g.add(mast);
-    const yardTop = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 8, 6), M.wood); yardTop.rotation.x = Math.PI / 2; g.add(yardTop);
-    if (sailUp) {
-      yardTop.position.set(1.5, 9.2, 0);
-      const yardBot = yardTop.clone(); yardBot.position.y = 3; g.add(yardBot);
-      const sg = new THREE.PlaneGeometry(7.6, 6.2, 8, 6); const sp = sg.attributes.position;
-      for (let i = 0; i < sp.count; i++) { const u = sp.getX(i) / 3.8, v = sp.getY(i) / 3.1; sp.setZ(i, (1 - u * u) * (1 - v * v * 0.5) * 0.9); }
-      sg.computeVertexNormals();
-      const sail = new THREE.Mesh(sg, sailM); sail.rotation.y = Math.PI / 2; sail.position.set(1.7, 6.1, 0); sail.castShadow = true; g.add(sail);
-    } else {
-      yardTop.position.set(1.5, 4.2, 0);
-      const furled = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 7.6, 8), sailM); furled.rotation.x = Math.PI / 2; furled.position.set(1.5, 4.0, 0); g.add(furled);
-    }
-    for (const s of [-1, 1]) { const oar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 4), M.wood); oar.position.set(-6.4, 1, s * 1.1); oar.rotation.set(0.5 * s, 0, 0); g.add(oar); }
+    const DECK = sailUp ? 0.43 : 2.78; // altura do convés de cada modelo, para a tripulação
+    // navio modelado (sculptures.js): à vela, o de casco de madeira e vela de linho; a remo, o de vela listrada e remos
+    sculptureInstance(sailUp ? 'navio' : 'navio2', 15).then((o) => { o.position.y = sailUp ? -0.55 : -0.35; g.add(o); });
     const oars = [];
-    if (!sailUp) for (let i = 0; i < 5; i++) for (const s of [-1, 1]) {
-      const piv = new THREE.Group(); piv.position.set(-1 + i * 1.6, 0.9, s * 1.6); g.add(piv);
-      const o = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 3.2), M.wood); o.position.z = s * 1.4; o.rotation.x = s * 0.4; piv.add(o);
-      oars.push({ piv, s });
-    }
     const people = [];
     for (let i = 0; i < crew; i++) {
       const r = makeHumanoid({ outfit: 'worker', hair: pick(['short', 'khat', 'bald']), collar: null });
-      r.root.position.set(-1 + i * 1.6, 0.68, (i % 2 ? -0.6 : 0.6)); r.root.rotation.y = Math.PI / 2 * (i % 2 ? 1 : -1);
+      r.root.position.set(-1 + i * 1.6, DECK, (i % 2 ? -0.6 : 0.6)); r.root.rotation.y = Math.PI / 2 * (i % 2 ? 1 : -1);
       g.add(r.root); people.push(r);
     }
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
