@@ -1,6 +1,7 @@
 // Animais de Mênfis com formas orgânicas e pelagem: gato egípcio, burro, gado de chifres longos,
 // íbis, crocodilo, hipopótamo e pato. Pernas com joelho e cauda curva para animação simples.
 import * as THREE from 'three';
+import { mergeSiblings, keepRefs } from './merge.js';
 import { rand, pick, mulberry32 } from './util.js';
 
 const texCache = new Map();
@@ -183,6 +184,9 @@ export function makeAnimal(kind) {
   }
   a.kind = kind;
   a.g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  // peças rígidas da mesma articulação viram uma malha só (as articulações que se movem ficam separadas)
+  keepRefs(a);
+  mergeSiblings(a.g);
   return a;
 }
 

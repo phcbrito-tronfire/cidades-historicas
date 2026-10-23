@@ -7,8 +7,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { rr, rand, pick, ver } from './util.js';
+import { mergeSiblings } from './merge.js';
 
 const BASES = {};
+const BODY_SPHERE = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.5); // espaço do modelo (pose T, ~1,8 m de altura)
 const CLIPS = {};
 let TEX = null;
 const DIR = 'assets/models/mixamo/';
@@ -43,7 +45,7 @@ export async function loadHumanModel(_unused, tex, onProgress) {
     }),
   ]);
   // alguns modelos vêm com prefixo numerado nos ossos (mixamorig12Hips): padroniza para as animações encaixarem
-  for (const b of Object.values(BASES)) b.traverse((o) => { o.name = o.name.replace(/^mixamorig\d+/, 'mixamorig'); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+  for (const b of Object.values(BASES)) b.traverse((o) => { o.name = o.name.replace(/^mixamorig\d+/, 'mixamorig'); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   for (const c of Object.values(CLIPS)) for (const tr of c.tracks) tr.name = tr.name.replace(/^mixamorig\d+/, 'mixamorig');
   calibrateLocomotion();
 }
@@ -149,6 +151,8 @@ export function makeHumanoid(o = {}) {
   const female = outfit === 'dress';
   const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group();
+  // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
+  root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
   const model = SkeletonUtils.clone(BASES[baseName]);
   root.add(model);
   model.updateMatrixWorld(true);
@@ -201,7 +205,7 @@ export function makeHumanoid(o = {}) {
     const want = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scale));
     const local = new THREE.Matrix4().multiplyMatrices(rootInv, b.matrixWorld).invert().multiply(want);
     local.decompose(obj.position, obj.quaternion, obj.scale);
-    obj.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.frustumCulled = false; } });
+    obj.traverse((c) => { if (c.isMesh) c.castShadow = true; });
     b.add(obj);
     return obj;
   };
@@ -327,7 +331,7 @@ export function makeHumanoid(o = {}) {
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
     g.applyMatrix4(toRef);
     const sm = new THREE.SkinnedMesh(g, mat);
-    sm.castShadow = true; sm.receiveShadow = true; sm.frustumCulled = false;
+    sm.castShadow = true; sm.receiveShadow = true;
     sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale);
     ref.parent.add(sm);
     sm.bind(skel, ref.bindMatrix);
@@ -450,6 +454,9 @@ export function makeHumanoid(o = {}) {
   const natural = headTop;
   root.scale.setScalar(h / natural);
 
+  // recorte por visão: as malhas com pele ganham uma esfera fixa que cobre o corpo em qualquer pose (em pé, nadando,
+  // sentado); fora da câmera (ou da caixa de sombra) o personagem não é desenhado nem tem o esqueleto recalculado
+  model.traverse((n) => { if (n.isSkinnedMesh) { n.frustumCulled = true; n.boundingSphere = BODY_SPHERE; } });
   // camada 2: aparece na tela e nas sombras, fora do reflexo do Nilo e da oclusão (desempenho)
   root.traverse((n) => n.layers.set(2));
   const mixer = new THREE.AnimationMixer(model);
@@ -459,6 +466,9 @@ export function makeHumanoid(o = {}) {
     if (!actions[name]) { const c = CLIPS[name]; if (!c) return null; actions[name] = mixer.clipAction(c); }
     return actions[name];
   };
+  // junta as peças rígidas presas a cada osso (sandálias, chapéu, colares, saiote rígido...) por material
+  if (tail) tail.userData.noMerge = true;
+  mergeSiblings(model);
   return { root, model, mixer, act, handR, handL, armR: { hand: handR }, bones, tail, skirt, holding: false, pose: o.pose || null, walkClip: female ? 'andar_f' : 'andar', once: null };
 }
 

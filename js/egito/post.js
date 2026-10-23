@@ -47,6 +47,9 @@ export async function createPost(renderer, scene, camera) {
     ao.blendIntensity = 0.9;
     ao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.6, thickness: 1.2, scale: 1.0, samples: 12 });
     ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+    // a oclusão é suave por natureza: calcular em meia resolução não muda o resultado e corta o custo por pixel
+    const aoSetSize = ao.setSize.bind(ao);
+    ao.setSize = (w, h) => aoSetSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
     composer.addPass(ao);
   } catch (e) { console.warn('GTAO indisponível', e); }
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.28, 0.55, 0.92);
@@ -67,7 +70,7 @@ export async function createPost(renderer, scene, camera) {
 
   let t = 0;
   return {
-    composer, ao, bloom, grade,
+    composer, ao, bloom, grade, resize,
     render(dt, night) {
       t += dt;
       aoCam.copy(camera); aoCam.layers.set(0);

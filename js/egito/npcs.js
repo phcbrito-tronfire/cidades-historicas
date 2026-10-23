@@ -11,10 +11,18 @@ import { rr, rand, pick, angleLerp } from './util.js';
 
 const V3 = THREE.Vector3;
 
+// sombra só para quem está a até ~40 m (mais longe ela ocupa poucos pixels no mapa de sombra); troca só ao mudar de faixa
+function castsShadow(root, on) {
+  if (root.userData.sh === on) return;
+  root.userData.sh = on;
+  root.traverse((o) => { if (o.isMesh) o.castShadow = on; });
+}
+
 export class Actors {
   constructor(scene, city) {
     this.scene = scene; this.city = city;
     this.key = []; this.agents = []; this.animals = []; this.flocks = [];
+    this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new THREE.Vector3();
     this.markerTex = markerTexture('!');
     this.t = 0;
   }
@@ -214,9 +222,29 @@ export class Actors {
     return best;
   }
 
+  // animação por nível de detalhe: perto e na tela, todo quadro; mais longe ou fora da câmera, menos vezes por
+  // segundo (o tempo acumulado vai inteiro para o mixer, então o movimento não atrasa nem acelera)
+  anim(rig, dt, speed, mode, t) {
+    rig._acc = (rig._acc || 0) + dt;
+    const p = rig.root.position;
+    const d2 = (p.x - this.pp.x) ** 2 + (p.z - this.pp.z) ** 2;
+    castsShadow(rig.root, d2 < 40 * 40);
+    let every = 0;
+    if (this.camera) {
+      this._s.center.set(p.x, p.y + 0.95, p.z); this._s.radius = 1.6;
+      const seen = this._fr.intersectsSphere(this._s);
+      every = !seen ? 1 / 8 : d2 < 25 * 25 ? 0 : d2 < 45 * 45 ? 1 / 30 : 1 / 15;
+    }
+    if (rig._acc < every) return;
+    animateHumanoid(rig, rig._acc, speed, mode, t);
+    rig._acc = 0;
+  }
+
   update(dt, t, player, quests, nightFactor) {
     this.t = t;
     const pp = player.pos;
+    this.pp = pp;
+    if (this.camera) { this._pv.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse); this._fr.setFromProjectionMatrix(this._pv); }
     const near = (o, r) => (o.pos.x - pp.x) ** 2 + (o.pos.z - pp.z) ** 2 < r * r;
     const face = (o, target, k) => {
       if (!target) return;
@@ -231,7 +259,7 @@ export class Actors {
       const close = near(k, 5);
       if (!k.seated && (k.talking || close)) face(k, pp, 5);
       else k.rig.root.rotation.y = angleLerp(k.rig.root.rotation.y, k.ry, dt * 2);
-      animateHumanoid(k.rig, dt, 0, k.seated ? 'sit' : k.talking ? 'talk' : 'idle', t);
+      this.anim(k.rig, dt, 0, k.seated ? 'sit' : k.talking ? 'talk' : 'idle', t);
       k.label.visible = near(k, 20);
       const pending = !quests.isDone(k.def.objective) && k.def.objective && !((k.def.id === 'ramses' || k.def.id === 'isetnofret') && !this.gateOpen);
       const beerPending = k.def.id === 'hori' && player.holding && player.holding.type === 'cerveja' && !quests.isDone('cerveja');
@@ -245,27 +273,27 @@ export class Actors {
         if (d.length() > 0.1) {
           d.normalize().multiplyScalar(Math.min(d.length(), dt * 1.5));
           g.pos.x += d.x; g.pos.z += d.z; g.pos.y = groundAt(g.pos.x, g.pos.z, g.pos.y + 0.3);
-          face(g, g.target, 6); animateHumanoid(g.rig, dt, 1.5, 'walk', t);
+          face(g, g.target, 6); this.anim(g.rig, dt, 1.5, 'walk', t);
           g.rig.root.position.copy(g.pos);
           continue;
         } else g.target = null;
       }
       if (near(g, 5)) face(g, pp, 4); else g.rig.root.rotation.y = angleLerp(g.rig.root.rotation.y, g.ry, dt * 2);
-      animateHumanoid(g.rig, dt, 0, g.talking ? 'talk' : 'idle', t);
+      this.anim(g.rig, dt, 0, g.talking ? 'talk' : 'idle', t);
     }
 
     for (const a of this.agents) {
       const vis = near(a, 60);
       a.rig.root.visible = vis;
       if (!vis) continue;
-      if (a.talking) { face(a, pp, 6); animateHumanoid(a.rig, dt, 0, 'talk', t); continue; }
+      if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
       if (a.static) {
         if (a.ry !== undefined && a.mode !== 'work') a.rig.root.rotation.y = angleLerp(a.rig.root.rotation.y, a.ry, dt * 2);
-        animateHumanoid(a.rig, dt, 0, a.mode, t);
+        this.anim(a.rig, dt, 0, a.mode, t);
         continue;
       }
       // pausa ou caminhada
-      if (a.wait > 0) { a.wait -= dt; animateHumanoid(a.rig, dt, 0, 'idle', t); continue; }
+      if (a.wait > 0) { a.wait -= dt; this.anim(a.rig, dt, 0, 'idle', t); continue; }
       if (!a.target) {
         if (a.route) { a.target = a.route[a.ri]; a.ri = (a.ri + 1) % a.route.length; }
         else {
@@ -288,13 +316,14 @@ export class Actors {
       a.pos.y = groundAt(a.pos.x, a.pos.z, a.pos.y + 0.3);
       a.rig.root.position.copy(a.pos);
       face(a, a.target, 5);
-      animateHumanoid(a.rig, dt, a.speed, a.run ? 'run' : 'walk', t);
+      this.anim(a.rig, dt, a.speed, a.run ? 'run' : 'walk', t);
     }
 
     for (const o of this.animals) {
       const vis = near(o, 60);
       o.a.g.visible = vis;
       if (!vis) continue;
+      castsShadow(o.a.g, near(o, 25));
       let moving = false;
       if (!o.static) {
         if (o.wait > 0) o.wait -= dt;

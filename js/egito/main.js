@@ -1,5 +1,6 @@
 // Mênfis, c. 1250 a.C. — inicialização e laço principal
 import * as THREE from 'three';
+const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { createPost } from './post.js';
 import { makeWaterFX } from './waterfx.js';
@@ -42,10 +43,18 @@ async function main() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // a sombra do sol é calculada uma vez por quadro (antes, o reflexo do Nilo e a oclusão refaziam o mapa a cada render)
+  renderer.shadowMap.autoUpdate = false;
   document.getElementById('game').appendChild(renderer.domElement);
   setAniso(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
 
   const scene = new THREE.Scene();
+  // as matrizes da cena são atualizadas uma vez por quadro, no laço (o reflexo do Nilo e a oclusão renderizam a cena
+  // de novo e, com a atualização automática, recalculavam ~9 mil objetos a cada passada)
+  scene.matrixWorldAutoUpdate = false;
+  // o esqueleto de cada personagem também é calculado uma vez por quadro, não em cada passada
+  const skelUpdate = THREE.Skeleton.prototype.update;
+  THREE.Skeleton.prototype.update = function () { if (this._frame === FRAME.n) return; this._frame = FRAME.n; skelUpdate.call(this); };
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.15, 20000);
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
@@ -74,6 +83,9 @@ async function main() {
   await loadHumanModel('assets/models/humano.glb', tex, (f) => ui.progress(0.15 + f * 0.05));
   await step(0.18, 'Escavando o leito do Nilo...');
   const world = buildTerrain(scene, tex);
+  // reflexo do Nilo: com o jogador longe do rio (> 90 m) ele é refeito em quadros alternados — de longe o reflexo é
+  // uma faixa fina no horizonte e a diferença não se vê; perto do rio, todo quadro
+  { const w = world.water, rb = w.onBeforeRender; w.onBeforeRender = function (...a) { if (FRAME.far && FRAME.n % 2) return; rb.apply(this, a); }; }
   const horizon = buildHorizon(scene, tex);
   await step(0.35, 'Erguendo o templo de Ptah e as pirâmides de Gizé...');
   const city = buildCity(scene, tex);
@@ -87,6 +99,7 @@ async function main() {
 
   await step(0.68, 'Chamando o povo de Mênfis...');
   const actors = new Actors(scene, city);
+  actors.camera = camera;
   actors.spawnKeyNPCs();
   actors.spawnAmbient();
   actors.spawnAnimals();
@@ -275,6 +288,7 @@ async function main() {
       sun.shadow.mapSize.set(quality === 'alto' ? 4096 : 2048, quality === 'alto' ? 4096 : 2048);
       if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
       post.setQuality(quality);
+      prMax = renderer.getPixelRatio(); prMin = Math.max(0.6, prMax * 0.7); // a resolução adaptativa passa a valer para o novo nível
       e.target.textContent = `Gráficos: ${quality}`;
     }
     if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
@@ -335,10 +349,31 @@ async function main() {
   const clock = new THREE.Clock();
   let t = 0, miniT = 0;
   const keyNpcDots = () => actors.key.map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) }));
+  // resolução adaptativa: só baixa a resolução interna se o quadro passar de ~24 ms por um tempo (e volta quando sobra
+  // folga). Em máquina que aguenta, fica sempre na resolução máxima.
+  let prMax = renderer.getPixelRatio(), prMin = Math.max(0.75, prMax * 0.7);
+  let frameAvg = 16, adaptT = 0;
+  const adaptRes = (raw) => {
+    if (document.hidden || raw > 0.25) return; // aba em segundo plano ou travada por outro motivo
+    frameAvg += (raw * 1000 - frameAvg) * 0.05;
+    adaptT += raw;
+    if (adaptT < 2) return;
+    adaptT = 0;
+    const pr = renderer.getPixelRatio();
+    let next = pr;
+    if (frameAvg > 24 && pr > prMin) next = Math.max(prMin, pr - 0.1);
+    else if (frameAvg < 15 && pr < prMax) next = Math.min(prMax, pr + 0.1);
+    if (next !== pr) { renderer.setPixelRatio(next); post.resize(); }
+  };
   function loop() {
     requestAnimationFrame(loop);
-    const dt = Math.min(clock.getDelta(), 0.05);
-    if (paused) { post.render(dt, sky.state.night); return; }
+    const raw = clock.getDelta();
+    const dt = Math.min(raw, 0.05);
+    renderer.shadowMap.needsUpdate = true;
+    FRAME.n++;
+    FRAME.far = Math.abs(player.pos.x - riverX(player.pos.z)) > 90 + 46;
+    adaptRes(raw);
+    if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night); return; }
     t += dt;
     player.night = sky.state.night;
     if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt);
@@ -382,6 +417,7 @@ async function main() {
       const dm = Math.max(0, Math.max(m[0] - player.pos.x, player.pos.x - m[1], m[2] - player.pos.z, player.pos.z - m[3]));
       audio.update(dt, { nearWater: Math.max(0, Math.min(1, 1 - (dR - 36) / 40)), night: sky.state.night > 0.5, market: Math.max(0, 1 - dm / 30) });
     }
+    scene.updateMatrixWorld(); // uma vez por quadro (a cena não se atualiza sozinha a cada render; ver acima)
     post.render(dt, sky.state.night);
   }
   loop();

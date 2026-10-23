@@ -33,6 +33,7 @@ function worldUV(g, { s = 4, sv, y0 = 0 }) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+const CELL = 100; // tamanho da quadra (m): menor = recorte mais fino, porém mais desenhos (sombra cobre 280 m)
 export class Batcher {
   constructor() { this.groups = new Map(); }
   add(geo, mat, matrix, uv) {
@@ -51,8 +52,15 @@ export class Batcher {
     const opt = uv === false ? null : (uv || mat.userData.uv);
     if (opt) worldUV(g, opt);
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
-    if (!this.groups.has(mat)) this.groups.set(mat, []);
-    this.groups.get(mat).push(g);
+    // agrupa por material E por quadra do mapa: cada quadra vira uma malha própria, que a câmera (e as sombras e o
+    // reflexo do Nilo) pode descartar quando está fora de vista — antes, a cidade inteira era desenhada sempre
+    g.computeBoundingBox();
+    const c = g.boundingBox.getCenter(new THREE.Vector3());
+    const key = Math.floor(c.x / CELL) + ',' + Math.floor(c.z / CELL);
+    if (!this.groups.has(mat)) this.groups.set(mat, new Map());
+    const cells = this.groups.get(mat);
+    if (!cells.has(key)) cells.set(key, []);
+    cells.get(key).push(g);
   }
   // y = base da peça
   box(mat, w, h, d, x, y, z, o = {}) {
@@ -91,11 +99,13 @@ export class Batcher {
     this.add(geo, mat, o.frame ? o.frame.clone().multiply(m) : m, o.uv);
   }
   build(scene) {
-    for (const [mat, list] of this.groups) {
+    for (const [mat, cells] of this.groups) for (const list of cells.values()) {
       const merged = mergeGeometries(list);
+      merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, mat);
       mesh.castShadow = !mat.userData.noShadow;
       mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false; // estático
       scene.add(mesh);
     }
     this.groups.clear();
