@@ -22,16 +22,19 @@ export function buildAgora(B, M, out) {
   // ---------------- Hefesteion (templo de Hefesto e Atena Ergane, dos ferreiros e artesãos), no alto do Colono
   const avail = out.available || new Set();
   if (avail.has('hefesteion')) {
-    B.box(M.poros, 31, 1.4, 21, HEPH.x, HEPH.y - 1.2, HEPH.z);
-    addBox(HEPH.x, HEPH.z, 30, 20, HEPH.y - 2, HEPH.y + 0.2);
+    // plataforma do templo (o modelo fica em cima) com espaço na frente para a escada de entrada
+    B.box(M.poros, 35, 1.4, 21, HEPH.x + 1.75, HEPH.y - 1.2, HEPH.z);
+    addBox(HEPH.x + 1.75, HEPH.z, 35, 21, HEPH.y - 2, HEPH.y + 0.2);
     out.sculptures.push({ model: 'hefesteion', x: HEPH.x, y: HEPH.y, z: HEPH.z, ry: 0, length: 28 });
-    for (const [x, z] of [[-13, -8], [-13, 8], [13, -8], [13, 8], [-13, 0], [13, 0], [0, -8], [0, 8]]) addBox(HEPH.x + x, HEPH.z + z, 1.2, 1.2, HEPH.y, HEPH.y + 8);
+    out.hephModel = true; // a colisão (piso, colunas, paredes) é tirada do próprio modelo depois de carregado (main.js)
   } else {
-    doricTemple(B, { M, x: HEPH.x, y: HEPH.y - 0.2, z: HEPH.z, ry: 0, nf: 6, ns: 13, col: 1.02, h: 5.71, ic: 2.58, steps: 2, stepH: 0.38, stepW: 0.5, found: 1.2, cella: { w: 8.4, d: 20, door: 2.6 } });
+    doricTemple(B, { M, x: HEPH.x, y: HEPH.y - 0.2, z: HEPH.z, ry: 0, nf: 6, ns: 13, col: 1.02, h: 5.71, ic: 2.58, steps: 3, stepH: 0.36, stepW: 0.5, found: 1.2, cella: { w: 8.4, d: 20, door: 2.6, inner: 5 } });
+    B.box(M.poros, 35, 1.4, 21, HEPH.x + 1.75, HEPH.y - 1.6, HEPH.z); addBox(HEPH.x + 1.75, HEPH.z, 35, 21, HEPH.y - 2.4, HEPH.y - 0.2);
   }
   S.hephaisteion = new V3(HEPH.x + 22, HEPH.y, HEPH.z);
   // escadaria do Colono até a praça
-  for (let i = 0; i < 18; i++) { const x = HEPH.x + 20 + i * 1.1, y = HEPH.y - 0.45 * (i + 1); B.box(M.poros, 1.2, 0.5, 8, x, y - 0.05, HEPH.z); addBox(x, HEPH.z, 1.2, 8, y - 2, y + 0.45); }
+  // escadaria do Colono até a praça, colada na plataforma do templo: degraus de 0,3 m até encontrar o chão
+  { const x0 = HEPH.x + 19.25; let y = HEPH.y - 0.2; for (let i = 0; i < 40; i++) { const x = x0 + 0.45 + i * 0.9, g = ty(x, HEPH.z); if (y - 0.3 < g + 0.05) break; y -= 0.3; B.box(M.poros, 0.95, y - g + 0.4, 9, x, g - 0.4, HEPH.z); addBox(x, HEPH.z, 0.95, 9, g - 2, y); } }
   out.zones.hefesteion = [HEPH.x - 24, HEPH.x + 22, HEPH.z - 18, HEPH.z + 18];
   out.exclusions.push([HEPH.x - 26, HEPH.x + 42, HEPH.z - 22, HEPH.z + 22]);
   // forjas de bronze ao pé do Colono (os ferreiros trabalhavam em volta do templo do seu deus)

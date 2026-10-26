@@ -206,6 +206,17 @@ export function doricTemple(B, o) {
     }
     out.back = zb;
   }
+  // escada de entrada no meio da fachada leste (e da oeste): os degraus do crepidoma são altos demais para andar,
+  // como nos templos de verdade, que tinham degraus intermediários ou rampa na entrada
+  if (!o.stoa && Y > 0.5) {
+    const n = Math.ceil(Y / 0.2), rise = Y / n, run = 0.36, W = Math.min(6, ic * 1.4), x0 = L / 2; // do estilobata para fora, cobrindo o crepidoma
+    for (const side of [1, -1]) for (let i = 0; i < n; i++) {
+      const lx = side * (x0 + (n - 1 - i) * run + run / 2 - 0.02), top = rise * (i + 1);
+      box(M.marble, run + 0.02, top, W, lx, 0, 0);
+      const wp = new THREE.Vector3(lx, 0, 0).applyMatrix4(F), rot = Math.abs(Math.sin(o.ry || 0)) > 0.7;
+      addBox(wp.x, wp.z, rot ? W : run, rot ? run : W, o.y - 1, o.y + top);
+    }
+  }
   // degraus caminháveis: caixas de colisão do crepidoma (topo = chão)
   for (let i = 0; i < steps; i++) {
     const w = L + (steps - i) * 2 * sw, d = W + (steps - i) * 2 * sw, a = new THREE.Vector3(0, 0, 0).applyMatrix4(F);

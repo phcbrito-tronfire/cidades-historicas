@@ -2,7 +2,7 @@
 // rebocadas, cômodos em volta de um pátio com altar, telhados de telha de barro caindo para dentro. Ruas estreitas
 // e tortas; as ruas principais ligam a ágora às portas. Algumas casas podem ser visitadas por dentro.
 import * as THREE from 'three';
-import { addBox } from '../comum/collision.js';
+import { addBox, addCircle } from '../comum/collision.js';
 import { terrainHeight } from './terrain.js';
 import { insideCity, distToWall } from './muralhas.js';
 import { STREETS, distToPolyline } from './ruas.js';
@@ -42,7 +42,7 @@ export function buildHouses(B, M, out) {
     const y = terrainHeight(x, z);
     const sl = Math.max(Math.abs(terrainHeight(x + 6, z) - terrainHeight(x - 6, z)), Math.abs(terrainHeight(x, z + 6) - terrainHeight(x, z - 6))) / 12;
     if (sl > 0.2 || y > 40) continue;
-    const w = rr(10.5, 14), d = rr(10, 13.5), ry = (fbm(x * 0.004, z * 0.004, 2) - 0.5) * 0.9 + (rand() < 0.5 ? 0 : Math.PI / 2);
+    const w = rr(11, 14.5), d = rr(10.5, 14), ry = (fbm(x * 0.004, z * 0.004, 2) - 0.5) * 0.3 + Math.floor(rand() * 4) * Math.PI / 2; // quarteirões quase alinhados, portas para os quatro lados
     courtyardHouse(B, M, x, y, z, w, d, ry, { rich: rand() < 0.15, two: rand() < 0.2 });
     placed.push([x, z, Math.max(w, d) / 2]);
     n++;
@@ -51,65 +51,99 @@ export function buildHouses(B, M, out) {
   out.houses = placed;
 }
 
-// casa de pátio. Frente (porta) no lado -z local; cômodos ao norte (+z local... ver P), pátio no meio
+// Casa ateniense de pátio (como as escavadas ao pé do Areópago e da Pnyx): por fora quase cega — paredes caiadas
+// de adobe sobre embasamento de pedra, janelinhas altas, uma porta de madeira recuada com verga de pedra; por
+// dentro, alas de cômodos em volta de um pátio a céu aberto (altar, cisterna), telhados de telha de uma água caindo
+// para o pátio e, diante da ala norte (a que pega o sol do inverno), o pórtico de madeira (pastas).
+// Local: frente (rua) em -z, fundos (norte da casa) em +z.
 function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   const c = Math.cos(ry), s = Math.sin(ry);
   const P = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
-  const H = 3.3, T = 0.5;
-  const wallMat = o.rich || o.visit ? M.plaster : rand() < 0.55 ? M.plasterOchre : M.plaster;
-  const wall = (lw, ld, lx, lz, h = H) => {
-    const [px, pz] = P(lx, lz), gy = Math.min(y, terrainHeight(px, pz));
-    B.box(M.socle, lw, 0.8 + (y - gy), ld, px, gy - 0.3, pz, { ry });
-    B.box(wallMat, lw, h - 0.5, ld, px, y + 0.5, pz, { ry });
-    addBox(px, pz, Math.abs(c) * lw + Math.abs(s) * ld, Math.abs(s) * lw + Math.abs(c) * ld, y - 1, y + h);
+  const H = 3.2, HX = H + 0.8, T = 0.45; // HX: parede externa, mais alta (o telhado cai para dentro)
+  const wallMat = o.rich || o.visit ? M.plaster : rand() < 0.5 ? M.plasterOchre : M.plaster;
+  const big = o.rich || o.visit || w * d > 150;
+  const nd = d * 0.36, sd = 2.4, ww = w * 0.27, ew = big ? w * 0.24 : 0;
+  const cx0 = -w / 2 + ww, cx1 = w / 2 - ew, cz0 = -d / 2 + sd, cz1 = d / 2 - nd; // o pátio
+  const pastas = 1.8;
+  const aabb = (lw, ld) => [Math.abs(c) * lw + Math.abs(s) * ld, Math.abs(s) * lw + Math.abs(c) * ld];
+  const wall = (x0, z0, x1, z1, h, mat = wallMat) => { // parede de (x0,z0) a (x1,z1), alinhada a x ou a z
+    const lw = Math.max(T, Math.abs(x1 - x0)), ld = Math.max(T, Math.abs(z1 - z0));
+    const [px, pz] = P((x0 + x1) / 2, (z0 + z1) / 2), gy = Math.min(y, terrainHeight(px, pz));
+    B.box(M.socle, lw + 0.04, 0.75 + (y - gy), ld + 0.04, px, gy - 0.3, pz, { ry });
+    B.box(mat, lw, h - 0.45, ld, px, y + 0.45, pz, { ry });
+    const [ax, az] = aabb(lw, ld); addBox(px, pz, ax, az, y - 1, y + h);
   };
-  const door = 1.5;
-  // muro externo: frente (-d/2) com porta, fundos e laterais
-  wall((w - door) / 2, T, -(w + door) / 4, -d / 2); wall((w - door) / 2, T, (w + door) / 4, -d / 2);
-  wall(w, T, 0, d / 2); wall(T, d, -w / 2, 0); wall(T, d, w / 2, 0);
-  // ala norte (fundos): 4,5 m de fundo, com divisórias e um pórtico de madeira (pastas) voltado para o pátio
-  const nd = 4.5, zN = d / 2 - nd;
-  wall(w - 3.2, T * 0.8, -1.6, zN); // parede do pórtico com passagem
-  for (const lx of [-w / 6, w / 6]) wall(T * 0.8, nd, lx, zN + nd / 2);
-  // ala oeste (cozinha e depósito) só nas casas maiores
-  const west = w > 12 || o.rich || o.visit;
-  if (west) { wall(T * 0.8, d - nd - 1.4, -w / 2 + 3.6, -0.7 - nd / 2 + 0.7); }
-  // telhados de uma água, caindo para o pátio
-  // telhados de uma água: a ala norte cai para o pátio (sul), a ala oeste cai para o pátio (leste)
-  const roof = (lw, ld, lx, lz, yy, rx, rz) => { const [px, pz] = P(lx, lz); B.box(M.tiles, lw, 0.2, ld, px, yy, pz, { ry, rx, rz: rz || 0 }); };
-  roof(w + 0.5, nd + 0.9, 0, d / 2 - nd / 2 + 0.15, y + H - 0.02, -0.2);
-  if (west) roof(4.2, d - nd - 0.3, -w / 2 + 1.75, -nd / 2 - 0.15, y + H - 0.3, 0.0001, -0.2);
-  if (o.two) { // segundo andar sobre a ala norte (quartos), com janelinhas
-    const [px, pz] = P(0, d / 2 - nd / 2);
-    B.box(wallMat, w, 2.6, nd, px, y + H, pz, { ry });
-    B.box(M.tiles, w + 0.6, 0.22, nd + 1.2, px, y + H + 2.6, pz, { ry, rx: -0.2 });
-    addBox(px, pz, Math.abs(c) * w + Math.abs(s) * nd, Math.abs(s) * w + Math.abs(c) * nd, y, y + H + 2.8);
+  // paredes com vãos: lista de aberturas [centro, largura] ao longo da parede
+  // parede acima de uma porta (do alto do vão até o topo da parede)
+  const over = (lx, lz, lw, ld, h) => { const [px, pz] = P(lx, lz); B.box(wallMat, lw, h - 2.35, ld, px, y + 2.35, pz, { ry }); };
+  const wallX = (x0, x1, zz, h, gaps = []) => { let a = x0; for (const [gc, gw] of gaps.sort((p, q) => p[0] - q[0])) { if (gc - gw / 2 > a + 0.05) wall(a, zz, gc - gw / 2, zz, h); over(gc, zz, gw + 0.02, T, h); a = gc + gw / 2; } if (x1 > a + 0.05) wall(a, zz, x1, zz, h); };
+  const wallZ = (z0, z1, xx, h, gaps = []) => { let a = z0; for (const [gc, gw] of gaps.sort((p, q) => p[0] - q[0])) { if (gc - gw / 2 > a + 0.05) wall(xx, a, xx, gc - gw / 2, h); over(xx, gc, T, gw + 0.02, h); a = gc + gw / 2; } if (z1 > a + 0.05) wall(xx, a, xx, z1, h); };
+  const doorX = (cx0 + cx1) / 2 + (rand() - 0.5) * 1.5;
+  // ---- paredes externas (a da rua com a porta), e os cômodos por dentro
+  wallX(-w / 2, w / 2, -d / 2, HX, [[doorX, 1.5]]);
+  wallX(-w / 2, w / 2, d / 2, HX); wallZ(-d / 2, d / 2, -w / 2, HX); wallZ(-d / 2, d / 2, w / 2, HX);
+  wallX(-w / 2, w / 2, cz1, H, [[cx0 + (cx1 - cx0) * 0.25, 1.1], [cx0 + (cx1 - cx0) * 0.75, 1.1]]); // fundo do pórtico, com portas para os cômodos
+  wallZ(cz0, cz1, cx0, H, [[(cz0 + cz1) / 2, 1.1]]); // ala oeste (cozinha, depósito)
+  if (ew) wallZ(cz0, cz1, cx1, H, [[(cz0 + cz1) / 2, 1.1]]); // ala leste (andrón, nas casas maiores)
+  wallX(-w / 2, w / 2, cz0, H, [[doorX, 1.5]]); // vestíbulo de entrada
+  wallZ(cz1, d / 2, (cx0 + cx1) / 2, H); // divisória dos quartos da ala norte
+  // ---- porta: folhas de madeira recuadas, soleira e verga de pedra
+  { const [px, pz] = P(doorX, -d / 2 + 0.05); B.box(M.marble, 1.9, 0.3, 0.6, ...P(doorX, -d / 2 - 0.05).slice(0, 1), y + 2.35, P(doorX, -d / 2 - 0.05)[1], { ry }); B.box(M.marble, 1.6, 0.12, 0.7, px, y, pz, { ry }); }
+  { const [px, pz] = P(doorX - 0.4, -d / 2 + 0.45); B.box(M.darkWood, 0.7, 2.3, 0.08, px, y, pz, { ry: ry + 0.35 }); }
+  { const [px, pz] = P(doorX + 0.4, -d / 2 + 0.45); B.box(M.darkWood, 0.7, 2.3, 0.08, px, y, pz, { ry: ry - 0.35 }); }
+  // ---- janelinhas altas (ficam acesas à noite)
+  const win = (lx, lz, alongX) => { const [px, pz] = P(lx, lz); B.box(M.window, alongX ? 0.5 : 0.1, 0.42, alongX ? 0.1 : 0.5, px, y + 2.55, pz, { ry }); };
+  win(-w / 4, -d / 2 - 0.2, true); win(w / 4, -d / 2 - 0.2, true); win(-w / 2 - 0.2, d / 4, false); win(w / 2 + 0.2, d / 4, false); win(0, d / 2 + 0.2, true);
+  // ---- pórtico (pastas): pilares de madeira diante da ala norte
+  const nPost = Math.max(2, Math.round((cx1 - cx0) / 2.6));
+  for (let i = 0; i < nPost; i++) {
+    const lx = cx0 + 0.4 + (i + 0.5) * ((cx1 - cx0 - 0.8) / nPost), [px, pz] = P(lx, cz1 - pastas);
+    B.geo(new THREE.CylinderGeometry(0.11, 0.13, H - 0.2, 8), M.wood, px, y + (H - 0.2) / 2, pz, { uv: false });
+    addCircle(px, pz, 0.14, y - 1, y + H);
   }
-  // pátio: piso de terra batida, altar de Zeus Herkeios e um poço/cisterna
-  { const [px, pz] = P(1.2, -0.6); B.box(M.marble, 0.8, 0.8, 0.6, px, y, pz, { ry }); addBox(px, pz, 0.8, 0.8, y, y + 0.8); }
-  if (o.rich || o.visit) { const [px, pz] = P(3.2, 0.8); B.geo(new THREE.CylinderGeometry(0.5, 0.55, 0.7, 14), M.poros, px, y + 0.35, pz); addBox(px, pz, 1.1, 1.1, y, y + 0.7); }
-  // hermas na porta das casas mais ricas
-  if (o.rich) { const [px, pz] = P(door / 2 + 0.6, -d / 2 - 0.6); B.box(M.marble, 0.32, 1.3, 0.28, px, y, pz, { ry }); B.geo(new THREE.SphereGeometry(0.15, 10, 8), M.marble, px, y + 1.45, pz); }
-  const out = { center: new V3(x, y, z), door: new V3(...(() => { const [a, b] = P(0, -d / 2 - 1.2); return [a, y, b]; })()), rect: null };
-  // retângulo aproximado (eixos do mundo) para saber quando o jogador entrou
+  // ---- telhados de uma água, do alto da parede externa até a beira do pátio
+  const roofZ = (lx0, lx1, zOut, zIn, yOut, yIn) => { // alas norte/sul: cai de zOut (alto) para zIn
+    const L = Math.abs(zOut - zIn), dy = yOut - yIn, len = Math.hypot(L, dy), ang = Math.atan2(dy, L) * Math.sign(zOut - zIn);
+    const [px, pz] = P((lx0 + lx1) / 2, (zOut + zIn) / 2); B.box(M.tiles, lx1 - lx0, 0.18, len, px, y + (yOut + yIn) / 2 - 0.09, pz, { ry, rx: -ang });
+  };
+  const roofX = (lz0, lz1, xOut, xIn, yOut, yIn) => { // alas leste/oeste
+    const L = Math.abs(xOut - xIn), dy = yOut - yIn, len = Math.hypot(L, dy), ang = Math.atan2(dy, L) * Math.sign(xOut - xIn);
+    const [px, pz] = P((xOut + xIn) / 2, (lz0 + lz1) / 2); B.box(M.tiles, len, 0.18, lz1 - lz0, px, y + (yOut + yIn) / 2 - 0.09, pz, { ry, rz: ang });
+  };
+  const two = o.two && !o.visit;
+  if (two) { // sobrado sobre a ala norte (quartos), com o telhado mais alto; o pórtico tem o seu, mais baixo
+    const top = HX + 2.6;
+    wallX(-w / 2, w / 2, d / 2, top); wallZ(cz1, d / 2, -w / 2, top); wallZ(cz1, d / 2, w / 2, top); wallX(-w / 2, w / 2, cz1, top);
+    win(-w / 4, cz1 - 0.2, true); win(w / 4, cz1 - 0.2, true);
+    roofZ(-w / 2 - 0.3, w / 2 + 0.3, d / 2 + 0.35, cz1 - 0.35, top + 0.75, top);
+    roofZ(cx0, cx1, cz1, cz1 - pastas - 0.35, H + 0.3, H - 0.25);
+  } else roofZ(-w / 2 - 0.3, w / 2 + 0.3, d / 2 + 0.35, cz1 - pastas - 0.35, HX + 0.1, H - 0.25);
+  roofX(cz0 - 0.05, cz1, -w / 2 - 0.35, cx0 + 0.4, HX + 0.1, H - 0.1);
+  if (ew) roofX(cz0 - 0.05, cz1, w / 2 + 0.35, cx1 - 0.4, HX + 0.1, H - 0.1);
+  roofZ(-w / 2 - 0.3, w / 2 + 0.3, -d / 2 - 0.35, cz0 + 0.4, HX + 0.1, H - 0.1);
+  // ---- pátio: chão de terra batida com seixos, altar de Zeus Herkeios e a boca da cisterna
+  { const [px, pz] = P((cx0 + cx1) / 2, (cz0 + cz1 - pastas) / 2); B.box(M.marble, 0.75, 0.8, 0.6, px, y, pz, { ry }); addBox(px, pz, 0.8, 0.8, y, y + 0.8); }
+  if (big) { const [px, pz] = P(cx1 - 1.2, cz0 + 1.2); B.geo(new THREE.CylinderGeometry(0.45, 0.5, 0.65, 14), M.poros, px, y + 0.32, pz); addBox(px, pz, 1, 1, y, y + 0.65); }
+  if (o.rich) { const [px, pz] = P(doorX + 1.3, -d / 2 - 0.5); B.box(M.marble, 0.3, 1.3, 0.26, px, y, pz, { ry }); B.geo(new THREE.SphereGeometry(0.15, 10, 8), M.marble, px, y + 1.45, pz); } // herma na porta
+  const out = { center: new V3(x, y, z), door: new V3(...(() => { const [a, b] = P(doorX, -d / 2 - 1.2); return [a, y, b]; })()), rect: null };
   const corners = [P(-w / 2, -d / 2), P(w / 2, -d / 2), P(-w / 2, d / 2), P(w / 2, d / 2)];
   out.rect = [Math.min(...corners.map((q) => q[0])), Math.max(...corners.map((q) => q[0])), Math.min(...corners.map((q) => q[1])), Math.max(...corners.map((q) => q[1]))];
-  if (o.visit) furnish(B, M, P, y, w, d, ry, nd);
+  if (o.visit) furnish(B, M, P, y, w, d, ry, nd, { cx0, cx1, cz0, cz1 });
   return out;
 }
 
-// móveis de uma casa visitável: andrón com sofás (klinai) e piso de seixos, tear, lareira, jarros, lamparinas
-function furnish(B, M, P, y, w, d, ry, nd) {
-  const zR = d / 2 - nd / 2;
-  // andrón (sala de banquete) na ala norte, à direita: sofás encostados nas paredes e mesinhas
-  { const [px, pz] = P(w / 3, zR); B.box(M.marble, w / 3 - 0.6, 0.04, nd - 0.6, px, y + 0.02, pz, { ry }); }
-  for (const [lx, lz] of [[w / 3 - 1.2, zR + nd / 2 - 0.9], [w / 3 + 1.2, zR + nd / 2 - 0.9]]) {
-    const [px, pz] = P(lx, lz); B.box(M.wood, 1.9, 0.55, 0.85, px, y, pz, { ry }); B.box(M.awning[1], 1.9, 0.14, 0.85, px, y + 0.55, pz, { ry }); addBox(px, pz, 1.9, 1.9, y, y + 0.7);
-    const [tx, tz] = P(lx, lz - 1.0); B.box(M.darkWood, 0.9, 0.5, 0.5, tx, y, tz, { ry });
+// móveis de uma casa visitável: andrón com sofás (klinai) e piso de seixos, tear, fogareiro, jarros
+function furnish(B, M, P, y, w, d, ry, nd, R) {
+  // andrón na ala leste: sofás encostados nas paredes, mesinhas e o piso de seixos
+  const ax = (R.cx1 + w / 2) / 2, az = (R.cz0 + R.cz1) / 2;
+  { const [px, pz] = P(ax, az); B.box(M.marble, w / 2 - R.cx1 - 0.6, 0.04, R.cz1 - R.cz0 - 0.6, px, y + 0.02, pz, { ry }); }
+  for (const dz of [-1.3, 1.3]) {
+    const [px, pz] = P(w / 2 - 0.75, az + dz); B.box(M.wood, 0.85, 0.55, 1.9, px, y, pz, { ry }); B.box(M.awning[1], 0.85, 0.14, 1.9, px, y + 0.55, pz, { ry }); addBox(px, pz, 1.9, 1.9, y, y + 0.7);
+    const [tx, tz] = P(w / 2 - 1.75, az + dz); B.box(M.darkWood, 0.5, 0.5, 0.9, tx, y, tz, { ry });
   }
-  // gineceu (quarto das mulheres) à esquerda: tear vertical com pesos de barro e um cesto de lã
-  { const [px, pz] = P(-w / 3, zR + 0.8); B.box(M.wood, 0.08, 1.9, 0.08, px - 0.8, y, pz, { ry }); B.box(M.wood, 0.08, 1.9, 0.08, px + 0.8, y, pz, { ry }); B.box(M.wood, 1.8, 0.08, 0.08, px, y + 1.85, pz, { ry }); B.box(M.cloth('#c8b48a', '#7a2a1e'), 1.5, 1.3, 0.02, px, y + 0.5, pz, { ry }); addBox(px, pz, 1.8, 1, y, y + 1.9); }
-  // cozinha (ala oeste): fogareiro, pithos de grãos e ânforas
-  { const [px, pz] = P(-w / 2 + 1.8, -1.6); B.box(M.mudbrick, 1.2, 0.7, 0.9, px, y, pz, { ry }); addBox(px, pz, 1.2, 1, y, y + 0.7); }
-  { const [px, pz] = P(-w / 2 + 1.6, 0.8); const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.15 + Math.sin(t * Math.PI) * 0.42, t * 1.3)); } B.geo(new THREE.LatheGeometry(pts, 14), M.terracotta, px, y, pz); addBox(px, pz, 1, 1, y, y + 1.3); }
+  // quarto das mulheres (ala norte, à esquerda): tear vertical com pesos de barro
+  { const [px, pz] = P(-w / 4, d / 2 - 0.9); B.box(M.wood, 0.08, 1.9, 0.08, px - 0.8, y, pz, { ry }); B.box(M.wood, 0.08, 1.9, 0.08, px + 0.8, y, pz, { ry }); B.box(M.wood, 1.8, 0.08, 0.08, px, y + 1.85, pz, { ry }); B.box(M.cloth('#c8b48a', '#7a2a1e'), 1.5, 1.3, 0.02, px, y + 0.5, pz, { ry }); addBox(px, pz, 1.8, 1, y, y + 1.9); }
+  // cozinha (ala oeste): fogareiro e o pithos de grãos
+  { const [px, pz] = P(-w / 2 + 1.2, R.cz0 + 1.2); B.box(M.mudbrick, 1.2, 0.7, 0.9, px, y, pz, { ry }); addBox(px, pz, 1.2, 1, y, y + 0.7); }
+  { const [px, pz] = P(-w / 2 + 1.2, R.cz1 - 1.0); const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.15 + Math.sin(t * Math.PI) * 0.42, t * 1.3)); } B.geo(new THREE.LatheGeometry(pts, 14), M.terracotta, px, y, pz); addBox(px, pz, 1, 1, y, y + 1.3); }
 }

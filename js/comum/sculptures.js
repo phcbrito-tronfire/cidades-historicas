@@ -56,6 +56,7 @@ export async function placeSculptures(scene, list) {
   const names = [...new Set(list.map((s) => s.model))];
   const base = {};
   await Promise.all(names.map(async (n) => { base[n] = await unitModel(n); }));
+  const placed = [];
   for (const s of list) {
     if (!base[s.model]) continue;
     const o = base[s.model].clone();
@@ -65,7 +66,9 @@ export async function placeSculptures(scene, list) {
     holder.add(o);
     holder.traverse((n) => { if (n.isMesh) n.layers.set(MODELS[s.model].layer); });
     scene.add(holder);
+    placed.push({ s, holder });
   }
+  return placed;
 }
 
 // o modelo normalizado (tamanho 1), ou null se não existir / não carregar

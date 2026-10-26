@@ -170,6 +170,10 @@ export function buildAcropolis(B, M, out) {
     scaffold(B, M, X0 - 1.8, Y, -Wd / 2 - 1.2, 4, 12);
     crane(B, M, X0 - 10, top(X0 - 10, -16), -16, 16);
     for (let i = 0; i < 9; i++) { const x = X0 - 14 + rr(-6, 8), z = rr(-24, -14), y = top(x, z); marbleBlock(B, M, x, y, z); }
+    // escadaria do pórtico leste até o planalto (o piso dos Propileus fica abaixo do alto da rocha)
+    { const run = 0.4; let n = 1, target = Y; for (; n < 30; n++) { target = top(X1 + 1 + n * run, 0); if (target <= Y + n * 0.2) break; }
+      const rise = (top(X1 + 1 + n * run, 0) - Y) / n;
+      for (let i = 0; i < n; i++) { const x = X1 + 1.2 + i * run, yt = Y + rise * (i + 1); B.box(M.marble, run + 0.02, yt - Y + 0.6, 12, x, Y - 0.6, 0); addBox(x, 0, run, 12, Y - 2, yt); } }
     out.zones.propileus = [X0 - 4, X1 + 2, -Wd / 2 - 2, Wd / 2 + 2];
     S.mnesicles = new V3(X0 - 8, top(X0 - 8, -12), -12);
   }

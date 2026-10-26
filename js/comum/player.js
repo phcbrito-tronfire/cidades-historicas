@@ -115,6 +115,63 @@ export class Player {
     }
   }
 
+  // Crawl procedural: cada braço segue um arco (entra na água à frente, puxa por baixo do corpo até o quadril e
+  // volta por cima, com o cotovelo alto), meio ciclo defasado do outro; resolvido com IK de dois ossos.
+  crawl(dt, on, speed) {
+    const C = this.crawlS || (this.crawlS = { w: 0, ph: 0, v: [0, 1, 2, 3, 4, 5, 6].map(() => new THREE.Vector3()), q: new THREE.Quaternion(), q2: new THREE.Quaternion() });
+    C.w = on ? Math.min(1, C.w + dt * 2.5) : Math.max(0, C.w - dt * 4);
+    if (C.w <= 0.001) return;
+    const B = this.rig.bones; if (!B.LeftArm || !B.RightArm) return;
+    C.ph = (C.ph + dt * Math.min(1.3, 0.42 + speed * 0.3)) % 1;
+    this.rig.root.updateMatrixWorld(true);
+    const f = new THREE.Vector3(Math.sin(this.facing), 0, Math.cos(this.facing)), u = new THREE.Vector3(0, 1, 0), right = new THREE.Vector3().crossVectors(f, u);
+    const w = C.w, PI = Math.PI;
+    // gira um osso para o eixo dele (direção até o filho) apontar para 'target' (no mundo), com peso w
+    const aim = (bone, child, target) => {
+      const bp = bone.getWorldPosition(C.v[0]), cp = child.getWorldPosition(C.v[1]);
+      const cur = cp.sub(bp).normalize(), want = C.v[2].copy(target).sub(bp).normalize();
+      const dq = C.q.setFromUnitVectors(cur, want);
+      const wq = bone.getWorldQuaternion(new THREE.Quaternion()).premultiply(dq);
+      const pq = bone.parent.getWorldQuaternion(C.q2).invert();
+      bone.quaternion.slerp(pq.multiply(wq), w);
+      bone.updateMatrixWorld(true);
+    };
+    const turn = (bone, axis, ang) => { // gira em torno de um eixo do mundo
+      if (!bone) return;
+      const wq = bone.getWorldQuaternion(new THREE.Quaternion()).premultiply(new THREE.Quaternion().setFromAxisAngle(axis, ang * w));
+      bone.quaternion.copy(bone.parent.getWorldQuaternion(C.q2).invert().multiply(wq));
+      bone.updateMatrixWorld(true);
+    };
+    // rolamento do tronco acompanhando as braçadas
+    turn(B.Spine1 || B.Spine, f, 0.32 * Math.sin(C.ph * 2 * PI));
+    for (const [side, s, off] of [['Left', -1, 0], ['Right', 1, 0.5]]) {
+      const arm = B[side + 'Arm'], fore = B[side + 'ForeArm'], hand = B[side + 'Hand'];
+      if (!arm || !fore || !hand) continue;
+      const S = arm.getWorldPosition(new THREE.Vector3());
+      const L1 = S.distanceTo(fore.getWorldPosition(C.v[3])), L2 = C.v[3].distanceTo(hand.getWorldPosition(C.v[4]));
+      const lat = right.clone().multiplyScalar(s);
+      const p = (C.ph + off) % 1;
+      const T = S.clone(), pole = new THREE.Vector3();
+      if (p < 0.56) { const t = p / 0.56; T.addScaledVector(f, 0.62 - 0.98 * t).addScaledVector(u, -0.16 - 0.24 * Math.sin(PI * t)).addScaledVector(lat, -0.1 * Math.sin(PI * t)); pole.copy(lat).multiplyScalar(0.7).addScaledVector(u, -0.3); }
+      else { const t = (p - 0.56) / 0.44; T.addScaledVector(f, -0.36 + 0.98 * t).addScaledVector(u, 0.04 + 0.2 * Math.sin(PI * t)).addScaledVector(lat, 0.16 * Math.sin(PI * t)); pole.copy(u).addScaledVector(lat, 0.5); }
+      // IK de dois ossos: onde fica o cotovelo
+      const d = Math.min(L1 + L2 - 0.005, Math.max(0.05, S.distanceTo(T)));
+      const dir = T.clone().sub(S).normalize(); T.copy(S).addScaledVector(dir, d);
+      const cosA = THREE.MathUtils.clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1), sinA = Math.sqrt(1 - cosA * cosA);
+      const pp = pole.sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+      const E = S.clone().addScaledVector(dir, L1 * cosA).addScaledVector(pp, L1 * sinA);
+      aim(arm, fore, E);
+      aim(fore, hand, T);
+    }
+    // cabeça vira para respirar quando o braço direito sai da água (uma respiração a cada ciclo)
+    const pr = (C.ph + 0.5) % 1, breathe = pr > 0.5 ? Math.sin(((pr - 0.5) / 0.5) * PI) : 0;
+    turn(B.Neck, f, -0.5 * breathe); turn(B.Head, f, -0.45 * breathe);
+    // pernada: as pernas batem alternadas, três vezes por ciclo de braços
+    const k = Math.sin(C.ph * 6 * PI);
+    turn(B.LeftUpLeg, right, 0.28 * k); turn(B.RightUpLeg, right, -0.28 * k);
+    turn(B.LeftLeg, right, 0.18 * Math.max(0, -k)); turn(B.RightLeg, right, 0.18 * Math.max(0, k));
+  }
+
   // braçadas e pernadas de verdade: os respingos saem de onde a mão entra na água e a espuma de onde os pés batem
   trackSwimLimbs(wl, speed, dt) {
     const B = this.rig.bones;
@@ -219,7 +276,7 @@ export class Player {
     const depth = wl - ground;
 
     if (this.swimming) {
-      const surfY = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
+      const surfY = wl - 0.6; // costas rente à superfície (crawl); a cabeça sai para respirar e as mãos rompem a água a cada braçada
       // mergulho: Espaço afunda (onde há fundo suficiente); embaixo d'água, Espaço sobe e Ctrl desce mais
       const sp = this.key('Space') && !this.locked;
       if (sp && !this.spaceHeld) {
@@ -301,7 +358,6 @@ export class Player {
     if (this.swingT > 0) { this.swingT = 0; playOnce(this.rig, 'Sword_Attack', 0.9); }
     if (this.pickT > 0) { this.pickT = 0; playOnce(this.rig, 'PickUp_Table', 0.8); }
     animateHumanoid(this.rig, dt, realSpeed, mode, t);
-    if (this.swimming && !this.diving) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
     this.rig.root.rotation.y = this.facing;
     // inclina o corpo nas curvas e ao acelerar
     const leanT = this.swimming ? 0 : clamp(-omega * realSpeed * 0.018, -0.22, 0.22);
@@ -312,6 +368,9 @@ export class Player {
     const pitchT = this.diving ? clamp(-this.diveVy * 0.32, -0.55, 0.7) : this.swimming ? -0.13 : !this.onGround ? 0 : clamp(this.accelNow * 0.012, -0.07, 0.1) + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 0.07;
     this.pitch = lerp(this.pitch || 0, pitchT, Math.min(1, dt * 5));
     this.rig.model.rotation.x = this.pitch;
+    // nado crawl por cima da animação (braços alternados, ombros girando, cabeça respirando de lado, pernas batendo)
+    this.crawl(dt, this.swimming && !this.diving && realSpeed > 0.25, realSpeed);
+    if (this.swimming && !this.diving) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
     // a câmera abre um pouco no sprint (sensação de velocidade)
     const fovT = 60 + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 6;
     if (Math.abs(this.camera.fov - fovT) > 0.05) { this.camera.fov = lerp(this.camera.fov, fovT, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix(); }

@@ -22,7 +22,9 @@ import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { Boats } from './barcos.js';
 import { nextFrame, pick, rr, rand, ver } from '../comum/util.js';
-import { groundAt, waterAt } from '../comum/collision.js';
+import { groundAt, waterAt, addBox } from '../comum/collision.js';
+import { collideModel } from '../comum/pisomodelo.js';
+import { HEPH } from './terrain.js';
 
 // modelos do Sketchfab (CC BY / CC0, créditos no menu): o que não existir simplesmente não aparece (ou vira peça feita aqui)
 const DIR = 'assets/models/gregos/';
@@ -30,7 +32,6 @@ const MODEL_TABLE = {
   partenos: { yaw: -Math.PI / 2, fit: 'y', rough: 0.35, keepMetal: true, env: 1.4 },
   promachos: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.6, 0.42, 0.26], metal: 0.85, env: 1.2 },
   frontao: { yaw: Math.PI / 2, fit: 'z', rough: 0.6, tint: [3.4, 3.3, 3.1] }, // fileira de figuras ao longo do frontão, de frente para o leste
-  hefesteion: { yaw: 0, rough: 0.6 },
   kore: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 }, kouros: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 },
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
   zeus_bronze: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.62, 0.46, 0.3], metal: 0.8 },
@@ -110,7 +111,7 @@ async function main() {
   const city = buildCity(scene, tex, avail);
   await step(0.55, 'Plantando oliveiras e ciprestes...');
   await buildVegetation(scene, tex, city);
-  await placeSculptures(scene, city.sculptures.filter((s) => avail.has(s.model)));
+  const placed = await placeSculptures(scene, city.sculptures.filter((s) => avail.has(s.model)));
   scatterProps(scene, city);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx);
@@ -448,6 +449,35 @@ async function main() {
 }
 
 // ---------------------------------------------------------------------------
+// Hefesteion modelado: piso, colunas e paredes tirados da forma do modelo; os degraus do crepidoma são altos demais
+// para andar (como nos templos de verdade), então na frente leste há uma escada de degraus baixos até o estilobata
+async function templeCollision(scene, city, placed) {
+  const h = placed.find((p) => p.s.model === 'hefesteion');
+  if (!h) return;
+  try {
+    const base = HEPH.y + 0.2;
+    const col = await collideModel(h.holder, { y0: HEPH.y, cell: 0.5, scanH: 3.4 });
+    const b = col.box, front = b.max.x;
+    // altura do estilobata: o piso logo depois da primeira fila de colunas, no meio da fachada
+    let top = NaN;
+    for (let d = 2; d < 6 && Number.isNaN(top); d += 0.5) { const f = col.floorAt(front - d, HEPH.z); if (f > base + 0.3) top = f; }
+    if (Number.isNaN(top)) top = base + 1.6;
+    const n = Math.max(3, Math.ceil((top - base) / 0.2)), rise = (top - base) / n, run = 0.38, W = 5;
+    const mat = new THREE.MeshStandardMaterial({ map: getTextures().plainMarble, color: 0xfff6ea, roughness: 0.55 });
+    const g = new THREE.Group();
+    for (let i = 0; i < n; i++) {
+      const x = front - 0.2 + (n - i) * run - run / 2, y = base + rise * (i + 1);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(run + 0.02, y - base + 0.05, W), mat);
+      m.position.set(x, base + (y - base) / 2 - 0.025, HEPH.z); m.castShadow = true; m.receiveShadow = true; g.add(m);
+      addBox(x, HEPH.z, run, W, base - 1, y);
+    }
+    // a última faixa entra um pouco no estilobata (sem degrau entre a escada e o piso do templo)
+    addBox(front - 0.6, HEPH.z, 1.2, W, base - 1, top);
+    scene.add(g);
+    console.info('Hefesteion: colisão com', col.boxes, 'caixas; estilobata a', (top - base).toFixed(2), 'm');
+  } catch (e) { console.warn('colisão do Hefesteion', e); }
+}
+
 function spawnItems(items, city) {
   const S = city.spots;
   for (const s of city.stalls) {
