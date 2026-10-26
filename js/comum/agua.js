@@ -57,7 +57,7 @@ export function makeWater(o) {
       float clear = 1.0 - exp(-path / uClarity);
       // perto de quem nada a água se abre um pouco (dá para ver o corpo e as pernas batendo)
       float dS = length(worldPosition.xz - uSwim.xz);
-      clear *= 1.0 - uSwim.w * 0.45 * (1.0 - smoothstep(0.6, 2.6, dS));
+      clear *= 1.0 - uSwim.w * 0.22 * (1.0 - smoothstep(0.5, 1.8, dS));
       vec3 body = mix(uShallow, waterColor, smoothstep(0.5, 9.0, depth));
       vec3 surf = mix((sunColor * diffuseLight * 0.3 + max(0.0, dot(surfaceNormal, eyeDirection)) * body) * getShadowMask(),
                       (vec3(0.1) + reflectionSample * 0.9 + reflectionSample * specularLight), reflectance);

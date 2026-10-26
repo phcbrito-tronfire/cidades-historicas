@@ -26,14 +26,33 @@ export function addCircle(x, z, r, bottom, top) {
 }
 export function addPyramid(x, z, half, h, baseY) { pyramids.push({ x, z, half, h, baseY }); }
 
+// grade espacial (células de 8 m): cada consulta olha só as caixas e círculos da célula, e não os milhares da cidade
+const CELL = 8, grid = new Map(), NONE = { b: [], c: [] };
+let gridN = -1;
+const key = (i, j) => i * 100003 + j;
+function rebuild() {
+  grid.clear(); gridN = boxes.length + circles.length;
+  const put = (o, list, x0, x1, z0, z1) => {
+    const i0 = Math.floor(x0 / CELL), i1 = Math.floor(x1 / CELL), j0 = Math.floor(z0 / CELL), j1 = Math.floor(z1 / CELL);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j); let c = grid.get(k); if (!c) grid.set(k, (c = { b: [], c: [] })); c[list].push(o); }
+  };
+  const M = 1.3; // folga para o raio de quem se move (até 1,2 m)
+  for (const b of boxes) put(b, 'b', b.minX - M, b.maxX + M, b.minZ - M, b.maxZ + M);
+  for (const c of circles) put(c, 'c', c.x - c.r - M, c.x + c.r + M, c.z - c.r - M, c.z + c.r + M);
+}
+function cellAt(x, z) {
+  if (gridN !== boxes.length + circles.length) rebuild();
+  return grid.get(key(Math.floor(x / CELL), Math.floor(z / CELL))) || NONE;
+}
+
 export function groundAt(x, z, feetY) {
   let g = terrainFn(x, z);
-  const lim = feetY + STEP;
-  for (const b of boxes) {
+  const lim = feetY + STEP, C = cellAt(x, z);
+  for (const b of C.b) {
     if (!b.enabled || b.noFloor) continue;
     if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ && b.top <= lim && b.top > g) g = b.top;
   }
-  for (const c of circles) {
+  for (const c of C.c) {
     if (!c.enabled) continue;
     const dx = x - c.x, dz = z - c.z;
     if (dx * dx + dz * dz <= c.r * c.r && c.top <= lim && c.top > g) g = c.top;
@@ -43,12 +62,12 @@ export function groundAt(x, z, feetY) {
 
 export function blocked(x, z, feetY, r = 0.35, height = 1.75) {
   const lim = feetY + STEP;
-  const head = feetY + height;
-  for (const b of boxes) {
+  const head = feetY + height, C = cellAt(x, z);
+  for (const b of C.b) {
     if (!b.enabled || b.top <= lim || b.bottom >= head) continue;
     if (x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) return true;
   }
-  for (const c of circles) {
+  for (const c of C.c) {
     if (!c.enabled || c.top <= lim || c.bottom >= head) continue;
     const dx = x - c.x, dz = z - c.z, rr = c.r + r;
     if (dx * dx + dz * dz < rr * rr) return true;
@@ -66,7 +85,8 @@ export function blocked(x, z, feetY, r = 0.35, height = 1.75) {
 // Ponto dentro de algo sólido (usado para a câmera não atravessar paredes)
 export function solidAt(x, y, z) {
   if (y < terrainFn(x, z) + 0.2) return true;
-  for (const b of boxes) {
+  const C = cellAt(x, z);
+  for (const b of C.b) {
     if (!b.enabled || b.camPass) continue;
     if (y > b.bottom && y < b.top && x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return true;
   }

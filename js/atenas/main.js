@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
+import { warmUp } from '../comum/aquecer.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
@@ -21,6 +22,8 @@ import { Items } from './items.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { Boats } from './barcos.js';
+import { buildSea } from './mar.js';
+import { Health, faint } from '../comum/vida.js';
 import { nextFrame, pick, rr, rand, ver } from '../comum/util.js';
 import { groundAt, waterAt, addBox } from '../comum/collision.js';
 import { collideModel } from '../comum/pisomodelo.js';
@@ -30,7 +33,8 @@ import { HEPH } from './terrain.js';
 const DIR = 'assets/models/gregos/';
 const MODEL_TABLE = {
   partenos: { yaw: -Math.PI / 2, fit: 'y', rough: 0.35, keepMetal: true, env: 1.4 },
-  promachos: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.6, 0.42, 0.26], metal: 0.85, env: 1.2 },
+  promachos: { rot: [0.17, 0, 0], yaw: Math.PI / 2, fit: 'y', // o escaneamento veio inclinado ~10° (base e corpo): endireitado
+    rough: 0.4, tint: [0.6, 0.42, 0.26], metal: 0.85, env: 1.2 },
   frontao: { yaw: Math.PI / 2, fit: 'z', rough: 0.6, tint: [3.4, 3.3, 3.1] }, // fileira de figuras ao longo do frontão, de frente para o leste
   kore: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 }, kouros: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 },
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
@@ -115,6 +119,8 @@ async function main() {
   scatterProps(scene, city);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx);
+  const health = new Health({ onDeath: () => onDeath() });
+  const sea = await buildSea(scene, tex, { onSting: () => { health.damage(12); ui.toast('Ai! Uma água-viva — queima como fogo. Cuidado com elas.'); } });
 
   await step(0.68, 'Reunindo o povo de Atenas...');
   const actors = new Actors(scene, city);
@@ -173,7 +179,7 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   water.layers.set(1);
-  renderer.compile(scene, camera);
+  warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   await step(1, 'Pronto!');
   ui.doneLoading();
 
@@ -181,7 +187,7 @@ async function main() {
   let started = false, paused = false, mapOpen = false, ended = quests.isDone('pericles');
   const seenItems = new Set();
   ui.showIntro(() => {
-    started = true;
+    started = true; health.show(true); health.render();
     if (isTouch) { setupTouch(player); ui.toggleJournal(); }
     else if (canTouch) addEventListener('touchstart', () => setupTouch(player), { once: true, passive: true });
     audio.start();
@@ -242,7 +248,10 @@ async function main() {
 
   // ---------------- barcos ----------------
   const boardOrLeave = () => {
-    if (boats.riding) { boats.leave(player, S.quay); ui.toast('Você desembarcou.'); return true; }
+    if (boats.riding) {
+      if (!boats.canLeave()) { ui.toast('A Páralos está no meio da baía — espere ela voltar ao cais para descer.'); return true; }
+      boats.leave(player, S.quay); ui.toast('Você desembarcou.'); return true;
+    }
     const b = boats.nearestBoardable(player.pos);
     if (!b) return false;
     boats.board(player, b);
@@ -274,7 +283,10 @@ async function main() {
     const it = player.holding; if (!it) return;
     if (it.food) {
       items.remove(it); player.holding = null; ui.setHand(null); audio.pickup();
-      ui.toast(it.eat);
+      const healed = health.eat(it.type);
+      ui.toast(it.eat + (healed ? ` (+${healed} de vida)` : ''));
+      // a barraca repõe a comida depois de um tempo
+      const h = it.home; if (h) setTimeout(() => items.spawn(it.type, h.x, h.y, h.z, rand() * 6), 90000);
       if (it.type === 'figos') quests.complete('mirrina');
       return;
     }
@@ -370,7 +382,29 @@ async function main() {
     return 'Atenas';
   };
 
-  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, tp: (x, z, f) => player.place(x, z, f) };
+  // ---------------- vida ----------------
+  const onDeath = () => {
+    player.locked = true; boats.riding && boats.leave(player, S.quay);
+    faint('Você desmaiou... e acordou de volta na ágora, com a cabeça doendo.', () => {
+      player.diving = false; player.swimming = false; player.breath = 30;
+      player.place(start.x - 8, start.z + 14, Math.PI * 0.85); health.revive(70); player.locked = false;
+    });
+  };
+  let siteSeen = false, urchinCd = 0;
+  const lifeUpdate = (dt) => {
+    health.update(dt, player);
+    // ouriço: pisar descalço dói
+    urchinCd -= dt;
+    if (urchinCd <= 0 && player.wading && !player.swimming) {
+      for (const u of sea.urchins) if ((u.x - player.pos.x) ** 2 + (u.z - player.pos.z) ** 2 < 0.4 * 0.4) { urchinCd = 1.5; health.damage(6); ui.toast('Ai! Pisou num ouriço-do-mar.'); break; }
+    }
+    if (!siteSeen && sea.site && player.diving && (player.pos.x - sea.site.x) ** 2 + (player.pos.z - sea.site.z) ** 2 < 14 * 14) {
+      siteSeen = true;
+      artifacts.showInfo({ tag: 'Naufrágio', name: 'A carga de colunas', era: 'Baía do Falero', story: 'Tambores de coluna e capitéis de mármore espalhados no fundo, entre ânforas e as costelas de um casco apodrecido. Um navio de carga afundou aqui levando as peças desmontadas de um templo — as colunas viajavam assim, em tambores, e eram montadas no lugar. Naufrágios com cargas de mármore foram encontrados em vários pontos do Mediterrâneo.', foot: 'Volte à tona antes que o fôlego acabe.' });
+    }
+  };
+
+  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -414,6 +448,8 @@ async function main() {
       if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     }
     actors.update(dt, t, player, quests, sky.state.night);
+    sea.update(dt, t, player);
+    if (started) lifeUpdate(dt);
     items.update(t, player.pos);
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
@@ -431,7 +467,7 @@ async function main() {
         parts.push(`<kbd>E</kbd> Falar com ${nm}`);
       }
       if (bt) parts.push(`<kbd>E</kbd> Embarcar ${bt.model === 'trirreme' ? 'na trirreme ' + (bt.name || '') : 'no ' + (bt.name || 'barco')}`);
-      if (boats.riding) parts.push(boats.riding.model === 'trirreme' ? '<kbd>E</kbd> Desembarcar' : '<kbd>↑↓←→</kbd> Remar · <kbd>E</kbd> Desembarcar');
+      if (boats.riding) parts.push(boats.riding.model === 'trirreme' ? (boats.canLeave() ? '<kbd>E</kbd> Desembarcar' : 'Passeio pela baía — desce-se no cais · arraste o mouse para olhar') : '<kbd>↑↓</kbd> Remar · <kbd>←→</kbd> Leme · <kbd>E</kbd> Desembarcar');
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));
       ui.setPlace(placeName());

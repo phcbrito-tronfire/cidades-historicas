@@ -1,7 +1,7 @@
 // O explorador: movimento (setas), pulo (espaço), nado no Nilo e câmera em terceira pessoa
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
-import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt } from './collision.js';
+import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
 
 // tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
@@ -117,15 +117,17 @@ export class Player {
 
   // Crawl procedural: cada braço segue um arco (entra na água à frente, puxa por baixo do corpo até o quadril e
   // volta por cima, com o cotovelo alto), meio ciclo defasado do outro; resolvido com IK de dois ossos.
-  crawl(dt, on, speed) {
-    const C = this.crawlS || (this.crawlS = { w: 0, ph: 0, v: [0, 1, 2, 3, 4, 5, 6].map(() => new THREE.Vector3()), q: new THREE.Quaternion(), q2: new THREE.Quaternion() });
+  // Parado na água (tread): o corpo de pé, as mãos remando em "oito" na altura do peito e as pernas pedalando.
+  crawl(dt, on, speed, tread = false) {
+    const C = this.crawlS || (this.crawlS = { w: 0, tw: 0, ph: 0, tp: 0, v: [0, 1, 2, 3, 4, 5, 6].map(() => new THREE.Vector3()), q: new THREE.Quaternion(), q2: new THREE.Quaternion() });
     C.w = on ? Math.min(1, C.w + dt * 2.5) : Math.max(0, C.w - dt * 4);
-    if (C.w <= 0.001) return;
+    C.tw = tread ? Math.min(1, C.tw + dt * 2) : Math.max(0, C.tw - dt * 4);
+    if (C.w <= 0.001 && C.tw <= 0.001) return;
     const B = this.rig.bones; if (!B.LeftArm || !B.RightArm) return;
     C.ph = (C.ph + dt * Math.min(1.3, 0.42 + speed * 0.3)) % 1;
     this.rig.root.updateMatrixWorld(true);
     const f = new THREE.Vector3(Math.sin(this.facing), 0, Math.cos(this.facing)), u = new THREE.Vector3(0, 1, 0), right = new THREE.Vector3().crossVectors(f, u);
-    const w = C.w, PI = Math.PI;
+    let w = C.w; const PI = Math.PI;
     // gira um osso para o eixo dele (direção até o filho) apontar para 'target' (no mundo), com peso w
     const aim = (bone, child, target) => {
       const bp = bone.getWorldPosition(C.v[0]), cp = child.getWorldPosition(C.v[1]);
@@ -142,6 +144,35 @@ export class Player {
       bone.quaternion.copy(bone.parent.getWorldQuaternion(C.q2).invert().multiply(wq));
       bone.updateMatrixWorld(true);
     };
+    // IK de dois ossos: põe a mão em T com o cotovelo do lado de 'pole'
+    const armIK = (side, T, pole) => {
+      const arm = B[side + 'Arm'], fore = B[side + 'ForeArm'], hand = B[side + 'Hand'];
+      if (!arm || !fore || !hand) return;
+      const S = arm.getWorldPosition(new THREE.Vector3());
+      const L1 = S.distanceTo(fore.getWorldPosition(C.v[3])), L2 = C.v[3].distanceTo(hand.getWorldPosition(C.v[4]));
+      const d = Math.min(L1 + L2 - 0.005, Math.max(0.05, S.distanceTo(T)));
+      const dir = T.clone().sub(S).normalize(); T.copy(S).addScaledVector(dir, d);
+      const cosA = THREE.MathUtils.clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1), sinA = Math.sqrt(1 - cosA * cosA);
+      const pp = pole.sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+      aim(arm, fore, S.clone().addScaledVector(dir, L1 * cosA).addScaledVector(pp, L1 * sinA));
+      aim(fore, hand, T);
+    };
+    if (C.tw > 0.001) {
+      w = C.tw; C.tp += dt * 1.6;
+      for (const [side, s] of [['Left', -1], ['Right', 1]]) {
+        const sh = B[side + 'Arm']; if (!sh) continue;
+        const S = sh.getWorldPosition(new THREE.Vector3()), lat = right.clone().multiplyScalar(s);
+        const a = C.tp * 2 * PI + (s > 0 ? PI : 0);
+        const T = S.clone().addScaledVector(f, 0.28 + 0.08 * Math.sin(a * 2)).addScaledVector(lat, 0.1 + 0.14 * Math.sin(a)).addScaledVector(u, -0.3);
+        armIK(side, T, lat.clone().multiplyScalar(0.6).addScaledVector(u, -0.5).addScaledVector(f, -0.3));
+      }
+      // pernas pedalando (eggbeater): coxas para a frente, joelhos dobrados, alternadas
+      const e = Math.sin(C.tp * 2 * PI);
+      turn(B.LeftUpLeg, right, -0.55 - 0.2 * e); turn(B.RightUpLeg, right, -0.55 + 0.2 * e);
+      turn(B.LeftLeg, right, 0.8 + 0.3 * e); turn(B.RightLeg, right, 0.8 - 0.3 * e);
+      w = C.w;
+    }
+    if (C.w <= 0.001) return;
     // rolamento do tronco acompanhando as braçadas
     turn(B.Spine1 || B.Spine, f, 0.32 * Math.sin(C.ph * 2 * PI));
     for (const [side, s, off] of [['Left', -1, 0], ['Right', 1, 0.5]]) {
@@ -225,7 +256,44 @@ export class Player {
 
   key(...codes) { return codes.some((c) => this.keys.has(c)); }
 
+  // sair da água: nadando contra um cais, uma pedra ou um barranco (até ~2,3 m acima da água), o explorador
+  // apoia as mãos na borda, ergue o corpo e sobe — sem precisar achar uma praia
+  tryClimb(wl) {
+    const p = this.pos, fx = Math.sin(this.facing), fz = Math.cos(this.facing);
+    for (const d of [0.5, 0.85]) {
+      const ax = p.x + fx * d, az = p.z + fz * d;
+      const top = groundAt(ax, az, wl + 2.3);
+      if (top < wl - 0.3 || top > wl + 2.3) continue;
+      const lx = p.x + fx * (d + 0.5), lz = p.z + fz * (d + 0.5);
+      const land = groundAt(lx, lz, top + 0.3);
+      if (Math.abs(land - top) > 0.5 || waterAt(lx, lz) - land > 0.8 || blocked(lx, lz, land, 0.3, 1.7)) continue;
+      this.climb = { t: 0, dur: 0.55 + Math.max(0, top - wl) * 0.25, from: p.clone(), edge: new THREE.Vector3(p.x + fx * (d - 0.25), top, p.z + fz * (d - 0.25)), to: new THREE.Vector3(lx, land, lz) };
+      this.swimming = false; this.diving = false; this.speed = 0;
+      this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.2);
+      return true;
+    }
+    return false;
+  }
+
+  updateClimb(dt, t) {
+    const C = this.climb, p = this.pos;
+    C.t += dt / C.dur;
+    const k = Math.min(1, C.t);
+    // primeiro ergue o corpo até a borda (perto da parede), depois passa o peso para a frente e fica de pé
+    if (k < 0.6) { const e = k / 0.6, s = e * e * (3 - 2 * e); p.set(lerp(C.from.x, C.edge.x, s * 0.6), lerp(C.from.y, C.edge.y + 0.05, s), lerp(C.from.z, C.edge.z, s * 0.6)); }
+    else { const e = (k - 0.6) / 0.4, s = e * e * (3 - 2 * e); const ex = lerp(C.from.x, C.edge.x, 0.6), ez = lerp(C.from.z, C.edge.z, 0.6); p.set(lerp(ex, C.to.x, s), lerp(C.edge.y + 0.05, C.to.y, s), lerp(ez, C.to.z, s)); }
+    this.mode = 'air';
+    animateHumanoid(this.rig, dt, 0, k < 0.6 ? 'air' : 'idle', t);
+    this.rig.root.rotation.y = this.facing;
+    this.pitch = lerp(this.pitch || 0, k < 0.6 ? 0.35 : 0.1, Math.min(1, dt * 8)); this.rig.model.rotation.x = this.pitch; this.rig.model.rotation.z = 0;
+    this.crawl(dt, false, 0);
+    this.updateWet(dt, false, 0, -100); this.updateTorch(dt, t); this.updateBreathBar();
+    if (k >= 1) { this.climb = null; this.onGround = true; this.vy = 0; this.wasInWater = false; this.events.step(true); }
+    this.updateCamera(dt);
+  }
+
   update(dt, t) {
+    if (this.climb) return this.updateClimb(dt, t);
     // entrada relativa à câmera (estilo Uncharted): ↑ vai para onde a câmera olha, ← → para os lados
     let f = this.locked ? 0 : (this.key('ArrowUp', 'KeyW') ? 1 : 0) - (this.key('ArrowDown', 'KeyS') ? 1 : 0);
     let s = this.locked ? 0 : (this.key('ArrowRight', 'KeyD') ? 1 : 0) - (this.key('ArrowLeft', 'KeyA') ? 1 : 0);
@@ -252,7 +320,7 @@ export class Player {
 
     // aceleração e freada (nada de parar ou arrancar seco)
     let target = 0;
-    if (has) target = (this.swimming ? (run ? 3.8 : 2.2) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
+    if (has) target = (this.swimming ? (run ? 4.6 : 2.9) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
     if (this.wading) target *= 0.55;
     if (has && turnDiff > 1.2 && this.onGround) target *= 0.35; // meia-volta: desacelera e gira
     // curva suave (arranque progressivo, sem degrau) com um piso linear para não ficar eterna no fim
@@ -276,7 +344,7 @@ export class Player {
     const depth = wl - ground;
 
     if (this.swimming) {
-      const surfY = wl - 0.6; // costas rente à superfície (crawl); a cabeça sai para respirar e as mãos rompem a água a cada braçada
+      const surfY = wl - lerp(1.3, 0.6, clamp(realSpeed / 0.8, 0, 1)); // costas rente à superfície (crawl); a cabeça sai para respirar e as mãos rompem a água a cada braçada
       // mergulho: Espaço afunda (onde há fundo suficiente); embaixo d'água, Espaço sobe e Ctrl desce mais
       const sp = this.key('Space') && !this.locked;
       if (sp && !this.spaceHeld) {
@@ -297,6 +365,7 @@ export class Player {
           this.events.splash?.(p.clone().setY(wl), 0.35); // volta à tona com um respingo pequeno
         }
       } else {
+        if (has && this.tryClimb(wl)) return this.updateClimb(dt, t);
         p.y = lerp(p.y, surfY, Math.min(1, dt * 4));
         this.breath = Math.min(30, (this.breath ?? 30) + dt * 8);
       }
@@ -312,6 +381,7 @@ export class Player {
         p.y += this.vy * dt;
         if (p.y <= ground) {
           if (this.vy < -7.5) { playOnce(this.rig, 'Jump_Land', 0.32); this.speed *= 0.45; } // aterrissagem pesada
+          if (this.vy < -13) this.fallHit = -this.vy; // queda alta machuca (a vida lê isto)
           p.y = ground; this.onGround = true; this.vy = 0; this.events.step(true);
         }
       } else if (ground < p.y - 0.5) { this.onGround = false; this.vy = 0; }
@@ -369,7 +439,7 @@ export class Player {
     this.pitch = lerp(this.pitch || 0, pitchT, Math.min(1, dt * 5));
     this.rig.model.rotation.x = this.pitch;
     // nado crawl por cima da animação (braços alternados, ombros girando, cabeça respirando de lado, pernas batendo)
-    this.crawl(dt, this.swimming && !this.diving && realSpeed > 0.25, realSpeed);
+    this.crawl(dt, this.swimming && !this.diving && realSpeed > 0.25, realSpeed, this.swimming && !this.diving && realSpeed <= 0.25);
     if (this.swimming && !this.diving) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
     // a câmera abre um pouco no sprint (sensação de velocidade)
     const fovT = 60 + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 6;
@@ -389,7 +459,12 @@ export class Player {
   }
 
   // a bordo de um barco: o barco decide a posição; o explorador só anima (sentado ou em pé) e a câmera acompanha
-  ride(dt, t, pos, facing, mode, speed = 0) {
+  // câmera própria do barco: guarda a do explorador e abre o enquadramento
+  boardCam(pitch = 0.36) { this.savedCam = { pitch: this.camPitch, dist: this.camTargetDist }; this.camPitch = pitch; this.boatZoom = 1; }
+  leaveCam() { this.rideCam = null; if (this.savedCam) { this.camPitch = this.savedCam.pitch; this.camTargetDist = this.savedCam.dist; this.savedCam = null; } }
+
+  ride(dt, t, pos, facing, mode, speed = 0, cam = null) {
+    this.rideCam = cam;
     this.pos.copy(pos); this.facing = facing; this.rig.root.rotation.y = facing;
     this.speed = speed; this.swimming = false; this.diving = false; this.wading = false; this.onGround = true; this.vy = 0;
     this.mode = mode;
@@ -401,11 +476,13 @@ export class Player {
     this.updateWet(dt, false, 0, -100);
     this.updateBreathBar();
     const idleMouse = t - this.lastMouse > 1.5;
-    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, facing + Math.PI, Math.min(1, dt * 1.2));
+    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, facing + Math.PI, Math.min(1, dt * 0.8));
     this.updateCamera(dt);
   }
 
   updateCamera(dt, snap = false) {
+    const R = this.rideCam;
+    if (R) return this.updateBoatCamera(dt, R);
     this.camDist = lerp(this.camDist, this.camTargetDist + (this.speed > 6 ? 0.8 : 0), Math.min(1, dt * 3));
     // alvo levemente acima do ombro direito (enquadramento de jogo de aventura)
     const sx = Math.cos(this.camYawW) * 0.45, sz = -Math.sin(this.camYawW) * 0.45;
@@ -428,6 +505,20 @@ export class Player {
     else if (want.y < wl + 0.35) want.y = wl + 0.35;
     if (snap) this.camPos.copy(want);
     else this.camPos.lerp(want, Math.min(1, dt * 14));
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.camTarget);
+  }
+
+  // no barco: órbita em volta do meio do casco (a roda do mouse aproxima/afasta), sem colidir com o próprio barco
+  updateBoatCamera(dt, R) {
+    const dist = R.dist * clamp(this.camTargetDist / 6.5, 0.45, 2.2);
+    this.camDist = lerp(this.camDist, dist, Math.min(1, dt * 2.5));
+    const tgt = new THREE.Vector3(R.x, R.y, R.z);
+    this.camTarget = this.camTarget ? this.camTarget.lerp(tgt, Math.min(1, dt * 6)) : tgt;
+    const pitch = Math.max(0.12, this.camPitch), yaw = this.camYawW;
+    const want = this.camTarget.clone().add(new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(this.camDist));
+    want.y = Math.max(want.y, waterAt(want.x, want.z) + 1.2, terrainAt(want.x, want.z) + 1);
+    this.camPos.lerp(want, Math.min(1, dt * 5));
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.camTarget);
   }

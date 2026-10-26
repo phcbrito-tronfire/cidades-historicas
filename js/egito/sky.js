@@ -157,7 +157,7 @@ export class TimeOfDay {
   bakeEnvironments() {
     const pm = new THREE.PMREMGenerator(this.renderer);
     const envScene = new THREE.Scene();
-    for (const k of ORDER) {
+    for (const k of ['tarde']) {
       const st = this.snapshot(PRESETS[k]);
       if (k === 'noite') {
         const s = new THREE.Scene(); s.background = new THREE.Color(0x0a1022);
@@ -173,7 +173,7 @@ export class TimeOfDay {
       }
     }
     pm.dispose();
-    this.scene.environment = this.envs[this.current];
+    this.scene.environment = this.envs.tarde;
   }
 
   snapshot(p) {
@@ -196,6 +196,14 @@ export class TimeOfDay {
     if (this.t < 1 && this.state) this.from = this.cloneState(this.state);
     this.to = this.snapshot(PRESETS[k]);
     this.current = k; this.t = 0;
+    // reflexos do ambiente: um mapa só (o da tarde), escurecido à noite. Trocar de mapa no meio da transição fazia
+    // todos os materiais serem reavaliados no mesmo quadro — era o tranco da virada para a noite
+    this.envMats = [];
+    const seen = new Set();
+    this.scene.traverse((o) => {
+      const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      for (const m of ms) { if (m.envMapIntensity === undefined || seen.has(m)) continue; seen.add(m); if (m.userData.envBase === undefined) m.userData.envBase = m.envMapIntensity; this.envMats.push(m); }
+    });
   }
   cloneState(s) { const o = {}; for (const k in s) o[k] = s[k].clone ? s[k].clone() : s[k]; return o; }
 
@@ -213,7 +221,7 @@ export class TimeOfDay {
     const u = this.sky.material.uniforms;
     u.turbidity.value = s.turbidity; u.rayleigh.value = s.rayleigh; u.mieCoefficient.value = s.mie; u.mieDirectionalG.value = s.mieG;
     u.sunPosition.value.copy(s.sun);
-    this.sunDir.copy(s.night > 0.5 ? this.moonDir : s.sun);
+    this.sunDir.copy(s.sun).lerp(this.moonDir, s.night).normalize(); // a luz passa do sol para a lua sem salto na sombra
     if (!this.scene.fog) this.scene.fog = new THREE.Fog(s.fog, s.fogNear, s.fogFar);
     this.scene.fog.color.copy(s.fog); this.scene.fog.near = s.fogNear; this.scene.fog.far = s.fogFar;
     this.sunLight.color.copy(s.sunColor); this.sunLight.intensity = s.sunI;
@@ -238,6 +246,7 @@ export class TimeOfDay {
     this.M.window.emissiveIntensity = s.windows;
     this.torchI = s.torches;
     for (const l of this.interior) l.intensity = l.userData.base * (0.45 + s.torches * 0.8);
+    if (this.envMats) { const k = 1 - 0.85 * s.night; for (const m of this.envMats) m.envMapIntensity = m.userData.envBase * k; }
     this.state = s;
   }
 
@@ -247,8 +256,6 @@ export class TimeOfDay {
       this.t = Math.min(1, this.t + dt / 2.5);
       const e = this.t * this.t * (3 - 2 * this.t);
       this.apply(this.mix(this.from, this.to, e));
-      if (this.t >= 1 && this.envs[this.current]) this.scene.environment = this.envs[this.current];
-      else if (this.t > 0.5 && this.envs[this.current] && this.scene.environment !== this.envs[this.current]) this.scene.environment = this.envs[this.current];
     }
     // a luz direcional acompanha o jogador para a sombra ficar nítida
     const L = this.sunLight;

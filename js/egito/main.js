@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
+import { warmUp } from '../comum/aquecer.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
@@ -32,6 +33,8 @@ import { Items } from './items.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
+import { buildNile } from './nilo.js';
+import { Health, faint } from '../comum/vida.js';
 import { nextFrame, pick, rr, rand } from '../comum/util.js';
 import { groundAt, waterAt } from '../comum/collision.js';
 
@@ -109,6 +112,11 @@ async function main() {
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);
   const boats = makeBoats(scene, city);
+  const health = new Health({ onDeath: () => onDeath() });
+  const nile = await buildNile(scene, city, {
+    onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
+    onBite: () => { health.damage(24); audio.splash(); ui.toast('O crocodilo mordeu! Fuja para longe do rio.'); },
+  });
 
   await step(0.68, 'Chamando o povo de Mênfis...');
   const actors = new Actors(scene, city);
@@ -168,7 +176,7 @@ async function main() {
     if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.metalness < 0.5 && !o.material.userData.keepEnv) o.material.envMapIntensity = 0.55;
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
-  renderer.compile(scene, camera);
+  warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   await step(1, 'Pronto!');
   ui.doneLoading();
 
@@ -177,7 +185,7 @@ async function main() {
   const seenItems = new Set();
 
   ui.showIntro(() => {
-    started = true;
+    started = true; health.show(true); health.render();
     if (isTouch) { setupTouch(player); ui.toggleJournal(); }
     else if (canTouch) addEventListener('touchstart', () => setupTouch(player), { once: true, passive: true });
     audio.start();
@@ -267,7 +275,10 @@ async function main() {
     const it = player.holding; if (!it) return;
     if (it.food) {
       items.remove(it); player.holding = null; ui.setHand(null); audio.pickup();
-      ui.toast(it.eat);
+      const healed = health.eat(it.type);
+      ui.toast(it.eat + (healed ? ` (+${healed} de vida)` : ''));
+      // a comida volta à banca depois de um tempo
+      const h = it.home; if (h) setTimeout(() => items.spawn(it.type, h.x, h.y, h.z, rand() * 6), 90000);
       return;
     }
     switch (it.type) {
@@ -361,7 +372,15 @@ async function main() {
   };
 
   // atalho de depuração (console): __game.tp(x, z)
-  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, tp: (x, z, f) => player.place(x, z, f) };
+  const onDeath = () => {
+    player.locked = true;
+    faint('Você desmaiou... e acordou de volta diante do templo de Ptah.', () => {
+      player.diving = false; player.swimming = false; player.breath = 30;
+      player.place(84, 0, -Math.PI / 2); health.revive(70); nile.crocs.reset(); player.locked = false;
+    });
+  };
+
+  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -407,6 +426,8 @@ async function main() {
     }
     if (started) { artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
     actors.update(dt, t, player, quests, sky.state.night);
+    nile.update(dt, t, player);
+    if (started) health.update(dt, player);
     items.update(t, player.pos);
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
