@@ -1,7 +1,7 @@
 // Céu, sol, lua, estrelas, neblina e iluminação para manhã / tarde / noite (tecla C)
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { lerp, mulberry32 } from './util.js';
+import { lerp, mulberry32 } from '../comum/util.js';
 
 const dirFrom = (elevDeg, azDeg) => {
   const e = THREE.MathUtils.degToRad(elevDeg), a = THREE.MathUtils.degToRad(azDeg);

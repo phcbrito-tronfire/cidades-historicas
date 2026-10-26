@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Atenas, 432 a.C. — Cidades Históricas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "./js/atenas/acropole.js": "./js/atenas/acropole.js?v=202610261904-fb878de",
+      "./js/atenas/agora.js": "./js/atenas/agora.js?v=202610261904-fb878de",
+      "./js/atenas/arquitetura.js": "./js/atenas/arquitetura.js?v=202610261904-fb878de",
+      "./js/atenas/artifacts-data.js": "./js/atenas/artifacts-data.js?v=202610261904-fb878de",
+      "./js/atenas/artifacts.js": "./js/atenas/artifacts.js?v=202610261904-fb878de",
+      "./js/atenas/audio.js": "./js/atenas/audio.js?v=202610261904-fb878de",
+      "./js/atenas/barcos.js": "./js/atenas/barcos.js?v=202610261904-fb878de",
+      "./js/atenas/buildings.js": "./js/atenas/buildings.js?v=202610261904-fb878de",
+      "./js/atenas/casas.js": "./js/atenas/casas.js?v=202610261904-fb878de",
+      "./js/atenas/dialogues.js": "./js/atenas/dialogues.js?v=202610261904-fb878de",
+      "./js/atenas/items.js": "./js/atenas/items.js?v=202610261904-fb878de",
+      "./js/atenas/main.js": "./js/atenas/main.js?v=202610261904-fb878de",
+      "./js/atenas/muralhas.js": "./js/atenas/muralhas.js?v=202610261904-fb878de",
+      "./js/atenas/npcs.js": "./js/atenas/npcs.js?v=202610261904-fb878de",
+      "./js/atenas/porto.js": "./js/atenas/porto.js?v=202610261904-fb878de",
+      "./js/atenas/quests.js": "./js/atenas/quests.js?v=202610261904-fb878de",
+      "./js/atenas/sky.js": "./js/atenas/sky.js?v=202610261904-fb878de",
+      "./js/atenas/terrain.js": "./js/atenas/terrain.js?v=202610261904-fb878de",
+      "./js/atenas/textures.js": "./js/atenas/textures.js?v=202610261904-fb878de",
+      "./js/atenas/ui.js": "./js/atenas/ui.js?v=202610261904-fb878de",
+      "./js/atenas/vegetacao.js": "./js/atenas/vegetacao.js?v=202610261904-fb878de",
+      "./js/comum/agua.js": "./js/comum/agua.js?v=202610261904-fb878de",
+      "./js/comum/animals.js": "./js/comum/animals.js?v=202610261904-fb878de",
+      "./js/comum/batcher.js": "./js/comum/batcher.js?v=202610261904-fb878de",
+      "./js/comum/collision.js": "./js/comum/collision.js?v=202610261904-fb878de",
+      "./js/comum/merge.js": "./js/comum/merge.js?v=202610261904-fb878de",
+      "./js/comum/mixamo.js": "./js/comum/mixamo.js?v=202610261904-fb878de",
+      "./js/comum/player.js": "./js/comum/player.js?v=202610261904-fb878de",
+      "./js/comum/post.js": "./js/comum/post.js?v=202610261904-fb878de",
+      "./js/comum/sculptures.js": "./js/comum/sculptures.js?v=202610261904-fb878de",
+      "./js/comum/submerso.js": "./js/comum/submerso.js?v=202610261904-fb878de",
+      "./js/comum/touch.js": "./js/comum/touch.js?v=202610261904-fb878de",
+      "./js/comum/util.js": "./js/comum/util.js?v=202610261904-fb878de",
+      "./js/comum/waterfx.js": "./js/comum/waterfx.js?v=202610261904-fb878de",
+      "./js/egito/artifacts-data.js": "./js/egito/artifacts-data.js?v=202610261904-fb878de",
+      "./js/egito/artifacts.js": "./js/egito/artifacts.js?v=202610261904-fb878de",
+      "./js/egito/audio.js": "./js/egito/audio.js?v=202610261904-fb878de",
+      "./js/egito/buildings.js": "./js/egito/buildings.js?v=202610261904-fb878de",
+      "./js/egito/characters.js": "./js/egito/characters.js?v=202610261904-fb878de",
+      "./js/egito/dialogues.js": "./js/egito/dialogues.js?v=202610261904-fb878de",
+      "./js/egito/humans.js": "./js/egito/humans.js?v=202610261904-fb878de",
+      "./js/egito/items.js": "./js/egito/items.js?v=202610261904-fb878de",
+      "./js/egito/main.js": "./js/egito/main.js?v=202610261904-fb878de",
+      "./js/egito/npcs.js": "./js/egito/npcs.js?v=202610261904-fb878de",
+      "./js/egito/quests.js": "./js/egito/quests.js?v=202610261904-fb878de",
+      "./js/egito/sky.js": "./js/egito/sky.js?v=202610261904-fb878de",
+      "./js/egito/terrain.js": "./js/egito/terrain.js?v=202610261904-fb878de",
+      "./js/egito/textures.js": "./js/egito/textures.js?v=202610261904-fb878de",
+      "./js/egito/ui.js": "./js/egito/ui.js?v=202610261904-fb878de"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="loading">
+    <div class="load-inner">
+      <div class="eyebrow">Cidades Históricas</div>
+      <h1>Atenas</h1>
+      <div class="era">Grécia Clássica · Era de Péricles · 432 a.C.</div>
+      <div class="bar"><div id="load-fill"></div></div>
+      <div id="load-step">Preparando a viagem no tempo...</div>
+      <p class="tip" id="load-tip"></p>
+    </div>
+  </div>
+
+  <div id="intro" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Arcontado de Pitodoro · 432 a.C.</div>
+      <h2>Bem-vindo a Atenas</h2>
+      <p>Você é um explorador que atravessou os séculos e chegou a <b>Atenas</b> no auge: o <b>Parthenon</b> acaba de ser concluído no alto da <b>Acrópole</b>, a ágora ferve de gente e a frota de trirremes domina o mar Egeu.</p>
+      <p>Converse com filósofos, artistas, sacerdotisas, soldados e pescadores, nade no mar do Falero, embarque nos navios e conquiste uma conversa com <b>Péricles</b>, o estratego que governa pela palavra.</p>
+      <div class="controls">
+        <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mover (relativo à câmera)</div>
+        <div><kbd>Shift</kbd> correr / nadar forte</div>
+        <div><kbd>Ctrl</kbd> caminhar devagar</div>
+        <div><kbd>Espaço</kbd> pular · na água, mergulhar</div>
+        <div><kbd>E</kbd> conversar · embarcar</div>
+        <div><kbd>P</kbd> pegar / soltar</div>
+        <div><kbd>R</kbd> usar / comer</div>
+        <div><kbd>C</kbd> manhã · tarde · noite</div>
+        <div><kbd>J</kbd> diário · <kbd>K</kbd> artefatos</div>
+        <div><kbd>M</kbd> mapa</div>
+        <div><kbd>Mouse</kbd> arrastar gira a câmera</div>
+        <div><kbd>Roda</kbd> zoom</div>
+      </div>
+      <button id="btn-start" class="gold-btn">Começar a explorar</button>
+      <a class="back-link" href="index.html">← Escolher outra cidade</a>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <div id="loc"><div id="loc-place">Ágora</div><div id="loc-time">Tarde</div></div>
+    <div id="journal">
+      <div class="j-head"><span>Diário de viagem</span><span id="j-count"></span></div>
+      <ul id="j-list"></ul>
+      <div class="j-foot">J para esconder</div>
+    </div>
+    <div id="hand" hidden></div>
+    <div id="prompt" hidden></div>
+    <div id="mini-wrap"><canvas id="minimap" width="200" height="200"></canvas><div class="mini-n">N</div></div>
+    <div id="keys">Setas mover · Shift correr · Ctrl caminhar · Espaço pular/mergulhar · E falar/embarcar · P pegar · R usar · C clima · K artefatos · M mapa · Esc menu</div>
+    <div id="toasts"></div>
+  </div>
+
+  <div id="dialog" hidden>
+    <div class="d-box">
+      <div class="d-head"><span id="d-name"></span><span id="d-title"></span></div>
+      <div id="d-text"></div>
+      <div id="d-options"></div>
+    </div>
+  </div>
+
+  <div id="itemcard" hidden>
+    <div class="ic-name"></div>
+    <div class="ic-desc"></div>
+  </div>
+
+  <div id="bigmap" hidden>
+    <div class="bm-box">
+      <div class="bm-title">Atenas, o porto e a baía do Falero</div>
+      <canvas id="bigmap-canvas" width="760" height="760"></canvas>
+      <div class="bm-foot">M para fechar</div>
+    </div>
+  </div>
+
+  <div id="pause" hidden>
+    <div class="scroll small">
+      <h2>Pausa</h2>
+      <button class="gold-btn" data-act="resume">Continuar</button>
+      <button class="ghost-btn" data-act="sound">Som: ligado</button>
+      <button class="ghost-btn" data-act="music">Música: ligada</button>
+      <button class="ghost-btn" data-act="quality">Gráficos: alto</button>
+      <button class="ghost-btn" data-act="reset">Recomeçar a jornada</button>
+      <a class="ghost-btn" href="index.html">Voltar à escolha de cidades</a>
+      <p style="font-size:.95rem;margin-top:1rem;opacity:.8" id="credits">Créditos: texturas de <a href="https://polyhaven.com" target="_blank">Poly Haven</a> (CC0) · personagens e animações do <a href="https://www.mixamo.com" target="_blank">Mixamo</a> (Adobe) · modelos do <a href="https://sketchfab.com" target="_blank">Sketchfab</a> (CC BY 4.0 / CC0): "Athena State Model_ Smoothed" de jiayi.hou, "Athena Promachos" de Avramidoum, "Parthenon Sculptures East Pediment" de artfletch, "Greek Temple" de cmzw, "Trireme" de agt14032013, "Uluburun, Bronze Age Merchant" de ThalesMML, "Wooden Boat" de donnichols, "Fantasy Fishing Boat" de E.A.Cornell, "PBR Corinthian Helmet" de timothyhsu, "Old olive tree" de greg-l, "Cypress tree" de ElectroNick, "Marble Kouros" de moshecaine, "Marble Statue of a Lion" de cachgill, "Greek Amphoras_Set 02" de intervirtual, "GREEK JAR" de Davide.Specchi, "Fedora Hat" de denj666; em domínio público (CC0): Doríforo, Zeus do Artemísio, Discóbolo e Kore do SMK (Statens Museum for Kunst) e a ânfora 1970.16 do Cleveland Museum of Art · motor 3D <a href="https://threejs.org" target="_blank">three.js</a>.</p>
+    </div>
+  </div>
+
+  <div id="ending" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Jornada concluída</div>
+      <h2>Que sua fama (kleos) não morra</h2>
+      <p id="end-text"></p>
+      <button class="gold-btn" id="btn-continue">Continuar explorando</button>
+      <a class="back-link" href="index.html">← Voltar às Cidades Históricas</a>
+    </div>
+  </div>
+
+  <div id="fallback" hidden>
+    <div class="scroll small"><h2>Ops!</h2><p id="fallback-text">Seu navegador não conseguiu iniciar o 3D (WebGL). Tente o Chrome ou o Edge atualizados, em um computador.</p><a class="gold-btn" href="index.html">Voltar</a></div>
+  </div>
+
+  <script type="module" src="js/atenas/main.js?v=202610261904-fb878de"></script>
+</body>
+</html>

@@ -1,9 +1,9 @@
 // Terreno, rio Nilo, lago sagrado, canais e vegetação
 import * as THREE from 'three';
-import { Water } from 'three/addons/objects/Water.js';
+import { makeWater } from '../comum/agua.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { fbm, smoothstep, lerp, rand, rr, clamp } from './util.js';
-import { blocked, addCircle, setTerrain, setWater } from './collision.js';
+import { fbm, smoothstep, lerp, rand, rr, clamp } from '../comum/util.js';
+import { blocked, addCircle, setTerrain, setWater } from '../comum/collision.js';
 
 export const WATER_Y = 0;
 export const RIVER_HALF = 38;
@@ -208,20 +208,12 @@ normal = normalize( tbn * mapN );
   mesh.receiveShadow = true;
   scene.add(mesh);
 
-  // Nilo
-  const wgeo = new THREE.PlaneGeometry(300, 1300, 1, 1);
-  const water = new Water(wgeo, {
-    textureWidth: 512, textureHeight: 512,
-    waterNormals: tex.waterNormals,
-    sunDirection: new THREE.Vector3(0.5, 0.6, 0.4).normalize(),
-    sunColor: 0xfff2d8,
-    waterColor: 0x14605f,
-    distortionScale: 2.6,
-    fog: true,
+  // Nilo: reflexo + transparência pela profundidade (água barrenta: some depressa, mas o raso e quem nada aparecem)
+  const water = makeWater({
+    width: 300, height: 1300, x: 150, z: 0, y: WATER_Y, normals: tex.waterNormals, waterColor: 0x14605f, shallowColor: 0x4d6a44,
+    clarity: 0.85, foam: 0.35, box: [0, -650, 300, 650], res: [192, 832],
+    depthAt: (x, z) => WATER_Y - terrainHeight(x, z),
   });
-  water.rotation.x = -Math.PI / 2;
-  water.position.set(150, WATER_Y, 0);
-  water.material.uniforms.size.value = 2.2;
   scene.add(water);
 
   // Lago sagrado e canais: água simples refletindo o céu

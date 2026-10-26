@@ -1,6 +1,6 @@
 // Texturas procedurais desenhadas em canvas (nada de arquivos externos)
 import * as THREE from 'three';
-import { fbm, vnoise, mulberry32, clamp } from './util.js';
+import { fbm, vnoise, mulberry32, clamp } from '../comum/util.js';
 
 let maxAniso = 8;
 export function setAniso(n) { maxAniso = n; }

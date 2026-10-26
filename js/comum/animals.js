@@ -115,6 +115,38 @@ export function makeAnimal(kind) {
       for (const s of [-1, 1]) mesh(tube([[s * 0.08, 0.12, 0], [s * 0.3, 0.25, 0.02], [s * 0.36, 0.5, -0.02], [s * 0.28, 0.68, 0.0]], 0.028, 14), horn, 0, 0, 0, a.head);
       a.speed = 0.7;
     } break;
+    case 'goat': { // cabra: pelagem malhada, chifres para trás e barbicha
+      const coat = pick([['#e8dfd0', '#5a4a3a'], ['#6a5444', '#2a2018'], ['#b89a7a', '#4a3828']]);
+      const M = mat({ map: fur(coat[0], coat[1], { patches: rand() < 0.5 ? 3 : 0, seed: 11 + Math.floor(rand() * 3) }) });
+      a = quadruped({ mat: M, len: 0.42, r: 0.17, legLen: 0.42, legR: 0.035, neckLen: 0.22, neckAngle: 0.6, headR: 0.1, snout: 0.12, earR: 0.035, earLen: 0.12, earTilt: 1.2,
+        tailPts: [[0, 0, 0], [0, 0.06, -0.06], [0, 0.1, -0.08]], tailR: 0.02 });
+      const horn = mat({ color: 0x6a5a48, roughness: 0.6 });
+      for (const sd of [-1, 1]) mesh(tube([[sd * 0.03, 0.08, 0.0], [sd * 0.05, 0.17, -0.06], [sd * 0.07, 0.2, -0.15]], 0.016, 10), horn, 0, 0, 0, a.head);
+      mesh(new THREE.ConeGeometry(0.02, 0.08, 6), mat({ color: 0x3a2e24 }), 0, -0.12, 0.12, a.head, [Math.PI, 0, 0]);
+      a.speed = 0.9;
+    } break;
+    case 'sheep': { // ovelha de lã grossa
+      const wool = mat({ map: fur('#e6ddcc', '#bfb3a0', { spots: 300, seed: 13 }), roughness: 1 });
+      const face = mat({ map: fur('#3a3028', '#1a1410', { seed: 14 }) });
+      a = quadruped({ mat: wool, len: 0.5, r: 0.24, legLen: 0.36, legR: 0.03, neckLen: 0.12, neckAngle: 0.5, headR: 0.1, snout: 0.1, earR: 0.03, earLen: 0.1, earTilt: 1.4, muzzle: face, lower: face, earMat: face,
+        tailPts: [[0, 0, 0], [0, -0.08, -0.03], [0, -0.14, -0.03]], tailR: 0.035 });
+      a.speed = 0.6;
+    } break;
+    case 'dog': { // cão de guarda (como os da Lacônia e da Molóssia nos vasos)
+      const coat = pick([['#8a6a48', '#3a2a1c'], ['#d8c8a8', '#7a6a50'], ['#3a3430', '#1a1614']]);
+      const M = mat({ map: fur(coat[0], coat[1], { seed: 17 }) });
+      a = quadruped({ mat: M, len: 0.42, r: 0.14, legLen: 0.4, legR: 0.03, neckLen: 0.16, neckAngle: 0.7, headR: 0.09, snout: 0.12, earR: 0.035, earLen: 0.1, earTilt: 0.25,
+        tailPts: [[0, 0, 0], [0, 0.1, -0.12], [0, 0.22, -0.18]], tailR: 0.02 });
+      a.speed = 1.6;
+    } break;
+    case 'ox': { // boi de arado e de sacrifício
+      const M = mat({ map: fur(pick(['#8a5a3a', '#b8946a', '#ddd2c0']), '#4a3020', { seed: 19 }) });
+      a = quadruped({ mat: M, len: 0.95, r: 0.38, legLen: 0.62, legR: 0.075, neckLen: 0.26, neckAngle: 0.4, headR: 0.2, snout: 0.22,
+        earR: 0.06, earLen: 0.14, earTilt: 1.3, muzzle: mat({ color: 0xc8b0a0 }), tailPts: [[0, 0, 0], [0, -0.35, -0.05], [0, -0.7, -0.03]], tailR: 0.022, tuft: mat({ color: 0x3a2a20 }) });
+      const horn = mat({ color: 0xe0d4bc, roughness: 0.5 });
+      for (const sd of [-1, 1]) mesh(tube([[sd * 0.08, 0.12, 0], [sd * 0.22, 0.2, 0.05], [sd * 0.26, 0.32, 0.12]], 0.03, 10), horn, 0, 0, 0, a.head);
+      a.speed = 0.6;
+    } break;
     case 'ibis': {
       const g = new THREE.Group();
       const white = mat({ map: fur('#f4f1ea', '#d8d2c6', { seed: 9 }) }), black = mat({ color: 0x141414, roughness: 0.5 });
@@ -209,4 +241,19 @@ export function animateAnimal(a, dt, moving, t) {
   if (a.kind === 'ibis' && !moving) a.head.position.y = 0.31 + Math.max(0, Math.sin(t * 0.8 + (a.seed || 0))) ** 6 * -0.28;
   if (a.kind === 'hippo') { a.g.position.y = -0.55 + Math.sin(t * 0.6 + (a.seed || 0)) * 0.12; a.head.rotation.x = Math.sin(t * 0.3) * 0.1; }
   if (a.kind === 'duck') a.g.position.y = Math.sin(t * 2 + (a.seed || 0)) * 0.02 - 0.03;
+}
+
+// Bando de pássaros (V simples batendo asas)
+const birdMat = new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: 0.7, side: THREE.DoubleSide });
+export function makeBird(color) {
+  const g = new THREE.Group();
+  const M = color ? new THREE.MeshStandardMaterial({ color, roughness: 0.7, side: THREE.DoubleSide }) : birdMat;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.15, 0, 0, -0.15, 0.6, 0, 0], 3));
+  geo.computeVertexNormals();
+  const wl = new THREE.Mesh(geo, M), wr = new THREE.Mesh(geo, M);
+  wr.scale.x = -1;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), M); body.scale.set(0.7, 0.7, 2.2);
+  g.add(wl, wr, body);
+  return { g, wl, wr };
 }

@@ -7,14 +7,16 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, uNight: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) } },
+  uniforms: { tDiffuse: { value: null }, uNight: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uUnder: { value: 0 }, uUnderCol: { value: new THREE.Color(0.1, 0.45, 0.5) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform float uNight; uniform float uTime; uniform vec2 uRes;
+    uniform sampler2D tDiffuse; uniform float uNight; uniform float uTime; uniform vec2 uRes; uniform float uUnder; uniform vec3 uUnderCol;
     varying vec2 vUv;
     float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
     void main(){
-      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      // debaixo d'água: a imagem ondula de leve
+      vec2 uv = vUv + uUnder * vec2(sin(vUv.y * 38.0 + uTime * 2.1), cos(vUv.x * 31.0 + uTime * 1.7)) * 0.0022;
+      vec3 c = texture2D(tDiffuse, uv).rgb;
       // contraste suave em curva S e saturação
       c = mix(c, c * c * (3.0 - 2.0 * c), 0.35);
       float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -23,9 +25,11 @@ const GradeShader = {
       vec3 dayTint = mix(vec3(1.0, 0.97, 0.95), vec3(1.07, 1.0, 0.86), smoothstep(0.15, 0.75, l));
       vec3 nightTint = vec3(0.86, 0.94, 1.12);
       c *= mix(dayTint, nightTint, uNight);
+      // debaixo d'água: verde-azulado, menos contraste, luz vinda de cima
+      c = mix(c, c * uUnderCol * 2.2 + uUnderCol * 0.08 * (0.6 + vUv.y), uUnder * 0.85);
       // vinheta
       vec2 q = vUv - 0.5;
-      c *= 1.0 - dot(q, q) * mix(0.55, 0.85, uNight);
+      c *= 1.0 - dot(q, q) * mix(mix(0.55, 0.85, uNight), 1.4, uUnder);
       // granulação muito leve
       c += (rnd(vUv * uRes) - 0.5) * 0.018;
       gl_FragColor = vec4(c, 1.0);
@@ -71,7 +75,8 @@ export async function createPost(renderer, scene, camera) {
   let t = 0;
   return {
     composer, ao, bloom, grade, resize,
-    render(dt, night) {
+    render(dt, night, under = 0) {
+      grade.uniforms.uUnder.value = under;
       t += dt;
       aoCam.copy(camera); aoCam.layers.set(0);
       grade.uniforms.uNight.value = night;

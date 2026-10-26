@@ -1,7 +1,7 @@
 // Interface: carregamento, HUD, diário, diálogos, cartão de item, minimapa e mapa grande
 import { OBJECTIVES, PHARAOH_REQ } from './quests.js';
 import { terrainHeight, riverX, LAKE } from './terrain.js';
-import { boxes } from './collision.js';
+import { boxes } from '../comum/collision.js';
 
 const $ = (s) => document.querySelector(s);
 

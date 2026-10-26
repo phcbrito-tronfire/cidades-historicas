@@ -10,6 +10,7 @@ import { rr, rand, pick, ver } from './util.js';
 import { mergeSiblings } from './merge.js';
 
 const BASES = {};
+export const _BASES = BASES; // (depuração)
 const BODY_SPHERE = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.5); // espaço do modelo (pose T, ~1,8 m de altura)
 const CLIPS = {};
 let TEX = null;
@@ -30,6 +31,7 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   const tick = () => onProgress && onProgress(++done / total);
   await Promise.all([
     loadHat(L).then(tick),
+    loadHelmet(L),
     ...names.map(async (n) => { const g = await L.loadAsync(ver(DIR + n + '.glb')); BASES[n] = g.scene; tick(); }),
     ...ANIMS.map(async (n) => {
       const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb'));
@@ -67,6 +69,18 @@ async function loadHat(L) {
   } catch (e) { console.warn('chapéu', e); }
 }
 
+// elmo coríntio modelado (Sketchfab, se existir): mede a abertura para caber na cabeça
+let HELM = null;
+async function loadHelmet(L) {
+  try {
+    const g = await L.loadAsync(ver('assets/models/gregos/elmo.glb'));
+    const sc = g.scene; sc.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(sc), sz = b.getSize(new THREE.Vector3());
+    sc.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.metalness = Math.max(0.7, o.material.metalness || 0); } });
+    HELM = { scene: sc, cx: (b.min.x + b.max.x) / 2, cz: (b.min.z + b.max.z) / 2, y0: b.min.y + sz.y * 0.35, w: Math.min(sz.x, sz.z), yaw: 0 };
+  } catch (e) { /* sem modelo: elmo feito de peças */ }
+}
+
 // ---------------------------------------------------------------------------
 const matCache = new Map();
 function m(color, o = {}) {
@@ -97,6 +111,80 @@ function clothGeometry(key, prof, pleats = 26, depth = 0.86) {
   clothCache.set(key, g);
   return g;
 }
+const GREEK = new Set(['chiton', 'himation', 'peplos', 'exomis', 'hoplite']);
+const CHITON = [[0.16, 0.08], [0.175, 0], [0.195, -0.12], [0.212, -0.26], [0.225, -0.4], [0.235, -0.5]];
+const LONGROBE = [[0.158, 0.07], [0.172, 0], [0.19, -0.14], [0.205, -0.34], [0.218, -0.6], [0.232, -0.82], [0.24, -0.92]];
+const PEPLOS = [[0.152, 0.1], [0.165, 0], [0.19, -0.16], [0.208, -0.36], [0.222, -0.6], [0.236, -0.84], [0.244, -0.94]];
+
+// barba: pega os triângulos do rosto (queixo, mandíbula, bochechas e bigode) na pose T e os empurra para fora
+// pela normal, mais grossa no queixo e sumindo nas bordas (sem degrau entre a barba e a pele)
+const beardCache = new Map();
+function beardGeometry(meshes, rootInv, head, kind) {
+  const body = meshes.find((me) => /Body/.test(me.name)); if (!body) return null;
+  const key = body.geometry.uuid + kind; if (beardCache.has(key)) return beardCache.get(key);
+  const pa = body.geometry.attributes.position, na = body.geometry.attributes.normal, idx = body.geometry.index;
+  const toModel = new THREE.Matrix4().multiplyMatrices(rootInv, body.matrixWorld), nm = new THREE.Matrix3().getNormalMatrix(toModel);
+  const v = new THREE.Vector3(), n = new THREE.Vector3();
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const full = kind === 'full', T = full ? 0.024 : 0.013, drop = full ? 0.03 : 0.01;
+  const P = [], W = [];
+  for (let i = 0; i < pa.count; i++) {
+    v.fromBufferAttribute(pa, i); body.applyBoneTransform(i, v); v.applyMatrix4(toModel);
+    const x = v.x - head.x, y = v.y - head.y, z = v.z - head.z, ax = Math.abs(x);
+    const top = 0.022 + 0.055 * sm(0.03, 0.075, ax);
+    let w = sm(-0.092, -0.06, y) * (1 - sm(top - 0.012, top, y)) * sm(-0.035, 0.005, z) * (1 - sm(0.085, 0.1, ax));
+    if (z > 0.1 && ax < 0.03 && Math.abs(y - 0.004) < 0.011) w *= sm(0.018, 0.03, ax); // boca livre
+    P.push(v.clone()); W.push(w);
+  }
+  const outP = [], outUV = [];
+  const tri = idx ? idx.array : [...Array(pa.count).keys()];
+  for (let t = 0; t < tri.length; t += 3) {
+    const a = tri[t], b = tri[t + 1], c = tri[t + 2];
+    if (W[a] <= 0.001 && W[b] <= 0.001 && W[c] <= 0.001) continue;
+    for (const i of [a, b, c]) {
+      n.fromBufferAttribute(na, i).applyMatrix3(nm).normalize();
+      const p = P[i].clone(), w = W[i], y = p.y - head.y;
+      const curl = 0.75 + 0.5 * Math.sin(p.x * 230) * Math.sin(p.y * 190); // cachos
+      p.addScaledVector(n, T * w * curl);
+      p.y -= drop * w * sm(-0.01, -0.06, y);
+      outP.push(p.x - head.x, p.y - head.y, p.z - head.z);
+      outUV.push(p.x * 9, p.y * 9);
+    }
+  }
+  if (!outP.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(outP, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(outUV, 2));
+  g.computeVertexNormals();
+  g.translate(head.x, head.y, head.z);
+  beardCache.set(key, g);
+  return g;
+}
+let _beardTex = null;
+function beardTex() {
+  if (_beardTex) return _beardTex;
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  x.fillStyle = '#7a7a7a'; x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 900; i++) { const px = Math.random() * S, py = Math.random() * S; x.strokeStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.25)'; x.lineWidth = 1.2; x.beginPath(); x.arc(px, py, 2 + Math.random() * 3, 0, Math.PI * (0.8 + Math.random())); x.stroke(); }
+  _beardTex = new THREE.CanvasTexture(c); _beardTex.wrapS = _beardTex.wrapT = THREE.RepeatWrapping; _beardTex.colorSpace = THREE.SRGBColorSpace;
+  return _beardTex;
+}
+// emblema do escudo (cada hoplita escolhia o seu): coruja, Górgona, escorpião, raio...
+const aspisCache = {};
+function aspisTex(device = 'owl') {
+  if (aspisCache[device]) return aspisCache[device];
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  const g = x.createRadialGradient(S / 2, S / 2, 10, S / 2, S / 2, S / 2); g.addColorStop(0, '#d8a050'); g.addColorStop(1, '#8a5a24');
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  x.fillStyle = '#1a120c'; x.strokeStyle = '#1a120c'; x.lineWidth = 6;
+  if (device === 'owl') { x.beginPath(); x.ellipse(128, 140, 38, 52, 0, 0, 7); x.fill(); x.fillStyle = '#d8a050'; for (const s of [-1, 1]) { x.beginPath(); x.arc(128 + s * 16, 118, 11, 0, 7); x.fill(); } x.fillStyle = '#1a120c'; for (const s of [-1, 1]) { x.beginPath(); x.arc(128 + s * 16, 118, 5, 0, 7); x.fill(); } }
+  else if (device === 'gorgon') { x.beginPath(); x.arc(128, 128, 40, 0, 7); x.fill(); for (let i = 0; i < 12; i++) { const a = (i / 12) * 7; x.beginPath(); x.moveTo(128 + Math.cos(a) * 40, 128 + Math.sin(a) * 40); x.quadraticCurveTo(128 + Math.cos(a + 0.3) * 62, 128 + Math.sin(a + 0.3) * 62, 128 + Math.cos(a) * 75, 128 + Math.sin(a) * 75); x.stroke(); } }
+  else if (device === 'bolt') { x.beginPath(); x.moveTo(140, 50); x.lineTo(100, 135); x.lineTo(130, 135); x.lineTo(112, 206); x.lineTo(160, 110); x.lineTo(130, 110); x.closePath(); x.fill(); }
+  else { x.beginPath(); x.moveTo(128, 60); x.lineTo(150, 130); x.lineTo(128, 200); x.lineTo(106, 130); x.closePath(); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (aspisCache[device] = t);
+}
+
 const KILT = [[0.158, 0.07], [0.172, 0], [0.19, -0.12], [0.205, -0.26], [0.213, -0.4], [0.218, -0.48]];
 const LONGKILT = [[0.158, 0.07], [0.172, 0], [0.19, -0.14], [0.205, -0.34], [0.215, -0.6], [0.225, -0.82]];
 const DRESS = [[0.15, 0.1], [0.163, 0], [0.185, -0.16], [0.2, -0.36], [0.212, -0.6], [0.226, -0.84], [0.232, -0.94]];
@@ -148,8 +236,10 @@ function meshAt(geo, mat, x, y, z, rot) {
 export function makeHumanoid(o = {}) {
   const outfit = o.outfit || 'kilt';
   const isExp = outfit === 'explorer';
-  const female = outfit === 'dress';
-  const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : pick(['bryce', 'bryce', 'brian']));
+  const greek = GREEK.has(outfit);
+  const female = outfit === 'dress' || outfit === 'peplos';
+  // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
+  const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group();
   // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
   root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
@@ -172,6 +262,8 @@ export function makeHumanoid(o = {}) {
   const linen = o.linen ?? 0xf1ead8;
   // tom médio da textura de pele do Mixamo (linear): peças repintadas de "pele" ficam iguais aos braços
   const SKIN_TINT = new THREE.Color().setRGB(0.62, 0.42, 0.36);
+  const clothColor = o.cloth ?? 0xe8e0cc;
+  const hairStyle = o.hair || (isExp ? 'fedora' : greek ? (female ? 'up' : baseName === 'bryce' ? 'natural' : 'short') : 'short');
   const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
   // pele: o material do Mixamo vem como metal (metalness 1), o que embranquece o rosto sob luz pontual (tochas)
   const skinMat = (mat) => { const c = mat.clone(); c.metalness = 0; c.roughness = 0.62; return c; };
@@ -186,6 +278,20 @@ export function makeHumanoid(o = {}) {
       continue;
     }
     if (/Body/.test(p)) { const c = skinMat(mat); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
+    if (greek) {
+      if (/Hair/.test(p)) { // cabelo natural do modelo, escurecido (só nos homens; as mulheres usam o penteado preso)
+        const keep = hairStyle === 'natural';
+        me.visible = keep;
+        if (keep) { const c = mat.clone(); c.color.set(o.hairColor ?? 0x4a3426); c.metalness = 0; c.roughness = 0.8; me.material = c; }
+        continue;
+      }
+      if (/Eyelash/.test(p)) continue;
+      if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
+      if (/Shirt|Tops/.test(p)) { me.material = o.bareChest ? fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6) : fold(mat, o.chitonColor ?? clothColor); continue; }
+      if (/Pants|Shorts|Bottoms/.test(p)) { me.material = /Shorts/.test(p) || female || outfit === 'himation' ? fold(mat, o.chitonColor ?? clothColor) : fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6); continue; }
+      if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; }
+      continue;
+    }
     if (/Hair/.test(p)) { me.visible = !!o.keepHair; continue; }
     if (/Eyelash/.test(p)) continue;
     if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
@@ -234,7 +340,7 @@ export function makeHumanoid(o = {}) {
     for (const q of pts) if (q.y > top - below - 0.025 && q.y < top - below + 0.025) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
     return { top, rx: (x1 - x0) / 2, rz: (z1 - z0) / 2, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
   };
-  const hair = o.hair || (isExp ? 'fedora' : 'short');
+  const hair = hairStyle;
   const black = m(0x15100c, { roughness: 0.85 });
   switch (hair) {
     case 'short': cap(black, [1.06, 1, 1.06]); break;
@@ -295,7 +401,26 @@ export function makeHumanoid(o = {}) {
       hat.add(crown, dent, ribbon, brim);
       attach('Head', hat, new THREE.Vector3(fit.cx, yB, fit.cz), [0.04, 0, 0]); // aba levemente baixa na frente
     } break;
+    case 'up': { // cabelo preso num coque, com fita (mulheres gregas)
+      const hc = m(o.hairColor ?? 0x2a1c14, { roughness: 0.85 });
+      cap(hc, [1.1, 1.04, 1.1], [0, 0.015, -0.015], 0.58);
+      headPart(new THREE.SphereGeometry(R * 0.5, 14, 10), hc, [0, R * 0.2, -R * 1.0]);
+      headPart(new THREE.TorusGeometry(R * 0.9, R * 0.05, 5, 22), m(o.ribbon ?? 0x8e2c22, { roughness: 0.7 }), [0, R * 0.42, -0.01], [Math.PI / 2 - 0.12, 0, 0], [1, 1.14, 1]);
+    } break;
+    case 'veil': { // véu de linho sobre o cabelo preso (sacerdotisas e senhoras na rua)
+      const hc = m(o.hairColor ?? 0x2a1c14, { roughness: 0.85 });
+      cap(hc, [1.1, 1.04, 1.1], [0, 0.015, -0.015], 0.58);
+      const vm = m(o.veilColor ?? 0xf2ecdc, { roughness: 0.95, side: THREE.DoubleSide });
+      cap(vm, [1.2, 1.12, 1.2], [0, 0.02, -0.03], 0.55);
+      headPart(new THREE.CylinderGeometry(R * 1.05, R * 1.5, R * 2.4, 22, 1, true, Math.PI * 0.55, Math.PI * 0.9), vm, [0, -R * 0.9, -R * 0.25]);
+    } break;
+    case 'natural': case 'bald': break;
     default: break; // careca (sacerdotes)
+  }
+
+  if (o.beard) {
+    const g = beardGeometry(meshes, rootInv, bonePos('Head'), o.beard);
+    if (g) { const bm = m(o.beardColor ?? o.hairColor ?? 0x3a2a1e, { map: beardTex(), roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 }); attach('Head', new THREE.Mesh(g, bm), new THREE.Vector3(0, 0, 0)); }
   }
 
   // ---- saiotes, vestidos e detalhes presos ao quadril e ao peito
@@ -304,7 +429,9 @@ export function makeHumanoid(o = {}) {
   const linenM = m(linen, { roughness: 0.95, side: THREE.DoubleSide });
   // tecido que veste o quadril e acompanha as coxas: malha com pele (skin) no mesmo esqueleto do corpo.
   // Cada vértice segue o quadril na cintura e, descendo, cada vez mais a coxa do seu lado (no meio, as duas).
-  const ref = meshes.find((me) => /Body/.test(me.name)) || meshes[0];
+  // o tecido usa o esqueleto de uma malha que tenha os ossos do quadril e das coxas (no Brian, o corpo só tem cabeça e mãos)
+  const hasLegs = (me) => ['Hips', 'LeftUpLeg', 'RightUpLeg'].every((n) => me.skeleton.bones.some((b) => b.name.replace(/^mixamorig\d*:?/, '') === n));
+  const ref = meshes.find((me) => /Body/.test(me.name) && hasLegs(me)) || meshes.find(hasLegs) || meshes.find((me) => /Body/.test(me.name)) || meshes[0];
   const skel = ref.skeleton;
   const bi = (n) => skel.bones.findIndex((b) => b.name.replace(/^mixamorig\d*:?/, '') === n);
   const iH = bi('Hips'), iL = bi('LeftUpLeg'), iR = bi('RightUpLeg');
@@ -344,7 +471,30 @@ export function makeHumanoid(o = {}) {
     hipsPart(new THREE.CylinderGeometry(0.163, 0.168, 0.05, 32, 1, true), linenM, 0.035, [0, 0, 0], [1, 1, 0.88]);
     hipsPart(new THREE.BoxGeometry(0.05, 0.13, 0.012), linenM, -0.03, [-0.12, 0, 0]).position.z += 0.15;
   };
+  // tecido grego: textura com a barra (meandro) na bainha
+  const hex = (c) => '#' + new THREE.Color(c).getHexString();
+  const clothMat = TEX && TEX.cloth ? m(0xffffff, { map: TEX.cloth(hex(clothColor), o.border == null ? null : hex(o.border)), roughness: 0.95, side: THREE.DoubleSide }) : m(clothColor, { roughness: 0.95, side: THREE.DoubleSide });
+  const plainCloth = m(clothColor, { roughness: 0.95, side: THREE.DoubleSide });
+  const cord = (y, color = 0x6a4a2a) => hipsPart(new THREE.TorusGeometry(0.168, 0.008, 5, 28), m(color, { roughness: 0.8 }), y, [Math.PI / 2, 0, 0], [1, 0.86, 1]);
   switch (outfit) {
+    case 'chiton': case 'hoplite':
+      if (useCloth) skirt = cloth(clothGeometry('chiton', CHITON, 30), clothMat, -0.04, 0.85); cord(0.05); break;
+    case 'exomis':
+      if (useCloth) cloth(clothGeometry('exomis', CHITON.slice(0, 5), 22), plainCloth, -0.04); cord(0.05, 0x5a4030); break;
+    case 'himation': {
+      if (useCloth) skirt = cloth(clothGeometry('himation', LONGROBE, 34), clothMat, -0.04, 0.72);
+      // o manto passa pelo ombro esquerdo e atravessa o peito em diagonal
+      const ch = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
+      attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.2, 0.46, 36, 1, true), clothMat), new THREE.Vector3(0, ch.y - 0.1, ch.z + 0.005), [0, 0, -0.42 * xL], [1, 1, 0.8]);
+    } break;
+    case 'peplos': {
+      if (useCloth) cloth(clothGeometry('peplos', PEPLOS, 36), clothMat, -0.04, 0.78);
+      // dobra de cima do peplo (apoptygma), caindo até a cintura, e o cinto
+      const ch = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
+      attach('Spine1', new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.205, 0.2, 32, 1, true), plainCloth), new THREE.Vector3(0, hips.y + 0.2, hips.z + 0.01), [0, 0, 0], [1, 1, 0.84]);
+      cord(0.08, o.border ?? 0x8e2c22);
+      void ch;
+    } break;
     case 'kilt': case 'soldier': case 'pharaoh':
       if (useCloth) { skirt = cloth(clothGeometry('kilt', KILT), linenM, -0.04); belt(); } else hipsPart(new THREE.CylinderGeometry(0.18, 0.24, 0.5, 24, 1, true), linenM, -0.2);
       break;
@@ -382,7 +532,7 @@ export function makeHumanoid(o = {}) {
   if (outfit === 'soldier') attach('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.015), m(0xffffff, { map: TEX.hide })), new THREE.Vector3(0, hips.y - 0.16, hips.z + 0.24), [-0.15, 0, 0]);
   // pele de leopardo do sacerdote: envolve o tronco em diagonal, junto ao corpo (antes era uma placa que o cajado atravessava)
   if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.19, 0.42, 36, 1, true), m(0xffffff, { map: TEX.leopard, roughness: 0.9, side: THREE.DoubleSide })), new THREE.Vector3(0, chest.y - 0.1, chest.z + 0.005), [0, 0, 0.22], [1, 1, 0.78]);
-  const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar ?? (female ? pick([0x2f7f8a, 0xa8402c, 0x3a5fa8, 0xc9963a]) : undefined); // mulheres: colar largo de contas por cima da gola da blusa do modelo
+  const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar ?? (female && !greek ? pick([0x2f7f8a, 0xa8402c, 0x3a5fa8, 0xc9963a]) : undefined); // mulheres: colar largo de contas por cima da gola da blusa do modelo
   if (collar && !isExp) {
     const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffffff, { map: stripeTex('collar'), metalness: 0.75, roughness: 0.32, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
@@ -433,7 +583,64 @@ export function makeHumanoid(o = {}) {
   const handR = new THREE.Group(); const handL = new THREE.Group();
   if (bones.RightHand) attach('RightHand', handR, bonePos('RightHand').add(new THREE.Vector3(-0.07, -0.01, 0.02)), [0, 0, -Math.PI / 2]);
   if (bones.LeftHand) attach('LeftHand', handL, bonePos('LeftHand').add(new THREE.Vector3(0.07, -0.01, 0.02)), [0, 0, Math.PI / 2]);
+  const bronzeG = m(0x8a5a2c, { metalness: 0.85, roughness: 0.42 });
+  const headFitOnce = (() => { let f = null; return () => (f ??= headFit(0.115)); })();
+  const helmet = (up) => {
+    const fit = headFitOnce();
+    const g = new THREE.Group();
+    if (HELM) { // elmo coríntio modelado: escala pela cabeça
+      const inner = HELM.scene.clone(); inner.position.set(-HELM.cx, -HELM.y0, -HELM.cz);
+      const k = ((fit.rx * 2 + 0.05) / HELM.w); const sc = new THREE.Group(); sc.scale.setScalar(k); sc.add(inner); sc.rotation.y = HELM.yaw; g.add(sc);
+    } else {
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.62), bronzeG); shell.scale.set(fit.rx + 0.025, 0.16, fit.rz + 0.03); g.add(shell);
+      for (const sd of [-1, 1]) { const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.13, 0.12), bronzeG); cheek.position.set(sd * (fit.rx + 0.005), -0.08, 0.06); cheek.rotation.y = -sd * 0.3; g.add(cheek); }
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.08, 0.02), bronzeG); nose.position.set(0, -0.03, fit.rz + 0.03); g.add(nose);
+      const nape = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx + 0.03, fit.rx + 0.045, 0.09, 22, 1, true, Math.PI * 0.6, Math.PI * 0.8), bronzeG); nape.position.y = -0.06; g.add(nape);
+    }
+    // crista de crina de cavalo
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, fit.rz * 2.3), m(o.crest ?? 0x8e2c22, { roughness: 0.95 })); crest.position.set(0, 0.2, -0.01); g.add(crest);
+    if (up) attach('Head', g, new THREE.Vector3(fit.cx, fit.top + 0.01, fit.cz - 0.02), [-0.55, 0, 0]); // empurrado para o alto da cabeça (como nos bustos de Péricles)
+    else attach('Head', g, new THREE.Vector3(fit.cx, fit.top - 0.1, fit.cz), [0.02, 0, 0]);
+  };
   for (const e of o.extras || []) {
+    if (e === 'helmet') helmet(false);
+    if (e === 'helmet_up') helmet(true);
+    if (e === 'petasos' || e === 'pilos' || e === 'diadem') {
+      const fit = headFitOnce(), hat = new THREE.Group();
+      if (e === 'petasos') { // chapéu de viagem de feltro, aba larga
+        const felt = m(0x8a6a44, { roughness: 0.9 });
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), felt); crown.scale.set(fit.rx + 0.012, 0.07, fit.rz + 0.012); hat.add(crown);
+        const brim = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx * 2.3, fit.rx * 2.35, 0.012, 32), felt); brim.scale.z = fit.rz / fit.rx; hat.add(brim);
+        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.075, fit.cz), [0.06, 0, 0]);
+      } else if (e === 'pilos') { // gorro cônico de feltro (marinheiros, trabalhadores)
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(fit.rx + 0.015, 0.17, 20), m(0x9a7a52, { roughness: 0.95 })); cone.position.y = 0.06; cone.scale.z = fit.rz / fit.rx; hat.add(cone);
+        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.07, fit.cz), [0, 0, 0]);
+      } else { // diadema de ouro
+        const band = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 5, 28), gold()); band.scale.set(fit.rx + 0.006, fit.rz + 0.006, 0.18); band.rotation.x = Math.PI / 2; hat.add(band);
+        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.06, fit.cz), [-0.12, 0, 0]);
+      }
+    }
+    if (e === 'aspis') { // escudo redondo de hoplita (aspis), levado às costas
+      const sh = new THREE.Group();
+      const face = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.06, 32), m(0xffffff, { map: aspisTex(o.device), metalness: 0.75, roughness: 0.35 }));
+      face.rotation.x = Math.PI / 2; sh.add(face);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.405, 0.022, 6, 32), bronzeG); sh.add(rim);
+      const back = new THREE.Mesh(new THREE.CircleGeometry(0.4, 28), m(0x6a4a2e, { roughness: 0.8 })); back.position.z = -0.015; back.rotation.y = Math.PI; sh.add(back);
+      attach('Spine2', sh, new THREE.Vector3(0.03, chest.y - 0.12, chest.z - 0.2), [0.1, Math.PI, 0.05]);
+    }
+    if (e === 'cuirass') { // couraça de bronze (ou de linho endurecido) e as tiras de couro (ptéryges)
+      attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.158, 0.44, 28, 1, true), bronzeG), new THREE.Vector3(0, chest.y - 0.08, chest.z + 0.005), [0, 0, 0], [1, 1, 0.8]);
+      attach('Spine2', new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 20, Math.PI), bronzeG), new THREE.Vector3(0, neckY - 0.03, chest.z), [Math.PI / 2, 0, 0], [1.3, 1, 1]);
+      if (useCloth) cloth(clothGeometry('pteryges', [[0.172, 0.06], [0.185, 0], [0.205, -0.1], [0.214, -0.2]], 14), m(0x7a5230, { roughness: 0.8, side: THREE.DoubleSide }), -0.02, 0.6);
+      for (const side of ['Left', 'Right']) { // grevas
+        if (!bones[side + 'Leg'] || !bones[side + 'Foot']) continue;
+        const a = bonePos(side + 'Leg'), b = bonePos(side + 'Foot'), dir = b.clone().sub(a).normalize();
+        const e2 = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+        attach(side + 'Leg', new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.05, 0.3, 16, 1, true), bronzeG), a.clone().lerp(b, 0.5), [e2.x, e2.y, e2.z], [1, 1, 0.9]);
+      }
+    }
+    if (e === 'lyre') handL.add(meshAt(new THREE.TorusGeometry(0.1, 0.012, 5, 14, Math.PI), m(0x8a6a44), 0, 0.12, 0.05));
+
     if (e === 'spear') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.014, 0.014, 2.0, 6), m(0x7a5a36), 0, 0.55, 0)); g.add(meshAt(new THREE.ConeGeometry(0.03, 0.17, 6), bronze(), 0, 1.62, 0)); handR.add(g); }
     if (e === 'shield') { // escudo egípcio de couro de boi, topo arredondado e aro de madeira, levado às costas
       const sh = new THREE.Group();
@@ -482,7 +689,7 @@ const LOCO = [
   { name: 'correr', speed: 6.5 },
 ];
 const LOCO_MODES = new Set(['idle', 'walk', 'run', 'wade']);
-const MODE_CLIP = { air: 'caindo', swim: 'nadar', swimIdle: 'boiar', talk: 'conversar', work: 'ajoelhado', sit: 'sentado', guard: 'idle', torch: 'idle', dance: 'idle', push: 'idle' };
+const MODE_CLIP = { air: 'caindo', swim: 'nadar', dive: 'nadar', swimIdle: 'boiar', talk: 'conversar', work: 'ajoelhado', sit: 'sentado', guard: 'idle', torch: 'idle', dance: 'idle', push: 'idle' };
 
 function calibrateLocomotion() {
   const probe = SkeletonUtils.clone(BASES.explorador);

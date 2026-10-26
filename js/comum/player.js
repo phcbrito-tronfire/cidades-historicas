@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
 import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt } from './collision.js';
-import { WORLD } from './terrain.js';
 import { clamp, lerp, angleLerp } from './util.js';
 
 // tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
@@ -26,6 +25,8 @@ export class Player {
     this.night = 0; // 0 = dia, 1 = noite (vem do céu a cada quadro)
     this.locked = false; // durante diálogos
     this.speed = 0; this.mode = 'idle';
+    this.diving = false; this.breath = 30; this.diveVy = 0; // mergulho (fôlego em segundos)
+    this.bounds = [-370, 370, -370, 370]; // limite do mundo andável (x0, x1, z0, z1), definido pela cidade
     this.events = { splash: () => {}, ripple: () => {}, step: () => {} };
     this.rippleT = 0; this.stepT = 0; this.swingT = 0;
     this.bindInput();
@@ -76,6 +77,44 @@ export class Player {
   }
 
 
+  // fôlego no mergulho: barrinha que aparece embaixo d'água
+  updateBreathBar() {
+    if (!this.breathEl) {
+      this.breathEl = document.createElement('div');
+      this.breathEl.style.cssText = 'position:fixed;left:50%;bottom:18%;transform:translateX(-50%);width:180px;height:8px;border-radius:5px;background:rgba(0,20,30,.45);border:1px solid rgba(220,250,255,.6);z-index:20;display:none;overflow:hidden';
+      this.breathEl.innerHTML = '<div style="height:100%;width:100%;background:linear-gradient(90deg,#bff3ff,#5fd0e8);transition:width .2s"></div>';
+      document.body.appendChild(this.breathEl);
+    }
+    const show = this.diving || (this.breath < 29.5 && this.swimming);
+    this.breathEl.style.display = show ? 'block' : 'none';
+    if (show) { const f = this.breath / 30; const bar = this.breathEl.firstChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f < 0.25 ? '#ff8a6a' : 'linear-gradient(90deg,#bff3ff,#5fd0e8)'; }
+  }
+
+  // roupa molhada: ao sair da água o tecido e a pele ficam mais escuros e brilhantes, pingando, e secam em ~40 s
+  updateWet(dt, inWater, depth, wl) {
+    if (!this.wetMats) {
+      this.wetMats = [];
+      this.rig.model.traverse((n) => { if (n.isSkinnedMesh && n.visible && n.material && !this.wetMats.some((w) => w.m === n.material)) this.wetMats.push({ m: n.material, c: n.material.color.clone(), r: n.material.roughness }); });
+      this.wet = 0; this._wetShown = -1; this.dripT = 0;
+    }
+    // molha até onde a água chega: nadando, inteiro; andando no raso, só um pouco
+    if (inWater) this.wet = 1; else if (this.wading) this.wet = Math.max(this.wet, Math.min(0.5, depth)); else this.wet = Math.max(0, this.wet - dt / 40);
+    if (Math.abs(this.wet - this._wetShown) > 0.01) {
+      this._wetShown = this.wet;
+      const k = this.wet;
+      for (const w of this.wetMats) { w.m.color.copy(w.c).multiplyScalar(1 - 0.32 * k); w.m.roughness = w.r * (1 - 0.5 * k); }
+    }
+    // pingos caindo da roupa e das mãos
+    if (!inWater && this.wet > 0.15) {
+      this.dripT -= dt * (0.5 + this.wet * 5);
+      if (this.dripT <= 0) {
+        this.dripT = 1;
+        const B = this.rig.bones, bn = ['LeftHand', 'RightHand', 'Hips', 'Spine2', 'LeftLeg', 'RightLeg'][Math.floor(Math.random() * 6)];
+        if (B[bn]) { const v = new THREE.Vector3(); B[bn].getWorldPosition(v); this.events.drip?.(v); }
+      }
+    }
+  }
+
   // braçadas e pernadas de verdade: os respingos saem de onde a mão entra na água e a espuma de onde os pés batem
   trackSwimLimbs(wl, speed, dt) {
     const B = this.rig.bones;
@@ -97,7 +136,7 @@ export class Player {
   }
 
   place(x, z, facing) {
-    this.pos.set(x, groundAt(x, z, terrainAt(x, z) + 1.6), z);
+    this.pos.set(x, groundAt(x, z, Math.max(terrainAt(x, z), waterAt(x, z)) + 1.6), z); // (em cima de cais e plataformas sobre a água)
     if (facing !== undefined) this.facing = facing;
     this.camYawW = this.facing + Math.PI;
     this.updateCamera(1, true);
@@ -170,7 +209,7 @@ export class Player {
     const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
     const before = p.clone();
     if (this.speed > 0.01) moveWithCollision(p, fx * this.speed * dt, fz * this.speed * dt, 0.32, 1.75);
-    p.x = clamp(p.x, -WORLD, WORLD); p.z = clamp(p.z, -WORLD, WORLD);
+    const W = this.bounds; p.x = clamp(p.x, W[0], W[1]); p.z = clamp(p.z, W[2], W[3]);
     const realSpeed = before.distanceTo(new THREE.Vector3(p.x, before.y, p.z)) / Math.max(dt, 1e-4);
     if (realSpeed < this.speed * 0.3 && this.onGround) this.speed = Math.max(realSpeed, this.speed * 0.8); // bateu na parede
 
@@ -180,10 +219,32 @@ export class Player {
     const depth = wl - ground;
 
     if (this.swimming) {
-      const ty = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
-      p.y = lerp(p.y, ty, Math.min(1, dt * 4));
+      const surfY = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
+      // mergulho: Espaço afunda (onde há fundo suficiente); embaixo d'água, Espaço sobe e Ctrl desce mais
+      const sp = this.key('Space') && !this.locked;
+      if (sp && !this.spaceHeld) {
+        if (!this.diving && depth > 2.4) { this.diving = true; this.surfacing = false; this.diveVy = -2.4; this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.4); }
+        else if (this.diving) this.surfacing = true;
+      }
+      this.spaceHeld = sp;
+      if (this.diving) {
+        // nadando para a frente, vai para onde a câmera aponta (câmera mais alta, olhando para baixo = descer)
+        let vyT = -Math.sin(this.camPitch - 0.28) * 1.3 * this.speed + 0.15 + (this.key('ControlLeft', 'ControlRight') ? -1.6 : 0);
+        if (this.surfacing || this.breath <= 0) vyT = 1.9;
+        this.diveVy = lerp(this.diveVy, vyT, Math.min(1, dt * (this.diveVy < -1 ? 0.8 : 3)));
+        p.y += this.diveVy * dt;
+        if (p.y < ground + 0.3) { p.y = ground + 0.3; this.diveVy = Math.max(0, this.diveVy); }
+        this.breath = Math.max(0, this.breath - dt);
+        if ((p.y >= surfY && this.diveVy > 0) || depth < 1.4) {
+          this.diving = false; this.surfacing = false; p.y = Math.min(p.y, surfY);
+          this.events.splash?.(p.clone().setY(wl), 0.35); // volta à tona com um respingo pequeno
+        }
+      } else {
+        p.y = lerp(p.y, surfY, Math.min(1, dt * 4));
+        this.breath = Math.min(30, (this.breath ?? 30) + dt * 8);
+      }
       this.vy = 0;
-      if (depth < 1.0) { this.swimming = false; p.y = Math.max(ground, p.y); }
+      if (depth < 1.0 && !this.diving) { this.swimming = false; p.y = Math.max(ground, p.y); }
     } else {
       if (this.onGround && this.key('Space') && !this.locked && !this.jumpHeld) {
         this.vy = 6.4; this.onGround = false; this.jumpHeld = true; this.events.step(true);
@@ -206,17 +267,24 @@ export class Player {
     }
     this.wading = !this.swimming && depth > 0.35 && p.y < wl;
     this.wasInWater = this.swimming || this.wading;
+    // dentro d'água o explorador sai do reflexo (o corpo meio submerso refletido parecia um vulto escuro na superfície)
+    const inWater = this.swimming || (this.wading && depth > 0.7);
+    if (inWater !== this._layerWet) {
+      this._layerWet = inWater;
+      this.rig.root.traverse((n) => { if (!n.isSprite) n.layers.set(inWater ? 2 : 0); });
+    }
 
     // ondas na água
     this.rippleT -= dt;
-    if ((this.swimming || this.wading) && this.rippleT <= 0) {
+    if ((this.swimming || this.wading) && !this.diving && this.rippleT <= 0) {
       this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), realSpeed > 0.3 ? 1 : 0.6);
       this.rippleT = realSpeed > 0.3 ? 0.45 : 1.3;
     }
     // esteira, espuma e respingos das braçadas
-    if (this.swimming) this.events.swim?.(new THREE.Vector3(p.x, wl, p.z), this.facing, realSpeed, dt, t);
+    if (this.swimming && !this.diving) this.events.swim?.(new THREE.Vector3(p.x, wl, p.z), this.facing, realSpeed, dt, t);
     else if (this.wasSwimming) this.events.stopSwim?.();
-    this.wasSwimming = this.swimming;
+    this.wasSwimming = this.swimming && !this.diving;
+    this.updateBreathBar();
     // passos
     if (this.onGround && !this.wading && realSpeed > 1) {
       this.stepT -= dt * realSpeed;
@@ -225,7 +293,7 @@ export class Player {
 
     // animação
     let mode = 'idle';
-    if (this.swimming) mode = 'swim';
+    if (this.swimming) mode = this.diving ? 'dive' : 'swim';
     else if (!this.onGround && (this.vy > 1 || p.y - ground > 0.6)) mode = 'air';
     else if (realSpeed > 0.15) mode = this.wading ? 'wade' : 'run';
     this.mode = mode;
@@ -233,7 +301,7 @@ export class Player {
     if (this.swingT > 0) { this.swingT = 0; playOnce(this.rig, 'Sword_Attack', 0.9); }
     if (this.pickT > 0) { this.pickT = 0; playOnce(this.rig, 'PickUp_Table', 0.8); }
     animateHumanoid(this.rig, dt, realSpeed, mode, t);
-    if (this.swimming) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
+    if (this.swimming && !this.diving) this.trackSwimLimbs(wl, realSpeed, dt); else if (this.limbs) for (const L of this.limbs) L.prev = null;
     this.rig.root.rotation.y = this.facing;
     // inclina o corpo nas curvas e ao acelerar
     const leanT = this.swimming ? 0 : clamp(-omega * realSpeed * 0.018, -0.22, 0.22);
@@ -241,13 +309,14 @@ export class Player {
     this.rig.model.rotation.z = this.lean;
     // inclina o tronco para a frente na arrancada e no sprint, e para trás ao frear
     // nadando: cabeça um pouco acima e pernas mais fundas (os calcanhares não furam a superfície a cada pernada)
-    const pitchT = this.swimming ? -0.13 : !this.onGround ? 0 : clamp(this.accelNow * 0.012, -0.07, 0.1) + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 0.07;
+    const pitchT = this.diving ? clamp(-this.diveVy * 0.32, -0.55, 0.7) : this.swimming ? -0.13 : !this.onGround ? 0 : clamp(this.accelNow * 0.012, -0.07, 0.1) + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 0.07;
     this.pitch = lerp(this.pitch || 0, pitchT, Math.min(1, dt * 5));
     this.rig.model.rotation.x = this.pitch;
     // a câmera abre um pouco no sprint (sensação de velocidade)
     const fovT = 60 + clamp((realSpeed - 4.8) / 3.8, 0, 1) * 6;
     if (Math.abs(this.camera.fov - fovT) > 0.05) { this.camera.fov = lerp(this.camera.fov, fovT, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix(); }
     if (this.holding) this.holding.mesh.visible = !this.swimming;
+    this.updateWet(dt, inWater, depth, wl);
     this.updateTorch(dt, t);
 
     // câmera acompanha por trás com atraso, se o mouse estiver parado
@@ -260,11 +329,28 @@ export class Player {
     this.updateCamera(dt);
   }
 
+  // a bordo de um barco: o barco decide a posição; o explorador só anima (sentado ou em pé) e a câmera acompanha
+  ride(dt, t, pos, facing, mode, speed = 0) {
+    this.pos.copy(pos); this.facing = facing; this.rig.root.rotation.y = facing;
+    this.speed = speed; this.swimming = false; this.diving = false; this.wading = false; this.onGround = true; this.vy = 0;
+    this.mode = mode;
+    this.rig.model.rotation.set(0, 0, 0); this.pitch = 0; this.lean = 0;
+    if (this._layerWet) { this._layerWet = false; this.rig.root.traverse((n) => { if (!n.isSprite) n.layers.set(0); }); }
+    this.rig.holding = !!this.holding;
+    animateHumanoid(this.rig, dt, 0, mode, t);
+    this.updateTorch(dt, t);
+    this.updateWet(dt, false, 0, -100);
+    this.updateBreathBar();
+    const idleMouse = t - this.lastMouse > 1.5;
+    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, facing + Math.PI, Math.min(1, dt * 1.2));
+    this.updateCamera(dt);
+  }
+
   updateCamera(dt, snap = false) {
     this.camDist = lerp(this.camDist, this.camTargetDist + (this.speed > 6 ? 0.8 : 0), Math.min(1, dt * 3));
     // alvo levemente acima do ombro direito (enquadramento de jogo de aventura)
     const sx = Math.cos(this.camYawW) * 0.45, sz = -Math.sin(this.camYawW) * 0.45;
-    const target = new THREE.Vector3(this.pos.x + sx, this.pos.y + (this.swimming ? 0.9 : 1.6), this.pos.z + sz);
+    const target = new THREE.Vector3(this.pos.x + sx, this.pos.y + (this.diving ? 0.75 : this.swimming ? 0.9 : 1.6), this.pos.z + sz);
     this.camTarget = this.camTarget ? this.camTarget.lerp(target, Math.min(1, dt * 12)) : target.clone();
     if (snap) this.camTarget.copy(target);
     const yaw = this.camYawW;
@@ -278,7 +364,9 @@ export class Player {
     }
     const want = this.camTarget.clone().addScaledVector(dir, d);
     const wl = waterAt(want.x, want.z);
-    if (want.y < wl + 0.35) want.y = wl + 0.35;
+    // a câmera não fica cortando a superfície: acima dela nadando ou andando, abaixo dela no mergulho
+    if (this.diving) { if (want.y > wl - 0.3) want.y = wl - 0.3; }
+    else if (want.y < wl + 0.35) want.y = wl + 0.35;
     if (snap) this.camPos.copy(want);
     else this.camPos.lerp(want, Math.min(1, dt * 14));
     this.camera.position.copy(this.camPos);

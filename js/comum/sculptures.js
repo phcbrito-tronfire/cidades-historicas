@@ -6,24 +6,17 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ver } from './util.js';
 
-const DIR = 'assets/models/estatuas/';
 // rot: corrige a orientação de origem; yaw: gira para o rosto apontar para +x; layer: 0 = com reflexo e AO,
-// 3 = fora do reflexo do Nilo (as muitas esfinges da avenida pesariam no reflexo)
-const MODELS = {
-  esfinge_giza: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.88 },
-  esfinge_avenida: { rot: [Math.PI, 0, Math.PI], yaw: Math.PI / 2, layer: 3, rough: 0.8 },
-  // fit 'y': o tamanho pedido é a altura (estátuas em pé)
-  anubis: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.45, fit: 'y', tint: [2.4, 2.25, 2.1], env: 1.2 }, // textura muito escura: clareia (granito preto, mas com o entalhe visível)
-  barco: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.85 }, // barquinho de papiro com toldo
-  trono: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.4, fit: 'y', keepMetal: true },
-  navio: { rot: [0, 0, 0], yaw: Math.PI / 2, layer: 0, rough: 0.8 },
-  navio2: { rot: [0, 0, 0], yaw: 0, layer: 0, rough: 0.8 },
-  anubis_deitado: { rot: [Math.PI / 2, 0, 0], yaw: Math.PI, layer: 0, rough: 0.6, tint: [1.5, 1.45, 1.4] },
-};
+// 3 = fora do reflexo da água (muitas cópias pesariam no reflexo). Cada cidade registra os seus modelos.
+const MODELS = {};
+export function registerSculptures(dir, table) {
+  for (const [name, def] of Object.entries(table)) MODELS[name] = { dir, rot: [0, 0, 0], yaw: 0, layer: 0, rough: 0.8, ...def };
+}
+export const sculptureDef = (name) => MODELS[name];
 
 async function loadModel(L, name) {
   const def = MODELS[name];
-  const g = await L.loadAsync(ver(DIR + name + '.glb'));
+  const g = await L.loadAsync(ver(def.dir + (def.file || name) + '.glb'));
   const inner = g.scene;
   inner.rotation.set(...def.rot);
   const turn = new THREE.Group(); turn.rotation.y = def.yaw; turn.add(inner);
@@ -33,13 +26,13 @@ async function loadModel(L, name) {
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   // origem no chão, no centro da base; comprimento (eixo x) ou altura (fit 'y') = 1
   turn.position.set(-c.x, -box.min.y, -c.z);
-  const k = 1 / (def.fit === 'y' ? size.y : size.x);
+  const k = 1 / (def.fit === 'y' ? size.y : def.fit === 'z' ? size.z : size.x);
   const unit = new THREE.Group(); unit.scale.setScalar(k); unit.add(norm);
   unit.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
     o.layers.set(def.layer);
-    const m = o.material; if (!def.keepMetal) { m.roughness = def.rough; m.metalness = 0; } m.envMapIntensity = def.env ?? 0.6;
+    const m = o.material; if (!def.keepMetal) { m.roughness = def.rough; m.metalness = def.metal ?? 0; } m.envMapIntensity = def.env ?? 0.6;
     if (def.tint) m.color.setRGB(...def.tint);
   });
   return unit;
@@ -73,4 +66,28 @@ export async function placeSculptures(scene, list) {
     holder.traverse((n) => { if (n.isMesh) n.layers.set(MODELS[s.model].layer); });
     scene.add(holder);
   }
+}
+
+// o modelo normalizado (tamanho 1), ou null se não existir / não carregar
+export const sculptureUnit = (name) => (MODELS[name] ? unitModel(name) : Promise.resolve(null));
+
+// muitas cópias de um modelo numa só chamada de desenho por material (árvores): list = [{ x, y, z, ry, s }]
+export function instancedFromUnit(unit, list, { shadow = true, layer = 3 } = {}) {
+  const out = new THREE.Group();
+  unit.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(unit.matrixWorld).invert();
+  const dummy = new THREE.Object3D(), m = new THREE.Matrix4();
+  unit.traverse((o) => {
+    if (!o.isMesh) return;
+    const local = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld).premultiply(new THREE.Matrix4().makeScale(unit.scale.x, unit.scale.y, unit.scale.z));
+    const im = new THREE.InstancedMesh(o.geometry, o.material, list.length);
+    list.forEach((p, i) => {
+      dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(0, p.ry || 0, 0); dummy.scale.setScalar(p.s || 1); dummy.updateMatrix();
+      im.setMatrixAt(i, m.multiplyMatrices(dummy.matrix, local));
+    });
+    im.castShadow = shadow; im.receiveShadow = true; im.layers.set(layer);
+    im.computeBoundingSphere();
+    out.add(im);
+  });
+  return out;
 }

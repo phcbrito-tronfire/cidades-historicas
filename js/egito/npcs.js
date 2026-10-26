@@ -1,13 +1,13 @@
 // Gente e bichos de Mênfis: NPCs principais, moradores, soldados, crianças e animais
 import * as THREE from 'three';
-import { makeBird } from './characters.js';
-import { makeAnimal, animateAnimal } from './animals.js';
-import { makeHumanoid, animateHumanoid } from './mixamo.js';
+import { makeBird } from '../comum/animals.js';
+import { makeAnimal, animateAnimal } from '../comum/animals.js';
+import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
-import { groundAt, moveWithCollision, terrainAt } from './collision.js';
+import { groundAt, moveWithCollision, terrainAt } from '../comum/collision.js';
 import { riverX, terrainHeight } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
-import { rr, rand, pick, angleLerp } from './util.js';
+import { rr, rand, pick, angleLerp } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
 

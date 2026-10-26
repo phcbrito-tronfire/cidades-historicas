@@ -2,7 +2,7 @@
 // e painel de coleção (tecla K). Progresso salvo no navegador.
 import * as THREE from 'three';
 import { ARTIFACTS } from './artifacts-data.js';
-import { groundAt, blocked, terrainAt } from './collision.js';
+import { groundAt, blocked, terrainAt } from '../comum/collision.js';
 import { riverX, LAKE } from './terrain.js';
 
 const SAVE = 'cidades-historicas:egito:artefatos:v1';

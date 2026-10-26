@@ -1,7 +1,7 @@
 // Objetos que o explorador pode pegar com P (e comer/usar com R)
 import * as THREE from 'three';
-import { gold } from './mixamo.js';
-import { rr } from './util.js';
+import { gold } from '../comum/mixamo.js';
+import { rr } from '../comum/util.js';
 
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...o });
 const bronze = std(0xb87333, { metalness: 0.9, roughness: 0.35 });

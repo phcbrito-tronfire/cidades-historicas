@@ -72,11 +72,11 @@ export function makeWaterFX(scene) {
 
   return {
     ripple(p, s = 1) { spawn(rings, ri++, p, { life: 2.2, s0: 0.6, s1: 3.2 * s, a: 0.35 }); },
-    splash(p) {
-      emit(p, 90, 2.6, 5.5);
-      spawn(rings, ri++, p, { life: 2.6, s0: 1, s1: 6, a: 0.6 });
-      spawn(rings, ri++, p, { life: 1.8, s0: 0.5, s1: 4, a: 0.5 });
-      for (let k = 0; k < 6; k++) spawn(blobs, bi++, p, { life: 1.6, s0: 1, s1: 2.5, a: 0.55, vx: rr(-1, 1), vz: rr(-1, 1) });
+    splash(p, s = 1) {
+      emit(p, Math.round(90 * s), 2.6 * Math.sqrt(s), 5.5 * Math.sqrt(s));
+      spawn(rings, ri++, p, { life: 2.6, s0: 1 * s, s1: 6 * s, a: 0.6 });
+      spawn(rings, ri++, p, { life: 1.8, s0: 0.5 * s, s1: 4 * s, a: 0.5 });
+      for (let k = 0; k < Math.round(6 * s); k++) spawn(blobs, bi++, p, { life: 1.6, s0: 1 * s, s1: 2.5 * s, a: 0.55, vx: rr(-1, 1), vz: rr(-1, 1) });
     },
     // chamado continuamente enquanto nada
     swim(p, facing, speed, dt, t) {
@@ -109,6 +109,12 @@ export function makeWaterFX(scene) {
       const fx = Math.sin(facing), fz = Math.cos(facing);
       spawn(blobs, bi++, p, { life: 1.0, s0: 0.3, s1: 0.8, a: 0.5, vx: -fx * 0.4, vz: -fz * 0.4 });
       emit(p, 3, 0.4, 1.1);
+    },
+    // pingo caindo da roupa molhada (cai até o chão, onde some)
+    drip(p) {
+      const i = di++ % N;
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+      vel[i * 3] = 0; vel[i * 3 + 1] = -0.5; vel[i * 3 + 2] = 0; life[i] = 1.2;
     },
     stopSwim() { body.material.opacity = 0; },
     update(dt) {

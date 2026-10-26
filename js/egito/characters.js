@@ -1,6 +1,6 @@
 // Personagens humanos (montados com primitivas) e animais, com animação procedural
 import * as THREE from 'three';
-import { rr, rand, pick } from './util.js';
+import { rr, rand, pick } from '../comum/util.js';
 
 const matCache = new Map();
 let TEX = null;

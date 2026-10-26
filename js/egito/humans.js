@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { rr, rand, pick } from './util.js';
+import { rr, rand, pick } from '../comum/util.js';
 
 let BASE = null;
 let HEAD = null; // cabeça escaneada (Lee Perry-Smith, CC-BY 3.0)

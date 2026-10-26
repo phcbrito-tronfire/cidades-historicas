@@ -2,25 +2,38 @@
 import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
-import { createPost } from './post.js';
-import { makeWaterFX } from './waterfx.js';
+import { createPost } from '../comum/post.js';
+import { makeWaterFX } from '../comum/waterfx.js';
+import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
-import { isTouch, canTouch, setupTouch } from './touch.js';
-import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight } from './terrain.js';
+import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
+import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight, WORLD } from './terrain.js';
 import { buildCity } from './buildings.js';
 import { setCharTextures } from './characters.js';
-import { placeSculptures, sculptureInstance } from './sculptures.js';
-import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from './mixamo.js';
+import { placeSculptures, sculptureInstance, registerSculptures } from '../comum/sculptures.js';
+// esculturas e barcos modelados (Sketchfab, CC BY): ver sculptures.js
+registerSculptures('assets/models/estatuas/', {
+  esfinge_giza: { yaw: Math.PI / 2, rough: 0.88 },
+  esfinge_avenida: { rot: [Math.PI, 0, Math.PI], yaw: Math.PI / 2, layer: 3 },
+  // fit 'y': o tamanho pedido é a altura (estátuas em pé)
+  anubis: { yaw: Math.PI / 2, rough: 0.45, fit: 'y', tint: [2.4, 2.25, 2.1], env: 1.2 }, // textura muito escura: clareia (granito preto, mas com o entalhe visível)
+  barco: { yaw: Math.PI / 2, rough: 0.85 }, // barquinho de papiro com toldo
+  trono: { yaw: Math.PI / 2, rough: 0.4, fit: 'y', keepMetal: true },
+  navio: { yaw: Math.PI / 2 },
+  navio2: { yaw: 0 },
+  anubis_deitado: { rot: [Math.PI / 2, 0, 0], yaw: Math.PI, rough: 0.6, tint: [1.5, 1.45, 1.4] },
+});
+import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
-import { Player } from './player.js';
+import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
 import { TimeOfDay } from './sky.js';
 import { Items } from './items.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
-import { nextFrame, pick, rr, rand } from './util.js';
-import { groundAt, waterAt } from './collision.js';
+import { nextFrame, pick, rr, rand } from '../comum/util.js';
+import { groundAt, waterAt } from '../comum/collision.js';
 
 const ui = new UI();
 const audio = new AudioFX();
@@ -108,6 +121,7 @@ async function main() {
 
   await step(0.8, 'Preparando o explorador...');
   const player = new Player(scene, camera);
+  player.bounds = [-WORLD, WORLD, -WORLD, WORLD];
   player.makeTorch(tex.glow);
   player.place(84, 0, -Math.PI / 2);
   const fx = makeWaterFX(scene);
@@ -116,8 +130,9 @@ async function main() {
   player.events.handIn = (p, f, pw) => fx.handIn(p, f, pw);
   player.events.handOut = (p) => fx.handOut(p);
   player.events.kick = (p, f) => fx.kick(p, f);
+  player.events.drip = (p) => fx.drip(p);
   player.events.ripple = (p, s) => fx.ripple(p, s);
-  player.events.splash = (p) => { fx.splash(p); audio.splash(); };
+  player.events.splash = (p, s = 1) => { fx.splash(p, s); audio.splash(); };
   player.events.step = (jump, run) => audio.step(jump, run);
 
   await step(0.88, 'Acendendo as tochas e afinando as harpas...');
@@ -141,6 +156,9 @@ async function main() {
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
   const post = await createPost(renderer, scene, camera);
+  // mergulho no Nilo: água barrenta, enxerga-se pouco
+  const underwater = makeUnderwater(scene, world.water, { color: 0x2f4a32, near: 0.3, far: 9 });
+  post.grade.uniforms.uUnderCol.value.setRGB(0.22, 0.36, 0.2);
   if (isTouch) { post.setQuality('leve'); sun.shadow.mapSize.set(2048, 2048); const sc2 = sun.shadow.camera; sc2.left = -70; sc2.right = 70; sc2.top = 70; sc2.bottom = -70; sc2.updateProjectionMatrix(); }
   // camada 3: aparece na tela e projeta sombra, mas fica fora do reflexo do Nilo e da oclusão (desempenho)
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
@@ -393,6 +411,7 @@ async function main() {
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
     world.water.material.uniforms.time.value += dt * 0.6;
+    { const u = world.water.material.uniforms.uSwim.value; u.set(player.pos.x, 0, player.pos.z, player.swimming ? Math.min(1, u.w + dt * 2) : Math.max(0, u.w - dt * 2)); }
     fx.update(dt);
     flags.update(t);
     boats.update(dt, t);
@@ -417,8 +436,9 @@ async function main() {
       const dm = Math.max(0, Math.max(m[0] - player.pos.x, player.pos.x - m[1], m[2] - player.pos.z, player.pos.z - m[3]));
       audio.update(dt, { nearWater: Math.max(0, Math.min(1, 1 - (dR - 36) / 40)), night: sky.state.night > 0.5, market: Math.max(0, 1 - dm / 30) });
     }
+    const under = underwater.update(dt, camera, player);
     scene.updateMatrixWorld(); // uma vez por quadro (a cena não se atualiza sozinha a cada render; ver acima)
-    post.render(dt, sky.state.night);
+    post.render(dt, sky.state.night, under);
   }
   loop();
 }
