@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { doricTemple, doricShaft, doricCapital, ionicColumn, pedimentGeo, roofHalf } from './arquitetura.js';
 import { addBox, addCircle } from '../comum/collision.js';
 import { terrainHeight, ACRO, THEATER } from './terrain.js';
+import { distToStreets } from './ruas.js';
 import { rr, rand, fbm as fbmR } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
@@ -40,7 +41,7 @@ export function buildAcropolis(B, M, out) {
     const rockMat = M.rock;
     const base = new THREE.IcosahedronGeometry(1, 2);
     const shapes = [0, 1, 2].map((k) => { const g = base.clone(); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(p, i); const n = 0.7 + fbmR(v.x * 1.6 + k * 3, v.y * 1.6 + v.z * 1.3) * 0.6; p.setXYZ(i, v.x * n, v.y * n * 0.75, v.z * n); } g.computeVertexNormals(); return g; });
-    const put = (x, z, s) => { const y = terrainHeight(x, z); B.geo(shapes[Math.floor(rand() * 3)], rockMat, x, y - s * 0.35, z, { rx: rand() * 3, ry: rand() * 3, rz: rand() * 3, sx: s * rr(0.8, 1.4), sy: s, sz: s * rr(0.8, 1.3), uv: { s: 3 } }); if (s > 1.2) addCircle(x, z, s * 0.9, y - 2, y + s); };
+    const put = (x, z, s) => { if (distToStreets(x, z) < 9) return; const y = terrainHeight(x, z); B.geo(shapes[Math.floor(rand() * 3)], rockMat, x, y - s * 0.35, z, { rx: rand() * 3, ry: rand() * 3, rz: rand() * 3, sx: s * rr(0.8, 1.4), sy: s, sz: s * rr(0.8, 1.3), uv: { s: 3 } }); if (s > 1.2) addCircle(x, z, s * 0.9, y - 2, y + s); };
     for (let i = 0; i < 260; i++) {
       const t = rand() * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t);
       const r = rr(1.03, 1.42), u = ACRO.a * r * Math.sign(ct) * Math.abs(ct) ** 0.5, v = ACRO.b * r * Math.sign(st) * Math.abs(st) ** 0.5;
@@ -49,7 +50,7 @@ export function buildAcropolis(B, M, out) {
       if (Math.hypot(x - THEATER.x, z - THEATER.z) < THEATER.r1 + 4) continue;
       put(x, z, rr(0.5, 2.6) * (r < 1.15 ? 1.3 : 0.8));
     }
-    for (let i = 0; i < 70; i++) { const a = rand() * 6.3, d = Math.sqrt(rand()); put(-152 + Math.cos(a) * 56 * d, -96 + Math.sin(a) * 28 * d, rr(0.6, 2.2)); }
+    for (let i = 0; i < 70; i++) { const a = rand() * 6.3, d = Math.sqrt(rand()), x = -152 + Math.cos(a) * 56 * d, z = -96 + Math.sin(a) * 28 * d; if (x < -192) continue; put(x, z, rr(0.6, 2.2)); } // (longe da Via Panatenaica)
   }
 
   // ---------------- Parthenon (69,5 × 30,9 m; 8 × 17 colunas de 10,4 m), frente para o leste
@@ -75,6 +76,8 @@ export function buildAcropolis(B, M, out) {
   out.zones.cella = [PX - 28, PX + 28, PZ - 10.7, PZ + 10.7];
   // esculturas dos frontões (Sketchfab, se carregarem) — leste: o nascimento de Atena
   out.sculptures.push({ model: 'frontao', x: PX + 34.0, y: par.Y + 10.43 + 1.42 + 1.48 + 0.57 + 0.15, z: PZ, ry: 0, length: 26, optional: true });
+  // oeste: a disputa de Atena e Poseidon (usa o mesmo conjunto de figuras, virado para o oeste)
+  out.sculptures.push({ model: 'frontao', x: PX - 34.0, y: par.Y + 10.43 + 1.42 + 1.48 + 0.57 + 0.15, z: PZ, ry: Math.PI, length: 26, optional: true });
   // tochas/braseiros na escada leste
   for (const dz of [-12, 12]) { brazier(B, M, out, PX + 38, top(PX + 38, PZ + dz), PZ + dz); }
 
@@ -174,7 +177,7 @@ export function buildAcropolis(B, M, out) {
   ribbon(B, M.road, [[-250, 4], [-205, 2], [-170, -1], [-140, 0], [-124, 0]], 9);
   // estátuas votivas e estelas no planalto
   for (const [x, z, m, h] of [[-48, 18, 'kore', 2.1], [-40, -20, 'kouros', 2.2], [52, -30, 'kore', 2.0], [-20, 34, 'zeus_bronze', 2.2], [-58, -24, 'kore', 2.0], [68, 34, 'doryphoros', 2.1], [-30, 40, 'kore', 1.9]]) {
-    const y = top(x, z); B.box(M.marble, 1.2, 1.4, 1.2, x, y, z); addBox(x, z, 1.2, 1.2, y, y + 1.4);
+    const y = top(x, z); B.box(M.colMarble, 1.2, 1.4, 1.2, x, y, z); addBox(x, z, 1.2, 1.2, y, y + 1.4);
     out.sculptures.push({ model: m, x, y: y + 1.4, z, ry: rand() * 6, length: h, optional: true });
   }
   out.zones.acropole = [-ACRO.a, ACRO.a, -ACRO.b, ACRO.b];

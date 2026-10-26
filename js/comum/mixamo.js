@@ -76,7 +76,7 @@ async function loadHelmet(L) {
     const g = await L.loadAsync(ver('assets/models/gregos/elmo.glb'));
     const sc = g.scene; sc.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(sc), sz = b.getSize(new THREE.Vector3());
-    sc.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.metalness = Math.max(0.7, o.material.metalness || 0); } });
+    sc.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.metalness = Math.max(0.7, o.material.metalness || 0); o.material.color.multiply(new THREE.Color(0xd8a060)); } }); // bronze, não prata
     HELM = { scene: sc, cx: (b.min.x + b.max.x) / 2, cz: (b.min.z + b.max.z) / 2, y0: b.min.y + sz.y * 0.35, w: Math.min(sz.x, sz.z), yaw: 0 };
   } catch (e) { /* sem modelo: elmo feito de peças */ }
 }
@@ -491,7 +491,7 @@ export function makeHumanoid(o = {}) {
       if (useCloth) cloth(clothGeometry('peplos', PEPLOS, 36), clothMat, -0.04, 0.78);
       // dobra de cima do peplo (apoptygma), caindo até a cintura, e o cinto
       const ch = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
-      attach('Spine1', new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.205, 0.2, 32, 1, true), plainCloth), new THREE.Vector3(0, hips.y + 0.2, hips.z + 0.01), [0, 0, 0], [1, 1, 0.84]);
+      attach('Spine1', new THREE.Mesh(new THREE.CylinderGeometry(0.158, 0.182, 0.17, 32, 1, true), plainCloth), new THREE.Vector3(0, hips.y + 0.17, hips.z + 0.015), [0, 0, 0], [1, 1, 0.8]);
       cord(0.08, o.border ?? 0x8e2c22);
       void ch;
     } break;
@@ -598,7 +598,7 @@ export function makeHumanoid(o = {}) {
       const nape = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx + 0.03, fit.rx + 0.045, 0.09, 22, 1, true, Math.PI * 0.6, Math.PI * 0.8), bronzeG); nape.position.y = -0.06; g.add(nape);
     }
     // crista de crina de cavalo
-    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, fit.rz * 2.3), m(o.crest ?? 0x8e2c22, { roughness: 0.95 })); crest.position.set(0, 0.2, -0.01); g.add(crest);
+    if (!HELM) { const crest = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, fit.rz * 2.3), m(o.crest ?? 0x8e2c22, { roughness: 0.95 })); crest.position.set(0, 0.2, -0.01); g.add(crest); } // o modelo já tem a crista
     if (up) attach('Head', g, new THREE.Vector3(fit.cx, fit.top + 0.01, fit.cz - 0.02), [-0.55, 0, 0]); // empurrado para o alto da cabeça (como nos bustos de Péricles)
     else attach('Head', g, new THREE.Vector3(fit.cx, fit.top - 0.1, fit.cz), [0.02, 0, 0]);
   };

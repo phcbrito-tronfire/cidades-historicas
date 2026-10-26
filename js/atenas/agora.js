@@ -8,8 +8,8 @@ import { terrainHeight, AGORA, HEPH, BEMA, PNYX } from './terrain.js';
 import { rr, rand, pick } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
-// a Via Panatenaica: do Dípilon, cortando a ágora na diagonal, até a rampa da Acrópole
-export const PANATHENAIC = [[-482, -392], [-440, -352], [-395, -318], [-330, -268], [-270, -214], [-222, -150], [-205, -95], [-218, -40], [-240, -8], [-252, 4]];
+import { PANATHENAIC } from './ruas.js';
+export { PANATHENAIC };
 
 export function buildAgora(B, M, out) {
   const S = out.spots, A = AGORA, Y = A.y;
@@ -45,9 +45,9 @@ export function buildAgora(B, M, out) {
     return s;
   };
   stoa('Stoa de Zeus Eleutério', A.x - 92, A.z - 30, Math.PI / 2, 13, 1.0, 3.0, 11);
-  stoa('Stoa Real', A.x - 92, A.z - 78, Math.PI / 2, 8, 0.85, 2.6, 7.5, false);
+  stoa('Stoa Real', A.x - 92, A.z - 60, Math.PI / 2, 8, 0.85, 2.6, 7.5, false);
   stoa('Stoa Pintada (Poikile)', A.x + 30, A.z - 92, 0, 17, 1.0, 2.9, 12.5);
-  stoa('Stoa Sul', A.x + 15, A.z + 93, Math.PI, 25, 0.8, 3.2, 14);
+  stoa('Stoa Sul', A.x + 2, A.z + 93, Math.PI, 20, 0.8, 3.2, 14);
   // painéis da Stoa Pintada: a batalha de Maratona, de Polignoto e Mícon (aqui, painéis coloridos na parede)
   for (let i = 0; i < 7; i++) B.box(M.awning[i % 3], 4.2, 2.6, 0.06, A.x + 30 - 18 + i * 6, Y + 1.8, A.z - 92 - 12.5 + 0.8);
   S.stoaPoikile = new V3(A.x + 30, Y, A.z - 92 + 3);
@@ -81,6 +81,8 @@ export function buildAgora(B, M, out) {
     const hx = x - 12, hz = z + 10, hy = ty(hx, hz);
     smallHouse(B, M, hx, hy, hz, 9, 8, 0);
     S.simon = new V3(hx + 6, hy, hz - 1);
+    // banco de pedra onde Sócrates se senta para conversar
+    B.box(M.poros, 1.6, 0.46, 0.5, hx + 6, hy, hz - 0.72); addBox(hx + 6, hz - 0.72, 1.6, 0.42, hy, hy + 0.46);
     // banca do sapateiro: sandálias e couro
     B.box(M.wood, 2, 0.8, 0.8, hx + 5.2, hy, hz + 2.5); addBox(hx + 5.2, hz + 2.5, 2, 0.8, hy, hy + 0.8);
     out.stalls.push({ type: 'sandalias', x: hx + 5.2, y: hy + 0.8, z: hz + 2.5 });
@@ -125,7 +127,7 @@ export function buildAgora(B, M, out) {
       [A.x - 80, A.z - 10, 'zeus_bronze'], [A.x + 22, A.z + 80, 'doryphoros'], [A.x - 30, A.z + 76, 'kore'], [-214, -112, 'discobolo'], [-212, -60, 'doryphoros']];
     for (const [x, z, m] of spots) {
       const y = ty(x, z);
-      B.box(M.marble, 1.5, 0.3, 1.5, x, y, z); B.box(M.marble, 1.1, 1.5, 1.1, x, y + 0.3, z); B.box(M.marble, 1.3, 0.2, 1.3, x, y + 1.8, z);
+      B.box(M.colMarble, 1.5, 0.3, 1.5, x, y, z); B.box(M.colMarble, 1.1, 1.5, 1.1, x, y + 0.3, z); B.box(M.colMarble, 1.3, 0.2, 1.3, x, y + 1.8, z);
       addBox(x, z, 1.5, 1.5, y, y + 2);
       out.sculptures.push({ model: m, x, y: y + 2, z, ry: rand() * 6.3, length: m === 'discobolo' ? 1.8 : 2.05, optional: true });
     }
@@ -145,7 +147,7 @@ export function buildAgora(B, M, out) {
   // plátanos (plantados por Címon para dar sombra) em volta da praça
   out.trees = out.trees || [];
   for (let i = 0; i < 12; i++) { out.trees.push({ kind: 'platano', x: A.x - 70 + i * 13, z: A.z - 72 + rr(-2, 2) }); out.trees.push({ kind: 'platano', x: A.x - 70 + i * 13, z: A.z + 74 + rr(-2, 2) }); }
-  for (let i = 0; i < 7; i++) out.trees.push({ kind: 'platano', x: A.x - 78 + rr(-2, 2), z: A.z - 50 + i * 16 });
+  for (let i = 0; i < 7; i++) out.trees.push({ kind: 'platano', x: A.x - 72 + rr(-1, 1), z: A.z - 50 + i * 16 });
 
   // ---------------- Pnyx: onde a assembleia (ekklesia) se reunia — milhares de cidadãos sentados na encosta
   {
@@ -166,7 +168,7 @@ export function buildAgora(B, M, out) {
 
   // ---------------- Cerâmico: oficinas de oleiros e fornos (a "argila da Ática" dava o vermelho dos vasos)
   {
-    const cx = -425, cz = -322;
+    const cx = -432, cz = -376; // entre a Via Panatenaica e a muralha, perto do Dípilon
     for (let i = 0; i < 3; i++) {
       const x = cx + i * 22, z = cz + (i % 2) * 10, y = ty(x, z);
       smallHouse(B, M, x, y, z, 11, 9, 0.2 * i);
@@ -174,8 +176,8 @@ export function buildAgora(B, M, out) {
       // vasos secando ao sol
       for (let k = 0; k < 8; k++) out.pots = (out.pots || []).concat([{ x: x - 4 + (k % 4) * 1.1, z: z - 7.5 - Math.floor(k / 4) * 1.1, y: ty(x - 4 + (k % 4) * 1.1, z - 7.5) }]);
       out.stalls.push({ type: 'ceramica', x: x - 2, y: y + 0.85, z: z - 5.2 });
-      out.sculptures.push({ model: 'anforas', x: x + 3, y, z: z - 6.2, ry: rand() * 6, length: 0.85, optional: true });
-      out.sculptures.push({ model: 'vaso', x: x - 4.5, y: y + 0.85, z: z - 5.2, ry: rand() * 6, length: 0.55, optional: true });
+      out.sculptures.push({ model: 'anforas', x: x + 3.5, y, z: z - 9.5, ry: rand() * 6, length: 0.85, optional: true });
+      out.sculptures.push({ model: 'vaso', x: x - 1.2, y: y + 0.85, z: z - 5.2, ry: rand() * 6, length: 0.5, optional: true });
       B.box(M.wood, 3, 0.85, 1, x - 2, y, z - 5.2); addBox(x - 2, z - 5.2, 3, 1, y, y + 0.85);
     }
     S.potter = new V3(cx + 3, ty(cx + 3, cz - 8), cz - 8);

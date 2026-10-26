@@ -5,8 +5,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { fbm } from './util.js';
 
 const V3 = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
-export function mat4(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
-  return new THREE.Matrix4().compose(new V3(x, y, z), new Q().setFromEuler(new E(rx, ry, rz)), new V3(sx, sy, sz));
+export function mat4(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, order = 'XYZ') {
+  return new THREE.Matrix4().compose(new V3(x, y, z), new Q().setFromEuler(new E(rx, ry, rz, order)), new V3(sx, sy, sz));
 }
 
 export function worldUV(g, { s = 4, sv, y0 = 0 }) {
@@ -56,7 +56,8 @@ export class Batcher {
   }
   // y = base da peça
   box(mat, w, h, d, x, y, z, o = {}) {
-    const m = mat4(x, y + h / 2, z, o.rx || 0, o.ry || 0, o.rz || 0);
+    // order YXZ: primeiro gira (ry) e depois inclina no eixo da própria peça (telhados de casas giradas)
+    const m = mat4(x, y + h / 2, z, o.rx || 0, o.ry || 0, o.rz || 0, 1, 1, 1, o.order || (this.yxz && o.ry && (o.rx || o.rz) ? 'YXZ' : 'XYZ'));
     this.add(new THREE.BoxGeometry(w, h, d), mat, o.frame ? o.frame.clone().multiply(m) : m, o.uv);
   }
   // parede de adobe: levemente inclinada para dentro no topo e irregular

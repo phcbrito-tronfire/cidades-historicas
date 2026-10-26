@@ -125,7 +125,7 @@ export function getTextures() {
 // Texturas fotográficas PBR em assets/textures/<id>/{diff,nor,rough}.jpg
 // ---------------------------------------------------------------------------
 export const PBR_IDS = ['marble_01', 'rock_face_03', 'clay_roof_tiles_02', 'aerial_beach_01', 'damp_beach_sand', 'dry_ground_rocks',
-  'sparse_grass', 'rocky_trail', 'rock_wall_08', 'seaworn_stone_tiles', 'white_plaster_rough_01', 'clay_plaster', 'rough_plaster_brick', 'weathered_planks', 'rough_linen'];
+  'sparse_grass', 'rocky_trail', 'rock_wall_08', 'seaworn_stone_tiles', 'white_plaster_rough_01', 'clay_plaster', 'rough_plaster_brick', 'weathered_planks', 'rough_linen', 'cal_branca', 'barro_ocre', 'pedra_clara', 'madeira_clara'];
 
 export async function loadPBR(base, onProgress) {
   const loader = new THREE.TextureLoader();

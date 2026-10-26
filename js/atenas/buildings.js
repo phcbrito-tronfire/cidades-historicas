@@ -29,13 +29,13 @@ export function createMaterials(tex) {
   M.ceiling = std({ map: T.coffers, color: 0xffffff, roughness: 0.8 }); M.ceiling.userData.uv = { s: 2.6 }; // forro de caixotões azuis com estrelas douradas
   M.gold = std({ color: 0xffc64a, metalness: 1, roughness: 0.28 });
   M.bronze = std({ color: 0xa8743a, metalness: 0.9, roughness: 0.35 });
-  M.wood = std({ ...pbrSet(P.weathered_planks, 1), color: 0xb08860 }); M.wood.userData.uv = { s: 2 };
-  M.darkWood = std({ ...pbrSet(P.weathered_planks, 1), color: 0x6a4a30 }); M.darkWood.userData.uv = { s: 2 };
-  M.plaster = std({ ...pbrSet(P.white_plaster_rough_01, 1), color: 0xf2ead8 }); M.plaster.userData.uv = { s: 3 };
-  M.plasterOchre = std({ ...pbrSet(P.clay_plaster, 1), color: 0xe8d2a8 }); M.plasterOchre.userData.uv = { s: 3 };
-  M.mudbrick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd8b890 }); M.mudbrick.userData.uv = { s: 2.5 };
-  M.socle = std({ ...pbrSet(P.rock_wall_08, 1), color: 0xcfc2aa }); M.socle.userData.uv = { s: 2.5 };
-  M.wallStone = std({ ...pbrSet(P.rock_wall_08, 1), color: 0xfff0d0 }); M.wallStone.userData.uv = { s: 4 };
+  M.wood = std({ ...pbrSet(P.madeira_clara, 1), color: 0xe8c8a0 }); M.wood.userData.uv = { s: 2 };
+  M.darkWood = std({ ...pbrSet(P.madeira_clara, 1), color: 0x9a7452 }); M.darkWood.userData.uv = { s: 2 };
+  M.plaster = std({ ...pbrSet(P.cal_branca, 1), color: 0xffffff, roughness: 0.9 }); // cal (foto clareada) M.plaster.userData.uv = { s: 3 };
+  M.plasterOchre = std({ ...pbrSet(P.barro_ocre, 1), color: 0xffffff }); M.plasterOchre.userData.uv = { s: 3 };
+  M.mudbrick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xf8e2c0 }); M.mudbrick.userData.uv = { s: 2.5 };
+  M.socle = std({ ...pbrSet(P.pedra_clara, 1), color: 0xffffff }); M.socle.userData.uv = { s: 2.5 };
+  M.wallStone = std({ ...pbrSet(P.pedra_clara, 1), color: 0xfff6e4 }); M.wallStone.userData.uv = { s: 4 };
   M.rock = std({ ...pbrSet(P.rock_face_03, 1), color: 0xf2e6d4, roughness: 0.95 }); M.rock.userData.uv = { s: 3 };
   M.quay = std({ ...pbrSet(P.seaworn_stone_tiles, 1), color: 0xe2d6bc }); M.quay.userData.uv = { s: 4 };
   M.stoaWall = std({ map: T.stucco('#2c2a28', '#8e2c22'), color: 0xffffff, roughness: 0.9 }); M.stoaWall.userData.uv = { s: 6, sv: 6 };
@@ -55,6 +55,7 @@ export function createMaterials(tex) {
 export function buildCity(scene, tex, available = new Set()) {
   const M = createMaterials(tex);
   const B = new Batcher();
+  B.yxz = true; // peças giradas e inclinadas: inclinação no eixo da própria peça
   const out = {
     M, spots: {}, zones: {}, torches: [], lights: [], sculptures: [], exclusions: [], stalls: [], visitHouses: [], animated: [],
     boats: [], flags: [], statues: [], gates: [], available,

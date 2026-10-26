@@ -5,30 +5,11 @@ import * as THREE from 'three';
 import { addBox } from '../comum/collision.js';
 import { terrainHeight } from './terrain.js';
 import { insideCity, distToWall } from './muralhas.js';
-import { PANATHENAIC } from './agora.js';
+import { STREETS, distToPolyline } from './ruas.js';
+export { STREETS };
 import { rand, rr, fbm } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
-const STREETS = [
-  PANATHENAIC,
-  [[-300, -110], [-335, 40], [-360, 156]],
-  [[-200, -95], [-130, 40], [-60, 180], [-60, 257]],
-  [[-100, -110], [-100, -410]],
-  [[80, -80], [200, -90], [318, -95]],
-  [[22, 150], [-60, 200]],
-  [[-150, 70], [-250, 120], [-360, 156]],
-  [[60, -40], [150, 40], [150, 200]],
-];
-function distToPolyline(x, z, pts) {
-  let bd = 1e9;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1], ab = [b[0] - a[0], b[1] - a[1]], l2 = ab[0] ** 2 + ab[1] ** 2;
-    const t = Math.max(0, Math.min(1, ((x - a[0]) * ab[0] + (z - a[1]) * ab[1]) / l2));
-    bd = Math.min(bd, Math.hypot(x - (a[0] + ab[0] * t), z - (a[1] + ab[1] * t)));
-  }
-  return bd;
-}
-
 // casas que se pode visitar: nome, onde e o que contar ao entrar
 export const VISIT = [
   { id: 'pericles', name: 'Casa de Péricles e Aspásia', x: -280, z: -48, ry: 0.15, tag: 'Casa', text: 'Uma casa de cidadão rico, mas sem luxo à vista: Péricles fazia questão de viver com simplicidade. Os cômodos se abrem para o pátio, onde fica o altar de Zeus Herkeios, protetor do lar. O andrón, com sofás e piso de seixos, é a sala dos banquetes (os simpósios); os aposentos das mulheres, com o tear, ficam mais ao fundo.' },
@@ -54,7 +35,7 @@ export function buildHouses(B, M, out) {
     const x = gx + rr(-2.5, 2.5), z = gz + rr(-2.5, 2.5);
     if (!insideCity(x, z) || distToWall(x, z) < 14) continue;
     if (blocked(x, z, 6)) continue;
-    if (STREETS.some((s) => distToPolyline(x, z, s) < 11)) continue;
+    if (STREETS.some((s) => distToPolyline(x, z, s) < 15)) continue; // (centro da casa a 15 m: as paredes não invadem a rua)
     // vielas: algumas células ficam vazias (ruas tortas e pracinhas)
     const lane = fbm(x * 0.03 + 4, z * 0.03 + 8, 2);
     if (lane > 0.62 || rand() < 0.1) continue;
@@ -94,9 +75,10 @@ function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   const west = w > 12 || o.rich || o.visit;
   if (west) { wall(T * 0.8, d - nd - 1.4, -w / 2 + 3.6, -0.7 - nd / 2 + 0.7); }
   // telhados de uma água, caindo para o pátio
-  const roof = (lw, ld, lx, lz, tilt) => { const [px, pz] = P(lx, lz); B.box(M.tiles, lw, 0.22, ld, px, y + H - 0.05, pz, { ry, rx: tilt }); };
-  roof(w + 0.6, nd + 1.2, 0, d / 2 - nd / 2 + 0.1, -0.2);
-  if (west) roof(4.4, d - nd + 0.4, -w / 2 + 1.8, -nd / 2 + 0.2, 0);
+  // telhados de uma água: a ala norte cai para o pátio (sul), a ala oeste cai para o pátio (leste)
+  const roof = (lw, ld, lx, lz, yy, rx, rz) => { const [px, pz] = P(lx, lz); B.box(M.tiles, lw, 0.2, ld, px, yy, pz, { ry, rx, rz: rz || 0 }); };
+  roof(w + 0.5, nd + 0.9, 0, d / 2 - nd / 2 + 0.15, y + H - 0.02, -0.2);
+  if (west) roof(4.2, d - nd - 0.3, -w / 2 + 1.75, -nd / 2 - 0.15, y + H - 0.3, 0.0001, -0.2);
   if (o.two) { // segundo andar sobre a ala norte (quartos), com janelinhas
     const [px, pz] = P(0, d / 2 - nd / 2);
     B.box(wallMat, w, 2.6, nd, px, y + H, pz, { ry });

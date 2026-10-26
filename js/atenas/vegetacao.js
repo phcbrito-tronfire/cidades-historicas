@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { terrainHeight, coastC } from './terrain.js';
-import { insideCity } from './muralhas.js';
+import { insideCity, distToWall } from './muralhas.js';
+import { distToStreets } from './ruas.js';
 import { addCircle } from '../comum/collision.js';
 import { sculptureUnit, instancedFromUnit } from '../comum/sculptures.js';
 import { fbm, rand, rr } from '../comum/util.js';
@@ -49,7 +50,7 @@ const SPECIES = {
 
 export async function buildVegetation(scene, tex, city) {
   const ex = city.exclusions;
-  const isEx = (x, z) => ex.some((e) => x > e[0] && x < e[1] && z > e[2] && z < e[3]) || (city.houses || []).some(([hx, hz, r]) => (hx - x) ** 2 + (hz - z) ** 2 < (r + 2) ** 2);
+  const isEx = (x, z) => distToWall(x, z) < 7 || distToStreets(x, z) < 6 || ex.some((e) => x > e[0] && x < e[1] && z > e[2] && z < e[3]) || (city.houses || []).some(([hx, hz, r]) => (hx - x) ** 2 + (hz - z) ** 2 < (r + 2) ** 2);
   const slope = (x, z) => Math.max(Math.abs(terrainHeight(x + 3, z) - terrainHeight(x - 3, z)), Math.abs(terrainHeight(x, z + 3) - terrainHeight(x, z - 3))) / 6;
   const lists = { oliveira: [], cipreste: [], platano: [], pinheiro: [] };
   // olivais: fileiras orientadas por talhão, fora da cidade e longe da praia

@@ -67,7 +67,10 @@ export class Actors {
       h.rig.root.add(label);
       const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false }));
       marker.scale.setScalar(0.8); marker.position.y = 2.95; h.rig.root.add(marker);
-      this.key.push({ def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: def.id === 'socrates' ? 'sit' : 'idle' });
+      const k = { def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: def.id === 'socrates' ? 'sit' : 'idle' };
+      // sentado no banco: a saia de tecido (feita para quem está de pé) some; o manto continua pelas pernas
+      if (k.mode === 'sit' && h.rig.skirt) h.rig.skirt.visible = false;
+      this.key.push(k);
     }
   }
 
