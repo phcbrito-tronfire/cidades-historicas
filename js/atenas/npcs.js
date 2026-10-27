@@ -32,7 +32,8 @@ export class Actors {
 
   addHuman(look, x, z, ry = 0, y) {
     const rig = makeHumanoid({ skin: pick(SKINS_GR), ...look });
-    const pos = new V3(x, y ?? groundAt(x, z, terrainAt(x, z) + 1.6), z);
+    // o piso é procurado a partir da superfície da água (cais e plataformas sobre o rio ou o mar ficam ao alcance)
+    const pos = new V3(x, y ?? groundAt(x, z, Math.max(terrainAt(x, z), waterAt(x, z)) + 1.6), z);
     rig.root.position.copy(pos);
     rig.root.rotation.y = ry;
     this.scene.add(rig.root);
@@ -159,7 +160,7 @@ export class Actors {
     const C = this.city, S = C.spots;
     const add = (kind, x, z, opts = {}) => {
       const a = makeAnimal(kind);
-      const y = opts.y ?? groundAt(x, z, terrainAt(x, z) + 1.6);
+      const y = opts.y ?? groundAt(x, z, Math.max(terrainAt(x, z), waterAt(x, z)) + 1.6);
       a.g.position.set(x, y, z); a.g.rotation.y = rand() * 6;
       if (opts.scale) a.g.scale.setScalar(opts.scale);
       a.seed = rand() * 10;

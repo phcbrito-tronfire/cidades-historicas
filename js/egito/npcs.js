@@ -4,7 +4,7 @@ import { makeBird } from '../comum/animals.js';
 import { makeAnimal, animateAnimal } from '../comum/animals.js';
 import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
-import { groundAt, moveWithCollision, terrainAt } from '../comum/collision.js';
+import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collision.js';
 import { riverX, terrainHeight } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
@@ -29,7 +29,8 @@ export class Actors {
 
   addHuman(look, x, z, ry = 0, y) {
     const rig = makeHumanoid(look);
-    const pos = new V3(x, y ?? groundAt(x, z, terrainAt(x, z) + 1.6), z);
+    // o piso é procurado a partir da superfície da água (cais e plataformas sobre o rio ou o mar ficam ao alcance)
+    const pos = new V3(x, y ?? groundAt(x, z, Math.max(terrainAt(x, z), waterAt(x, z)) + 1.6), z);
     rig.root.position.copy(pos);
     rig.root.rotation.y = ry;
     this.scene.add(rig.root);
@@ -175,7 +176,7 @@ export class Actors {
     const C = this.city;
     const add = (kind, x, z, opts = {}) => {
       const a = makeAnimal(kind);
-      const y = opts.y ?? groundAt(x, z, terrainAt(x, z) + 1.6);
+      const y = opts.y ?? groundAt(x, z, Math.max(terrainAt(x, z), waterAt(x, z)) + 1.6);
       a.g.position.set(x, y, z); a.g.rotation.y = rand() * 6;
       if (opts.scale) a.g.scale.setScalar(opts.scale);
       a.seed = rand() * 10;
