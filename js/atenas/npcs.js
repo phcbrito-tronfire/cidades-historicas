@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { makeAnimal, animateAnimal, makeBird } from '../comum/animals.js';
 import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, SAILOR_LINES, CHILD_LINES, PRIEST_LINES } from './dialogues.js';
-import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collision.js';
+import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum/collision.js';
 import { terrainHeight, coastPoint, AGORA, BEMA, THEATER } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
@@ -91,7 +91,8 @@ export class Actors {
 
   spawnAmbient() {
     const C = this.city, S = C.spots, A = AGORA;
-    const randIn = (r) => new V3(rr(r[0], r[1]), 0, rr(r[2], r[3]));
+    // ponto sorteado na região, sempre em chão seco (nada de gente nascendo no fundo do rio ou do porto)
+    const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z)) break; } return p; };
     const walker = (kind, region, n, o = {}) => {
       for (let i = 0; i < n; i++) {
         const p = randIn(region);
@@ -273,6 +274,7 @@ export class Actors {
       const sp = a.speed * dt;
       const ox = a.pos.x, oz = a.pos.z;
       moveWithCollision(a.pos, (dx / dist) * sp, (dz / dist) * sp, 0.3, 1.7);
+      if (!dryAt(a.pos.x, a.pos.z, a.pos.y + 0.3)) { a.pos.x = ox; a.pos.z = oz; a.target = null; a.wait = rr(0.5, 2); } // beira do cais / da água: dá meia-volta
       const moved = Math.hypot(a.pos.x - ox, a.pos.z - oz);
       if (moved < sp * 0.3) { a.stuck = (a.stuck || 0) + dt; if (a.stuck > 0.8) { a.target = null; a.wait = 0.5; } }
       a.pos.y = groundAt(a.pos.x, a.pos.z, a.pos.y + 0.3);

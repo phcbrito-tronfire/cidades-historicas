@@ -105,3 +105,11 @@ export function moveWithCollision(pos, dx, dz, r, height) {
   if (!blocked(pos.x, nz, pos.y, r, height)) { pos.z = nz; return false; }
   return false;
 }
+
+// chão seco (ou cais/plataforma acima da água): quem anda a pé não entra no rio nem no mar
+export function dryAt(x, z, feetY) {
+  const w = waterFn(x, z);
+  if (w < -50) return true;
+  const g = groundAt(x, z, feetY ?? Math.max(terrainFn(x, z), w) + 1.6);
+  return g > w - 0.3;
+}

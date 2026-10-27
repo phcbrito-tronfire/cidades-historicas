@@ -22,10 +22,16 @@ export class AudioFX {
     this.windGain = ctx.createGain(); this.windGain.gain.value = 0.25;
     wind.connect(wf).connect(this.windGain).connect(this.master);
     const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 0.12; lfo.connect(lg).connect(this.windGain.gain); lfo.start();
-    // água
-    const water = noise('white'), bf = ctx.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = 900; bf.Q.value = 0.6;
+    // rio: correnteza grave e macia (ruído marrom bem filtrado, "respirando" devagar) — o ruído branco de antes chiava;
+    // as marolas batendo na margem são toques curtos sorteados em update()
+    const water = noise('brown'), bf = ctx.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.value = 420; bf.Q.value = 0.5;
+    const bf2 = ctx.createBiquadFilter(); bf2.type = 'highpass'; bf2.frequency.value = 70;
     this.waterGain = ctx.createGain(); this.waterGain.gain.value = 0;
-    water.connect(bf).connect(this.waterGain).connect(this.master);
+    const flow = ctx.createGain(); flow.gain.value = 0.75;
+    const wl = ctx.createOscillator(), wlg = ctx.createGain(); wl.frequency.value = 0.13; wlg.gain.value = 0.25; wl.connect(wlg).connect(flow.gain); wl.start();
+    water.connect(bf).connect(bf2).connect(flow).connect(this.waterGain).connect(this.master);
+    { const len = ctx.sampleRate, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; this.noiseBuf = b; }
+    this.nextLap = ctx.currentTime + 1;
     // grilos (noite)
     this.cricketGain = ctx.createGain(); this.cricketGain.gain.value = 0; this.cricketGain.connect(this.master);
     const cr = ctx.createOscillator(); cr.frequency.value = 4400; const crA = ctx.createGain(); crA.gain.value = 0;
@@ -57,7 +63,16 @@ export class AudioFX {
     if (!this.ctx) return;
     const ctx = this.ctx, now = ctx.currentTime;
     const k = Math.min(1, dt * 2);
-    this.waterGain.gain.value += ((nearWater ? 0.12 * nearWater : 0) - this.waterGain.gain.value) * k;
+    this.waterGain.gain.value += ((nearWater ? 0.22 * nearWater : 0) - this.waterGain.gain.value) * k;
+    // marola: um "plap" grave e curto na margem, de vez em quando
+    if (nearWater > 0.15 && now > this.nextLap) {
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 260 + Math.random() * 380; f.Q.value = 1.8;
+      const g = ctx.createGain(), v = 0.06 * nearWater * (0.5 + Math.random() * 0.5);
+      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(v, now + 0.03); g.gain.exponentialRampToValueAtTime(0.0008, now + 0.35 + Math.random() * 0.3);
+      src.connect(f).connect(g).connect(this.master); src.start(now, Math.random() * 0.5); src.stop(now + 0.8);
+      this.nextLap = now + 0.5 + Math.random() * 2.2;
+    }
     this.cricketGain.gain.value += ((night ? 0.05 : 0) - this.cricketGain.gain.value) * k;
     this.crowdGain.gain.value += ((market ? 0.09 * market : 0) - this.crowdGain.gain.value) * k;
     this.windGain.gain.value = Math.max(0.05, this.windGain.gain.value);

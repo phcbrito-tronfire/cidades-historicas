@@ -4,7 +4,7 @@ import { makeBird } from '../comum/animals.js';
 import { makeAnimal, animateAnimal } from '../comum/animals.js';
 import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
-import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collision.js';
+import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum/collision.js';
 import { riverX, terrainHeight } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
@@ -109,7 +109,8 @@ export class Actors {
     const regions = {
       norte: [-110, 70, 30, 235], sul: [-110, 70, -235, -45], avenida: [20, 100, -10, 26], mercado: [42, 90, 30, 90], patio: [-36, -8, -12, 12],
     };
-    const randIn = (r) => new V3(rr(r[0], r[1]), 0, rr(r[2], r[3]));
+    // ponto sorteado na região, sempre em chão seco (nada de gente nascendo no fundo do rio ou do porto)
+    const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z)) break; } return p; };
     const looks = () => {
       const r = rand();
       if (r < 0.45) return { outfit: rand() < 0.7 ? 'kilt' : 'longkilt', hair: pick(['short', 'short', 'bald', 'khat']) };
@@ -312,6 +313,7 @@ export class Actors {
       const sp = a.speed * dt;
       const ox = a.pos.x, oz = a.pos.z;
       moveWithCollision(a.pos, (dx / dist) * sp, (dz / dist) * sp, 0.3, 1.7);
+      if (!dryAt(a.pos.x, a.pos.z, a.pos.y + 0.3)) { a.pos.x = ox; a.pos.z = oz; a.target = null; a.wait = rr(0.5, 2); } // beira do cais / da água: dá meia-volta
       const moved = Math.hypot(a.pos.x - ox, a.pos.z - oz);
       if (moved < sp * 0.3) { a.stuck = (a.stuck || 0) + dt; if (a.stuck > 0.8) { a.target = null; a.wait = 0.5; } }
       a.pos.y = groundAt(a.pos.x, a.pos.z, a.pos.y + 0.3);
