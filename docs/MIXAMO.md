@@ -17,6 +17,9 @@ idle (Breathing Idle), andar (Standard Walk), andar_f (Female Walk), trotar (Jog
 pular (Jump In Place), caindo (Falling Idle), aterrissar (Falling To Landing), nadar (Swimming),
 boiar (Treading Water), conversar (Talking – General Conversation), pegar (Picking Up),
 espada (Sword And Shield Slash), ajoelhado (Kneeling Inspecting), sentado (Sitting Idle).
+Acrescentadas em 26/10/2026: borda (Pulling Up To A Ledge — sair da água pelo cais), salto_agua (Diving From A Run Pose),
+golpe (Hit Reaction), desmaiar (Shot To The Chest Falling Backwards) e beber (Male Drinking). O Mixamo não tem nado crawl:
+o crawl na superfície é procedural (`comum/player.js`); "Swimming" é nado de peito subaquático e fica para o mergulho.
 
 Observação técnica: o corpo dos modelos do Mixamo é só cabeça, mãos e pés — o resto é a roupa. Por isso
 os egípcios são feitos repintando as peças (camisa = torso nu, calça/bermuda = linho) e adicionando

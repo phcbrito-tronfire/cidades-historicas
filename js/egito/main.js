@@ -112,7 +112,7 @@ async function main() {
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);
   const boats = makeBoats(scene, city);
-  const health = new Health({ onDeath: () => onDeath() });
+  const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const nile = await buildNile(scene, city, {
     onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
     onBite: () => { health.damage(24); audio.splash(); ui.toast('O crocodilo mordeu! Fuja para longe do rio.'); },
@@ -275,7 +275,7 @@ async function main() {
     const it = player.holding; if (!it) return;
     if (it.food) {
       items.remove(it); player.holding = null; ui.setHand(null); audio.pickup();
-      const healed = health.eat(it.type);
+      const healed = health.eat(it.type); player.drink();
       ui.toast(it.eat + (healed ? ` (+${healed} de vida)` : ''));
       // a comida volta à banca depois de um tempo
       const h = it.home; if (h) setTimeout(() => items.spawn(it.type, h.x, h.y, h.z, rand() * 6), 90000);
@@ -373,10 +373,10 @@ async function main() {
 
   // atalho de depuração (console): __game.tp(x, z)
   const onDeath = () => {
-    player.locked = true;
+    player.locked = true; player.collapse();
     faint('Você desmaiou... e acordou de volta diante do templo de Ptah.', () => {
       player.diving = false; player.swimming = false; player.breath = 30;
-      player.place(84, 0, -Math.PI / 2); health.revive(70); nile.crocs.reset(); player.locked = false;
+      player.place(84, 0, -Math.PI / 2); health.revive(70); player.rig.once = null; nile.crocs.reset(); player.locked = false;
     });
   };
 

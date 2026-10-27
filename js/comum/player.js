@@ -267,7 +267,11 @@ export class Player {
       const lx = p.x + fx * (d + 0.5), lz = p.z + fz * (d + 0.5);
       const land = groundAt(lx, lz, top + 0.3);
       if (Math.abs(land - top) > 0.5 || waterAt(lx, lz) - land > 0.8 || blocked(lx, lz, land, 0.3, 1.7)) continue;
-      this.climb = { t: 0, dur: 0.55 + Math.max(0, top - wl) * 0.25, from: p.clone(), edge: new THREE.Vector3(p.x + fx * (d - 0.25), top, p.z + fz * (d - 0.25)), to: new THREE.Vector3(lx, land, lz) };
+      // animação do Mixamo "Pulling Up To A Ledge", acelerada para durar o tempo da subida
+      const dur = 1.5 + Math.max(0, top - wl) * 0.35;
+      playOnce(this.rig, 'borda', dur);
+      { const a = this.rig.act('borda'); if (a) a.timeScale = a.getClip().duration / dur; }
+      this.climb = { t: 0, dur, from: p.clone(), edge: new THREE.Vector3(p.x + fx * (d - 0.25), top, p.z + fz * (d - 0.25)), to: new THREE.Vector3(lx, land, lz) };
       this.swimming = false; this.diving = false; this.speed = 0;
       this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.2);
       return true;
@@ -283,9 +287,9 @@ export class Player {
     if (k < 0.6) { const e = k / 0.6, s = e * e * (3 - 2 * e); p.set(lerp(C.from.x, C.edge.x, s * 0.6), lerp(C.from.y, C.edge.y + 0.05, s), lerp(C.from.z, C.edge.z, s * 0.6)); }
     else { const e = (k - 0.6) / 0.4, s = e * e * (3 - 2 * e); const ex = lerp(C.from.x, C.edge.x, 0.6), ez = lerp(C.from.z, C.edge.z, 0.6); p.set(lerp(ex, C.to.x, s), lerp(C.edge.y + 0.05, C.to.y, s), lerp(ez, C.to.z, s)); }
     this.mode = 'air';
-    animateHumanoid(this.rig, dt, 0, k < 0.6 ? 'air' : 'idle', t);
+    animateHumanoid(this.rig, dt, 0, 'idle', t);
     this.rig.root.rotation.y = this.facing;
-    this.pitch = lerp(this.pitch || 0, k < 0.6 ? 0.35 : 0.1, Math.min(1, dt * 8)); this.rig.model.rotation.x = this.pitch; this.rig.model.rotation.z = 0;
+    this.pitch = lerp(this.pitch || 0, 0, Math.min(1, dt * 8)); this.rig.model.rotation.x = this.pitch; this.rig.model.rotation.z = 0;
     this.crawl(dt, false, 0);
     this.updateWet(dt, false, 0, -100); this.updateTorch(dt, t); this.updateBreathBar();
     if (k >= 1) { this.climb = null; this.onGround = true; this.vy = 0; this.wasInWater = false; this.events.step(true); }
@@ -376,6 +380,8 @@ export class Player {
         this.vy = 6.4; this.onGround = false; this.jumpHeld = true; this.events.step(true);
       }
       if (!this.key('Space')) this.jumpHeld = false;
+      if (!this.onGround && !this.headDive && this.vy < -2 && p.y - wl > 1.2 && depth > 2.2) { this.headDive = true; playOnce(this.rig, 'salto_agua', 0.9); }
+      if (this.onGround) this.headDive = false;
       if (!this.onGround) {
         this.vy -= 20 * dt;
         p.y += this.vy * dt;
@@ -459,6 +465,11 @@ export class Player {
   }
 
   // a bordo de um barco: o barco decide a posição; o explorador só anima (sentado ou em pé) e a câmera acompanha
+  // reações (animações do Mixamo): golpe ao levar dano, desmaio quando a vida acaba, gole ao comer/beber
+  hurt() { if (!this.swimming && !this.climb && this.onGround) playOnce(this.rig, 'golpe', 0.42); }
+  collapse() { if (!this.swimming) playOnce(this.rig, 'desmaiar', 4.5); }
+  drink() { if (!this.swimming) playOnce(this.rig, 'beber', 2.6); }
+
   // câmera própria do barco: guarda a do explorador e abre o enquadramento
   boardCam(pitch = 0.36) { this.savedCam = { pitch: this.camPitch, dist: this.camTargetDist }; this.camPitch = pitch; this.boatZoom = 1; }
   leaveCam() { this.rideCam = null; if (this.savedCam) { this.camPitch = this.savedCam.pitch; this.camTargetDist = this.savedCam.dist; this.savedCam = null; } }

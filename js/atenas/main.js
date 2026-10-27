@@ -119,7 +119,7 @@ async function main() {
   scatterProps(scene, city);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx);
-  const health = new Health({ onDeath: () => onDeath() });
+  const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const sea = await buildSea(scene, tex, { onSting: () => { health.damage(12); ui.toast('Ai! Uma água-viva — queima como fogo. Cuidado com elas.'); } });
 
   await step(0.68, 'Reunindo o povo de Atenas...');
@@ -283,7 +283,7 @@ async function main() {
     const it = player.holding; if (!it) return;
     if (it.food) {
       items.remove(it); player.holding = null; ui.setHand(null); audio.pickup();
-      const healed = health.eat(it.type);
+      const healed = health.eat(it.type); player.drink();
       ui.toast(it.eat + (healed ? ` (+${healed} de vida)` : ''));
       // a barraca repõe a comida depois de um tempo
       const h = it.home; if (h) setTimeout(() => items.spawn(it.type, h.x, h.y, h.z, rand() * 6), 90000);
@@ -384,10 +384,10 @@ async function main() {
 
   // ---------------- vida ----------------
   const onDeath = () => {
-    player.locked = true; boats.riding && boats.leave(player, S.quay);
+    player.locked = true; player.collapse(); boats.riding && boats.leave(player, S.quay);
     faint('Você desmaiou... e acordou de volta na ágora, com a cabeça doendo.', () => {
       player.diving = false; player.swimming = false; player.breath = 30;
-      player.place(start.x - 8, start.z + 14, Math.PI * 0.85); health.revive(70); player.locked = false;
+      player.place(start.x - 8, start.z + 14, Math.PI * 0.85); health.revive(70); player.rig.once = null; player.locked = false;
     });
   };
   let siteSeen = false, urchinCd = 0;

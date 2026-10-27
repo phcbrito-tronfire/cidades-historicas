@@ -3,8 +3,8 @@
 const FOOD_HEAL = { pao: 30, cerveja: 35, peixe: 25, queijo: 20, figos: 15, figo: 15, azeitonas: 12, vinho: 20, agua: 18, roma: 15, tamaras: 18, cebola: 10 };
 
 export class Health {
-  constructor({ onDeath } = {}) {
-    this.max = 100; this.hp = 100; this.onDeath = onDeath; this.hurtT = 0; this.regenWait = 0; this.dead = false;
+  constructor({ onDeath, onHurt } = {}) {
+    this.max = 100; this.hp = 100; this.onDeath = onDeath; this.onHurt = onHurt; this.hurtT = 0; this.regenWait = 0; this.dead = false;
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;top:82px;left:22px;z-index:11;pointer-events:none;display:flex;align-items:center;gap:8px;font:600 13px Cinzel,serif;color:#f3e2b0;text-shadow:0 1px 3px #000';
     el.innerHTML = '<span style="font-size:17px;color:#e8584a">❤</span><div style="width:190px;height:11px;border-radius:6px;background:rgba(20,10,6,.6);border:1px solid rgba(243,226,176,.55);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.5)"><div style="height:100%;width:100%;background:linear-gradient(180deg,#f07a5a,#b8302a);transition:width .25s"></div></div>';
@@ -31,7 +31,7 @@ export class Health {
     this.hp = Math.max(0, this.hp - n); this.regenWait = 8; this.hurtT = 0.4;
     this.flash('rgba(190,10,0,.65)', Math.min(1, 0.35 + n / 40));
     this.render();
-    if (this.hp <= 0) { this.dead = true; this.onDeath?.(); }
+    if (this.hp <= 0) { this.dead = true; this.onDeath?.(); } else this.onHurt?.(n);
   }
   // comer/beber: devolve quanto curou (0 se não for comida)
   eat(type) {

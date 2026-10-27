@@ -19,7 +19,8 @@ export const SKINS = [0xb98a68, 0xa87652, 0xc39675, 0x9a6a48, 0xb07a58, 0x8e5f40
 // (o Joe, de terno, ficou de fora: sem o paletó o tronco dele é oco)
 const MEN = ['bryce', 'brian'];
 const WOMEN = ['kate', 'megan', 'elizabeth'];
-const ANIMS = ['idle', 'andar', 'andar_f', 'trotar', 'correr', 'pular', 'caindo', 'aterrissar', 'nadar', 'boiar', 'conversar', 'pegar', 'espada', 'ajoelhado', 'sentado'];
+const ANIMS = ['idle', 'andar', 'andar_f', 'trotar', 'correr', 'pular', 'caindo', 'aterrissar', 'nadar', 'boiar', 'conversar', 'pegar', 'espada', 'ajoelhado', 'sentado',
+  'borda', 'salto_agua', 'golpe', 'desmaiar', 'beber']; // borda: "Pulling Up To A Ledge" (sair da água pelo cais); salto_agua: "Diving From A Run Pose"
 // nomes antigos usados pelo resto do jogo → animações do Mixamo
 const ALIAS = { Jump_Land: 'aterrissar', Sword_Attack: 'espada', PickUp_Table: 'pegar' };
 
@@ -40,6 +41,11 @@ export async function loadHumanModel(_unused, tex, onProgress) {
       // laços de locomoção: remove o deslocamento horizontal do quadril (o jogo é quem move)
       if (['andar', 'andar_f', 'trotar', 'correr', 'nadar', 'idle', 'conversar', 'boiar'].includes(n)) {
         for (const tr of clip.tracks) if (/Hips\.position$/.test(tr.name)) { const v = tr.values; const x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } }
+      }
+      // movimentos únicos em que o jogo move o corpo (subir na borda, mergulhar, cair): o quadril não sai do lugar
+      // (na borda quase nem para cima: quem sobe é o explorador inteiro, até a altura do cais)
+      if (['borda', 'salto_agua', 'desmaiar', 'golpe'].includes(n)) {
+        for (const tr of clip.tracks) if (/Hips\.position$/.test(tr.name)) { const v = tr.values; const x0 = v[0], y0 = v[1], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; if (n === 'borda') v[i + 1] = y0 + (v[i + 1] - y0) * 0.15; } }
       }
       // escala, se a animação não serve para o próprio corpo, não vale mexer: os ossos não têm scale
       clip.tracks = clip.tracks.filter((tr) => !/\.scale$/.test(tr.name));
