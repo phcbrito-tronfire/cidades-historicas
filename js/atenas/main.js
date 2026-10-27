@@ -104,8 +104,8 @@ async function main() {
   const world = buildTerrain(scene, tex);
   // mar Egeu: transparente no raso (vê-se a areia do fundo, as pedras, o naufrágio e quem nada)
   const water = makeWater({
-    width: 7000, height: 7000, x: -150, z: 180, y: WATER_Y, normals: tex.waterNormals, waterColor: 0x0f5d86, shallowColor: 0x3fb2b0,
-    clarity: 4.5, foam: 0.95, farDepth: 30, distortion: 3.0, size: 1.4, box: [-860, -540, 560, 920], res: [640, 660],
+    width: 7000, height: 7000, x: -150, z: 180, y: WATER_Y, normals: tex.waterNormals, waterColor: 0x0a74a8, shallowColor: 0x48d8cc, tint: 0.32, tintDepth: 16, reflect: 0.45, bright: 0.55,
+    clarity: 7, foam: 0.95, farDepth: 30, distortion: 3.0, size: 1.4, box: [-860, -540, 560, 920], res: [640, 660],
     depthAt: (x, z) => WATER_Y - terrainHeight(x, z),
   });
   scene.add(water);
@@ -169,8 +169,8 @@ async function main() {
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
   const post = await createPost(renderer, scene, camera);
-  const underwater = makeUnderwater(scene, water, { color: 0x1d7f90, near: 0.4, far: 34 });
-  post.grade.uniforms.uUnderCol.value.setRGB(0.12, 0.5, 0.62);
+  const underwater = makeUnderwater(scene, water, { color: 0x2a9fb4, near: 0.5, far: 48 });
+  post.grade.uniforms.uUnderCol.value.setRGB(0.16, 0.62, 0.72);
   if (isTouch) { post.setQuality('leve'); sun.shadow.mapSize.set(2048, 2048); const s2 = sun.shadow.camera; s2.left = -70; s2.right = 70; s2.top = 70; s2.bottom = -70; s2.updateProjectionMatrix(); }
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });
@@ -223,7 +223,7 @@ async function main() {
           ui.say('Que beleza! Olhe o fundo: um rapaz tocando aulos. Cálias se superou. Hoje à noite ela vai passar de mão em mão no simpósio — e vou dizer a todos que foi um viajante do futuro quem a trouxe.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]);
         } });
       }
-      if (def.id === 'glauco' || def.id === 'formiao') opts.push({ label: def.id === 'glauco' ? 'Onde está o seu barco?' : 'Posso subir na Páralos?', cb: () => ui.say(def.id === 'glauco' ? 'Logo ali, na água rasa. Chegue perto dele e aperte E para embarcar; as setas remam e viram. E de novo para descer.' : 'Pode! Chegue perto do casco, aqui no cais, e aperte E. Vamos dar uma volta pela baía e voltar.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]) });
+      if (def.id === 'glauco' || def.id === 'formiao') opts.push({ label: def.id === 'glauco' ? 'Onde está o seu barco?' : 'Posso subir na Páralos?', cb: () => ui.say(def.id === 'glauco' ? 'Logo ali, na água rasa. Chegue perto dele e aperte E para embarcar; as setas levam o barco para onde você quiser, como quando anda. E de novo para descer.' : 'Pode! Chegue perto do casco, aqui no cais, e aperte E. Com as setas você leva a Páralos pela baía — os 170 remadores obedecem. E para descer quando quiser.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]) });
       opts.push({ label: 'Até logo.', cb: bye });
       let text = first ? def.greet : pick(['O que mais você quer saber?', 'Pergunte, estrangeiro.', 'Mais alguma curiosidade?']);
       if (first && def.id === 'mirrina' && player.holding?.food) text = 'Já comendo, é? Então prove também os meus figos! ' + text;
@@ -249,14 +249,13 @@ async function main() {
   // ---------------- barcos ----------------
   const boardOrLeave = () => {
     if (boats.riding) {
-      if (!boats.canLeave()) { ui.toast('A Páralos está no meio da baía — espere ela voltar ao cais para descer.'); return true; }
       boats.leave(player, S.quay); ui.toast('Você desembarcou.'); return true;
     }
     const b = boats.nearestBoardable(player.pos);
     if (!b) return false;
     boats.board(player, b);
-    if (b.model === 'trirreme') { quests.complete('trirreme'); ui.toast('A bordo da Páralos! Os 170 remadores levam o navio pela baía. E para descer (no cais).', 'quest', 6000); audio.aulos(); }
-    else { quests.complete('barco'); ui.toast('Setas: remar e virar · E: desembarcar', '', 5000); }
+    if (b.model === 'trirreme') { quests.complete('trirreme'); ui.toast('A bordo da Páralos! Setas: navegar · mouse: olhar em volta · E: descer', 'quest', 6000); audio.aulos(); }
+    else { quests.complete('barco'); ui.toast('Setas: navegar (como andar) · mouse: olhar em volta · E: descer', '', 5000); }
     return true;
   };
 
@@ -467,7 +466,7 @@ async function main() {
         parts.push(`<kbd>E</kbd> Falar com ${nm}`);
       }
       if (bt) parts.push(`<kbd>E</kbd> Embarcar ${bt.model === 'trirreme' ? 'na trirreme ' + (bt.name || '') : 'no ' + (bt.name || 'barco')}`);
-      if (boats.riding) parts.push(boats.riding.model === 'trirreme' ? (boats.canLeave() ? '<kbd>E</kbd> Desembarcar' : 'Passeio pela baía — desce-se no cais · arraste o mouse para olhar') : '<kbd>↑↓</kbd> Remar · <kbd>←→</kbd> Leme · <kbd>E</kbd> Desembarcar');
+      if (boats.riding) parts.push('<kbd>↑↓←→</kbd> Navegar · <kbd>E</kbd> Descer');
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));
       ui.setPlace(placeName());

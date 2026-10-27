@@ -1,8 +1,8 @@
 // Tela de entrada: céu animado e cartões das cidades
 const CITIES = [
   { id: 'egito', name: 'Mênfis', era: 'Egito Antigo · c. 1250 a.C.', desc: 'O templo de Ptah, as pirâmides de Gizé, o Nilo e a corte de Ramsés II.', open: true, href: 'egito.html', art: 'egypt' },
-  { id: 'roma', name: 'Roma', era: 'Império Romano · c. 117 d.C.', desc: 'O Fórum, o Coliseu e as termas no auge do império, sob Trajano.', art: 'rome' },
   { id: 'atenas', name: 'Atenas', era: 'Grécia Clássica · 432 a.C.', desc: 'O Parthenon recém-terminado, a ágora de Sócrates, o mar do Falero e as trirremes de Péricles.', open: true, href: 'atenas.html', art: 'athens' },
+  { id: 'roma', name: 'Roma', era: 'Império Romano · c. 117 d.C.', desc: 'O Fórum, o Coliseu e as termas no auge do império, sob Trajano.', art: 'rome' },
   { id: 'tenochtitlan', name: 'Tenochtitlan', era: 'Império Asteca · c. 1500', desc: 'A cidade sobre o lago Texcoco, com o Templo Mayor e os jardins flutuantes.', art: 'aztec' },
   { id: 'babilonia', name: 'Babilônia', era: 'Mesopotâmia · c. 570 a.C.', desc: 'A Porta de Ishtar, o zigurate Etemenanki e a corte de Nabucodonosor II.', art: 'babylon' },
   { id: 'cusco', name: 'Cusco', era: 'Império Inca · c. 1500', desc: 'O umbigo do mundo andino, o Coricancha dourado e a estrada para Machu Picchu.', art: 'inca' },

@@ -37,6 +37,10 @@ export function makeWater(o) {
     uFar: { value: o.farDepth ?? 30 },
     uClarity: { value: o.clarity ?? 1.2 }, // metros de água até ~63% de opacidade (Nilo barrento ~1; Egeu ~5)
     uShallow: { value: new THREE.Color(o.shallowColor ?? 0x3f8f7a) },
+    // mar do Caribe/Egeu: a água tinge um pouco até o fundo visto pela transparência (o raso fica turquesa, não só "vidro")
+    uTint: { value: o.tint ?? 0 }, uTintDepth: { value: o.tintDepth ?? 9 },
+    // quanto o céu se reflete (1 = normal) e quanto a cor própria da água brilha (0 = só onde o sol bate)
+    uRefl: { value: o.reflect ?? 1 }, uBright: { value: o.bright ?? 0 },
     uFoam: { value: o.foam ?? 0.6 },
     uSwim: { value: new THREE.Vector4(0, -1000, 0, 0) }, // onde o explorador nada (x, y, z, força): a água fica mais clara em volta
   };
@@ -44,7 +48,7 @@ export function makeWater(o) {
   water.material.transparent = true;
   water.material.fragmentShader = water.material.fragmentShader
     .replace('uniform vec3 waterColor;', `uniform vec3 waterColor;
-      uniform sampler2D tDepth; uniform vec4 uBox; uniform float uFar, uClarity, uFoam; uniform vec3 uShallow; uniform vec4 uSwim;
+      uniform sampler2D tDepth; uniform vec4 uBox; uniform float uFar, uClarity, uFoam, uTint, uTintDepth, uRefl, uBright; uniform vec3 uShallow; uniform vec4 uSwim;
       float hsh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hsh(i), hsh(i + vec2(1, 0)), f.x), mix(hsh(i + vec2(0, 1)), hsh(i + vec2(1, 1)), f.x), f.y); }`)
@@ -58,10 +62,12 @@ export function makeWater(o) {
       // perto de quem nada a água se abre um pouco (dá para ver o corpo e as pernas batendo)
       float dS = length(worldPosition.xz - uSwim.xz);
       clear *= 1.0 - uSwim.w * 0.22 * (1.0 - smoothstep(0.5, 1.8, dS));
-      vec3 body = mix(uShallow, waterColor, smoothstep(0.5, 9.0, depth));
-      vec3 surf = mix((sunColor * diffuseLight * 0.3 + max(0.0, dot(surfaceNormal, eyeDirection)) * body) * getShadowMask(),
-                      (vec3(0.1) + reflectionSample * 0.9 + reflectionSample * specularLight), reflectance);
-      float a = clamp(clear + reflectance * (1.0 - clear), 0.0, 1.0);
+      vec3 body = mix(uShallow, waterColor, smoothstep(0.5, uTintDepth, depth));
+      clear = max(clear, uTint * smoothstep(0.05, 0.8, depth));
+      float refl = reflectance * uRefl;
+      vec3 surf = mix((sunColor * diffuseLight * 0.3 + (uBright + max(0.0, dot(surfaceNormal, eyeDirection))) * body) * getShadowMask(),
+                      (vec3(0.1) + reflectionSample * 0.9 + reflectionSample * specularLight), refl);
+      float a = clamp(clear + refl * (1.0 - clear), 0.0, 1.0);
       // espuma da beira: uma faixa irregular na linha d'água e ondinhas que chegam à areia
       float n = vn(worldPosition.xz * 0.35 + time * 0.05) * 0.6 + vn(worldPosition.xz * 1.7 - time * 0.11) * 0.4;
       float shore = 1.0 - smoothstep(0.0, 0.45 + n * 0.35, depth);

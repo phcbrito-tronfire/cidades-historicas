@@ -1,11 +1,11 @@
 // Barcos de Atenas: trirremes nos galpões e no cais, mercantes, barcos de pesca na areia e os que navegam ao largo.
 // O explorador pode embarcar (E): no barco a remo e no de vela ele pilota (setas); na trirreme Páralos ele vai em
-// pé no convés enquanto os remadores levam o navio num passeio pela baía e de volta ao cais.
+// pé no convés e conduz o navio com as setas, como os outros barcos.
 import * as THREE from 'three';
 import { sculptureInstance } from '../comum/sculptures.js';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
 import { animateHumanoid, makeHumanoid } from '../comum/mixamo.js';
-import { rr, rand, pick, clamp, lerp, angleLerp } from '../comum/util.js';
+import { rr, rand, pick, clamp, lerp } from '../comum/util.js';
 import { blocked, groundAt } from '../comum/collision.js';
 
 const V3 = THREE.Vector3;
@@ -113,29 +113,27 @@ export class Boats {
 
   board(player, b) {
     this.riding = b; b.v = 0; b.turnV = 0;
-    if (b.model === 'trirreme') { b.cruise = 0; b.home = b.home || { x: b.g.position.x, z: b.g.position.z, yaw: b.yaw }; }
     player.keys.clear();
     player.boardCam(b.model === 'trirreme' ? 0.46 : 0.4);
   }
 
-  // a trirreme só deixa descer atracada (no meio da baía, o explorador cairia em alto-mar)
-  canLeave() { const b = this.riding; return !b || b.model !== 'trirreme' || b.cruise === 0 || b.cruise > 167; }
-
-  // desembarcar: na trirreme volta ao cais; nos barcos pequenos, pula para o lado (na água rasa ou na areia)
+  // desembarcar (E, a qualquer momento): desce pelo bordo mais perto da terra; atracado ao cais, sobe no cais;
+  // em alto-mar, cai na água nadando (o barco fica onde está, dá para voltar nadando e embarcar de novo)
   leave(player, quay) {
     const b = this.riding; if (!b) return;
     this.riding = null;
     player.leaveCam();
-    if (b.model === 'trirreme') { b.cruise = 0; b.g.position.x = b.home.x; b.g.position.z = b.home.z; b.yaw = b.home.yaw; if (quay) { player.place(quay.x, quay.z, player.facing); return; } }
-    // barco pequeno: desce pelo bordo mais perto da terra (o mais raso); se for fundo dos dois lados, cai nadando
+    b.v = 0; b.turnV = 0;
     let best = null;
-    for (const sd of [1, -1]) for (const dd of [1.8, 3, 4.5]) {
+    const w = b.model === 'trirreme' ? 3.4 : 1.8;
+    for (const sd of [1, -1]) for (const dd of [w, w + 1.4, w + 3]) {
       const v = new V3(0, 0, sd * dd).applyAxisAngle(new V3(0, 1, 0), b.yaw), x = b.g.position.x + v.x, z = b.g.position.z + v.z;
-      const g = groundAt(x, z, WATER_Y + 3), depth = WATER_Y - g;
+      const g = groundAt(x, z, WATER_Y + 3), depth = WATER_Y - g; // (o topo do cais conta como chão)
       if (!best || depth < best.depth) best = { x, z, g, depth };
     }
-    player.pos.set(best.x, Math.max(best.g, WATER_Y - 0.6), best.z);
-    player.onGround = best.depth < 1.2; player.vy = 0;
+    player.pos.set(best.x, Math.max(best.g, WATER_Y - 0.72), best.z);
+    player.onGround = best.depth < 1.2; player.swimming = best.depth >= 1.2; player.vy = 0;
+    void quay;
   }
 
   update(dt, t, player) {
@@ -163,8 +161,7 @@ export class Boats {
     }
     const b = this.riding;
     if (!b) return;
-    if (b.model === 'trirreme') this.cruise(b, dt);
-    else this.drive(b, dt, player);
+    this.drive(b, dt, player);
     b.g.rotation.x = (b.heel || 0) + Math.sin(t * 0.7 + b.bob * 2) * 0.012;
     // explorador no assento (ou em pé no convés da trirreme)
     const seat = this.seatLocal(b).applyAxisAngle(new V3(0, 1, 0), b.yaw);
@@ -175,61 +172,56 @@ export class Boats {
     if (Math.abs(b.v) > 0.6 && Math.random() < dt * 6) { const back = new V3(-b.len * 0.45, 0, 0).applyAxisAngle(new V3(0, 1, 0), b.yaw); this.fx?.ripple(new V3(b.g.position.x + back.x, WATER_Y + 0.02, b.g.position.z + back.z), 0.8 + Math.abs(b.v) * 0.3); }
   }
 
-  // pilotagem: ↑↓ remam (ou soltam a vela), ← → viram pelo leme. O barco tem inércia (desliza ao parar de remar),
-  // vira mais quando anda, inclina na curva e bate de leve no cais, nas pedras e nos outros barcos em vez de atravessar
+  // pilotagem igual ao andar do explorador: as setas apontam para onde ir em relação à câmera (↑ = para onde a
+  // câmera olha) e o barco vira a proa para lá e acelera. Tem inércia (desliza ao soltar), vira devagar quanto maior
+  // for, inclina na curva e bate de leve no cais, nas pedras e nos outros barcos em vez de atravessar
   drive(b, dt, player) {
     const k = player.keys;
-    const f = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0);
-    const s = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
-    const sail = b.model === 'barco_pesca', maxV = sail ? 5.2 : 3.2;
-    const touch = player.touch && Math.hypot(player.touch.x, player.touch.y) > 0.15 ? player.touch : null;
-    const fwd = touch ? -touch.y : f, turn = touch ? touch.x : s;
-    const want = fwd * maxV * (fwd < 0 ? 0.45 : 1);
-    b.v += (want - b.v) * Math.min(1, dt * (fwd ? (sail ? 0.5 : 0.9) : 0.35)); // sem remar, desliza e para devagar
-    // leme: vira mais com velocidade, um pouco mesmo parado (remando de um lado só); de ré, inverte
-    const sp = Math.min(1, Math.abs(b.v) / maxV);
-    const wantTurn = -turn * (0.28 + sp * 0.5) * (b.v < -0.2 ? -1 : 1);
-    b.turnV = lerp(b.turnV || 0, wantTurn, Math.min(1, dt * 2.5));
+    let f = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0);
+    let s = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
+    if (player.touch && Math.hypot(player.touch.x, player.touch.y) > 0.15) { f = -player.touch.y; s = player.touch.x; }
+    const P = { trirreme: [5, 0.45], barco_pesca: [5.2, 0.8], barco_remo: [3.2, 1.2], mercante: [4, 0.5] }[b.model] || [3.2, 1];
+    const maxV = P[0], turnRate = P[1];
+    const cy = player.camYawW, fx = -Math.sin(cy), fz = -Math.cos(cy);
+    const mx = fx * f - fz * s, mz = fz * f + fx * s, amt = Math.min(1, Math.hypot(mx, mz));
+    let want = 0, sp = Math.min(1, Math.abs(b.v) / maxV);
+    if (amt > 0.05) {
+      const target = Math.atan2(-mz, mx); // rumo pedido (no ângulo do barco: proa = (cos, -sin))
+      const diff = Math.atan2(Math.sin(target - b.yaw), Math.cos(target - b.yaw));
+      // gira a proa (mais rápido andando, mas nunca na hora: é um barco)
+      const rate = turnRate * (0.45 + 0.55 * sp);
+      b.turnV = lerp(b.turnV || 0, clamp(diff * 1.5, -1, 1) * rate, Math.min(1, dt * 2.5));
+      // só acelera de verdade quando a proa já aponta mais ou menos para lá
+      want = maxV * amt * Math.max(0.4, Math.cos(Math.min(Math.abs(diff), Math.PI / 2)));
+    } else b.turnV = lerp(b.turnV || 0, 0, Math.min(1, dt * 2));
+    b.v += (want - b.v) * Math.min(1, dt * (want > b.v ? 0.7 : 0.35));
     b.yaw += b.turnV * dt;
     const dir = new V3(Math.cos(b.yaw), 0, -Math.sin(b.yaw)), side = new V3(-dir.z, 0, dir.x);
     const nx = b.g.position.x + dir.x * b.v * dt, nz = b.g.position.z + dir.z * b.v * dt;
     // casco: proa, popa e os dois bordos precisam de água e não podem entrar no cais nem em outro barco
-    const half = b.len * 0.48, beam = sail ? 1.1 : 0.9, draft = WATER_Y - 0.35, sg = Math.sign(b.v || 1);
-    const pts = [[half * sg, 0], [-half * sg * 0.5, 0], [0, beam], [0, -beam]];
-    let hit = false;
-    for (const [a, c] of pts) {
-      const px = nx + dir.x * a + side.x * c, pz = nz + dir.z * a + side.z * c;
-      if (terrainHeight(px, pz) > draft || blocked(px, pz, WATER_Y - 1.2, 0.2, 3)) { hit = true; break; }
-    }
-    if (!hit) for (const o of this.list) {
-      if (o === b || o.beached || o.shed) continue;
-      const r = o.len * 0.4 + half * 0.6, dn = (o.g.position.x - nx) ** 2 + (o.g.position.z - nz) ** 2;
-      if (dn < r * r && dn < (o.g.position.x - b.g.position.x) ** 2 + (o.g.position.z - b.g.position.z) ** 2) { hit = true; break; }
-    }
+    const tri = b.model === 'trirreme', half = b.len * 0.48, beam = tri ? 2.4 : b.model === 'barco_pesca' ? 1.1 : 0.9, draft = WATER_Y - (tri ? 1.2 : 0.35), sg = Math.sign(b.v || 1);
+    const pts = [[half, 0], [-half * 0.7, 0], [0, beam], [0, -beam], [half * 0.5, beam * 0.7], [half * 0.5, -beam * 0.7]];
+    // quantos pontos do casco estão em terra / no cais / em outro barco
+    const hits = (x, z) => {
+      let n = 0;
+      for (const [a, c] of pts) {
+        const px = x + dir.x * a + side.x * c, pz = z + dir.z * a + side.z * c;
+        if (terrainHeight(px, pz) > draft || blocked(px, pz, WATER_Y - 1.2, 0.2, 3)) n++;
+      }
+      for (const o of this.list) {
+        if (o === b || o.beached || o.shed) continue;
+        const r = o.len * 0.35 + half * 0.5;
+        if ((o.g.position.x - x) ** 2 + (o.g.position.z - z) ** 2 < r * r) n++;
+      }
+      return n;
+    };
+    // bloqueia só o que piora: encostado no cais ou na areia, o barco sempre consegue se afastar
+    const hit = hits(nx, nz) > hits(b.g.position.x, b.g.position.z);
     if (!hit) { b.g.position.x = nx; b.g.position.z = nz; }
     else { b.v *= -0.25; if (!(b.bumpT > 0)) { this.fx?.ripple(new V3(nx + dir.x * half * sg, WATER_Y + 0.02, nz + dir.z * half * sg), 1.2); b.bumpT = 0.6; } }
     b.bumpT = (b.bumpT || 0) - dt;
     b.g.rotation.y = b.yaw;
-    b.heel = lerp(b.heel || 0, -b.turnV * sp * (sail ? 0.22 : 0.1), Math.min(1, dt * 2)); // inclina para fora na curva
-  }
-
-  // passeio da trirreme: larga do cais, contorna a baía e volta ao mesmo lugar (os remadores fazem o trabalho).
-  // A rota começa e termina exatamente no ponto de atracação, sem saltos; o rumo segue o movimento
-  cruise(b, dt) {
-    const T = 170; // ~3 m/s, ritmo de cruzeiro de uma trirreme
-    b.cruise += dt;
-    const u = Math.min(1, b.cruise / T);
-    const path = (w) => coastPoint(-228 + Math.sin(w * Math.PI) * 250, 12 + Math.sin(w * Math.PI) * 130);
-    const ease = (x) => x * x * (3 - 2 * x);
-    const blend = ease(clamp(u / 0.1, 0, 1)) * ease(clamp((1 - u) / 0.1, 0, 1)); // sai e chega ao cais suavemente
-    const p = path(u), h = b.home;
-    const prev = b.g.position.clone();
-    b.g.position.x = lerp(h.x, p.x, blend); b.g.position.z = lerp(h.z, p.z, blend);
-    const mv = b.g.position.clone().sub(prev);
-    b.v = mv.length() / Math.max(dt, 1e-3);
-    if (b.v > 0.3) b.yaw = angleLerp(b.yaw, Math.atan2(-mv.z, mv.x), Math.min(1, dt * 0.8));
-    else b.yaw = angleLerp(b.yaw, h.yaw, Math.min(1, dt * 0.5));
-    b.g.rotation.y = b.yaw;
-    if (u >= 1) { b.cruise = 0; b.v = 0; }
+    sp = Math.min(1, Math.abs(b.v) / maxV);
+    b.heel = lerp(b.heel || 0, -b.turnV * sp * (b.model === 'barco_pesca' ? 0.22 : 0.1), Math.min(1, dt * 2)); // inclina para fora na curva
   }
 }

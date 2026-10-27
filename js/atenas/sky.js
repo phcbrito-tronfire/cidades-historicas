@@ -15,14 +15,14 @@ export const PRESETS = {
     sun: dirFrom(5, 95), turbidity: 6, rayleigh: 2.8, mie: 0.01, mieG: 0.88,
     fog: 0xd8b8b0, fogNear: 40, fogFar: 900, sunColor: 0xffa878, sunI: 2.4,
     hemiSky: 0xd8c0c8, hemiGround: 0x6a5a4c, hemiI: 0.85, exposure: 0.5,
-    waterColor: 0x1d5f7a, waterSun: 0xffc090, night: 0, torches: 0.15, windows: 0.2, stars: 0,
+    waterColor: 0x1a6f95, waterSun: 0xffc090, night: 0, torches: 0.15, windows: 0.2, stars: 0,
   },
   tarde: {
     label: 'Tarde', msg: 'Tarde — o sol de Hélio desce para o mar, sobre a ilha de Salamina.',
     sun: dirFrom(40, 235), turbidity: 2.6, rayleigh: 1.7, mie: 0.0035, mieG: 0.78,
     fog: 0xaec6dc, fogNear: 220, fogFar: 2200, sunColor: 0xfff0d8, sunI: 3.1,
     hemiSky: 0xcfe0f2, hemiGround: 0xb8a078, hemiI: 0.8, exposure: 0.54,
-    waterColor: 0x0f5d86, waterSun: 0xfff6e0, night: 0, torches: 0, windows: 0, stars: 0,
+    waterColor: 0x0a74a8, waterSun: 0xfff6e0, night: 0, torches: 0, windows: 0, stars: 0,
   },
   noite: {
     label: 'Noite', msg: 'Noite — Selene atravessa o céu; nas casas, acendem-se as lamparinas de azeite.',
