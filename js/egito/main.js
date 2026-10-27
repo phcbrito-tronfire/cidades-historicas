@@ -4,7 +4,8 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp } from '../comum/aquecer.js';
-import { skipHiddenMatrices, frameGate } from '../comum/desempenho.js';
+import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
+import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
@@ -46,21 +47,22 @@ const audio = new AudioFX();
 async function main() {
   // ---------------- renderizador ----------------
   let renderer;
+  // nível de gráfico pela placa de vídeo (ou o que o jogador escolheu antes); desce sozinho se ficar pesado
+  const Q = detectQuality();
+  let quality = Q.level;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ antialias: PROFILE[quality].aa, powerPreference: 'high-performance' });
   } catch (e) { ui.fail(); return; }
-  // no celular: qualidade leve automática (a placa de vídeo é bem mais fraca)
-  let quality = isTouch ? 'leve' : 'alto';
-  renderer.setPixelRatio(isTouch ? Math.min(devicePixelRatio, 1) : Math.min(devicePixelRatio, 1.5));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, PROFILE[quality].pr));
+  { const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`; }
   if (isTouch) {
     document.querySelector('#intro .controls').innerHTML = '<div><b>Joystick</b> (esquerda): mover</div><div><b>Arrastar</b> (direita): girar a câmera</div><div><b>Pinça</b>: zoom</div><div><b>Pular · Correr</b></div><div><b>Falar · Pegar · Usar</b></div><div><b>Clima · Diário · Artefatos · Mapa · Menu</b> (no topo)</div>';
-    const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = 'Gráficos: leve';
   }
   if (isTouch) document.getElementById('load-tip').textContent = 'No celular, prefira o Wi-Fi: o primeiro acesso baixa cerca de 45 MB. Jogue com o celular deitado.';
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = PROFILE[quality].soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   // a sombra do sol é calculada uma vez por quadro (antes, o reflexo do Nilo e a oclusão refaziam o mapa a cada render)
   renderer.shadowMap.autoUpdate = false;
   document.getElementById('game').appendChild(renderer.domElement);
@@ -104,7 +106,7 @@ async function main() {
   const world = buildTerrain(scene, tex);
   // reflexo do Nilo: com o jogador longe do rio (> 90 m) ele é refeito em quadros alternados — de longe o reflexo é
   // uma faixa fina no horizonte e a diferença não se vê; perto do rio, todo quadro
-  { const w = world.water, rb = w.onBeforeRender; w.onBeforeRender = function (...a) { if (FRAME.n % (FRAME.far ? 3 : 2)) return; rb.apply(this, a); }; } // reflexo a cada 2 quadros (3 longe da água): com a ondulação, não se nota
+  { const w = world.water, rb = w.onBeforeRender; w.onBeforeRender = function (...a) { const ev = PROFILE[quality].reflEvery; if (FRAME.n % (FRAME.far ? ev + 1 : ev)) return; rb.apply(this, a); }; } // reflexo a cada 2 quadros (3 longe da água; mais espaçado nos gráficos leves): com a ondulação, não se nota
   const horizon = buildHorizon(scene, tex);
   await step(0.35, 'Erguendo o templo de Ptah e as pirâmides de Gizé...');
   const city = buildCity(scene, tex);
@@ -172,9 +174,9 @@ async function main() {
   // mergulho no Nilo: água barrenta, enxerga-se pouco
   const underwater = makeUnderwater(scene, world.water, { color: 0x2f4a32, near: 0.3, far: 9 });
   post.grade.uniforms.uUnderCol.value.setRGB(0.22, 0.36, 0.2);
-  if (isTouch) { post.setQuality('leve'); sun.shadow.mapSize.set(2048, 2048); const sc2 = sun.shadow.camera; sc2.left = -70; sc2.right = 70; sc2.top = 70; sc2.bottom = -70; sc2.updateProjectionMatrix(); }
   // camada 3: aparece na tela e projeta sombra, mas fica fora do reflexo do Nilo e da oclusão (desempenho)
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
+  applyQuality(quality, { renderer, sun, post, actors });
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.material.flatShading || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });
   // objetos "flutuantes" fora da oclusão de ambiente; reflexo do céu mais suave nos materiais foscos
   scene.traverse((o) => {
@@ -182,6 +184,7 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
+  const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
   await step(1, 'Pronto!');
   ui.doneLoading();
 
@@ -191,6 +194,7 @@ async function main() {
 
   ui.showIntro(() => {
     started = true; health.show(true); health.render();
+    if (Q.software) ui.toast('Seu navegador está sem aceleração de vídeo, por isso o jogo fica pesado. No Chrome: Configurações › Sistema › ligue "Usar aceleração de gráficos" e reinicie o navegador.', 'quest', 14000);
     if (isTouch) { setupTouch(player); ui.toggleJournal(); }
     else if (canTouch) addEventListener('touchstart', () => setupTouch(player), { once: true, passive: true });
     audio.start();
@@ -318,13 +322,10 @@ async function main() {
     if (act === 'sound') { audio.setEnabled(!audio.enabled); e.target.textContent = `Som: ${audio.enabled ? 'ligado' : 'desligado'}`; }
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {
-      quality = quality === 'alto' ? 'leve' : 'alto';
-      renderer.setPixelRatio(quality === 'alto' ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio, 1) * 0.8);
-      sun.shadow.mapSize.set(quality === 'alto' ? 4096 : 2048, quality === 'alto' ? 4096 : 2048);
-      if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
-      post.setQuality(quality);
-      prMax = renderer.getPixelRatio(); prMin = Math.max(0.6, prMax * 0.7); // a resolução adaptativa passa a valer para o novo nível
-      e.target.textContent = `Gráficos: ${quality}`;
+      quality = LEVELS[(LEVELS.indexOf(quality) + 1) % LEVELS.length]; saveQuality(quality);
+      applyQuality(quality, { renderer, sun, post, actors, cull });
+      prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7); // a resolução adaptativa passa a valer para o novo nível
+      e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
     if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
   });
@@ -402,7 +403,7 @@ async function main() {
   const keyNpcDots = () => actors.key.map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) }));
   // resolução adaptativa: só baixa a resolução interna se o quadro passar de ~24 ms por um tempo (e volta quando sobra
   // folga). Em máquina que aguenta, fica sempre na resolução máxima.
-  let prMax = renderer.getPixelRatio(), prMin = Math.max(0.75, prMax * 0.7);
+  let prMax = renderer.getPixelRatio(), prMin = Math.max(0.5, prMax * 0.7);
   let frameAvg = 16, adaptT = 0;
   const adaptRes = (raw) => {
     if (document.hidden || raw > 0.25) return; // aba em segundo plano ou travada por outro motivo
@@ -416,6 +417,14 @@ async function main() {
     else if (frameAvg < 15 && pr < prMax) next = Math.min(prMax, pr + 0.1);
     if (next !== pr) { renderer.setPixelRatio(next); post.resize(); }
   };
+  // ficou pesado neste computador: desce um nível de gráfico e avisa
+  const slow = slowWatch(() => {
+    const i = LEVELS.indexOf(quality); if (i >= LEVELS.length - 1) return;
+    quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, actors, cull });
+    prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
+    const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`;
+    ui.toast(`O jogo estava pesado neste computador: gráficos no modo ${qualityLabel(quality)}. Dá para trocar no menu (Esc).`, 'quest', 7000);
+  });
   const gate = frameGate();
   function loop(now = performance.now()) {
     requestAnimationFrame(loop);
@@ -426,7 +435,7 @@ async function main() {
     renderer.shadowMap.needsUpdate = true;
     FRAME.n++;
     FRAME.far = Math.abs(player.pos.x - riverX(player.pos.z)) > 90 + 46;
-    if (!idle) adaptRes(raw); // parado a 30 fps não é lentidão
+    if (!idle) { adaptRes(raw); if (started && !ui.dialogOpen) slow(raw); } // parado a 30 fps não é lentidão
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night); return; }
     t += dt;
     player.night = sky.state.night;
@@ -479,6 +488,7 @@ async function main() {
     }
     const under = underwater.update(dt, camera, player);
     scene.updateMatrixWorld(); // uma vez por quadro (a cena não se atualiza sozinha a cada render; ver acima)
+    cull.update();
     post.render(dt, sky.state.night, under);
   }
   loop();

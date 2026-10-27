@@ -23,6 +23,7 @@ function castsShadow(root, on) {
 
 export class Actors {
   constructor(scene, city) {
+    this.viewR = 60; // distância em que a gente de passagem aparece (menor nos gráficos leves)
     this.scene = scene; this.city = city;
     this.key = []; this.agents = []; this.animals = []; this.flocks = []; this.guards = [];
     this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new THREE.Vector3();
@@ -238,7 +239,7 @@ export class Actors {
       o.rig.root.rotation.y = angleLerp(o.rig.root.rotation.y, ang, Math.min(1, dt * k));
     };
     for (const k of this.key) {
-      const vis = near(k, 75);
+      const vis = near(k, this.viewR + 15);
       k.rig.root.visible = vis;
       if (!vis) continue;
       const close = near(k, 5);
@@ -255,7 +256,7 @@ export class Actors {
       k.marker.material.color.set(carry ? 0x9fe0ff : 0xffffff);
     }
     for (const a of this.agents) {
-      const vis = near(a, 60);
+      const vis = near(a, this.viewR);
       a.rig.root.visible = vis;
       if (!vis) continue;
       if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
@@ -291,7 +292,7 @@ export class Actors {
       this.anim(a.rig, dt, a.speed, a.run ? 'run' : 'walk', t);
     }
     for (const o of this.animals) {
-      const vis = near(o, 60);
+      const vis = near(o, this.viewR);
       o.a.g.visible = vis;
       if (!vis) continue;
       castsShadow(o.a.g, near(o, 25));

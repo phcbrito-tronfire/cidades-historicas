@@ -20,6 +20,7 @@ function castsShadow(root, on) {
 
 export class Actors {
   constructor(scene, city) {
+    this.viewR = 60; // distância em que a gente de passagem aparece (menor nos gráficos leves)
     this.scene = scene; this.city = city;
     this.key = []; this.agents = []; this.animals = []; this.flocks = [];
     this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new THREE.Vector3();
@@ -257,7 +258,7 @@ export class Actors {
     };
 
     for (const k of this.key) {
-      const vis = near(k, 75);
+      const vis = near(k, this.viewR + 15);
       k.rig.root.visible = vis;
       if (!vis) continue;
       const close = near(k, 5);
@@ -272,6 +273,8 @@ export class Actors {
       k.marker.material.color.set(beerPending && !pending ? 0x9fe0ff : 0xffffff);
     }
     for (const g of this.guards) {
+      const gv = near(g, this.viewR + 15); g.rig.root.visible = gv; // longe: some e não anima
+      if (!gv && !g.target) continue;
       if (g.target) {
         const d = new V3(g.target.x - g.pos.x, 0, g.target.z - g.pos.z);
         if (d.length() > 0.1) {
@@ -287,7 +290,7 @@ export class Actors {
     }
 
     for (const a of this.agents) {
-      const vis = near(a, 60);
+      const vis = near(a, this.viewR);
       a.rig.root.visible = vis;
       if (!vis) continue;
       if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
@@ -325,7 +328,7 @@ export class Actors {
     }
 
     for (const o of this.animals) {
-      const vis = near(o, 60);
+      const vis = near(o, this.viewR);
       o.a.g.visible = vis;
       if (!vis) continue;
       castsShadow(o.a.g, near(o, 25));

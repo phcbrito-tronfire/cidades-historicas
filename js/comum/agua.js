@@ -4,6 +4,7 @@
 // uma vez a partir do terreno.
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
+import { QS } from './qualidade.js';
 
 // depthAt(x, z) = metros de água (negativo ou 0 em terra); box = [x0, z0, x1, z1] da área com mapa (fora dela: fundo)
 function depthTexture(depthAt, box, res) {
@@ -23,7 +24,7 @@ function depthTexture(depthAt, box, res) {
 export function makeWater(o) {
   const geo = new THREE.PlaneGeometry(o.width, o.height, 1, 1);
   const water = new Water(geo, {
-    textureWidth: o.reflectRes || 512, textureHeight: o.reflectRes || 512,
+    textureWidth: o.reflectRes || QS.refl, textureHeight: o.reflectRes || QS.refl,
     waterNormals: o.normals, sunDirection: new THREE.Vector3(0.5, 0.6, 0.4).normalize(),
     sunColor: 0xfff2d8, waterColor: o.waterColor ?? 0x14605f, distortionScale: o.distortion ?? 2.6, fog: true,
   });
