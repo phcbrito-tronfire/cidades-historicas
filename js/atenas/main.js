@@ -343,6 +343,14 @@ async function main() {
   document.getElementById('btn-continue').onclick = () => (document.getElementById('ending').hidden = true);
   const hints = () => {
     const h = [];
+    // reta final dos artefatos: os que faltam (até 5) aparecem no mapa e no minimapa, os mais perto primeiro
+    if (!quests.isDone('artefatos')) {
+      const left = artifacts.items.filter((a) => a.g.visible);
+      if (left.length <= 5) {
+        const p = player.pos, d = (a) => (a.g.position.x - p.x) ** 2 + (a.g.position.z - p.z) ** 2;
+        for (const a of left.sort((u, v) => d(u) - d(v)).slice(0, 2)) h.push([a.g.position.x, a.g.position.z]);
+      }
+    }
     for (const o of OBJECTIVES) {
       if (quests.isDone(o.id)) continue;
       if (o.id === 'pericles' && !quests.finalUnlocked()) continue;
