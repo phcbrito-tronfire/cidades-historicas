@@ -79,7 +79,7 @@ export class UI {
       const li = document.createElement('li');
       let text = o.text;
       if (o.id === 'corujas') text += ` (${q.scarabsFound.size}/5)`;
-      if (o.id === 'artefatos') text += ` (${q.artifactCount || 0}/20)`;
+      if (o.id === 'artefatos') text += ` (${q.artifactCount || 0}/22)`;
       if (o.id === 'pericles' && !q.finalUnlocked()) { text += ` — conclua ${FINAL_REQ} objetivos (${q.count()}/${FINAL_REQ})`; li.className = 'locked'; }
       li.textContent = text;
       ul.appendChild(li);

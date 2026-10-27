@@ -73,6 +73,9 @@ export function terrainHeight(x, z) {
     h = Math.max(h, lerp(plain, top, p) + (p > 0.05 && p < 0.97 ? (fbm(x * 0.07, z * 0.07, 3) - 0.5) * 2.2 * (1 - west) : 0));
     // patamar do Propileu (nivelado no alto da rampa)
     if (u < -100 && u > -132 && Math.abs(v) < 26) h = lerp(h, ACRO.top - 2.2, ss(26, 18, Math.abs(v)) * ss(-132, -124, u));
+    // terraço dos Propileus, alinhado ao prédio (que não gira com a rocha): o morro se acomoda em volta do edifício
+    // e das duas alas, em vez de o prédio parecer enfiado na encosta
+    { const m = Math.max(-128 - x, x + 98, -26 - z, z - 22); if (m < 5) h = lerp(h, ACRO.top - 2.2, ss(5, 0, m)); }
   }
   // ---- Areópago (rochoso), Pnyx, colina das Musas, Colono Agoraios (Hefesteion), Ninfas
   h += hill(x, z, -152, -96, 58, 30, 0.35, 13, 2.6) * (0.85 + (fbm(x * 0.09, z * 0.09, 3) - 0.3) * 0.5);
@@ -110,7 +113,27 @@ export function terrainHeight(x, z) {
     const e = Math.max((x - 380) / 120, (-380 - z) / 110, (-700 - x) / 120);
     if (e > 0 && d > 60) h += ss(0, 1, e) * (26 + (fbm(x * 0.01, z * 0.01, 3) - 0.5) * 30) * ss(60, 160, d);
   }
+  // ---- ilhas do golfo Sarônico
+  for (const I of ISLANDS) h = Math.max(h, islandHeight(I, x, z));
   return h;
+}
+
+// Psitália, a ilhota diante do Pireu onde Aristides desembarcou os hoplitas na batalha de Salamina (480 a.C.), e a
+// ponta leste de Salamina (Cinosura), com o troféu da vitória. Distâncias encurtadas, como o resto do mapa.
+export const ISLANDS = [
+  { id: 'psitalia', name: 'Ilha de Psitália', x: -622, z: 452, rx: 52, rz: 30, rot: 0.55, top: 8 },
+  { id: 'salamina', name: 'Salamina — cabo de Cinosura', x: -738, z: 648, rx: 92, rz: 150, rot: -0.45, top: 21 },
+];
+function islandHeight(I, x, z) {
+  const c = Math.cos(I.rot), s = Math.sin(I.rot), dx = x - I.x, dz = z - I.z;
+  const u = (dx * c + dz * s) / I.rx, v = (-dx * s + dz * c) / I.rz;
+  let r = Math.hypot(u, v);
+  if (r > 1.6) return -100;
+  r += (fbm(Math.atan2(v, u) * 1.7 + I.x * 0.01, 3.3, 3) - 0.5) * 0.28; // costa recortada
+  if (r > 1) return lerp(-24, -5, ss(1.6, 1, r)); // encosta submersa
+  const k = 1 - r;
+  const n = (fbm(x * 0.035, z * 0.035, 4) - 0.5) * I.top * 0.5;
+  return lerp(-5, I.top + n, ss(0, 0.45, k)) + (k > 0.12 ? (fbm(x * 0.12, z * 0.12, 2) - 0.5) * 1.2 : 0);
 }
 
 // degraus do teatro (cávea em leque, de frente para o sul): null fora deles
@@ -148,11 +171,13 @@ function surface(x, z, h, slope) {
   const d = -coastC(x, z);
   const n = fbm(x * 0.02 + 11, z * 0.02, 3), n2 = fbm(x * 0.11, z * 0.11, 2);
   let sand = 0, ground = 0, grass = 0, trail = 0;
-  const beach = 1 - ss(30, 60, d);
+  let beach = 1 - ss(30, 60, d);
+  // nas ilhas a praia é só a beira: acima de ~2,5 m, terra, mato e pedra
+  if (d < 0 && h > 0.6) beach = Math.min(beach, 1 - ss(0.8, 2.8, h));
   sand = beach;
   const inland = 1 - beach;
   // cidade e ruas de terra batida; nos morros e fora dos muros, grama seca e pedras
-  const hillness = ss(14, 26, h) + ss(0.12, 0.35, slope) * 0.6;
+  const hillness = (d < 0 ? ss(3, 10, h) : ss(14, 26, h)) + ss(0.12, 0.35, slope) * 0.6;
   const rural = ss(330, 420, Math.hypot(x + 140, z + 60));
   grass = inland * clamp(hillness * 0.7 + rural * 0.8 + ss(0.55, 0.72, n) * 0.4, 0, 1);
   trail = inland * hillness * ss(0.4, 0.6, n2) * 0.7;

@@ -128,7 +128,8 @@ export function doricTemple(B, o) {
   box(M.ceiling, EL - 0.3, 0.3, EW - 0.3, 0, Ya + ah + fh - 0.3, ez); // forro de caixotões (sob o telhado)
   // tríglifos (frente, fundo e lados): sobre cada coluna e no meio de cada vão
   const tg = (x, z, ry) => box(M.triglyph, ic * 0.24, fh * 0.98, 0.12, x, Ya + ah + 0.01, z, { ry });
-  const met = (x, z, ry) => box(M.metope, ic * 0.42, fh * 0.86, 0.06, x, Ya + ah + fh * 0.07, z, { ry });
+  let nMet = 0; // (templo rico: métopas em relevo, três cenas alternadas)
+  const met = (x, z, ry) => { if (o.rich && M.metopeR) box(M.metopeR[nMet++ % M.metopeR.length], ic * 0.42, fh * 0.86, 0.08, x, Ya + ah + fh * 0.07, z, { ry, uv: false }); else box(M.metope, ic * 0.42, fh * 0.86, 0.06, x, Ya + ah + fh * 0.07, z, { ry }); };
   const front = [], side = [];
   for (let i = 0; i < ns; i++) { side.push(-L / 2 + D * 0.625 + i * ic); if (i < ns - 1) side.push(-L / 2 + D * 0.625 + (i + 0.5) * ic); }
   for (let j = 0; j < nf; j++) { front.push(W / 2 - D * 0.625 - j * ic); if (j < nf - 1) front.push(W / 2 - D * 0.625 - (j + 0.5) * ic); }
@@ -144,12 +145,23 @@ export function doricTemple(B, o) {
   const Yc = Ya + ah + fh;
   box(M.marble, EL + 0.7, ch, EW + 0.7, 0, Yc, ez);
   box(M.paintBlue, EL + 0.72, 0.08, EW + 0.72, 0, Yc + ch - 0.08, ez);
+  if (o.rich && M.molding) {
+    // cornija pintada (óvalo-e-dardo e meandro) em toda a volta, em trechos de ~3 m
+    const band = (len, x, z, ry) => { const n = Math.max(1, Math.round(len / 3)), sl = len / n; for (let i = 0; i < n; i++) { const t = -len / 2 + sl * (i + 0.5); box(M.molding, sl + 0.01, ch * 0.9, 0.04, x + (ry ? 0 : t), Yc + ch * 0.05, z + (ry ? t : 0), { ry, uv: false }); } };
+    band(EL + 0.7, 0, ez + (EW + 0.7) / 2 + 0.02, 0); band(EL + 0.7, 0, ez - (EW + 0.7) / 2 - 0.02, 0);
+    band(EW + 0.7, (EL + 0.7) / 2 + 0.02, ez, Math.PI / 2); band(EW + 0.7, -(EL + 0.7) / 2 - 0.02, ez, Math.PI / 2);
+  }
   // telhado e frontões (nos lados menores)
   const rh = (EW / 2) * 0.27; // inclinação ~15°
   const ry0 = Yc + ch;
   for (const s of [-1, 1]) {
     const g = roofHalf(EL + 0.9, EW / 2 + 0.45, rh, 0.3);
     B.geo(g, M.roofTiles, 0, 0, 0, { frame: F.clone().multiply(mat4(0, ry0 + rh, ez, 0, s > 0 ? 0 : Math.PI, 0)), uv: { s: 1.6 } });
+  }
+  // antefixas de palmeta pintada ao longo dos beirais dos lados compridos
+  if (o.rich && M.antefix && !o.stoa) {
+    const n = Math.floor((EL + 0.6) / 1.3);
+    for (const t of [-1, 1]) for (let i = 0; i <= n; i++) box(M.antefix, 0.42, 0.55, 0.03, -EL / 2 - 0.3 + i * ((EL + 0.6) / n), ry0 - 0.12, ez + t * (EW / 2 + 0.62), { uv: false });
   }
   if (!o.stoa) for (const s of [-1, 1]) {
     // tímpano recuado (fundo azul onde ficam as estátuas) e a cornija inclinada na frente
@@ -189,6 +201,15 @@ export function doricTemple(B, o) {
         const wp = new THREE.Vector3(x, 0, z).applyMatrix4(F); addCircle(wp.x, wp.z, ri, o.y, o.y + Y + ch2);
       }
       for (const sz of [-1, 1]) box(M.marble, c.d - 6, 0.35, 0.6, 0, Y + h1, sz * (cw / 2 - 2.6));
+    }
+    if (o.rich && M.frieze) {
+      // friso jônico das Panateneias no alto das paredes externas da cella (a procissão dá a volta no templo)
+      const fy = Y + ch2 - 1.25, fhh = 1.0;
+      const run = (len, x, z, ry) => { const n = Math.max(1, Math.round(len / 4.2)), sl = len / n; for (let i = 0; i < n; i++) { const t = -len / 2 + sl * (i + 0.5); box(M.frieze[i % M.frieze.length], sl, fhh, 0.05, x + (ry ? 0 : t), fy, z + (ry ? t : 0), { ry, uv: false }); } };
+      run(c.d, 0, cw / 2 + 0.03, 0); run(c.d, 0, -cw / 2 - 0.03, 0);
+      run(cw, cx1 + 0.03, 0, Math.PI / 2); run(cw, cx0 - 0.03, 0, Math.PI / 2);
+      // piso de lajes de mármore dentro da cella
+      if (M.slabs) box(M.slabs, c.d - 2 * t, 0.02, cw - 2 * t, 0, Y, 0);
     }
     out.cella = { x0: cx0, x1: cx1, w: cw, h: ch2 };
   }

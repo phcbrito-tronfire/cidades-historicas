@@ -22,7 +22,9 @@ async function loadModel(L, name) {
   const turn = new THREE.Group(); turn.rotation.y = def.yaw; turn.add(inner);
   const norm = new THREE.Group(); norm.add(turn);
   norm.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(norm);
+  // pelos vértices (precise): a caixa aproximada de cada peça cresce quando o modelo é girado e a estátua
+  // ficava flutuando acima do pedestal (a Partenos 1,2 m, a Promachos 0,5 m)
+  const box = new THREE.Box3().setFromObject(norm, true);
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   // origem no chão, no centro da base; comprimento (eixo x) ou altura (fit 'y') = 1
   turn.position.set(-c.x, -box.min.y, -c.z);

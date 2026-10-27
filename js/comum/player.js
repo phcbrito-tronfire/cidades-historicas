@@ -144,12 +144,24 @@ export class Player {
 
   bindInput() {
     const gameKeys = ['ControlLeft', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight'];
+    // Ctrl (andar devagar) e Shift (correr) "presos": se o navegador perde o soltar da tecla (atalho do sistema,
+    // troca de aba), o explorador ficava lento e o Shift não adiantava. Todo evento real de teclado/mouse diz se
+    // Ctrl e Shift estão mesmo apertados — confere a cada um (os eventos dos botões de toque não são "reais")
+    const syncMods = (e) => {
+      if (!e.isTrusted) return;
+      if (!e.ctrlKey) { this.keys.delete('ControlLeft'); this.keys.delete('ControlRight'); }
+      if (!e.shiftKey) { this.keys.delete('ShiftLeft'); this.keys.delete('ShiftRight'); }
+    };
     addEventListener('keydown', (e) => {
       if (gameKeys.includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
+      syncMods(e);
     });
-    addEventListener('keyup', (e) => this.keys.delete(e.code));
+    addEventListener('keyup', (e) => { this.keys.delete(e.code); syncMods(e); });
+    addEventListener('mousemove', syncMods, { passive: true });
+    addEventListener('mousedown', syncMods);
     addEventListener('blur', () => this.keys.clear());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.keys.clear(); });
     const canvas = document.querySelector('#game canvas') || document.body;
     addEventListener('mousedown', (e) => { if (e.target.tagName === 'CANVAS') { this.dragging = true; this.lastX = e.clientX; this.lastY = e.clientY; } });
     addEventListener('mouseup', () => (this.dragging = false));

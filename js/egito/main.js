@@ -35,6 +35,7 @@ import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
 import { buildNile } from './nilo.js';
 import { Health, faint } from '../comum/vida.js';
+import { Mount } from '../comum/montaria.js';
 import { nextFrame, pick, rr, rand } from '../comum/util.js';
 import { groundAt, waterAt } from '../comum/collision.js';
 
@@ -112,6 +113,8 @@ async function main() {
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);
   const boats = makeBoats(scene, city);
+  // montaria (H): jumento — o animal de montaria e de carga do Egito do Novo Império (o camelo só se espalha no Egito séculos depois)
+  const mount = new Mount(scene, 'jumento', { toast: (m) => ui.toast(m) });
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const nile = await buildNile(scene, city, {
     onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
@@ -301,6 +304,7 @@ async function main() {
       case 'KeyR': useItem(); break;
       case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
       case 'KeyJ': ui.toggleJournal(); break;
+      case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints(), city.pyramids); break;
     }
   });
@@ -388,7 +392,7 @@ async function main() {
     });
   };
 
-  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -421,7 +425,8 @@ async function main() {
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night); return; }
     t += dt;
     player.night = sky.state.night;
-    if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt);
+    if (mount.state === 'riding') mount.update(dt, t, player);
+    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;
@@ -456,6 +461,8 @@ async function main() {
         parts.push(`<kbd>E</kbd> Falar com ${nm}`);
       }
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
+      if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');
+      else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no jumento');
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));
       ui.setPlace(placeName());
       miniT -= dt;

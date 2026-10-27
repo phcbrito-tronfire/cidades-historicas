@@ -18,6 +18,7 @@ const DEFS = {
   crocodilo: { yaw: Math.PI, base: true },
   anfora_mar: { fit: 'y', base: true },
   estrela: { rot: [-Math.PI / 2, 0, 0], base: true },
+  cavalo: { base: true, keep: true }, jumento: { base: true, keep: true }, // montarias: as animações são escolhidas por nome
 };
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
@@ -38,15 +39,15 @@ function unit(name) {
 }
 
 // uma cópia do tamanho pedido, já animando (se o modelo tiver animação)
-export async function creature(name, size, { speed = 1, tint = null } = {}) {
+export async function creature(name, size, { speed = 1, tint = null, still = false } = {}) {
   const U = await unit(name); if (!U) return null;
   const o = U.skinned ? skClone(U.u) : U.u.clone();
   o.scale.setScalar(size * U.u.scale.x);
   if (tint) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.multiply(new THREE.Color(...tint)); } });
   let mixer = null;
-  if (U.clips.length) { mixer = new THREE.AnimationMixer(o); const a = mixer.clipAction(U.clips[0]); a.time = Math.random() * U.clips[0].duration; a.timeScale = speed; a.play(); }
+  if (U.clips.length) { mixer = new THREE.AnimationMixer(o); if (!still) { const a = mixer.clipAction(U.clips[0]); a.time = Math.random() * U.clips[0].duration; a.timeScale = speed; a.play(); } }
   const holder = new THREE.Group(); holder.add(o);
-  return { holder, o, mixer };
+  return { holder, o, mixer, clips: U.clips };
 }
 
 // muitas cópias paradas de um modelo (estrelas-do-mar, ânforas) numa InstancedMesh por pedaço
@@ -131,7 +132,8 @@ export class SeaLife {
       a.holder.position.set(x, y, z);
       a.holder.rotation.set(0, 0, 0);
       if (a.kind !== 'jelly') { a.holder.rotation.y = a.h; a.holder.rotation.x = clamp(-Math.atan2(vy, Math.hypot(vx, vz) + 1e-4), -0.8, 0.8); }
-      if (a.mixer) a.mixer.update(dt);
+      // animação: perto, todo quadro; longe, a cada 3 (economiza com muitos peixes)
+      if (a.mixer) { a.mt = (a.mt || 0) + dt; if (dx0 * dx0 + dz0 * dz0 < 45 * 45 || (a.k3 = ((a.k3 || 0) + 1) % 3) === 0) { a.mixer.update(a.mt); a.mt = 0; } }
       // água-viva: queima ao encostar
       if (a.kind === 'jelly' && this.stingCd <= 0 && (player.swimming || player.wading)) {
         const cy = P.y + (player.swimming ? 0.3 : 0.9);

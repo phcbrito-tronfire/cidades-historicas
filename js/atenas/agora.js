@@ -28,7 +28,7 @@ export function buildAgora(B, M, out) {
     out.sculptures.push({ model: 'hefesteion', x: HEPH.x, y: HEPH.y, z: HEPH.z, ry: 0, length: 28 });
     out.hephModel = true; // a colisão (piso, colunas, paredes) é tirada do próprio modelo depois de carregado (main.js)
   } else {
-    doricTemple(B, { M, x: HEPH.x, y: HEPH.y - 0.2, z: HEPH.z, ry: 0, nf: 6, ns: 13, col: 1.02, h: 5.71, ic: 2.58, steps: 3, stepH: 0.36, stepW: 0.5, found: 1.2, cella: { w: 8.4, d: 20, door: 2.6, inner: 5 } });
+    doricTemple(B, { M, x: HEPH.x, y: HEPH.y - 0.2, z: HEPH.z, ry: 0, nf: 6, ns: 13, col: 1.02, h: 5.71, ic: 2.58, steps: 3, stepH: 0.36, stepW: 0.5, found: 1.2, rich: true, cella: { w: 8.4, d: 20, door: 2.6, inner: 5 } });
     B.box(M.poros, 35, 1.4, 21, HEPH.x + 1.75, HEPH.y - 1.6, HEPH.z); addBox(HEPH.x + 1.75, HEPH.z, 35, 21, HEPH.y - 2.4, HEPH.y - 0.2);
   }
   S.hephaisteion = new V3(HEPH.x + 22, HEPH.y, HEPH.z);
@@ -156,7 +156,8 @@ export function buildAgora(B, M, out) {
   {
     const x = BEMA.x, z = BEMA.z, y = ty(x, z);
     B.box(M.poros, 4.2, 1.6, 3.4, x, y - 0.2, z); addBox(x, z, 4.2, 3.4, y - 1, y + 1.4);
-    for (let i = 0; i < 4; i++) { B.box(M.poros, 1.2, 0.35 * (i + 1), 0.6, x + 0.6 + 0.65 * 0, y - 0.2, z - 1.7 - 0.6 * (3 - i) - 0.3); addBox(x, z - 2 - 0.6 * (3 - i), 1.2, 0.6, y - 1, y - 0.2 + 0.35 * (i + 1)); }
+    // escada da bema: o degrau desenhado e o de colisão no mesmo lugar (antes estavam 0,6 m desencontrados)
+    for (let i = 0; i < 4; i++) { const sz = z - 2 - 0.6 * (3 - i); B.box(M.poros, 1.6, 0.35 * (i + 1), 0.6, x, y - 0.2, sz); addBox(x, sz, 1.6, 0.6, y - 1, y - 0.2 + 0.35 * (i + 1)); }
     S.bema = new V3(x, y + 1.4, z);
     S.pnyx = new V3(x + 9, ty(x + 9, z - 12), z - 12);
     // muro de arrimo em arco que segura o aterro da assembleia

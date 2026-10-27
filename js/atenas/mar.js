@@ -62,9 +62,34 @@ export async function buildSea(scene, tex, { onSting }) {
     urchinPts.forEach((p, i) => { d.position.set(p.x, terrainHeight(p.x, p.z) + 0.02, p.z); d.rotation.set(0, R() * 6, 0); d.scale.setScalar(0.8 + R() * 0.6); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
     im.computeBoundingSphere(); scene.add(im);
   }
+  // ---------------- recifes: blocos de calcário no fundo, cobertos de limo, com esponjas e anêmonas coloridas ----
+  {
+    const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(p, i); const k = 0.75 + Math.sin(v.x * 3.1 + v.z * 2.3) * 0.12 + Math.cos(v.y * 4.2) * 0.1; p.setXYZ(i, v.x * k, v.y * k * 0.7, v.z * k); }
+    g.computeVertexNormals();
+    const rset = tex.pbr?.rock_face_03 || {};
+    const rock = new THREE.MeshStandardMaterial({ map: rset.map || null, normalMap: rset.normalMap || null, color: 0x8a8f72, roughness: 0.95 });
+    const pts = [];
+    for (let i = 0; i < 70; i++) { // manchas de recife
+      const c = seaSpot(R, -40, 260, 6, 120, 1.6, 16); if (!c) continue;
+      const n = 4 + Math.floor(R() * 9);
+      for (let j = 0; j < n; j++) { const x = c.x + (R() - 0.5) * 9, z = c.z + (R() - 0.5) * 9; if (depthAt(x, z) > 1.2) pts.push([x, z, 0.4 + R() * R() * 2.2]); }
+    }
+    const im = new THREE.InstancedMesh(g, rock, pts.length), d = new THREE.Object3D();
+    pts.forEach(([x, z, sc], i) => { d.position.set(x, terrainHeight(x, z) + sc * 0.15, z); d.rotation.set(R() * 0.6, R() * 6.3, R() * 0.6); d.scale.set(sc * (0.8 + R() * 0.5), sc, sc * (0.8 + R() * 0.5)); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
+    im.computeBoundingSphere(); im.receiveShadow = true; im.castShadow = true; scene.add(im);
+    // esponjas e anêmonas (pontinhos de cor sobre as pedras)
+    const sg = new THREE.SphereGeometry(0.12, 7, 5), cols = [0xe8a23a, 0xc8482e, 0xd86ab0, 0xe8d24a, 0x6ab0d8];
+    for (const [ci, col] of cols.entries()) {
+      const sel = pts.filter((_, i) => i % cols.length === ci);
+      const sm = new THREE.InstancedMesh(sg, new THREE.MeshStandardMaterial({ color: col, roughness: 0.7 }), sel.length * 2);
+      let k = 0; for (const [x, z, sc] of sel) for (let q = 0; q < 2; q++) { d.position.set(x + (R() - 0.5) * sc, terrainHeight(x, z) + sc * 0.55, z + (R() - 0.5) * sc); d.rotation.set(0, 0, 0); d.scale.set(1 + R(), 0.6 + R() * 0.8, 1 + R()); d.updateMatrix(); sm.setMatrixAt(k++, d.matrix); }
+      sm.count = k; sm.computeBoundingSphere(); scene.add(sm);
+    }
+  }
   // ---------------- a carga de colunas ----------------
   let site = null;
-  for (let a = 150; a < 260 && !site; a += 6) { const p = coastPoint(a, 70), dd = depthAt(p.x, p.z); if (dd > 5 && dd < 10) site = p; }
+  for (let off = 38; off < 90 && !site; off += 4) for (let a = 110; a < 200 && !site; a += 6) { const p = coastPoint(a, off), dd = depthAt(p.x, p.z); if (dd > 4.5 && dd < 9) site = p; }
   const amph = [];
   if (site) {
     const marble = new THREE.MeshStandardMaterial({ map: tex.plainMarble || null, color: 0xc8d0bc, roughness: 0.9 });
@@ -112,9 +137,10 @@ export async function buildSea(scene, tex, { onSting }) {
     seaPoint: (r, kind) => kind === 'dolphin' ? seaSpot(r, -100, 320, 90, 260, 8, 99)
       : kind === 'jelly' ? seaSpot(r, -60, 320, 25, 150, 3, 30)
       : kind === 'turtle' ? seaSpot(r, -60, 300, 20, 110, 2.5, 20)
-      : seaSpot(r, -100, 320, 15, 150, 2.5, 25),
+      // peixes: a maior parte na baía do Falero, onde se nada e mergulha (o resto espalhado pelo golfo)
+      : r() < 0.7 ? seaSpot(r, 20, 190, 8, 75, 1.8, 14) : seaSpot(r, -100, 320, 15, 150, 2.5, 25),
   });
-  life.populate([['cardume', 6, 4, 'school'], ['pargo', 10, 0.55, 'fish'], ['golfinho', 3, 2.3, 'dolphin'], ['tartaruga', 3, 1.1, 'turtle'], ['aguaviva', 12, 0.45, 'jelly']]);
+  life.populate([['cardume', 14, 4, 'school'], ['pargo', 26, 0.55, 'fish'], ['golfinho', 4, 2.3, 'dolphin'], ['tartaruga', 5, 1.1, 'turtle'], ['aguaviva', 12, 0.45, 'jelly']]);
 
   return {
     life, site, urchins: urchinPts,

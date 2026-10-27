@@ -24,8 +24,10 @@ export const OBJECTIVES = [
   { id: 'mar', text: 'Nade no mar do Falero', hint: null },
   { id: 'barco', text: 'Saia ao mar num barco (E para embarcar)', hint: null },
   { id: 'naufragio', text: 'Mergulhe (Espaço na água) e ache a ânfora do naufrágio', hint: null },
+  { id: 'psitalia', text: 'Navegue até a ilha de Psitália, onde Aristides venceu os persas', hint: null },
+  { id: 'salamina', text: 'Visite o troféu da vitória no cabo de Salamina', hint: null },
   { id: 'corujas', text: 'Encontre as 5 corujas de prata (tetradracmas)', count: 5 },
-  { id: 'artefatos', text: 'Encontre os 20 artefatos da Grécia Antiga', count: 20 },
+  { id: 'artefatos', text: 'Encontre os 22 artefatos da Grécia Antiga', count: 22 },
   { id: 'pericles', text: 'Ouça Péricles na Pnyx', hint: null },
 ];
 export const FINAL_REQ = 10;
@@ -39,12 +41,12 @@ export class Quests {
     this.scarabsFound = new Set(); // (nome herdado: as corujas)
     this.listeners = [];
     const S = city.spots;
-    this.zones = city.zones; this.city = city;
+    this.zones = city.zones; this.city = city; this.spots = city.spots;
     this.hints = {};
     const H = (id, v) => { if (v) this.hints[id] = [v.x, v.z]; };
     H('herodoto', S.npc_herodoto); H('socrates', S.simon); H('mirrina', S.market); H('mnesicles', S.mnesicles); H('fidias', S.partenos); H('ictino', S.parthenonDoor);
     H('lisimaque', S.olive); H('sofocles', S.theater); H('aspasia', S.casa_pericles); H('calias', S.potter); H('kylix', S.casa_pericles); H('demon', S.dipylon);
-    H('pnyx', S.pnyx); H('formiao', S.quay); H('trirreme', S.trireme); H('glauco', S.fisher); H('mar', S.rowboat); H('barco', S.rowboat); H('naufragio', S.wreck); H('pericles', S.bema);
+    H('pnyx', S.pnyx); H('formiao', S.quay); H('trirreme', S.trireme); H('glauco', S.fisher); H('mar', S.rowboat); H('barco', S.rowboat); H('naufragio', S.wreck); H('pericles', S.bema); H('psitalia', S.pan); H('salamina', S.tropaion);
     // corujas de prata: moeda com Atena de um lado e a coruja do outro
     const spots = [S.owl1, S.owl2, S.owl3, S.owl4, S.owl5].filter(Boolean);
     const coin = new THREE.CylinderGeometry(0.16, 0.16, 0.035, 24); coin.rotateX(Math.PI / 2);
@@ -89,6 +91,10 @@ export class Quests {
     if (!this.done.has('partenos') && inZ(Z.cella) && p.y > 55) this.complete('partenos');
     if (!this.done.has('pnyx') && inZ(Z.pnyx) && p.y > 20) this.complete('pnyx');
     if (!this.done.has('mar') && player.swimming && waterAt(p.x, p.z) > -1 && !inZ(Z.porto)) this.complete('mar');
+    // ilhas: vale pisar em terra firme (não só passar nadando ou de barco por perto)
+    const ashore = !player.swimming && player.onGround && p.y > 1;
+    if (!this.done.has('psitalia') && ashore && inZ(Z.psitalia)) this.complete('psitalia');
+    if (!this.done.has('salamina') && ashore && this.spots?.tropaion && (p.x - this.spots.tropaion.x) ** 2 + (p.z - this.spots.tropaion.z) ** 2 < 15 * 15) this.complete('salamina');
     for (const s of this.scarabs) {
       if (this.scarabsFound.has(s.i)) continue;
       s.g.rotation.y = t * 1.5;

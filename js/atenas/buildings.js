@@ -3,11 +3,13 @@
 import * as THREE from 'three';
 import { Batcher } from '../comum/batcher.js';
 import { pbrSet, getTextures } from './textures.js';
+import { templeTextures } from './relevos.js';
 import { buildAcropolis } from './acropole.js';
 import { buildAgora } from './agora.js';
 import { buildHouses } from './casas.js';
 import { buildWalls } from './muralhas.js';
 import { buildHarbor } from './porto.js';
+import { buildIslands } from './ilhas.js';
 import { terrainHeight } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -18,6 +20,11 @@ export function createMaterials(tex) {
   M.marble = std({ ...pbrSet(P.marble_01, 1), color: 0xfff6ea, roughness: 0.55 }); M.marble.userData.uv = { s: 3 };
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
   M.marbleWall = std({ ...pbrSet(P.marble_01, 1), color: 0xf6ecdc, roughness: 0.6 }); M.marbleWall.userData.uv = { s: 2.2 };
+  // a foto do Poly Haven tem tom de arenito: tira a maior parte da cor (fica o desenho dos blocos e veios) e clareia,
+  // para ler como o mármore branco recém-cortado de 432 a.C.
+  const whiten = (m, keep, lift) => { m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      { float l = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); diffuseColor.rgb = mix(vec3(l), diffuseColor.rgb, ${keep.toFixed(2)}) * ${lift.toFixed(2)} * vec3(1.04, 1.0, 0.93); l = dot(diffuseColor.rgb, vec3(0.333)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l), 0.0) + 0.06; }`); }; };
+  whiten(M.marble, 0.42, 1.15); whiten(M.marbleWall, 0.42, 1.15);
   M.poros = std({ ...pbrSet(P.marble_01, 1), color: 0xe2cfa8, roughness: 0.85 }); M.poros.userData.uv = { s: 2.6 }; // calcário (poros) em blocos: alicerces, muros de arrimo
   M.paintRed = std({ color: 0x9a2a1e, roughness: 0.7 });
   M.paintBlue = std({ color: 0x1f3a7a, roughness: 0.7 });
@@ -28,6 +35,13 @@ export function createMaterials(tex) {
   M.tiles = std({ ...pbrSet(P.clay_roof_tiles_02, 1), color: 0xffffff }); M.tiles.userData.uv = { s: 2.2 }; // telhas de barro
   M.ceiling = std({ map: T.coffers, color: 0xffffff, roughness: 0.8 }); M.ceiling.userData.uv = { s: 2.6 }; // forro de caixotões azuis com estrelas douradas
   M.gold = std({ color: 0xffc64a, metalness: 1, roughness: 0.28 });
+  // relevos e pinturas dos templos (métopas, friso, molduras, antefixas, piso de lajes)
+  { const R = templeTextures();
+    M.metopeR = R.metopes.map((t) => std({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(1.6, 1.6), roughness: 0.6 }));
+    M.frieze = R.frieze.map((t) => std({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), roughness: 0.6 }));
+    M.molding = std({ map: R.molding, roughness: 0.65 });
+    M.antefix = std({ map: R.antefix, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
+    M.slabs = std({ map: R.slabs.map, normalMap: R.slabs.normalMap, roughness: 0.5 }); M.slabs.userData.uv = { s: 4 }; }
   M.bronze = std({ color: 0xa8743a, metalness: 0.9, roughness: 0.35 });
   M.wood = std({ ...pbrSet(P.madeira_clara, 1), color: 0xe8c8a0 }); M.wood.userData.uv = { s: 2 };
   M.darkWood = std({ ...pbrSet(P.madeira_clara, 1), color: 0x9a7452 }); M.darkWood.userData.uv = { s: 2 };
@@ -64,6 +78,7 @@ export function buildCity(scene, tex, available = new Set()) {
   buildAgora(B, M, out);
   buildWalls(B, M, out);
   buildHarbor(B, M, out);
+  buildIslands(B, M, out); // Psitália e a ponta de Salamina
   buildHouses(B, M, out); // por último: as casas ocupam o que sobrou
   // as 5 corujas de prata (tetradracmas)
   {

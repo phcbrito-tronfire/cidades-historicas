@@ -56,7 +56,7 @@ export function buildAcropolis(B, M, out) {
   // ---------------- Parthenon (69,5 × 30,9 m; 8 × 17 colunas de 10,4 m), frente para o leste
   const PX = 22, PZ = 12;
   const py = top(PX, PZ) - 0.35;
-  const par = doricTemple(B, { M, x: PX, y: py, z: PZ, ry: 0, nf: 8, ns: 17, col: 1.9, h: 10.43, ic: 4.2, steps: 3, stepH: 0.55, stepW: 0.72, found: 1.8,
+  const par = doricTemple(B, { M, x: PX, y: py, z: PZ, ry: 0, nf: 8, ns: 17, col: 1.9, h: 10.43, ic: 4.2, steps: 3, stepH: 0.55, stepW: 0.72, found: 1.8, rich: true,
     cella: { w: 21.5, d: 56, door: 5, inner: 10 } });
   S.parthenon = new V3(PX, par.Y, PZ);
   // dentro: a Atena Partenos de Fídias (ouro e marfim, ~11,5 m com a base), de frente para a porta; diante dela, o
@@ -72,6 +72,15 @@ export function buildAcropolis(B, M, out) {
   S.partenos = new V3(AX + 9.5, par.Y, PZ);
   S.parthenonDoor = new V3(PX + 28 + 6, par.Y, PZ);
   out.lights.push({ pos: new V3(AX + 4, par.Y + 6, PZ), color: 0xffd8a0, intensity: 260, dist: 26 });
+  // oferendas na cella: trípodes de bronze ao longo do espelho d'água e dois braseiros acesos diante da deusa
+  for (const dz of [-5.3, 5.3]) for (const dx of [3.5, 6.5, 9.5]) {
+    const x = AX + dx, z = PZ + dz, y = par.Y;
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2 + 0.5; B.box(M.bronze, 0.05, 1.5, 0.05, x + Math.cos(a) * 0.32, y, z + Math.sin(a) * 0.32, { rz: Math.cos(a) * 0.12, rx: -Math.sin(a) * 0.12 }); }
+    B.geo(new THREE.SphereGeometry(0.42, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M.bronze, x, y + 1.62, z, { uv: false }); // caldeirão
+    for (let i = 0; i < 2; i++) B.geo(new THREE.TorusGeometry(0.14, 0.025, 6, 14), M.bronze, x + (i ? 0.3 : -0.3), y + 1.78, z, { uv: false }); // alças
+    addCircle(x, z, 0.4, y, y + 1.8);
+  }
+  for (const dz of [-2.4, 2.4]) brazier(B, M, out, AX + 3.2, par.Y, PZ + dz);
   out.zones.parthenon = [PX - 36, PX + 36, PZ - 17, PZ + 17];
   out.zones.cella = [PX - 28, PX + 28, PZ - 10.7, PZ + 10.7];
   // esculturas dos frontões (Sketchfab, se carregarem) — leste: o nascimento de Atena
@@ -83,7 +92,7 @@ export function buildAcropolis(B, M, out) {
 
   // ---------------- Antigo Templo de Atena Pólias (reconstruído em parte depois dos persas) e a oliveira sagrada
   const OX = -2, OZ = -27;
-  const ot = doricTemple(B, { M, x: OX, y: top(OX, OZ) - 0.3, z: OZ, ry: 0, nf: 6, ns: 12, col: 1.5, h: 7.4, ic: 3.6, steps: 2, stepH: 0.45, stepW: 0.6,
+  const ot = doricTemple(B, { M, x: OX, y: top(OX, OZ) - 0.3, z: OZ, ry: 0, nf: 6, ns: 12, col: 1.5, h: 7.4, ic: 3.6, steps: 2, stepH: 0.45, stepW: 0.6, rich: true,
     cella: { w: 12, d: 32, door: 3.6 } });
   S.oldTemple = new V3(OX + 22, ot.Y, OZ);
   out.sculptures.push({ model: 'atena_xoanon', x: OX - 10, y: ot.Y, z: OZ, ry: 0, length: 2.3, optional: true });
@@ -119,7 +128,7 @@ export function buildAcropolis(B, M, out) {
     const X0 = -126, X1 = -100, Y = ACRO.top - 2.2, Wd = 18.2;
     const ic = 3.6, D = 1.56, H = 8.8, r = D / 2;
     S.propylaea = new V3(X1 + 6, Y, 0);
-    B.box(M.marble, X1 - X0 + 2, 0.6, Wd + 2, (X0 + X1) / 2, Y - 0.6, 0);
+    B.box(M.marble, X1 - X0 + 2, 0.6, Wd + 2, (X0 + X1) / 2, Y - 0.6, 0); addBox((X0 + X1) / 2, 0, X1 - X0 + 2, Wd + 2, Y - 3, Y); // piso (pisa-se nele, não no morro)
     const facade = (x, facing) => {
       for (const z of [-8.2, -5.3, -2.7, 2.7, 5.3, 8.2]) { // vão central mais largo (passagem dos animais do sacrifício)
         B.geo(doricShaft(H - 0.9, r), M.colMarble, x, Y, z, { uv: { s: 1.2 } });
@@ -148,7 +157,7 @@ export function buildAcropolis(B, M, out) {
     // ala norte (Pinacoteca, sala dos quadros): três colunas dóricas menores e uma sala atrás
     {
       const ax = X0 + 2, az = -Wd / 2 - 9, ay = top(ax, az);
-      B.box(M.marble, 16, 0.6, 12, ax, ay - 0.6, az);
+      B.box(M.marble, 16, 0.6, 12, ax, ay - 0.6, az); addBox(ax, az, 16, 12, ay - 3, ay);
       for (let i = 0; i < 3; i++) { const x = ax - 5.5, z = az - 3.5 + i * 3.5; B.geo(doricShaft(5.1, 0.5), M.colMarble, x, ay, z, { uv: { s: 1 } }); B.geo(doricCapital(0.5), M.colMarble, x, ay + 5.1, z); addCircle(x, z, 0.5, ay - 1, ay + 6); }
       B.box(M.marbleWall, 10, 6.2, 0.9, ax + 1.5, ay, az - 5.6); B.box(M.marbleWall, 10, 6.2, 0.9, ax + 1.5, ay, az + 5.6); B.box(M.marbleWall, 0.9, 6.2, 12, ax + 6.6, ay, az);
       B.box(M.marbleWall, 0.9, 6.2, 4.5, ax - 3.4, ay, az - 3.6); B.box(M.marbleWall, 0.9, 6.2, 4.5, ax - 3.4, ay, az + 3.6);
@@ -162,7 +171,7 @@ export function buildAcropolis(B, M, out) {
     // ala sul (inacabada): só as paredes, com andaimes de madeira
     {
       const ax = X0 + 3, az = Wd / 2 + 6, ay = top(ax, az);
-      B.box(M.marble, 10, 0.6, 7, ax, ay - 0.6, az);
+      B.box(M.marble, 10, 0.6, 7, ax, ay - 0.6, az); addBox(ax, az, 10, 7, ay - 3, ay);
       B.box(M.marbleWall, 6, 3.6, 0.9, ax + 1.5, ay, az + 3);
       for (let i = 0; i < 3; i++) { const x = ax - 3.5, z = az - 2 + i * 2.5; B.geo(doricShaft(i === 2 ? 2.4 : 5.1, 0.5), M.colMarble, x, ay, z, { uv: { s: 1 } }); addCircle(x, z, 0.5, ay - 1, ay + 5); }
       scaffold(B, M, ax + 1.5, ay, az + 4.4, 7, 6);

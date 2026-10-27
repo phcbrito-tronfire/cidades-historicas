@@ -24,6 +24,7 @@ import { AudioFX } from './audio.js';
 import { Boats } from './barcos.js';
 import { buildSea } from './mar.js';
 import { Health, faint } from '../comum/vida.js';
+import { Mount } from '../comum/montaria.js';
 import { nextFrame, pick, rr, rand, ver } from '../comum/util.js';
 import { groundAt, waterAt, addBox } from '../comum/collision.js';
 import { collideModel } from '../comum/pisomodelo.js';
@@ -119,6 +120,8 @@ async function main() {
   scatterProps(scene, city);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx);
+  // montaria (H): cavalo — a cavalaria (hippeis) e os cavaleiros ricos de Atenas
+  const mount = new Mount(scene, 'cavalo', { toast: (m) => ui.toast(m) });
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const sea = await buildSea(scene, tex, { onSting: () => { health.damage(12); ui.toast('Ai! Uma água-viva — queima como fogo. Cuidado com elas.'); } });
 
@@ -164,7 +167,7 @@ async function main() {
   ui.buildMapBackground([
     ['Acrópole', 0, -2], ['Parthenon', 22, 30], ['Ágora', AGORA.x, AGORA.z], ['Hefesteion', -392, -230], ['Pnyx', -340, 70], ['Areópago', -152, -116],
     ['Teatro de Dioniso', 22, 150], ['Odeon', 102, 150], ['Cerâmico', -425, -350], ['Dípilon', -480, -405], ['Porto', S.quay.x, S.quay.z + 30], ['Praia do Falero', S.fisher.x + 60, S.fisher.z + 40],
-    ['Longas Muralhas', -420, 250], ['Golfo Sarônico', -150, 760],
+    ['Longas Muralhas', -420, 250], ['Golfo Sarônico', -150, 760], ['Psitália', -622, 452], ['Salamina', -738, 640],
   ]);
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
@@ -310,6 +313,7 @@ async function main() {
       case 'KeyR': useItem(); break;
       case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
       case 'KeyJ': ui.toggleJournal(); break;
+      case 'KeyH': if (!boats.riding) mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
     }
   });
@@ -366,6 +370,8 @@ async function main() {
     const p = player.pos, x = p.x, z = p.z;
     const inR = (a) => a && x > a[0] && x < a[1] && z > a[2] && z < a[3];
     if (boats.riding) return boats.riding.model === 'trirreme' ? 'A bordo da trirreme Páralos' : 'De barco na baía do Falero';
+    if (inR(Z.psitalia) && !player.swimming) return 'Ilha de Psitália';
+    if (inR(Z.salamina) && !player.swimming) return 'Salamina — cabo de Cinosura';
     if (player.diving) return 'Fundo da baía do Falero';
     if (player.swimming) return coastC(x, z) > 200 ? 'Golfo Sarônico' : 'Baía do Falero';
     for (const h of city.visitHouses) if (inR(h.rect)) return h.name;
@@ -411,7 +417,7 @@ async function main() {
     }
   };
 
-  window.__game = { player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -441,7 +447,8 @@ async function main() {
     player.night = sky.state.night;
     boats.update(dt, t, player);
     if (boats.riding) { /* o barco já posicionou o explorador */ }
-    else if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt);
+    else if (mount.state === 'riding') mount.update(dt, t, player);
+    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;
@@ -476,6 +483,8 @@ async function main() {
       if (bt) parts.push(`<kbd>E</kbd> Embarcar ${bt.model === 'trirreme' ? 'na trirreme ' + (bt.name || '') : 'no ' + (bt.name || 'barco')}`);
       if (boats.riding) parts.push('<kbd>↑↓←→</kbd> Navegar · <kbd>E</kbd> Descer');
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
+      if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');
+      else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));
       ui.setPlace(placeName());
       miniT -= dt;

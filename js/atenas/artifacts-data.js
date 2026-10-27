@@ -60,4 +60,10 @@ export const ARTIFACTS = [
   { id: 'fuso', kind: 'spindle', where: 'oliveira', name: 'Fuso e roca', era: 'Séc. V a.C. · madeira, osso e terracota',
     museum: 'Os pesinhos de fuso (fusaiolas) aparecem aos milhares nas escavações da Ática.',
     story: 'Com a roca numa mão e o fuso girando na outra, a lã virava fio. Atena Ergane, a Trabalhadora, era a protetora das tecelãs, e o peplo da deusa era tecido todo ano por moças atenienses.' },
+  { id: 'flechas', kind: 'arrowheads', where: 'psitalia', name: 'Pontas de flecha persas', era: '480 a.C. · bronze, de três lâminas',
+    museum: 'Pontas assim, achadas em Maratona e nas Termópilas, estão no Museu Arqueológico Nacional de Atenas.',
+    story: 'Na batalha de Salamina, Xerxes desembarcou em Psitália uma tropa de elite para matar os gregos que chegassem nadando. Aristides atravessou com hoplitas atenienses e não deixou nenhum persa vivo. Estas pontas de flecha, de três lâminas, eram a marca dos arqueiros do Grande Rei.' },
+  { id: 'escudo', kind: 'shield', where: 'salamina', name: 'Escudo votivo de Ájax', era: 'Séc. V a.C. · bronze martelado',
+    museum: 'Escudos votivos de bronze foram achados em Olímpia e na Acrópole; o de Pilos, tomado dos espartanos em 425 a.C., está no Museu da Ágora.',
+    story: 'Depois da vitória, os gregos ofereceram aos deuses parte do saque e armas dos vencidos. Em Salamina, ilha do herói Ájax, havia um santuário com a estátua dele em ébano. Os atenienses chegaram a dedicar uma trirreme fenícia capturada ao herói, ali mesmo, no cabo de Cinosura.' },
 ];

@@ -47,6 +47,8 @@ function model(kind) {
     case 'amphora_t': lathe([[0.0, 0], [0.03, 0.06], [0.11, 0.22], [0.13, 0.38], [0.1, 0.5], [0.07, 0.54], [0.06, 0.62], [0.075, 0.64]], CLAY); for (const s of [-1, 1]) add(new THREE.TorusGeometry(0.05, 0.012, 5, 10, Math.PI), CLAY, s * 0.08, 0.56, 0, 0, Math.PI / 2, s > 0 ? -1.3 : 1.3); break;
     case 'pinax': add(new THREE.BoxGeometry(0.34, 0.24, 0.02), WOOD, 0, 0.14, 0, -0.2); add(new THREE.BoxGeometry(0.3, 0.2, 0.005), std(0xffffff, { map: T.redFigure }), 0, 0.145, 0.012, -0.2); break;
     case 'chisel': for (let i = 0; i < 3; i++) { add(new THREE.CylinderGeometry(0.008, 0.012, 0.2, 6), std(0x5a5a5e, { metalness: 0.7, roughness: 0.5 }), -0.05 + i * 0.05, 0.012, 0, Math.PI / 2, i * 0.3, 0); } add(new THREE.CylinderGeometry(0.04, 0.04, 0.1, 10), WOOD, 0.1, 0.05, 0.05, 0, 0, Math.PI / 2); break;
+    case 'arrowheads': for (let i = 0; i < 3; i++) { add(new THREE.ConeGeometry(0.03, 0.1, 3), BRONZE, -0.08 + i * 0.08, 0.06, 0, 0, i * 0.6, Math.PI / 2); add(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 5), BRONZE, -0.08 + i * 0.08, 0.06, 0.1, Math.PI / 2, 0, 0); } break;
+    case 'shield': add(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24), BRONZE, 0, 0.24, 0, Math.PI / 2 - 0.25, 0, 0); add(new THREE.TorusGeometry(0.2, 0.015, 6, 24), BRONZE, 0, 0.24, 0.02, -0.25, 0, 0); break;
     case 'spindle': add(new THREE.CylinderGeometry(0.006, 0.006, 0.3, 5), WOOD, 0, 0.15, 0); add(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 10), CLAY, 0, 0.05, 0); add(new THREE.SphereGeometry(0.05, 10, 8), std(0xe8e0d0, { roughness: 1 }), 0, 0.3, 0, 0, 0, 0, [1, 1.4, 1]); break;
   }
   return g;
@@ -80,6 +82,7 @@ export class Artifacts {
       agora: at(S.stoaPoikile, -8, 3), odeon: at(S.odeon, 4, -6), odeon2: at(S.odeon, -14, -12), ceramico: at(S.potter, 14, 3), dipilon: at(S.dipylon, 4, 8),
       dipilon2: at(S.dipylon, -16, -14), teatro: at(S.skene, -7, 2), casa: at(S.casa_pericles, 3.5, 3.5), casa2: at(S.casa_pericles, -4, 4), bairro: [-150, 180, 50],
       tholos: at(S.tholos, 3, 2), stoa: at(S.horos, 6, -4), cemiterio: at(S.cemetery, 4, 2), cemiterio2: at(S.cemetery, -10, 6), porto: at(S.quay, -40, -10),
+      psitalia: at(S.pan, -3, 3), salamina: at(S.ajax, -1.5, 0),
       praia: at(S.fisher, 12, -6), naufragio: at(S.wreck, 1.5, 0, 'fundo'), pinacoteca: at(S.pinakotheke, 0, 0), parthenon: at(S.parthenon, -40, 22), oliveira: at(S.olive, -3, 2),
     };
 
