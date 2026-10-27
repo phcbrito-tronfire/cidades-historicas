@@ -4,6 +4,8 @@ import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
 import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
 
+const BREATH = 60; // fôlego do mergulho, em segundos
+
 // tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
 // inclinado para a frente e para cima (~50°), sem atravessar o braço
 const TORCH_ROT = [1.15, 0, 0], TORCH_GRIP = [0, -0.04, 0.06];
@@ -25,7 +27,7 @@ export class Player {
     this.night = 0; // 0 = dia, 1 = noite (vem do céu a cada quadro)
     this.locked = false; // durante diálogos
     this.speed = 0; this.mode = 'idle';
-    this.diving = false; this.breath = 30; this.diveVy = 0; // mergulho (fôlego em segundos)
+    this.diving = false; this.breath = BREATH; this.diveVy = 0; // mergulho (fôlego em segundos)
     this.bounds = [-370, 370, -370, 370]; // limite do mundo andável (x0, x1, z0, z1), definido pela cidade
     this.events = { splash: () => {}, ripple: () => {}, step: () => {} };
     this.rippleT = 0; this.stepT = 0; this.swingT = 0;
@@ -85,9 +87,9 @@ export class Player {
       this.breathEl.innerHTML = '<div style="height:100%;width:100%;background:linear-gradient(90deg,#bff3ff,#5fd0e8);transition:width .2s"></div>';
       document.body.appendChild(this.breathEl);
     }
-    const show = this.diving || (this.breath < 29.5 && this.swimming);
+    const show = this.diving || (this.breath < BREATH - 0.5 && this.swimming);
     this.breathEl.style.display = show ? 'block' : 'none';
-    if (show) { const f = this.breath / 30; const bar = this.breathEl.firstChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f < 0.25 ? '#ff8a6a' : 'linear-gradient(90deg,#bff3ff,#5fd0e8)'; }
+    if (show) { const f = this.breath / BREATH; const bar = this.breathEl.firstChild; bar.style.width = (f * 100).toFixed(0) + '%'; bar.style.background = f < 0.25 ? '#ff8a6a' : 'linear-gradient(90deg,#bff3ff,#5fd0e8)'; }
   }
 
   // roupa molhada: ao sair da água o tecido e a pele ficam mais escuros e brilhantes, pingando, e secam em ~40 s
@@ -272,16 +274,18 @@ export class Player {
 
     if (this.swimming) {
       const surfY = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
-      // mergulho: Espaço afunda (onde há fundo suficiente); embaixo d'água, Espaço sobe e Ctrl desce mais
+      // mergulho: SEGURAR o Espaço mantém o explorador embaixo d'água (desce até perto do fundo e fica ali, nadando
+      // para onde quiser); soltar o Espaço faz subir. Ctrl desce mais rápido.
       const sp = this.key('Space') && !this.locked;
-      if (sp && !this.spaceHeld) {
-        if (!this.diving && depth > 2.4) { this.diving = true; this.surfacing = false; this.diveVy = -2.4; this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.4); }
-        else if (this.diving) this.surfacing = true;
-      }
+      if (sp && !this.spaceHeld && !this.diving && depth > 2.4) { this.diving = true; this.surfacing = false; this.diveVy = -2.4; this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.4); }
+      if (this.diving) this.surfacing = !sp;
       this.spaceHeld = sp;
       if (this.diving) {
-        // nadando para a frente, vai para onde a câmera aponta (câmera mais alta, olhando para baixo = descer)
-        let vyT = -Math.sin(this.camPitch - 0.28) * 1.3 * this.speed + 0.15 + (this.key('ControlLeft', 'ControlRight') ? -1.6 : 0);
+        // segurando: desce devagar até ~0,9 m do fundo e se mantém ali; nadando para a frente, a câmera ainda inclina a
+        // trajetória (olhar para baixo = descer mais, para cima = subir um pouco)
+        const nearFloor = p.y < ground + 0.9;
+        let vyT = (nearFloor ? 0 : -1.1) - Math.sin(this.camPitch - 0.28) * 0.9 * this.speed + (this.key('ControlLeft', 'ControlRight') ? -1.6 : 0);
+        if (nearFloor) vyT = Math.max(vyT, 0);
         if (this.surfacing || this.breath <= 0) vyT = 1.9;
         this.diveVy = lerp(this.diveVy, vyT, Math.min(1, dt * (this.diveVy < -1 ? 0.8 : 3)));
         p.y += this.diveVy * dt;
@@ -294,7 +298,7 @@ export class Player {
       } else {
         if (has && this.tryClimb(wl)) return this.updateClimb(dt, t);
         p.y = lerp(p.y, surfY, Math.min(1, dt * 4));
-        this.breath = Math.min(30, (this.breath ?? 30) + dt * 8);
+        this.breath = Math.min(BREATH, (this.breath ?? BREATH) + dt * 12);
       }
       this.vy = 0;
       if (depth < 1.0 && !this.diving) { this.swimming = false; p.y = Math.max(ground, p.y); }

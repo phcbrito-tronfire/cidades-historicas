@@ -387,7 +387,7 @@ async function main() {
   const onDeath = () => {
     player.locked = true; player.collapse();
     faint('Você desmaiou... e acordou de volta diante do templo de Ptah.', () => {
-      player.diving = false; player.swimming = false; player.breath = 30;
+      player.diving = false; player.swimming = false; player.breath = 60;
       player.place(84, 0, -Math.PI / 2); health.revive(70); player.rig.once = null; nile.crocs.reset(); player.locked = false;
     });
   };

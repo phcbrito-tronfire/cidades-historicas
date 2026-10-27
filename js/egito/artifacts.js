@@ -44,6 +44,8 @@ function model(kind) {
     case 'headrest': add(new THREE.BoxGeometry(0.16, 0.02, 0.07), WOOD, 0, 0.01, 0); add(new THREE.CylinderGeometry(0.02, 0.03, 0.12, 8), WOOD, 0, 0.08, 0); add(new THREE.TorusGeometry(0.09, 0.02, 6, 16, Math.PI), WOOD, 0, 0.23, 0, 0, 0, Math.PI); break;
     case 'boat': { const h = new THREE.SphereGeometry(0.1, 14, 8); add(h, std(0xc9a46a), 0, 0.05, 0, 0, 0, 0, [3, 0.5, 0.8]); for (let i = 0; i < 4; i++) add(new THREE.CapsuleGeometry(0.012, 0.03, 3, 6), std(0xa0603a), -0.15 + i * 0.1, 0.11, 0); add(new THREE.BoxGeometry(0.08, 0.06, 0.08), std(0xefe6d2), 0.12, 0.12, 0); } break;
     case 'tablet': add(new THREE.BoxGeometry(0.2, 0.26, 0.04), CLAY, 0, 0.13, 0, -0.2); for (let i = 0; i < 8; i++) add(new THREE.BoxGeometry(0.16, 0.006, 0.006), std(0x6a4a2a), 0, 0.05 + i * 0.026, 0.024, -0.2); break;
+    case 'maat': add(new THREE.BoxGeometry(0.14, 0.16, 0.02), GOLD, 0, 0.12, 0); add(new THREE.ConeGeometry(0.025, 0.14, 6), GOLD, 0.03, 0.27, 0); add(new THREE.SphereGeometry(0.03, 10, 8), GOLD, -0.02, 0.24, 0); break;
+    case 'alabaster': add(new THREE.LatheGeometry([[0.03, 0], [0.07, 0.02], [0.1, 0.1], [0.09, 0.2], [0.05, 0.26], [0.05, 0.3], [0.07, 0.32]].map(([r, y]) => new THREE.Vector2(r, y)), 18), ALAB); break;
     case 'udjat': add(new THREE.SphereGeometry(0.08, 14, 10), FAI, 0, 0.1, 0, 0, 0, 0, [1.4, 0.65, 0.3]); add(new THREE.SphereGeometry(0.03, 10, 8), LAPIS, 0, 0.1, 0.02); add(new THREE.BoxGeometry(0.02, 0.08, 0.02), FAI, -0.03, 0.03, 0, 0, 0, 0.3); break;
   }
   return g;
@@ -79,6 +81,7 @@ export class Artifacts {
       nofret: [N.x - 6, N.z + 6, 50], praca: [N.x + 5, N.z + 4, 50], mercado: [66, 44, 50], avenida: [40, -3.2, 3],
       canteiro: [H.x - 8, H.z + 10, 50], 'templo-vale': [-154, 48, 50], rainhas: [-183, -86, 50], miquerinos: [-200, 152, 50],
       esfinge: [-178, 13, 50], cais: [S.pier.x - 2, S.pier.z + 1.2, 3], quartel: [Q.x - 7, Q.z + 2, 50], vilarejo: [riverX(-118) + 50, -118, 50],
+      vizir: [68, -124, 50], sacara: [-169, -58, 50],
     };
     const gt = glowTex();
     this.glowMat = new THREE.SpriteMaterial({ map: gt, color: 0xffe2a0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });

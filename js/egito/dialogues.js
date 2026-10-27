@@ -260,6 +260,40 @@ export const NPCS = [
     bye: 'Vá com Ísis, viajante. E não demore no jardim: o sol do meio-dia não perdoa ninguém.',
   },
   {
+    id: 'rahotep', name: 'Rahotep', title: 'Vizir do Norte', objective: 'rahotep',
+    look: { outfit: 'longkilt', hair: 'short', extras: ['scroll', 'staff'], skin: 0x9c6644, collar: 0xd9a23e, height: 1.76 },
+    greet: 'Fale depressa, estrangeiro: hoje há trinta casos esperando o vizir. Sou Rahotep, vizir do Norte. Do Delta até Mênfis, a justiça, os impostos e os celeiros do rei passam por estas mãos.',
+    topics: [
+      { q: 'O que faz um vizir?', a: [
+        'O rei tem dois vizires: um em Tebas, para o Sul, e eu aqui, para o Norte. Toda manhã eu presto contas ao Senhor das Duas Terras e ouço o tesoureiro. Depois, sento no meu salão e julgo.',
+        'Abro as cartas dos governadores, mando medir as terras depois da cheia, conto o gado e o grão de cada aldeia. Se o Nilo sobe pouco, sou eu quem abre os celeiros para o povo não passar fome.'] },
+      { q: 'Como se julga um caso?', a: [
+        'Diante de mim fica estendido o manto com os quarenta rolos da lei. Ouço os dois lados; o escriba anota tudo. Um vizir deve tratar igual o homem que conhece e o que não conhece — é o que o rei diz no dia em que nos nomeia.',
+        'A deusa Maat, a Verdade e a Justiça, vai no meu peito, num pingente de ouro. Quem mente diante do vizir mente diante dela. E o castigo vai das bastonadas ao trabalho nas pedreiras.'] },
+      { q: 'E os impostos?', a: [
+        'Ninguém paga em moedas: paga-se em grão, gado, linho, mel, trabalho. Depois da cheia, os escribas medem cada campo e calculam quanto cada um deve ao celeiro do rei e ao templo.',
+        'Na época da cheia, quando não há o que plantar, os homens trabalham para o rei: cavam canais, puxam blocos, erguem templos. Em troca, recebem pão, cerveja e cebolas.'] },
+    ],
+    bye: 'Vá em paz. E se alguém o enganar no mercado, venha ao salão do vizir.',
+  },
+  {
+    id: 'tia', name: 'Tia', title: 'Princesa, irmã do faraó', objective: 'tia',
+    look: { outfit: 'dress', hair: 'queen', skin: 0xa8724c, collar: 'royal', linen: 0xfbf6ea, sash: 0x2c5d9c, height: 1.64 },
+    greet: 'Viajante! Você me encontrou longe do palácio: venho ver o andamento do meu túmulo, ali em Sacara, ao lado da antiga pirâmide de Djoser. Sou Tia, filha de Seti e irmã do rei.',
+    topics: [
+      { q: 'Um túmulo, tão cedo?', a: [
+        'Um egípcio passa a vida preparando a eternidade. Meu marido, que também se chama Tia e é supervisor do tesouro do rei, e eu mandamos construir um túmulo como um pequeno templo, com pátio, colunas e uma capela com pirâmide em cima.',
+        'Nas paredes, os escultores entalham nossa vida: banquetes, a festa do barco de Sokar, nós dois diante de Osíris. Lá dentro ficarão as estátuas que vão receber as oferendas quando partirmos.'] },
+      { q: 'Como era crescer com o rei?', a: [
+        'Nosso pai, Seti, era um general que virou rei, filho de outro soldado, o primeiro Ramsés. Meu irmão foi educado para o trono desde menino: aos dez anos já era capitão do exército.',
+        'Ele sempre foi assim, cheio de força e de vontade. Hoje enche o Egito de estátuas com o nome dele — às vezes apaga o nome dos reis antigos e põe o seu. Mas ninguém, depois dele, vai esquecê-lo.'] },
+      { q: 'O que é Sacara?', a: [
+        'É a cidade dos mortos de Mênfis, no deserto do oeste, onde o sol se põe. Ali está a primeira pirâmide do mundo, a de degraus, que Imhotep construiu para o rei Djoser mil e quatrocentos anos atrás.',
+        'Meu sobrinho Khaemwaset anda restaurando as pirâmides antigas e gravando nelas o nome dos reis que as fizeram. Ele diz que um nome lembrado é uma vida que continua.'] },
+    ],
+    bye: 'Que Ptah o guarde em Mênfis, e que Osíris o receba só daqui a muitos anos.',
+  },
+  {
     id: 'ramses', name: 'Ramsés II', title: 'Senhor das Duas Terras', objective: 'farao',
     look: { outfit: 'pharaoh', hair: 'nemes', extras: ['crook'], skin: 0x9c6644, height: 1.82, pose: 'royal' },
     greet: 'Então você é o viajante de quem toda Mênfis fala. Eu sou Usermaatre Setepenre, Ramsés, Amado de Amon, Senhor das Duas Terras e filho de Rá. Fale: o rei o escuta.',

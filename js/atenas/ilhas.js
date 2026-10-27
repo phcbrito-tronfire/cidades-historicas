@@ -35,6 +35,8 @@ export function buildIslands(B, M, out) {
     }
     B.box(M.poros, 1.2, 0.7, 0.8, x, y, z - 2.2); addBox(x, z - 2.2, 1.2, 0.8, y - 1, y + 0.7); // altarzinho
     S.pan = new V3(x, y, z - 4);
+    S.aminias = new V3(x + 2.2, ty(x + 2.2, z - 3), z - 3); // o veterano, diante do altar de Pã
+    out.islandGoats = [[P.x - 14, P.z + 4, 3]];
     // escudos de vime persas e flechas espalhados entre as pedras da praia
     for (let i = 0; i < 6; i++) { const q = onIsland(P, 0.9); if (!q) continue; const [qx, qz] = q, qy = ty(qx, qz); B.geo(new THREE.CylinderGeometry(0.45, 0.45, 0.06, 14), M.wicker || M.wood, qx, qy + 0.04, qz, { rx: 0.2, rz: R() * 0.4 }); }
     S.psitalia = new V3(P.x, ty(P.x, P.z), P.z);
@@ -69,6 +71,26 @@ export function buildIslands(B, M, out) {
       addBox(hx, hz, 4.2, 4.2, hy - 1, hy + 2.6);
     }
     S.salamina = new V3(SA.x, ty(SA.x, SA.z), SA.z);
+    // gruta de Eurípides: boca de pedra na encosta, com banco, mesinha e rolos de papiro (a "gruta de Eurípides"
+    // foi achada de verdade no sul de Salamina, com um vaso com o nome dele)
+    {
+      const [gx, gz] = W(55, 25), gy = ty(gx, gz), ry = Math.atan2(SA.x - gx, SA.z - gz) + Math.PI; // de costas para o centro da ilha
+      const k = new THREE.Group(); k.position.set(gx, gy, gz); k.rotation.y = ry;
+      const rm = M.rock;
+      for (let i = 0; i < 9; i++) { const a = (i / 8) * Math.PI; const rk = new THREE.Mesh(rockG, rm); rk.position.set(Math.cos(a) * 3.2, Math.sin(a) * 2.6, -1.2); rk.scale.set(1.5, 1.4, 1.8); k.add(rk); }
+      const back = new THREE.Mesh(rockG, rm); back.position.set(0, 1.2, -3.2); back.scale.set(3.6, 2.6, 1.6); k.add(back);
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.5), M.poros); bench.position.set(-1.1, 0.22, -1.6); k.add(bench);
+      const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.6), M.wood); table.position.set(0.8, 0.35, -1.7); k.add(table);
+      for (let i = 0; i < 5; i++) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.32, 8), M.linen || M.plaster); sc.rotation.z = Math.PI / 2; sc.position.set(0.55 + (i % 3) * 0.18, 0.75 + Math.floor(i / 3) * 0.1, -1.7 + (i % 2) * 0.12); k.add(sc); }
+      k.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      (out.extra ||= []).push(k);
+      k.updateMatrixWorld(true);
+      const loc = (lx, lz) => new V3(lx, 0, lz).applyMatrix4(k.matrixWorld);
+      for (const [lx, lz, r] of [[-3.2, -1.2, 1.4], [3.2, -1.2, 1.4], [0, -3.2, 2.2], [-2.3, -0.4, 1], [2.3, -0.4, 1]]) { const w = loc(lx, lz); addCircle(w.x, w.z, r, gy - 2, gy + 4); }
+      const e = loc(-0.4, 0.4); S.euripides = new V3(e.x, gy, e.z); S.euripidesRy = ry;
+    }
+    out.islandVillage = (() => { const a = W(-50, 50), b = W(10, 68); return [Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1])]; })();
+    out.islandGoats.push([SA.x - 20, SA.z - 20, 6], [SA.x + 25, SA.z + 40, 5]);
     S.salaminaArt = new V3(...[ax + 4.5, 0, az]);
     // oliveiras e ciprestes
     out.trees = out.trees || [];

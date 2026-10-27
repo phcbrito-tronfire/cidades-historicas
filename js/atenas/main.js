@@ -399,7 +399,7 @@ async function main() {
   const onDeath = () => {
     player.locked = true; player.collapse(); boats.riding && boats.leave(player, S.quay);
     faint('Você desmaiou... e acordou de volta na ágora, com a cabeça doendo.', () => {
-      player.diving = false; player.swimming = false; player.breath = 30;
+      player.diving = false; player.swimming = false; player.breath = 60;
       player.place(start.x - 8, start.z + 14, Math.PI * 0.85); health.revive(70); player.rig.once = null; player.locked = false;
     });
   };

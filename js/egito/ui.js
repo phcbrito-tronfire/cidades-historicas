@@ -76,7 +76,7 @@ export class UI {
       const li = document.createElement('li');
       let text = o.text;
       if (o.id === 'escaravelhos') text += ` (${q.scarabsFound.size}/5)`;
-      if (o.id === 'artefatos') text += ` (${q.artifactCount || 0}/20)`;
+      if (o.id === 'artefatos') text += ` (${q.artifactCount || 0}/22)`;
       if (o.id === 'farao' && !q.pharaohUnlocked()) { text += ` — conclua ${PHARAOH_REQ} objetivos (${q.count()}/${PHARAOH_REQ})`; li.className = 'locked'; }
       li.textContent = text;
       ul.appendChild(li);

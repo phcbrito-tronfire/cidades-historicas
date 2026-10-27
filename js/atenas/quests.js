@@ -26,6 +26,8 @@ export const OBJECTIVES = [
   { id: 'naufragio', text: 'Mergulhe (Espaço na água) e ache a ânfora do naufrágio', hint: null },
   { id: 'psitalia', text: 'Navegue até a ilha de Psitália, onde Aristides venceu os persas', hint: null },
   { id: 'salamina', text: 'Visite o troféu da vitória no cabo de Salamina', hint: null },
+  { id: 'aminias', text: 'Ouça o veterano Amínias contar a batalha, em Psitália', hint: null },
+  { id: 'euripides', text: 'Encontre o poeta Eurípides na sua gruta de Salamina', hint: null },
   { id: 'corujas', text: 'Encontre as 5 corujas de prata (tetradracmas)', count: 5 },
   { id: 'artefatos', text: 'Encontre os 22 artefatos da Grécia Antiga', count: 22 },
   { id: 'pericles', text: 'Ouça Péricles na Pnyx', hint: null },
@@ -46,7 +48,7 @@ export class Quests {
     const H = (id, v) => { if (v) this.hints[id] = [v.x, v.z]; };
     H('herodoto', S.npc_herodoto); H('socrates', S.simon); H('mirrina', S.market); H('mnesicles', S.mnesicles); H('fidias', S.partenos); H('ictino', S.parthenonDoor);
     H('lisimaque', S.olive); H('sofocles', S.theater); H('aspasia', S.casa_pericles); H('calias', S.potter); H('kylix', S.casa_pericles); H('demon', S.dipylon);
-    H('pnyx', S.pnyx); H('formiao', S.quay); H('trirreme', S.trireme); H('glauco', S.fisher); H('mar', S.rowboat); H('barco', S.rowboat); H('naufragio', S.wreck); H('pericles', S.bema); H('psitalia', S.pan); H('salamina', S.tropaion);
+    H('pnyx', S.pnyx); H('formiao', S.quay); H('trirreme', S.trireme); H('glauco', S.fisher); H('mar', S.rowboat); H('barco', S.rowboat); H('naufragio', S.wreck); H('pericles', S.bema); H('psitalia', S.pan); H('salamina', S.tropaion); H('aminias', S.aminias); H('euripides', S.euripides);
     // corujas de prata: moeda com Atena de um lado e a coruja do outro
     const spots = [S.owl1, S.owl2, S.owl3, S.owl4, S.owl5].filter(Boolean);
     const coin = new THREE.CylinderGeometry(0.16, 0.16, 0.035, 24); coin.rotateX(Math.PI / 2);

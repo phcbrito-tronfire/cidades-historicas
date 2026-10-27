@@ -121,4 +121,16 @@ export const ARTIFACTS = [
     museum: 'Um dos amuletos mais comuns em todos os museus.',
     story: 'Na lenda, Hórus perdeu o olho lutando contra Seth, e o deus Thot o curou. O olho "inteiro de novo" virou o maior símbolo de proteção e cura. Era usado por vivos e mortos, inclusive dentro das faixas das múmias.',
   },
+  {
+    id: 'pingente-maat', kind: 'maat', where: 'vizir',
+    name: 'Pingente de Maat do vizir', era: 'Novo Império · ouro e lápis-lazúli',
+    museum: 'Estátuas de vizires com o pingente de Maat no peito estão no Museu do Cairo e no Louvre.',
+    story: 'Maat era a deusa da Verdade, da Justiça e da ordem do mundo, com uma pena de avestruz na cabeça. Os juízes, e o vizir acima de todos, levavam a imagem dela no pescoço: quem julgava falava em nome dela. No julgamento dos mortos, o coração era pesado contra a pena de Maat.',
+  },
+  {
+    id: 'vaso-alabastro', kind: 'alabaster', where: 'sacara',
+    name: 'Vaso de perfume de alabastro', era: 'Novo Império · calcita translúcida',
+    museum: 'Os vasos de alabastro do túmulo de Tutancâmon, ainda com restos de perfume, estão no Grande Museu Egípcio, em Gizé.',
+    story: 'Óleos perfumados de mirra, lírio e canela iam para o túmulo em vasos de alabastro, a pedra que deixa passar a luz. Na outra vida, o morto se perfumaria para os banquetes. Os túmulos de Sacara, a necrópole de Mênfis, estavam cheios deles — por isso mesmo foram tão saqueados.',
+  },
 ];

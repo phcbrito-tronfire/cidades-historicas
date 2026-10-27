@@ -55,6 +55,8 @@ export class Actors {
       ramses: [S.throne.x, S.throne.z, Math.PI / 2],
       merneptah: [S.quartel.x + 5, S.quartel.z + 3, -Math.PI / 2],
       isetnofret: [36, -121, -Math.PI / 2],
+      rahotep: [66, -128, -Math.PI / 2], // diante da porta do palácio
+      tia: [-165, -62, Math.PI / 2],
     };
     for (const def of NPCS) {
       const [x, z, ry] = P[def.id];

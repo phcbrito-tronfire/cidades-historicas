@@ -243,6 +243,40 @@ export const NPCS = [
     bye: 'Boa pescaria — quer dizer, boa viagem!',
   },
   {
+    id: 'euripides', name: 'Eurípides', title: 'Poeta trágico, na sua gruta de Salamina', objective: 'euripides',
+    look: { outfit: 'himation', cloth: 0x6a5a48, border: 0x2a2018, beard: 'full', hair: 'short', hairColor: 0x8a8a82 },
+    greet: 'Shhh... o mar fala baixo aqui, e eu escuto. Sou Eurípides, filho de Mnesarco. Venho a esta gruta para escrever longe da ágora e dos que me criticam no teatro. Sente-se nesta pedra, se não tiver pressa.',
+    topics: [
+      { q: 'Por que escrever numa gruta?', a: [
+        'Nasci nesta ilha — dizem que no dia mesmo da batalha, quando os navios de Temístocles afundavam os de Xerxes ali no estreito. Talvez por isso eu prefira o barulho das ondas ao das pessoas.',
+        'Aqui guardo meus livros: rolos de papiro de Homero, de Anaxágoras, de poetas antigos. Tenho mais livros que qualquer homem de Atenas, e os atenienses acham isso tão estranho quanto um peixe de sandálias.'] },
+      { q: 'O que está escrevendo?', a: [
+        'Uma tragédia sobre Medeia, a princesa da Cólquida que Jasão trouxe para a Grécia e depois trocou por uma noiva rica. Uma estrangeira, traída, numa cidade que não é a dela... Quero que o público sinta o que ela sente, e se assuste com o que ela fará.',
+        'Vou apresentá-la nas Grandes Dionísias da próxima primavera. Sófocles vai ganhar de novo, aposto — ele sempre ganha. Mas daqui a cem anos, quem será mais lido?'] },
+      { q: 'Como é competir com Sófocles?', a: [
+        'Sófocles mostra os homens como deveriam ser; eu mostro como são. Ele é querido, educado, bom general. Eu sou o rabugento da gruta. Mas nos respeitamos — e o público adora nos comparar.',
+        'Sócrates, o filho do escultor, raramente vai ao teatro. Dizem que, quando vai, é para ver as minhas peças. Não sei se é elogio ou se ele só quer discutir comigo depois.'] },
+    ],
+    bye: 'Vá, e se encontrar uma boa história, me conte. As melhores eu roubo.',
+  },
+  {
+    id: 'aminias', name: 'Amínias de Palene', title: 'Veterano de Salamina', objective: 'aminias',
+    look: { outfit: 'himation', cloth: 0xd8cfb8, border: 0x8e2c22, beard: 'full', hair: 'short', hairColor: 0xd8d8d0, extras: ['pilos'] },
+    greet: 'Um visitante em Psitália? Ninguém vem a esta pedra. Eu venho todo ano, no aniversário da batalha, trazer vinho a Pã. Sou Amínias, do demo de Palene. Já fui trierarca — comandante de trirreme.',
+    topics: [
+      { q: 'O que aconteceu aqui?', a: [
+        'Há quarenta e oito anos, na noite antes da batalha, Xerxes desembarcou nesta ilha os seus melhores soldados persas. A ideia era matar os gregos que viessem dar à praia nadando, depois que a frota grega fosse destruída no estreito.',
+        'Mas quem afundou foram os persas. E enquanto a batalha acontecia, Aristides, o Justo, juntou hoplitas atenienses na praia de Salamina, atravessou até aqui e não deixou um persa vivo. Xerxes viu tudo do alto do monte Egáleo, sentado no trono de ouro.'] },
+      { q: 'Como foi a batalha?', a: [
+        'Temístocles mandou um escravo dizer a Xerxes que os gregos iam fugir de noite. O rei acreditou e mandou a frota fechar o estreito. Ao amanhecer, os navios dele eram tantos que, no estreito, se atrapalhavam uns aos outros.',
+        'Fui o primeiro a abalroar um navio inimigo — está na história de Heródoto, pode perguntar a ele na ágora. Meu esporão de bronze entrou no costado de um fenício e prendeu; os outros vieram me ajudar, e aí começou a batalha de verdade.'] },
+      { q: 'Por que Pã?', a: [
+        'Pã é o deus que espalha o terror súbito, o "pânico". Em Maratona ele lutou do nosso lado, e aqui também: os persas, presos nesta pedra, entraram em desespero. Por isso as imagens de madeira dele ficam aqui, toscas como os pastores que as talharam.',
+        'Pegue um gole deste vinho. Hoje Atenas é rica, constrói templos de mármore e manda no mar. Mas tudo isso começou aqui, numa manhã de outono, com remadores pobres de Atenas puxando os remos até sangrar.'] },
+    ],
+    bye: 'Que Pã afaste de você o medo. E de Atenas também.',
+  },
+  {
     id: 'pericles', name: 'Péricles', title: 'Estratego de Atenas, filho de Xantipo', objective: 'pericles',
     look: { outfit: 'himation', base: 'brian', cloth: 0xf0ead8, border: 0x7a2e2a, beard: 'full', hair: 'short', extras: ['helmet_up'] },
     greet: 'Então você é o estrangeiro de quem a ágora inteira fala: o que pergunta a todos e quer entender tudo. Sou Péricles. Em breve falarei ao povo daqui da tribuna. Pergunte enquanto o povo não chega.',

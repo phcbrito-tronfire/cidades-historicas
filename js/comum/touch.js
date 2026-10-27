@@ -69,6 +69,12 @@ export function setupTouch(player) {
 
   // botões
   root.querySelectorAll('button[data-k]').forEach((b) => {
+    // o Espaço fica apertado enquanto o dedo estiver no botão (mergulho: segurar = ficar embaixo d'água)
+    if (b.dataset.k === 'Space') {
+      b.addEventListener('touchstart', (e) => { e.preventDefault(); press('Space'); }, { passive: false });
+      for (const ev of ['touchend', 'touchcancel']) b.addEventListener(ev, (e) => { e.preventDefault(); release('Space'); }, { passive: false });
+      return;
+    }
     b.addEventListener('touchstart', (e) => { e.preventDefault(); tap(b.dataset.k, b.dataset.k === 'Escape' ? 'Escape' : undefined); }, { passive: false });
     b.addEventListener('click', (e) => { e.preventDefault(); });
   });

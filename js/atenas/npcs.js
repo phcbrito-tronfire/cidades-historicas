@@ -57,6 +57,8 @@ export class Actors {
       demon: [S.dipylon.x + 6, S.dipylon.z + 6, Math.PI * 0.75],
       formiao: [S.quay.x, S.quay.z, 0],
       glauco: [S.fisher.x, S.fisher.z, 0],
+      euripides: [S.euripides.x, S.euripides.z, S.euripidesRy],
+      aminias: [S.aminias.x, S.aminias.z, Math.PI],
       pericles: [BEMA.x, BEMA.z, Math.atan2(0.6, -0.8)],
     };
     S.npc_herodoto = new V3(P.herodoto[0], 0, P.herodoto[1]);
@@ -101,6 +103,9 @@ export class Actors {
         this.agents.push({ ...h, kind: o.as || (kind === 'woman' ? 'villager' : kind === 'hoplite' ? 'soldier' : kind === 'citizen' ? 'villager' : kind), region, speed: o.speed ?? rr(1.0, 1.5), wait: rr(0, 4), lines: o.lines || VILLAGER_LINES, mode: 'idle', run: o.run });
       }
     };
+    // aldeia de pescadores de Salamina: gente consertando redes, mulheres e crianças
+    const ISL = ['Aqui em Salamina todo mundo tem um avô que remou na batalha.', 'O peixe daqui é melhor que o do Falero, pode perguntar a qualquer um.', 'Lá na gruta mora o poeta Eurípides. Fala pouco, escreve muito.', 'O santuário de Ájax fica no alto. Ájax era daqui, sabia? O maior guerreiro depois de Aquiles.', 'Do outro lado do estreito é o Pireu. Num dia claro dá para ver o Parthenon brilhando.'];
+    if (C.islandVillage) { const v = C.islandVillage; walker('sailor', v, 4, { lines: ISL }); walker('woman', v, 3, { lines: ISL }); walker('child', v, 2, { lines: CHILD_LINES }); }
     // ágora: cidadãos conversando e passeando, mulheres e escravos fazendo compras
     const ag = [A.x - A.hw + 8, A.x + A.hw - 8, A.z - A.hd + 8, A.z + A.hd - 8];
     walker('citizen', ag, 12); walker('woman', ag, 5); walker('worker', ag, 3, { lines: WORKER_LINES });
@@ -180,6 +185,9 @@ export class Actors {
     for (let i = 0; i < 8; i++) add(rand() < 0.5 ? 'goat' : 'sheep', -175 + rr(-30, 30), 185 + rr(-25, 25), { radius: 14 });
     for (let i = 0; i < 6; i++) add(rand() < 0.5 ? 'goat' : 'sheep', -420 + rr(-30, 30), 10 + rr(-30, 30), { radius: 14 });
     for (let i = 0; i < 4; i++) add('dog', rr(-560, 200), rr(-300, 200), { radius: 15 });
+    // cabras nas ilhas (Psitália e Salamina) e um cachorro na aldeia de pescadores
+    for (const [gx, gz, n] of C.islandGoats || []) for (let i = 0; i < n; i++) add('goat', gx + rr(-10, 10), gz + rr(-10, 10), { radius: 10 });
+    if (C.islandVillage) { const v = C.islandVillage; add('dog', (v[0] + v[1]) / 2, (v[2] + v[3]) / 2, { radius: 12 }); }
     // gaivotas sobre o mar e a praia; andorinhas sobre a cidade
     for (let f = 0; f < 5; f++) {
       const sea = f < 3;
