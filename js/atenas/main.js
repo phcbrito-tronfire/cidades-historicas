@@ -41,7 +41,7 @@ const MODEL_TABLE = {
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
   zeus_bronze: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.62, 0.46, 0.3], metal: 0.8 },
   discobolo: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
-  trirreme: { yaw: 0, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 }, barco_pesca: { yaw: Math.PI / 2, rough: 0.85 }, // (os cascos destes dois vêm deitados no eixo z: girados para a proa ficar em +x, como os outros)
+  trirreme: { yaw: Math.PI, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 }, barco_pesca: { yaw: -Math.PI / 2, rough: 0.85 }, // proa (esporão/olho, ponta fina) sempre em +x: a trirreme vem de popa para +x e os dois barcos pequenos deitados no eixo z
   leao: { yaw: Math.PI / 2, rough: 0.7 },
   kouros: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 },
   anforas: { fit: 'y', rough: 0.4, keepMetal: true }, anfora_negra: { fit: 'y', rough: 0.35 }, vaso: { fit: 'y', rough: 0.4 },
