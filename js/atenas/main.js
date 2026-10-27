@@ -4,6 +4,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp } from '../comum/aquecer.js';
+import { skipHiddenMatrices, frameGate } from '../comum/desempenho.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
@@ -78,6 +79,7 @@ async function main() {
   setAniso(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
 
   const scene = new THREE.Scene();
+  skipHiddenMatrices();
   scene.matrixWorldAutoUpdate = false;
   const skelUpdate = THREE.Skeleton.prototype.update;
   THREE.Skeleton.prototype.update = function () { if (this._frame === FRAME.n) return; this._frame = FRAME.n; skelUpdate.call(this); };
@@ -110,7 +112,7 @@ async function main() {
     depthAt: (x, z) => WATER_Y - terrainHeight(x, z),
   });
   scene.add(water);
-  { const rb = water.onBeforeRender; water.onBeforeRender = function (...a) { if (FRAME.far && FRAME.n % 2) return; rb.apply(this, a); }; }
+  { const rb = water.onBeforeRender; water.onBeforeRender = function (...a) { if (FRAME.n % (FRAME.far ? 3 : 2)) return; rb.apply(this, a); }; } // reflexo a cada 2 quadros (3 longe da água): com a ondulação, não se nota
   const horizon = buildHorizon(scene, tex);
   await step(0.38, 'Construindo a ágora, as stoas e as casas...');
   const city = buildCity(scene, tex, avail);
@@ -434,14 +436,17 @@ async function main() {
     else if (frameAvg < 15 && pr < prMax) next = Math.min(prMax, pr + 0.1);
     if (next !== pr) { renderer.setPixelRatio(next); post.resize(); }
   };
-  function loop() {
+  const gate = frameGate();
+  function loop(now = performance.now()) {
     requestAnimationFrame(loop);
+    const idle = !started || paused || mapOpen || artifacts.open;
+    if (!gate(now, idle)) return;
     const raw = clock.getDelta();
     const dt = Math.min(raw, 0.05);
     renderer.shadowMap.needsUpdate = true;
     FRAME.n++;
     FRAME.far = coastC(player.pos.x, player.pos.z) < -260;
-    adaptRes(raw);
+    if (!idle) adaptRes(raw); // parado a 30 fps não é lentidão
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night, underwater.amount); return; }
     t += dt;
     player.night = sky.state.night;

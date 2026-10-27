@@ -4,6 +4,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp } from '../comum/aquecer.js';
+import { skipHiddenMatrices, frameGate } from '../comum/desempenho.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
@@ -66,6 +67,7 @@ async function main() {
   setAniso(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
 
   const scene = new THREE.Scene();
+  skipHiddenMatrices();
   // as matrizes da cena são atualizadas uma vez por quadro, no laço (o reflexo do Nilo e a oclusão renderizam a cena
   // de novo e, com a atualização automática, recalculavam ~9 mil objetos a cada passada)
   scene.matrixWorldAutoUpdate = false;
@@ -102,7 +104,7 @@ async function main() {
   const world = buildTerrain(scene, tex);
   // reflexo do Nilo: com o jogador longe do rio (> 90 m) ele é refeito em quadros alternados — de longe o reflexo é
   // uma faixa fina no horizonte e a diferença não se vê; perto do rio, todo quadro
-  { const w = world.water, rb = w.onBeforeRender; w.onBeforeRender = function (...a) { if (FRAME.far && FRAME.n % 2) return; rb.apply(this, a); }; }
+  { const w = world.water, rb = w.onBeforeRender; w.onBeforeRender = function (...a) { if (FRAME.n % (FRAME.far ? 3 : 2)) return; rb.apply(this, a); }; } // reflexo a cada 2 quadros (3 longe da água): com a ondulação, não se nota
   const horizon = buildHorizon(scene, tex);
   await step(0.35, 'Erguendo o templo de Ptah e as pirâmides de Gizé...');
   const city = buildCity(scene, tex);
@@ -414,14 +416,17 @@ async function main() {
     else if (frameAvg < 15 && pr < prMax) next = Math.min(prMax, pr + 0.1);
     if (next !== pr) { renderer.setPixelRatio(next); post.resize(); }
   };
-  function loop() {
+  const gate = frameGate();
+  function loop(now = performance.now()) {
     requestAnimationFrame(loop);
+    const idle = !started || paused || mapOpen || artifacts.open;
+    if (!gate(now, idle)) return;
     const raw = clock.getDelta();
     const dt = Math.min(raw, 0.05);
     renderer.shadowMap.needsUpdate = true;
     FRAME.n++;
     FRAME.far = Math.abs(player.pos.x - riverX(player.pos.z)) > 90 + 46;
-    adaptRes(raw);
+    if (!idle) adaptRes(raw); // parado a 30 fps não é lentidão
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night); return; }
     t += dt;
     player.night = sky.state.night;

@@ -54,6 +54,14 @@ export async function createPost(renderer, scene, camera) {
     // a oclusão é suave por natureza: calcular em meia resolução não muda o resultado e corta o custo por pixel
     const aoSetSize = ao.setSize.bind(ao);
     ao.setSize = (w, h) => aoSetSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+    // o GTAO esconde pontos e linhas varrendo a cena inteira duas vezes por quadro (~25 mil objetos, ~10 ms):
+    // guarda a lista deles e só a refaz de vez em quando
+    let pl = null, plFrame = 0;
+    ao.overrideVisibility = () => {
+      if (!pl || ++plFrame % 300 === 0) { pl = []; scene.traverse((o) => { if (o.isPoints || o.isLine) pl.push(o); }); }
+      for (const o of pl) { o._aoVis = o.visible; o.visible = false; }
+    };
+    ao.restoreVisibility = () => { for (const o of pl) o.visible = o._aoVis; };
     composer.addPass(ao);
   } catch (e) { console.warn('GTAO indisponível', e); }
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.28, 0.55, 0.92);
