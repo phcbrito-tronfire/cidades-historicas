@@ -7,13 +7,14 @@ import * as THREE from 'three';
 import { creature } from './fauna.js';
 import { groundAt, waterAt, terrainAt, moveWithCollision, dryAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
+import { ridePose } from './mixamo.js';
 
 const V3 = THREE.Vector3;
 // medidas e passos de cada animal (m/s); len = comprimento do focinho à cauda; back = altura do lombo; seat = onde
 // fica o quadril do cavaleiro, na frente (+) ou atrás (−) do meio do corpo
 const KINDS = {
-  cavalo: { len: 2.45, back: 1.42, seat: 0.12, walk: 1.8, run: 9.5, trot: 4.5, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
-  jumento: { len: 1.85, back: 1.05, seat: -0.05, walk: 1.5, run: 6.2, trot: 3.6, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
+  cavalo: { len: 2.45, back: 1.42, seat: 0.12, belly: 0.34, shin: 0.22, walk: 1.8, run: 11.5, trot: 5.4, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
+  jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.5, run: 7.4, trot: 4.3, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
 };
 
 export class Mount {
@@ -146,6 +147,7 @@ export class Mount {
       const seatRoot = seat.clone().add(new V3(0, -0.5, 0));
       const pos = this.mountT < 1 ? this.from.clone().lerp(seatRoot, this.mountT).add(new V3(0, Math.sin(this.mountT * Math.PI) * 0.6, 0)) : seatRoot;
       player.ride(dt, t, pos, this.h, 'sit', this.v, null);
+      if (this.mountT >= 1) ridePose(player.rig, seat.clone().add(new V3(0, 0.04, 0)), new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.belly, K.shin); // montado de verdade, pernas abertas
       player.riding = true;
     } else {
       if (this.blanket && this.back) { H.updateMatrixWorld(true); const b = new V3(); this.back.getWorldPosition(b); this.blanket.position.set(0, b.y - this.pos.y + 0.04, K.seat); }

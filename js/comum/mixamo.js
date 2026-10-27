@@ -839,3 +839,38 @@ export function stoneHeadGeometry(base = 'brian') {
   headCache[base] = out;
   return out;
 }
+
+// Cavaleiro: o Mixamo não tem animação de montaria, então parte da pose sentada e refaz as pernas por cima:
+// quadril assentado no lombo, coxas abertas abraçando o animal e as canelas penduradas ao lado da barriga.
+// seat = ponto do lombo (mundo); fwd = frente do animal (mundo, horizontal); width = meia-largura da barriga
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _qw = new THREE.Quaternion();
+function aimBone(bone, child, dir) {
+  bone.getWorldPosition(_a); child.getWorldPosition(_b);
+  const cur = _b.sub(_a).normalize();
+  _q.setFromUnitVectors(cur, dir);
+  bone.getWorldQuaternion(_qw); _qw.premultiply(_q);
+  bone.parent.getWorldQuaternion(_qp);
+  bone.quaternion.copy(_qp.invert().multiply(_qw));
+  bone.updateMatrixWorld(true);
+}
+export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22) {
+  const B = r.bones; if (!B.Hips || !B.LeftUpLeg) return;
+  r.root.updateMatrixWorld(true);
+  // quadril em cima do lombo
+  const hp = B.Hips.getWorldPosition(new THREE.Vector3());
+  r.root.position.x += seat.x - hp.x; r.root.position.z += seat.z - hp.z; r.root.position.y += seat.y + 0.1 - hp.y;
+  r.root.updateMatrixWorld(true);
+  const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3().crossVectors(up, fwd).normalize(); // esquerda do animal
+  for (const s of ['Left', 'Right']) {
+    const th = B[s + 'UpLeg'], kn = B[s + 'Leg'], ft = B[s + 'Foot']; if (!th || !kn || !ft) continue;
+    const sg = Math.sign(th.getWorldPosition(new THREE.Vector3()).sub(B.Hips.getWorldPosition(new THREE.Vector3())).dot(side)) || (s === 'Left' ? 1 : -1);
+    const out = side.clone().multiplyScalar(sg);
+    // coxa: para fora e um pouco para a frente, descendo pela curva do lombo
+    aimBone(th, kn, out.clone().multiplyScalar(0.62 + width).add(fwd.clone().multiplyScalar(0.42)).addScaledVector(up, -0.62).normalize());
+    // canela: pendurada junto à barriga, o pé um pouco para trás (no jumento, baixo, o joelho dobra mais)
+    aimBone(kn, ft, out.clone().multiplyScalar(0.08).add(fwd.clone().multiplyScalar(-shinBack)).addScaledVector(up, -1).normalize());
+    // pé quase horizontal, ponta para a frente
+    const toe = B[s + 'ToeBase'];
+    if (toe) aimBone(ft, toe, fwd.clone().multiplyScalar(0.9).addScaledVector(up, -0.45).addScaledVector(out, 0.1).normalize());
+  }
+}
