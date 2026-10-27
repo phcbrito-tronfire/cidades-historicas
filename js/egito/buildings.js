@@ -773,7 +773,7 @@ function visitHouse(B, M, x, y, z, ry, mat, out, info) {
   geo(new THREE.CylinderGeometry(0.16, 0.1, 0.06, 12), M.terracotta, -3.95, 1.03, 2.45);
   for (let i = 0; i < 3; i++) geo(new THREE.SphereGeometry(0.06, 8, 6), M.bread, -3.95 + (i - 1) * 0.07, 1.08, 2.45, { sy: 0.6 });
   solid(mat, 0.55, 0.45, 2.2, 4.85, 0, 3.15);
-  ljar(-0.9, 4.0, 1.2); ljar(0.9, 3.95, 1.0);
+  ljar(-1.9, 3.85, 1.2); ljar(1.9, 3.85, 1.0); // nos cantos, longe da porta da rua
 
   // ---- sala principal
   box(M.reed, 4.2, 0.02, 2.4, 0.3, 0.08, 0.1); // esteira de junco
@@ -782,11 +782,12 @@ function visitHouse(B, M, x, y, z, ry, mat, out, info) {
   solid(M.white, 1.2, 0.42, 3.0, -4.6, 0, 0.1); // divã de adobe
   for (const lz of [-0.6, 0.3, 1.1]) box(M.awnings[1], 0.9, 0.16, 0.6, -4.6, 0.42, lz, { uv: false });
   const stool = (lx, lz) => { for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.05, 0.42, 0.05, lx + a * 0.17, 0, lz + b * 0.17); box(M.wood, 0.42, 0.06, 0.42, lx, 0.42, lz); col(lx, lz, 0.45, 0.45, -1, 0.48); };
-  stool(1.6, -0.6); stool(2.6, 0.9);
-  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.05, 0.55, 0.05, 2.2 + a * 0.35, 0, 0.1 + b * 0.25);
-  box(M.wood, 0.8, 0.05, 0.6, 2.2, 0.55, 0.1); col(2.2, 0.1, 0.8, 0.6, -1, 0.6);
-  geo(new THREE.SphereGeometry(0.1, 10, 8), M.bread, 2.05, 0.66, 0.05, { sy: 0.6 });
-  geo(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 12), M.terracotta, 2.4, 0.65, 0.2);
+  // mesinha e banquinhos no canto, junto ao tear: o caminho da porta até a cozinha fica livre
+  stool(2.0, 1.15); stool(2.6, 0.35);
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.05, 0.55, 0.05, 2.6 + a * 0.35, 0, 1.0 + b * 0.25);
+  box(M.wood, 0.8, 0.05, 0.6, 2.6, 0.55, 1.0); col(2.6, 1.0, 0.8, 0.6, -1, 0.6);
+  geo(new THREE.SphereGeometry(0.1, 10, 8), M.bread, 2.45, 0.66, 0.95, { sy: 0.6 });
+  geo(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 12), M.terracotta, 2.8, 0.65, 1.1);
   for (const [lx, lz] of [[-3.3, 1.3], [3.9, -1.0]]) { // lamparinas
     box(M.wood, 0.06, 1.1, 0.06, lx, 0, lz);
     geo(new THREE.CylinderGeometry(0.12, 0.06, 0.08, 10), M.terracotta, lx, 1.14, lz);
@@ -799,28 +800,32 @@ function visitHouse(B, M, x, y, z, ry, mat, out, info) {
   col(4.15, 1.2, 1.6, 0.3, -1, 2.3);
 
   // ---- quarto
-  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.07, 0.42, 0.07, -3.4 + a * 0.45, 0, -3.1 + b * 0.9);
-  box(M.wood, 1.0, 0.08, 2.0, -3.4, 0.42, -3.1); box(M.linen, 0.9, 0.06, 1.85, -3.4, 0.5, -3.1);
-  col(-3.4, -3.1, 1.0, 2.0, -1, 0.56);
-  geo(new THREE.TorusGeometry(0.11, 0.03, 6, 12, Math.PI), M.wood, -3.4, 0.72, -3.95, { rz: Math.PI });
-  box(M.wood, 0.05, 0.14, 0.05, -3.4, 0.56, -3.95);
+  // cama encostada na parede oeste (a porta do quarto, em x -3,6…-2,6, fica livre para entrar)
+  const bx = -4.55;
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(M.wood, 0.07, 0.42, 0.07, bx + a * 0.45, 0, -3.1 + b * 0.9);
+  box(M.wood, 1.0, 0.08, 2.0, bx, 0.42, -3.1); box(M.linen, 0.9, 0.06, 1.85, bx, 0.5, -3.1);
+  col(bx, -3.1, 1.0, 2.0, -1, 0.56);
+  geo(new THREE.TorusGeometry(0.11, 0.03, 6, 12, Math.PI), M.wood, bx, 0.72, -3.95, { rz: Math.PI });
+  box(M.wood, 0.05, 0.14, 0.05, bx, 0.56, -3.95);
   solid(M.wood, 0.8, 0.55, 0.5, -1.0, 0, -3.95);
   box(M.blue, 0.82, 0.06, 0.52, -1.0, 0.55, -3.95, { uv: false });
 
-  // ---- cozinha a céu aberto
-  geo(new THREE.CylinderGeometry(0.45, 0.6, 1.1, 14), M.mud, 1.2, 0.55, -3.7); col(1.2, -3.7, 1.2, 1.2, -1, 1.1);
-  box(M.dark, 0.35, 0.35, 0.05, 1.2, 0.25, -3.1, { uv: false }); // boca do forno
-  box(M.granite, 0.55, 0.22, 0.85, 2.5, 0, -3.9, { rx: 0.18 }); geo(new THREE.CapsuleGeometry(0.07, 0.3, 4, 8), M.granite, 2.5, 0.3, -3.8, { rz: Math.PI / 2 }); // moinho
-  col(2.5, -3.9, 0.6, 0.9, -1, 0.35);
-  for (let i = 0; i < 4; i++) geo(new THREE.DodecahedronGeometry(0.1, 0), M.stoneGrey, 1.3 + Math.cos(i * 1.6) * 0.3, 0.06, -2.4 + Math.sin(i * 1.6) * 0.3);
-  box(M.dark, 0.5, 0.02, 0.5, 1.3, 0.02, -2.4, { uv: false }); // cinzas do fogo
-  ljar(3.6, -4.0, 1.3); ljar(3.0, -2.2, 1.1); ljar(1.9, -2.0, 0.8);
-  geo(new THREE.CylinderGeometry(0.3, 0.24, 0.35, 12), M.reed, 2.3, 0.18, -2.5); // cesto de grãos
-  // escada para o terraço (sobe em direção à sala principal)
-  for (let i = 0; i < 10; i++) {
-    const top = ((i + 1) / 10) * (H + 0.25);
-    solid(mat, 0.9, top, 0.24, 4.85, 0, -4.15 + i * 0.235);
-  }
+  // ---- cozinha a céu aberto (x 0,2…5,3; z -4,05…-1,8; porta da sala em x 2,4…3,4)
+  // escada em L para o terraço: degraus largos (cabem os pés) junto à parede do fundo, subindo para oeste, um
+  // patamar no canto e uma rampa curta ao longo da divisória até a beira do telhado da sala (H + 0,25)
+  const RISE = 0.43;
+  solid(mat, 0.55, RISE, 1.2, 4.275, 0, -3.45); // 1º degrau, mais fundo: dá para subir vindo da porta
+  for (let k = 2; k <= 6; k++) solid(mat, 0.55, RISE * k, 0.8, 4.275 - (k - 1) * 0.55, 0, -3.65);
+  solid(mat, 1.03, RISE * 7, 0.8, 0.74, 0, -3.65); // patamar
+  solid(mat, 0.83, H + 0.24, 1.42, 0.64, 0, -2.54); // último lance, até a beira do telhado
+  // forno de pão (cone de barro), moinho de pedra, fogo no chão, jarros e cesto — fora do caminho
+  geo(new THREE.CylinderGeometry(0.35, 0.48, 1.0, 14), M.mud, 2.0, 0.5, -2.6); col(2.0, -2.6, 0.9, 0.9, -1, 1.0);
+  box(M.dark, 0.3, 0.3, 0.05, 2.0, 0.22, -2.13, { uv: false }); // boca do forno
+  box(M.granite, 0.4, 0.2, 0.5, 3.3, 0, -3.0, { rx: 0.18 }); geo(new THREE.CapsuleGeometry(0.06, 0.24, 4, 8), M.granite, 3.3, 0.28, -2.95, { rz: Math.PI / 2 }); // moinho
+  for (let i = 0; i < 4; i++) geo(new THREE.DodecahedronGeometry(0.1, 0), M.stoneGrey, 2.6 + Math.cos(i * 1.6) * 0.28, 0.06, -3.0 + Math.sin(i * 1.6) * 0.22);
+  box(M.dark, 0.45, 0.02, 0.4, 2.6, 0.02, -3.0, { uv: false }); // cinzas do fogo
+  ljar(4.95, -2.2, 1.1); ljar(1.3, -2.0, 0.8);
+  geo(new THREE.CylinderGeometry(0.3, 0.24, 0.35, 12), M.reed, 5.0, 0.18, -2.85); // cesto de grãos
 
   const [dx, dz] = toW(0, D / 2 + 0.8);
   const hw = Math.abs(c) > 0.5 ? [W, D] : [D, W];

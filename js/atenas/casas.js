@@ -87,10 +87,14 @@ function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   if (ew) wallZ(cz0, cz1, cx1, H, [[(cz0 + cz1) / 2, 1.1]]); // ala leste (andrón, nas casas maiores)
   wallX(-w / 2, w / 2, cz0, H, [[doorX, 1.5]]); // vestíbulo de entrada
   wallZ(cz1, d / 2, (cx0 + cx1) / 2, H); // divisória dos quartos da ala norte
-  // ---- porta: folhas de madeira recuadas, soleira e verga de pedra
-  { const [px, pz] = P(doorX, -d / 2 + 0.05); B.box(M.marble, 1.9, 0.3, 0.6, ...P(doorX, -d / 2 - 0.05).slice(0, 1), y + 2.35, P(doorX, -d / 2 - 0.05)[1], { ry }); B.box(M.marble, 1.6, 0.12, 0.7, px, y, pz, { ry }); }
-  { const [px, pz] = P(doorX - 0.4, -d / 2 + 0.45); B.box(M.darkWood, 0.7, 2.3, 0.08, px, y, pz, { ry: ry + 0.35 }); }
-  { const [px, pz] = P(doorX + 0.4, -d / 2 + 0.45); B.box(M.darkWood, 0.7, 2.3, 0.08, px, y, pz, { ry: ry - 0.35 }); }
+  // ---- porta: batentes e verga de pedra no vão da parede, soleira, e as duas folhas de madeira abertas para
+  // dentro, encostadas na parede (giram na dobradiça, junto ao batente)
+  {
+    const zf = -d / 2, dep = T + 0.08, at = (lx, lz) => P(lx, lz);
+    for (const sd of [-1, 1]) { const [px, pz] = at(doorX + sd * 0.67, zf); B.box(M.marble, 0.16, 2.3, dep, px, y, pz, { ry }); }
+    { const [px, pz] = at(doorX, zf); B.box(M.marble, 1.8, 0.28, dep, px, y + 2.28, pz, { ry }); B.box(M.marble, 1.5, 0.08, dep, px, y, pz, { ry }); }
+    for (const sd of [-1, 1]) { const [px, pz] = at(doorX + sd * (0.75 + 0.33), zf + T / 2 + 0.04); B.box(M.darkWood, 0.66, 2.2, 0.06, px, y + 0.06, pz, { ry }); }
+  }
   // ---- janelinhas altas (ficam acesas à noite)
   const win = (lx, lz, alongX) => { const [px, pz] = P(lx, lz); B.box(M.window, alongX ? 0.5 : 0.1, 0.42, alongX ? 0.1 : 0.5, px, y + 2.55, pz, { ry }); };
   win(-w / 4, -d / 2 - 0.2, true); win(w / 4, -d / 2 - 0.2, true); win(-w / 2 - 0.2, d / 4, false); win(w / 2 + 0.2, d / 4, false); win(0, d / 2 + 0.2, true);
