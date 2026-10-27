@@ -137,15 +137,18 @@ export class TimeOfDay {
     this.flames = new THREE.Group(); scene.add(this.flames);
     const fg = new THREE.ConeGeometry(0.16, 0.55, 7); fg.translate(0, 0.27, 0);
     const fg2 = new THREE.ConeGeometry(0.08, 0.32, 6); fg2.translate(0, 0.16, 0);
-    this.flameObjs = torches.map((p, i) => {
-      const g = new THREE.Group(); g.position.copy(p);
-      const f1 = new THREE.Mesh(fg, this.flameMat), f2 = new THREE.Mesh(fg2, this.flameMat2);
-      const s = new THREE.Sprite(this.glowMat); s.scale.setScalar(2.6); s.position.y = 0.3;
-      g.add(f1, f2, s); this.flames.add(g);
-      return { g, f1, seed: i * 1.7 };
-    });
+    // todas as chamas de uma vez (centenas de tochas = 3 desenhos, não centenas): cone de fora, cone de dentro e o
+    // brilho (pontos com a textura de halo)
+    const n = torches.length;
+    this.flameI = [new THREE.InstancedMesh(fg, this.flameMat, n), new THREE.InstancedMesh(fg2, this.flameMat2, n)];
+    for (const im of this.flameI) { im.frustumCulled = false; this.flames.add(im); }
+    { const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3); torches.forEach((p, i) => pos.set([p.x, p.y + 0.3, p.z], i * 3)); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      this.glowPts = new THREE.Points(g, new THREE.PointsMaterial({ map: glowTex, color: 0xff9a40, size: 2.8, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      this.glowPts.layers.set(1); this.glowPts.frustumCulled = false; this.flames.add(this.glowPts); }
+    this.flameSeed = torches.map((_, i) => i * 1.7);
+    this._fm = new THREE.Matrix4();
     this.pool = [];
-    for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xff9a48, 0, 16, 2); scene.add(l); this.pool.push(l); }
+    for (let i = 0; i < 6; i++) { const l = new THREE.PointLight(0xff9a48, 0, 20, 2); scene.add(l); this.pool.push(l); }
     this.interior = lightsDef.map((d) => { const l = new THREE.PointLight(d.color, d.intensity, d.dist, 2); l.position.copy(d.pos); l.userData.base = d.intensity; scene.add(l); return l; });
 
     this.state = this.snapshot(PRESETS.tarde);
@@ -229,6 +232,12 @@ export class TimeOfDay {
     this.renderer.toneMappingExposure = s.exposure;
     const wu = this.water.material.uniforms;
     wu.waterColor.value.copy(s.waterColor); wu.sunColor.value.copy(s.waterSun);
+    // o turquesa do raso e o brilho próprio da água são coisa de dia: à noite o mar escurece junto com o céu
+    if (wu.uShallow) {
+      this._w0 ||= { sh: wu.uShallow.value.clone(), br: wu.uBright.value, ti: wu.uTint.value };
+      const d = 1 - s.night * 0.88;
+      wu.uShallow.value.copy(this._w0.sh).multiplyScalar(d); wu.uBright.value = this._w0.br * (1 - s.night); wu.uTint.value = this._w0.ti * (1 - s.night * 0.6);
+    }
     wu.sunDirection.value.copy(this.sunDir);
     this.dome.material.uniforms.uOpacity.value = s.night;
     // nuvens: brancas de dia, rosadas no amanhecer, azuladas e tênues à noite
@@ -268,10 +277,14 @@ export class TimeOfDay {
 
     // tochas tremulando
     if (this.flames.visible) {
-      for (const f of this.flameObjs) {
-        const k = 0.85 + Math.sin(t * 13 + f.seed) * 0.08 + Math.sin(t * 23 + f.seed * 2) * 0.06;
-        f.g.scale.set(this.flameScale, this.flameScale * k, this.flameScale);
+      const m = this._fm, sc = this.flameScale;
+      for (let i = 0; i < this.torches.length; i++) {
+        const p = this.torches[i], sd = this.flameSeed[i], k = 0.85 + Math.sin(t * 13 + sd) * 0.08 + Math.sin(t * 23 + sd * 2) * 0.06;
+        m.makeScale(sc, sc * k, sc).setPosition(p.x, p.y, p.z);
+        this.flameI[0].setMatrixAt(i, m); this.flameI[1].setMatrixAt(i, m);
       }
+      this.flameI[0].instanceMatrix.needsUpdate = this.flameI[1].instanceMatrix.needsUpdate = true;
+      this.glowPts.material.opacity = Math.min(1, sc);
       // 4 luzes nas tochas mais próximas
       if (!this._lastSort || t - this._lastSort > 0.4) {
         this._lastSort = t;
@@ -281,7 +294,7 @@ export class TimeOfDay {
         const n = this._near && this._near[j];
         if (!n) { l.intensity = 0; return; }
         l.position.copy(this.torches[n[1]]).y += 0.5;
-        l.intensity = 26 * this.torchI * (0.85 + Math.sin(t * 11 + j) * 0.15);
+        l.intensity = 30 * this.torchI * (0.85 + Math.sin(t * 11 + j) * 0.15);
       });
     } else this.pool.forEach((l) => (l.intensity = 0));
   }

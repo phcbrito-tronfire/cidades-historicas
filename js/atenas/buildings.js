@@ -10,6 +10,7 @@ import { buildHouses } from './casas.js';
 import { buildWalls } from './muralhas.js';
 import { buildHarbor } from './porto.js';
 import { buildIslands } from './ilhas.js';
+import { addTorches } from './luzes.js';
 import { terrainHeight } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -80,6 +81,7 @@ export function buildCity(scene, tex, available = new Set()) {
   buildHarbor(B, M, out);
   buildIslands(B, M, out); // Psitália e a ponta de Salamina
   buildHouses(B, M, out); // por último: as casas ocupam o que sobrou
+  addTorches(B, M, out); // postes com braseiro nas ruas, ágora, cais, Acrópole e ilhas (depois das casas: não caem dentro delas)
   // as 5 corujas de prata (tetradracmas)
   {
     const S = out.spots, V = (x, y, z) => new THREE.Vector3(x, y, z);

@@ -41,7 +41,7 @@ const MODEL_TABLE = {
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
   zeus_bronze: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.62, 0.46, 0.3], metal: 0.8 },
   discobolo: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
-  trirreme: { yaw: 0, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: 0, rough: 0.85 }, barco_pesca: { yaw: 0, rough: 0.85 },
+  trirreme: { yaw: 0, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 }, barco_pesca: { yaw: Math.PI / 2, rough: 0.85 }, // (os cascos destes dois vêm deitados no eixo z: girados para a proa ficar em +x, como os outros)
   leao: { yaw: Math.PI / 2, rough: 0.7 },
   kouros: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 },
   anforas: { fit: 'y', rough: 0.4, keepMetal: true }, anfora_negra: { fit: 'y', rough: 0.35 }, vaso: { fit: 'y', rough: 0.4 },
@@ -119,7 +119,7 @@ async function main() {
   const placed = await placeSculptures(scene, city.sculptures.filter((s) => avail.has(s.model)));
   scatterProps(scene, city);
   const fx = makeWaterFX(scene);
-  const boats = new Boats(scene, city, fx);
+  const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — a cavalaria (hippeis) e os cavaleiros ricos de Atenas
   const mount = new Mount(scene, 'cavalo', { toast: (m) => ui.toast(m) });
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
@@ -226,7 +226,7 @@ async function main() {
           ui.say('Que beleza! Olhe o fundo: um rapaz tocando aulos. Cálias se superou. Hoje à noite ela vai passar de mão em mão no simpósio — e vou dizer a todos que foi um viajante do futuro quem a trouxe.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]);
         } });
       }
-      if (def.id === 'glauco' || def.id === 'formiao') opts.push({ label: def.id === 'glauco' ? 'Onde está o seu barco?' : 'Posso subir na Páralos?', cb: () => ui.say(def.id === 'glauco' ? 'Logo ali, na água rasa. Chegue perto dele e aperte E para embarcar; as setas levam o barco para onde você quiser, como quando anda. E de novo para descer.' : 'Pode! Chegue perto do casco, aqui no cais, e aperte E. Com as setas você leva a Páralos pela baía — os 170 remadores obedecem. E para descer quando quiser.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]) });
+      if (def.id === 'glauco' || def.id === 'formiao') opts.push({ label: def.id === 'glauco' ? 'Onde está o seu barco?' : 'Posso subir na Páralos?', cb: () => ui.say(def.id === 'glauco' ? 'Logo ali, na água rasa. Chegue perto dele e aperte E para embarcar; seta para cima rema, para baixo dá ré, e as laterais viram o leme. E de novo para descer.' : 'Pode! Chegue perto do casco, aqui no cais, e aperte E. Com as setas você leva a Páralos pela baía — os 170 remadores obedecem. E para descer quando quiser.', [{ label: 'Voltar às perguntas', cb: () => menu(false) }]) });
       opts.push({ label: 'Até logo.', cb: bye });
       let text = first ? def.greet : pick(['O que mais você quer saber?', 'Pergunte, estrangeiro.', 'Mais alguma curiosidade?']);
       if (first && def.id === 'mirrina' && player.holding?.food) text = 'Já comendo, é? Então prove também os meus figos! ' + text;
@@ -257,8 +257,8 @@ async function main() {
     const b = boats.nearestBoardable(player.pos);
     if (!b) return false;
     boats.board(player, b);
-    if (b.model === 'trirreme') { quests.complete('trirreme'); ui.toast('A bordo da Páralos! Setas: navegar · mouse: olhar em volta · E: descer', 'quest', 6000); audio.aulos(); }
-    else { quests.complete('barco'); ui.toast('Setas: navegar (como andar) · mouse: olhar em volta · E: descer', '', 5000); }
+    if (b.model === 'trirreme') { quests.complete('trirreme'); ui.toast('A bordo da Páralos! ↑ remar · ↓ ré · ← → leme · E: descer', 'quest', 6000); audio.aulos(); }
+    else { quests.complete('barco'); ui.toast('↑ remar · ↓ frear e ré · ← → leme · mouse: olhar em volta · E: descer', '', 5000); }
     return true;
   };
 
@@ -445,6 +445,7 @@ async function main() {
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night, underwater.amount); return; }
     t += dt;
     player.night = sky.state.night;
+    boats.night = sky.state.night;
     boats.update(dt, t, player);
     if (boats.riding) { /* o barco já posicionou o explorador */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
@@ -481,7 +482,7 @@ async function main() {
         parts.push(`<kbd>E</kbd> Falar com ${nm}`);
       }
       if (bt) parts.push(`<kbd>E</kbd> Embarcar ${bt.model === 'trirreme' ? 'na trirreme ' + (bt.name || '') : 'no ' + (bt.name || 'barco')}`);
-      if (boats.riding) parts.push('<kbd>↑↓←→</kbd> Navegar · <kbd>E</kbd> Descer');
+      if (boats.riding) parts.push('<kbd>↑</kbd> Remar · <kbd>↓</kbd> Ré · <kbd>←→</kbd> Leme · <kbd>E</kbd> Descer');
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
       if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');
       else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
