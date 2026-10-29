@@ -257,7 +257,7 @@ export class Boats {
     const pull = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) || (k.has('ArrowLeft') || k.has('ArrowRight') || k.has('KeyA') || k.has('KeyD') ? 0.6 : 0);
     const moving = pull !== 0 || Math.abs(b.v) > 0.4;
     R.rest = lerp(R.rest, moving ? 0 : 1, Math.min(1, dt * 2.5));
-    const rate = 0.55 + Math.min(1, Math.abs(b.v) / 3.2) * 0.45; // remadas por segundo
+    const rate = 0.6 + Math.min(1, Math.abs(b.v) / 6) * 0.8; // remadas por segundo
     R.p = (R.p + dt * rate * (pull < 0 || b.v < -0.3 ? -1 : 1) * (1 - R.rest * 0.9) + 1) % 1;
     const a = oarAngles(R.p, R.rest, R.dip);
     poseOars(b, a);
@@ -284,7 +284,7 @@ export class Boats {
     let f = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0);
     let s = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
     if (player.touch && Math.hypot(player.touch.x, player.touch.y) > 0.15) { f = -player.touch.y; s = player.touch.x; }
-    const P = { trirreme: [5, 0.22], barco_pesca: [5.2, 0.42], barco_remo: [3.2, 0.6], mercante: [4, 0.28] }[b.model] || [3.2, 0.5]; // velocidade (m/s) e giro do leme (rad/s)
+    const P = { trirreme: [10, 0.3], barco_pesca: [9.5, 0.55], barco_remo: [6, 0.8], mercante: [8, 0.36] }[b.model] || [6, 0.6]; // velocidade (m/s) e giro do leme (rad/s): mais rápido que o real, para explorar sem tédio
     const maxV = P[0], turnRate = P[1];
     // controle de barco: ↑ rema/veleja para a frente, ↓ freia e dá ré, ← → viram a proa (do ponto de vista de quem
     // está no barco, não da câmera — com a câmera girando junto, a direção pedida mudava sem parar e o barco rodava)
@@ -294,7 +294,7 @@ export class Boats {
     // leme: vira mais com o barco andando, pouco parado (só remando de um lado); de ré, o leme inverte
     const rate = turnRate * (0.35 + 0.65 * sp) * (b.v < -0.2 ? -1 : 1);
     b.turnV = lerp(b.turnV || 0, -turn * rate, Math.min(1, dt * 3));
-    b.v += (want - b.v) * Math.min(1, dt * (fwd ? (Math.sign(want - b.v) === Math.sign(b.v) || !b.v ? 0.7 : 1.4) : 0.3));
+    b.v += (want - b.v) * Math.min(1, dt * (fwd ? (Math.sign(want - b.v) === Math.sign(b.v) || !b.v ? 1.0 : 1.6) : 0.35));
     b.yaw += b.turnV * dt;
     const dir = new V3(Math.cos(b.yaw), 0, -Math.sin(b.yaw)), side = new V3(-dir.z, 0, dir.x);
     const nx = b.g.position.x + dir.x * b.v * dt, nz = b.g.position.z + dir.z * b.v * dt;

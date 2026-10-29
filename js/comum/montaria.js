@@ -13,8 +13,8 @@ const V3 = THREE.Vector3;
 // medidas e passos de cada animal (m/s); len = comprimento do focinho à cauda; back = altura do lombo; seat = onde
 // fica o quadril do cavaleiro, na frente (+) ou atrás (−) do meio do corpo
 const KINDS = {
-  cavalo: { len: 2.45, back: 1.42, seat: 0.12, belly: 0.34, shin: 0.22, walk: 1.8, run: 11.5, trot: 5.4, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
-  jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.5, run: 7.4, trot: 4.3, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
+  cavalo: { len: 2.45, back: 1.42, seat: 0.12, belly: 0.34, shin: 0.22, walk: 2.2, run: 14.5, trot: 6.8, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
+  jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.8, run: 9.2, trot: 5.4, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
 };
 
 export class Mount {
