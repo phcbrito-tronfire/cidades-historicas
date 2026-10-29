@@ -174,8 +174,8 @@ async function main() {
   ui.setTime('Tarde');
   const post = await createPost(renderer, scene, camera);
   // mergulho no Nilo: água barrenta, enxerga-se pouco
-  const underwater = makeUnderwater(scene, world.water, { color: 0x2f4a32, near: 0.3, far: 9 });
-  post.grade.uniforms.uUnderCol.value.setRGB(0.22, 0.36, 0.2);
+  const underwater = makeUnderwater(scene, world.water, { color: 0x3f6e4c, near: 1.5, far: 24 }); // turvo, mas dá para ver as ruínas e o barco afundado
+  post.grade.uniforms.uUnderCol.value.setRGB(0.26, 0.42, 0.26);
   // camada 3: aparece na tela e projeta sombra, mas fica fora do reflexo do Nilo e da oclusão (desempenho)
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
   applyQuality(quality, { renderer, sun, post, actors });
@@ -564,9 +564,21 @@ function makeBoats(scene, city) {
     // calado: o casco do navio a remo é alto, então afunda ~1 m (carregado); DECK = convés de cada modelo
     const SINK = sailUp ? -0.55 : -1.05, DECK = sailUp ? 0.43 : 2.78 + SINK + 0.35;
     // navio modelado (sculptures.js): à vela, o de casco de madeira e vela de linho; a remo, o de vela listrada e remos
-    sculptureInstance(sailUp ? 'navio' : 'navio2', 15).then((o) => { o.position.y = SINK; g.add(o); });
     const oars = [];
     const people = [];
+    sculptureInstance(sailUp ? 'navio' : 'navio2', 15).then((o) => {
+      o.position.y = SINK; g.add(o);
+      // cada tripulante no piso de verdade embaixo dele (um raio de cima para baixo): o convés fixo deixava a gente
+      // do navio a remo flutuando acima do casco
+      g.updateMatrixWorld(true);
+      const ray = new THREE.Raycaster(), inv = g.matrixWorld.clone().invert();
+      for (const r of people) {
+        const p = r.root.position.clone();
+        ray.set(new THREE.Vector3(p.x, DECK + 1.2, p.z).applyMatrix4(g.matrixWorld), new THREE.Vector3(0, -1, 0)); ray.far = 6;
+        const h = ray.intersectObject(o, true).find((h) => h.face && h.face.normal.clone().transformDirection(h.object.matrixWorld).y > 0.5);
+        if (h) r.root.position.y = h.point.clone().applyMatrix4(inv).y;
+      }
+    });
     for (let i = 0; i < crew; i++) {
       const r = makeHumanoid({ outfit: 'worker', hair: pick(['short', 'khat', 'bald']), collar: null });
       r.root.position.set(-1 + i * 1.6, DECK, (i % 2 ? -0.6 : 0.6)); r.root.rotation.y = Math.PI / 2 * (i % 2 ? 1 : -1);
