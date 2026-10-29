@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { sculptureInstance } from '../comum/sculptures.js';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
-import { animateHumanoid, makeHumanoid } from '../comum/mixamo.js';
+import { animateHumanoid, makeHumanoid, rowPose } from '../comum/mixamo.js';
 import { rr, rand, pick, clamp, lerp } from '../comum/util.js';
 import { blocked, groundAt } from '../comum/collision.js';
 
@@ -13,6 +13,57 @@ const ray = new THREE.Raycaster();
 let FR = 0;
 
 // casco simples, usado se o modelo não carregar
+// O modelo do barco a remo vem numa malha só, com os dois remos soltos (um atravessado no casco, outro espetado
+// para fora). Separa as peças pela ligação dos vértices e tira as que passam da largura do casco: os remos de verdade
+// são feitos à parte, presos nos toletes, e se mexem com a remada.
+function stripLooseOars(root) {
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry.index || o.geometry.userData.noOars) return;
+    const g = o.geometry, P = g.attributes.position, I = g.index, n = P.count, par = new Int32Array(n).map((_, i) => i);
+    const find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+    const join = (a, b) => { a = find(a); b = find(b); if (a !== b) par[a] = b; };
+    const seen = new Map();
+    for (let i = 0; i < n; i++) { const k = P.getX(i).toFixed(4) + ',' + P.getY(i).toFixed(4) + ',' + P.getZ(i).toFixed(4); if (seen.has(k)) join(i, seen.get(k)); else seen.set(k, i); }
+    for (let t = 0; t < I.count; t += 3) { join(I.getX(t), I.getX(t + 1)); join(I.getX(t), I.getX(t + 2)); }
+    const wide = new Set();
+    for (let i = 0; i < n; i++) if (Math.abs(P.getX(i)) > 0.45) wide.add(find(i)); // o casco tem ±0,39 de largura no modelo
+    const keep = [];
+    for (let t = 0; t < I.count; t += 3) if (!wide.has(find(I.getX(t)))) keep.push(I.getX(t), I.getX(t + 1), I.getX(t + 2));
+    g.setIndex(keep); g.userData.noOars = true;
+  });
+}
+// par de remos: cada um gira no seu tolete (y = abre para a proa/popa, x = baixa a pá na água). O tamanho sai da
+// largura do casco: a parte de dentro vai do tolete até quase o meio do barco; a de fora é 2,3 vezes isso
+function makeOars(b, lockL, lockR) {
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a46, roughness: 0.8 });
+  const inb = Math.abs(lockL.z) - 0.16, outb = inb * 2.3, L = inb + outb;
+  const shaft = new THREE.CylinderGeometry(0.026, 0.032, L, 8); shaft.rotateX(Math.PI / 2); shaft.translate(0, 0, (outb - inb) / 2);
+  const blade = new THREE.BoxGeometry(0.025, 0.14, outb * 0.3); blade.translate(0, 0, outb * 0.84);
+  const grip = new THREE.CylinderGeometry(0.032, 0.032, 0.18, 8); grip.rotateX(Math.PI / 2); grip.translate(0, 0, -inb + 0.09);
+  b.row.inb = inb; b.row.outb = outb;
+  // quanto a pá desce para tocar a água (o tolete fica acima da linha d'água)
+  b.row.dip = Math.asin(Math.min(0.9, (lockL.y + 0.04) / (outb * 0.92)));
+  const out = [];
+  for (const [lock, s] of [[lockL, 1], [lockR, -1]]) {
+    const pv = new THREE.Group(); pv.position.copy(lock); pv.rotation.order = 'YXZ';
+    for (const geo of [shaft, blade, grip]) { const m = new THREE.Mesh(geo, wood); m.castShadow = true; pv.add(m); }
+    b.g.add(pv); out.push({ pv, s });
+  }
+  return out;
+}
+// remada: fase 0–0,45 = puxada (pá na água, de proa para popa), 0,45–1 = volta (pá no ar). phi = ângulo do remo
+// (+ = pá para a proa), pitch = quanto a pá desce
+function oarAngles(p, rest, dip = 0.38) {
+  const e = (x) => x * x * (3 - 2 * x);
+  const drive = p < 0.45, u = drive ? e(p / 0.45) : e((p - 0.45) / 0.55);
+  const phi = drive ? lerp(0.55, -0.45, u) : lerp(-0.45, 0.55, u);
+  const d = drive ? dip - Math.max(0, 0.08 - p) : dip * 0.5 + Math.max(0, 0.5 - Math.abs(u - 0.5)) * dip * 0.25;
+  return { phi: lerp(phi, 0.08, rest), pitch: lerp(d, dip * 0.85, rest) };
+}
+function poseOars(b, a) {
+  for (const o of b.oars) { o.pv.rotation.y = o.s > 0 ? a.phi : Math.PI - a.phi; o.pv.rotation.x = a.pitch; }
+}
+
 function fallbackHull(kind, L) {
   const g = new THREE.Group();
   const wood = new THREE.MeshStandardMaterial({ color: kind === 'trirreme' ? 0x3a2a1e : 0x8a6a44, roughness: 0.8 });
@@ -52,7 +103,7 @@ export class Boats {
     if (d.beached) { g.rotation.z = rr(-0.12, 0.12); g.rotation.x = rr(-0.05, 0.05); }
     this.scene.add(g);
     // calado de cada modelo: quanto o casco afunda (o pivô é a linha d'água)
-    const sink = { trirreme: -0.9, mercante: -0.7, barco_remo: -0.18, barco_pesca: -0.3 }[d.model] ?? -0.3;
+    const sink = { trirreme: -0.9, mercante: -0.7, barco_remo: -0.02, barco_pesca: -0.3 }[d.model] ?? -0.3; // bote: o piso de dentro fica acima da água (senão o mar "entra" no barco)
     sculptureInstance(d.model, d.len).then((o) => {
       const empty = !o.children.length;
       const m = empty ? fallbackHull(d.model, d.len) : o;
@@ -68,6 +119,15 @@ export class Boats {
         const h = ray.intersectObject(m, true).find((h) => h.face && h.point.y - g.position.y < top && h.face.normal.clone().transformDirection(h.object.matrixWorld).y > 0.5);
         return h ? h.point.y - g.position.y : null;
       };
+      if (d.model === 'barco_remo' && !empty) {
+        stripLooseOars(m);
+        // banco do meio e toletes, medidos no modelo (unidades dele) e levados para o barco
+        let mesh = null; m.traverse((o) => { if (o.isMesh && !mesh) mesh = o; });
+        const M = mesh.matrixWorld.clone().premultiply(g.matrixWorld.clone().invert()), at = (x, y, z) => new V3(x, y, z).applyMatrix4(M);
+        b.row = { seat: at(0, 0.06, 0), lockL: at(-0.37, 0.235, 0.1), lockR: at(0.37, 0.235, 0.1), p: 0, rest: 1 };
+        if (b.row.lockL.z < b.row.lockR.z) [b.row.lockL, b.row.lockR] = [b.row.lockR, b.row.lockL]; // L = lado +z
+        if (!d.beached && !d.shed) { b.oars = makeOars(b, b.row.lockL, b.row.lockR); poseOars(b, oarAngles(0, 1, b.row.dip)); }
+      }
       const seat = this.seatLocal(b), dy = deckAt(seat.x, seat.z);
       if (dy !== null) b.deckY = dy;
       // cada tripulante fica no convés de verdade embaixo dele (o casco não é plano); sem piso ali, no do assento
@@ -185,8 +245,35 @@ export class Boats {
     const pos = new V3(b.g.position.x + seat.x, b.g.position.y + b.deckY, b.g.position.z + seat.z);
     // câmera de barco: mira o meio do casco, bem mais alta e longe (dá para ver o barco inteiro e o mar à frente)
     const cam = { x: b.g.position.x, y: b.g.position.y + b.deckY + (b.model === 'trirreme' ? 3 : 1.2), z: b.g.position.z, dist: b.model === 'trirreme' ? 34 : 11 };
-    player.ride(dt, t, pos, b.yaw + Math.PI / 2, b.model === 'trirreme' ? 'idle' : 'sit', b.v, cam);
+    if (b.oars && b.row) { this.row(b, dt, t, player, cam); }
+    else player.ride(dt, t, pos, b.yaw + Math.PI / 2, b.model === 'trirreme' ? 'idle' : 'sit', b.v, cam);
     if (Math.abs(b.v) > 0.6 && Math.random() < dt * 6) { const back = new V3(-b.len * 0.45, 0, 0).applyAxisAngle(new V3(0, 1, 0), b.yaw); this.fx?.ripple(new V3(b.g.position.x + back.x, WATER_Y + 0.02, b.g.position.z + back.z), 0.8 + Math.abs(b.v) * 0.3); }
+  }
+
+  // barco a remo: o explorador senta no banco do meio de costas para a proa (como todo remador) e rema de verdade —
+  // o ritmo acompanha a velocidade, de ré a remada corre ao contrário e, parado, os remos descansam com a pá na água
+  row(b, dt, t, player, cam) {
+    const R = b.row, k = player.keys;
+    const pull = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) || (k.has('ArrowLeft') || k.has('ArrowRight') || k.has('KeyA') || k.has('KeyD') ? 0.6 : 0);
+    const moving = pull !== 0 || Math.abs(b.v) > 0.4;
+    R.rest = lerp(R.rest, moving ? 0 : 1, Math.min(1, dt * 2.5));
+    const rate = 0.55 + Math.min(1, Math.abs(b.v) / 3.2) * 0.45; // remadas por segundo
+    R.p = (R.p + dt * rate * (pull < 0 || b.v < -0.3 ? -1 : 1) * (1 - R.rest * 0.9) + 1) % 1;
+    const a = oarAngles(R.p, R.rest, R.dip);
+    poseOars(b, a);
+    const up = new V3(0, 1, 0), seat = R.seat.clone().applyMatrix4(b.g.matrixWorld);
+    const facing = b.yaw - Math.PI / 2; // de frente para a popa
+    player.ride(dt, t, seat.clone().add(new V3(0, -0.55, 0)), facing, 'sit', b.v, cam, b.yaw + Math.PI / 2);
+    b.g.updateMatrixWorld(true);
+    const hands = {};
+    // mãos nos punhos: olhando para a popa (-x), o lado +z do barco fica à esquerda
+    for (const o of b.oars) { o.pv.updateMatrixWorld(true); hands[o.s > 0 ? 'Left' : 'Right'] = new V3(0, 0, -R.inb + 0.09).applyMatrix4(o.pv.matrixWorld); }
+    const fwd = new V3(Math.sin(facing), 0, Math.cos(facing));
+    // tronco: inclinado para a popa na pegada (phi alto) e para trás no fim da puxada
+    const lean = lerp(-0.22, 0.38, (a.phi + 0.45) / 1.0) * (1 - R.rest) + R.rest * 0.05;
+    rowPose(player.rig, seat, fwd, lean, hands);
+    // espuma das pás na água durante a puxada
+    if (R.rest < 0.3 && R.p < 0.45 && Math.random() < dt * 10) for (const o of b.oars) this.fx?.ripple(new V3(0, 0, R.outb * 0.84).applyMatrix4(o.pv.matrixWorld).setY(WATER_Y + 0.02), 0.35);
   }
 
   // pilotagem igual ao andar do explorador: as setas apontam para onde ir em relação à câmera (↑ = para onde a

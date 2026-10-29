@@ -28,7 +28,10 @@ export const HEPH = { x: -392, z: -205, y: 0 };
 export const PNYX = { x: -340, z: 25 };
 export const BEMA = { x: -352, z: 44 };
 // teatro de Dioniso na encosta sul da Acrópole: centro da orquestra, raio dos degraus e abertura
-export const THEATER = { x: 22, z: 112, r0: 11, r1: 52, rows: 44, y: 0 };
+// teatro de Dioniso: cávea em leque subindo para o norte. Cada fileira sobe rise; seis escadas radiais (klimakes)
+// dividem os bancos em sete cunhas (kerkides), com degraus de meia altura para subir andando
+export const THEATER = { x: 22, z: 112, r0: 11, r1: 52, rows: 44, y: 0, rise: 0.42, span: 1.1, aisleW: 0.65 };
+THEATER.aisles = [1, 2, 3, 4, 5, 6].map((i) => -THEATER.span + i * ((2 * THEATER.span) / 7));
 
 const ss = smoothstep;
 function base(x, z) {
@@ -98,14 +101,24 @@ export function terrainHeight(x, z) {
       h = lerp(h, want, ss(75, 58, dist) * ss(-0.25, 0.05, front));
     }
   }
-  // ---- teatro: a encosta sob os degraus fica 0,4 m abaixo deles (os degraus são malha, ver buildings)
+  // ---- teatro: a encosta sob as fileiras fica pelo menos meio metro abaixo delas (as fileiras são blocos maciços, ver
+  // acropole.js); nas laterais e atrás, a encosta encontra os muros sem pontas
   {
+    const T = THEATER, dx = x - T.x, dz = z - T.z, dist = Math.hypot(dx, dz), ang = Math.abs(Math.atan2(dx, -dz));
     const t = theaterStep(x, z);
-    if (t !== null) h = t.y - 0.45;
-    else {
-      const dx = x - THEATER.x, dz = z - THEATER.z, dist = Math.hypot(dx, dz);
-      if (dist < THEATER.r0 + 1) h = lerp(h, THEATER.y, ss(THEATER.r0 + 1, THEATER.r0 - 2, dist)); // orquestra
+    if (t !== null) h = Math.min(h, t.y - 0.5); // só corta a encosta; onde ela é mais baixa, as fileiras ficam sobre o muro
+    else if (dist > T.r0 - 2 && dist < T.r1 + 10 && ang < 1.5) {
+      const k = Math.max(0, Math.min(T.rows - 1, Math.floor((dist - T.r0) / ((T.r1 - T.r0) / T.rows))));
+      const seat = T.y + T.rise * (k + 1) - 0.5;
+      // onde a encosta natural é mais alta, ela desce até as fileiras; onde é mais baixa, fica como está e o muro de
+      // arrimo vai até o chão (como no teatro de verdade, que é alto do lado de baixo)
+      const w = Math.max(ss(T.span + 0.06, 1.5, ang), ss(T.r1, T.r1 + 10, dist));
+      if (h > seat) h = lerp(seat, h, w);
     }
+    // orquestra e a cena num terraço plano (antes a cena ficava pendurada sobre a encosta, que desce para o sul)
+    const ex = Math.max(0, Math.abs(dx) - 14), ez = Math.max(0, dz - (T.r0 + 9), -dz);
+    const out = dist < T.r0 + 1 ? 0 : Math.hypot(ex, ez);
+    if (dz > -T.r0 && (dist < T.r0 + 1 || (Math.abs(dx) < 22 && dz > 0))) h = lerp(T.y, h, ss(0, 8, out));
   }
   // ---- bordas do mundo em terra: morros (Himeto a leste, Egáleo a oeste, Parnes ao norte)
   {
@@ -136,14 +149,18 @@ function islandHeight(I, x, z) {
   return lerp(-5, I.top + n, ss(0, 0.45, k)) + (k > 0.12 ? (fbm(x * 0.12, z * 0.12, 2) - 0.5) * 1.2 : 0);
 }
 
-// degraus do teatro (cávea em leque, de frente para o sul): null fora deles
-function theaterStep(x, z) {
+// fileiras do teatro (cávea em leque, de frente para o sul): null fora delas. Nas escadas, dois meios degraus
+// por fileira (a escada e o banco têm a mesma altura no fim de cada fileira)
+export function theaterStep(x, z) {
   const T = THEATER, dx = x - T.x, dz = z - T.z, dist = Math.hypot(dx, dz);
   if (dist < T.r0 || dist > T.r1) return null;
   const ang = Math.atan2(dx, -dz); // 0 = norte (subindo a encosta)
-  if (Math.abs(ang) > 1.15) return null;
-  const k = Math.floor((dist - T.r0) / ((T.r1 - T.r0) / T.rows));
-  return { y: T.y + 0.6 + k * 0.42, k };
+  if (Math.abs(ang) > T.span) return null;
+  const step = (T.r1 - T.r0) / T.rows, u = (dist - T.r0) / step, k = Math.min(T.rows - 1, Math.floor(u));
+  let y = T.y + T.rise * (k + 1);
+  const aisle = T.aisles.some((a) => Math.abs(Math.sin(ang - a)) * dist < T.aisleW);
+  if (aisle && u - k < 0.5) y -= T.rise / 2;
+  return { y, k, aisle };
 }
 
 // altura do chão para andar (colisão): igual ao terreno, mas com os degraus do teatro

@@ -204,27 +204,50 @@ export function buildAcropolis(B, M, out) {
     const orch = new THREE.CircleGeometry(T.r0, 48); orch.rotateX(-Math.PI / 2);
     B.geo(orch, M.earth, T.x, T.y + 0.04, T.z);
     B.box(M.marble, 1.2, 0.9, 1.2, T.x, T.y, T.z); addBox(T.x, T.z, 1.2, 1.2, T.y, T.y + 0.9);
+    // fileiras maciças (sem frestas): degrau de terra batida com a frente em pedra e o banco de madeira (ikria)
+    // por cima, em sete cunhas separadas por escadas de meio degrau. Os muros de arrimo (analemmata) fecham os lados.
+    const P = (r, a) => [T.x + Math.sin(a) * r, T.z - Math.cos(a) * r];
+    const edge = (a, r, side) => a + side * (T.aisleW / r); // borda da cunha, afastada da escada pela largura dela
+    const cuts = [-T.span, ...T.aisles, T.span];
     for (let k = 0; k < T.rows; k++) {
-      const r0 = T.r0 + k * step, r1 = r0 + step, y = T.y + 0.6 + k * 0.42;
-      const g = new THREE.RingGeometry(r0, r1, 56, 1, Math.PI / 2 - 1.15, 2.3); g.rotateX(-Math.PI / 2);
-      // anel de terra (degrau) com face vertical
-      B.geo(g, M.earth, T.x, y, T.z);
-      const face = new THREE.CylinderGeometry(r0, r0, 0.42, 56, 1, true, Math.PI - 1.15, 2.3);
-      B.geo(face, M.earth, T.x, y - 0.21, T.z, { uv: { s: 3 } });
-      // banco de madeira (ikria) na frente de cada degrau, em blocos separados pelas escadas
-      if (k % 1 === 0) for (let w = 0; w < 7; w++) {
-        const a0 = -1.1 + w * (2.2 / 7) + 0.03, a1 = a0 + 2.2 / 7 - 0.06;
-        const bg = new THREE.RingGeometry(r0 + 0.05, r0 + 0.45, 8, 1, Math.PI / 2 - a1, a1 - a0); bg.rotateX(-Math.PI / 2);
-        B.geo(bg, M.wood, T.x, y + 0.35, T.z, { uv: { s: 1 } });
+      const ri = T.r0 + k * step, ro = ri + step + 0.03, y = T.y + T.rise * (k + 1);
+      for (let w = 0; w < 7; w++) {
+        const a0 = w === 0 ? [cuts[0], cuts[0]] : [edge(cuts[w], ri, 1), edge(cuts[w], ro, 1)];
+        const a1 = w === 6 ? [cuts[7], cuts[7]] : [edge(cuts[w + 1], ri, -1), edge(cuts[w + 1], ro, -1)];
+        B.geo(sectorSlab(P, ri, ro, a0, a1, y, T.rise + 0.6), M.poros, 0, 0, 0, { uv: { s: 1 } });
+        B.geo(sectorSlab(P, ri + 0.04, ri + 0.5, [a0[0] + 0.004, a0[0] + 0.004], [a1[0] - 0.004, a1[0] - 0.004], y + 0.09, 0.09), M.wood, 0, 0, 0, { uv: { s: 1 } });
+      }
+      // escadas: dois meios degraus por fileira
+      for (const a of T.aisles) for (const half of [0, 1]) {
+        const r0h = ri + half * (step / 2), r1h = r0h + step / 2 + 0.02;
+        B.geo(sectorSlab(P, r0h, r1h, [edge(a, r0h, -1), edge(a, r1h, -1)], [edge(a, r0h, 1), edge(a, r1h, 1)], y - (half ? 0 : T.rise / 2), T.rise + 0.4), M.marble, 0, 0, 0, { uv: { s: 1 } });
       }
     }
-    // muros de arrimo dos lados da cávea e da parte de trás
-    for (const s of [-1, 1]) {
-      const a = s * 1.17, dx = Math.sin(a), dz = -Math.cos(a);
-      for (let k = 0; k < T.rows; k += 2) { const r = T.r0 + (k + 1) * step, y = T.y + 0.6 + k * 0.42; B.box(M.wallStone, 0.9, k * 0.42 + 1.4, step * 2 + 0.2, T.x + dx * r, T.y - 0.6, T.z + dz * r, { ry: Math.PI - a }); addBox(T.x + dx * r, T.z + dz * r, 1.2, 1.2, y - 3, y + 1); }
+    // muros de arrimo dos lados: sobem lisos acompanhando as fileiras, do chão até um parapeito acima do último banco
+    for (const sgn of [-1, 1]) {
+      const pts = [];
+      for (let k = 0; k <= T.rows; k++) {
+        const r = T.r0 + k * step, a = sgn * (T.span + 0.55 / r);
+        const [x, z] = P(r, a);
+        const top = T.y + T.rise * Math.min(T.rows, k + 1) + 0.95;
+        pts.push({ x, z, top, bot: Math.min(terrainHeight(x, z), T.y) - 1.5 });
+        if (k < T.rows) { const [cx, cz] = P(r + step / 2, a); addBox(cx, cz, 1.1, 1.1, T.y - 2, top); }
+      }
+      B.geo(wallStrip(pts, 1.1), M.poros, 0, 0, 0, { uv: { s: 1 } });
+    }
+    // muro do fundo, atrás da última fileira
+    {
+      const pts = [], ytop = T.y + T.rise * T.rows + 1.1;
+      for (let i = 0; i <= 40; i++) {
+        const a = -T.span - 0.03 + (i / 40) * (2 * T.span + 0.06), [x, z] = P(T.r1 + 0.6, a);
+        pts.push({ x, z, top: ytop, bot: Math.min(terrainHeight(x, z), ytop - 3) - 1 });
+        if (i % 2 === 0) addBox(x, z, 1.4, 1.4, ytop - 4, ytop);
+      }
+      B.geo(wallStrip(pts, 1.1), M.poros, 0, 0, 0, { uv: { s: 1 } });
     }
     // cena: barracão de madeira com três portas, pintado como um palácio (cenografia)
     const sx = T.x, sz = T.z + T.r0 + 4.5;
+    B.box(M.poros, 23, 1.6, 5, sx, T.y - 1.55, sz); // alicerce: a cena fica assentada no terraço, sem frestas
     B.box(M.wood, 22, 6.5, 4, sx, T.y, sz); addBox(sx, sz, 22, 4, T.y, T.y + 6.5);
     B.box(M.awning[1], 21.6, 4, 0.08, sx, T.y + 1.2, sz - 2.05);
     B.box(M.darkWood, 22.6, 0.4, 4.6, sx, T.y + 6.5, sz);
@@ -302,4 +325,55 @@ export function ribbon(B, mat, pts, w, lift = 0.06) {
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
   B.geo(g, mat, 0, 0, 0);
+}
+
+// bloco maciço em forma de setor de anel (uma fileira ou um degrau do teatro). P(r, a) -> [x, z]; a0/a1 = ângulos da
+// borda [no raio interno, no raio externo]; topo em y, descendo h (só topo, frente, fundo e as pontas: o resto
+// fica dentro da fileira de baixo ou do terreno)
+function sectorSlab(P, ri, ro, a0, a1, y, h, n = 0) {
+  n = n || Math.max(2, Math.ceil(Math.abs(a1[1] - a0[1]) * ro / 1.6));
+  const pos = [], idx = [];
+  const quad = (a, b, c, d) => { const i = pos.length / 3; pos.push(...a, ...b, ...c, ...d); idx.push(i, i + 1, i + 2, i, i + 2, i + 3); };
+  const at = (t, inner, yy) => { const a = inner ? a0[0] + (a1[0] - a0[0]) * t : a0[1] + (a1[1] - a0[1]) * t; const [x, z] = P(inner ? ri : ro, a); return [x, yy, z]; };
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n, t1 = (i + 1) / n;
+    quad(at(t0, true, y), at(t0, false, y), at(t1, false, y), at(t1, true, y)); // topo
+    quad(at(t0, true, y - h), at(t0, true, y), at(t1, true, y), at(t1, true, y - h)); // frente (voltada para a orquestra)
+    quad(at(t1, false, y - h), at(t1, false, y), at(t0, false, y), at(t0, false, y - h)); // fundo
+  }
+  quad(at(0, false, y - h), at(0, false, y), at(0, true, y), at(0, true, y - h)); // pontas
+  quad(at(1, true, y - h), at(1, true, y), at(1, false, y), at(1, false, y - h));
+  return finishGeo(pos, idx);
+}
+// muro contínuo por uma linha de pontos {x, z, top, bot}, com espessura th: duas faces e o topo
+function wallStrip(pts, th) {
+  const pos = [], idx = [];
+  const quad = (a, b, c, d) => { const i = pos.length / 3; pos.push(...a, ...b, ...c, ...d); idx.push(i, i + 1, i + 2, i, i + 2, i + 3); };
+  const off = pts.map((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
+    return [(-dz / l) * th / 2, (dx / l) * th / 2];
+  });
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1], [ox, oz] = off[i], [qx, qz] = off[i + 1];
+    const L = (o, pp, y) => [pp.x + o[0], y, pp.z + o[1]], R = (o, pp, y) => [pp.x - o[0], y, pp.z - o[1]];
+    quad(L([ox, oz], p, p.bot), L([qx, qz], q, q.bot), L([qx, qz], q, q.top), L([ox, oz], p, p.top));
+    quad(R([qx, qz], q, q.bot), R([ox, oz], p, p.bot), R([ox, oz], p, p.top), R([qx, qz], q, q.top));
+    quad(L([ox, oz], p, p.top), L([qx, qz], q, q.top), R([qx, qz], q, q.top), R([ox, oz], p, p.top));
+  }
+  for (const [i, o] of [[0, off[0]], [pts.length - 1, off[pts.length - 1]]]) { const p = pts[i]; quad([p.x + o[0], p.bot, p.z + o[1]], [p.x + o[0], p.top, p.z + o[1]], [p.x - o[0], p.top, p.z - o[1]], [p.x - o[0], p.bot, p.z - o[1]]); }
+  return finishGeo(pos, idx);
+}
+// normais por face (bordas vivas) e UV de mundo (as texturas de pedra repetem em metros, nas paredes e no topo)
+function finishGeo(pos, idx) {
+  let g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  g = g.toNonIndexed(); g.computeVertexNormals();
+  const p = g.attributes.position, nrm = g.attributes.normal, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) {
+    const ny = Math.abs(nrm.getY(i)), nx = Math.abs(nrm.getX(i));
+    if (ny > 0.7) { uv[i * 2] = p.getX(i) / 2; uv[i * 2 + 1] = p.getZ(i) / 2; }
+    else { uv[i * 2] = (nx > 0.7 ? p.getZ(i) : p.getX(i)) / 2; uv[i * 2 + 1] = p.getY(i) / 2; }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
 }

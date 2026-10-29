@@ -65,7 +65,8 @@ export function buildHarbor(B, M, out) {
   // ---------------- praia do Falero: barcos na areia, redes estendidas, cabanas e os pescadores
   for (let i = 0; i < 7; i++) {
     const a = -40 + i * 34 + rr(-4, 4), p = coastPoint(a, -9 - rr(0, 6));
-    out.boats.push({ model: rand() < 0.5 ? 'barco_remo' : 'barco_pesca', x: p.x, z: p.z, y: terrainHeight(p.x, p.z) + 0.15, ry: tangent(a) + Math.PI / 2 + rr(-0.4, 0.4), len: 6.5, beached: true });
+    const model = rand() < 0.5 ? 'barco_remo' : 'barco_pesca';
+    out.boats.push({ model, x: p.x, z: p.z, y: terrainHeight(p.x, p.z) + 0.15, ry: tangent(a) + Math.PI / 2 + rr(-0.4, 0.4), len: model === 'barco_remo' ? 4.2 : 6.5, beached: true });
   }
   // redes secando em varas
   for (let i = 0; i < 4; i++) {
@@ -79,7 +80,7 @@ export function buildHarbor(B, M, out) {
     hut(B, M, p.x, y, p.z, ry);
   }
   // barcos na água rasa (podem ser pilotados)
-  { const p = coastPoint(52, 17); out.boats.push({ model: 'barco_remo', x: p.x, z: p.z, y: 0, ry: tangent(52) + 0.3, len: 6.5, board: true, pilot: true, name: 'barco a remo de Glauco' }); S.rowboat = new V3(p.x, 0, p.z); }
+  { const p = coastPoint(52, 17); out.boats.push({ model: 'barco_remo', x: p.x, z: p.z, y: 0, ry: tangent(52) + 0.3, len: 4.2, board: true, pilot: true, name: 'barco a remo de Glauco' }); S.rowboat = new V3(p.x, 0, p.z); }
   { const p = coastPoint(96, 22); out.boats.push({ model: 'barco_pesca', x: p.x, z: p.z, y: 0, ry: tangent(96) - 0.4, len: 8, board: true, pilot: true, name: 'barco de pesca à vela' }); }
   { const p = coastPoint(40, -14); S.fisher = new V3(p.x, terrainHeight(p.x, p.z), p.z); }
   // naufrágio no fundo da baía: o costado de um navio mercante com as cavernas à mostra e ânforas espalhadas

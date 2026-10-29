@@ -70,6 +70,7 @@ export function slowWatch(onSlow) {
   return (raw) => {
     // um quadro de mais de meio segundo sozinho é a aba voltando do segundo plano; vários seguidos é um computador
     // que não aguenta (ex.: navegador sem aceleração de vídeo)
+    if (window.__noSlow) return; // testes no painel do app, que roda a ~1,5 fps
     if (raw > 0.5) { if (++big >= 3) { big = 0; onSlow(raw * 1000); } return; }
     big = 0;
     if (warm > 0) { warm -= raw; return; } // o começo sempre tem algum tranco

@@ -399,7 +399,8 @@ export class Player {
   boardCam(pitch = 0.36) { this.savedCam = { pitch: this.camPitch, dist: this.camTargetDist }; this.camPitch = pitch; this.boatZoom = 1; }
   leaveCam() { this.rideCam = null; if (this.savedCam) { this.camPitch = this.savedCam.pitch; this.camTargetDist = this.savedCam.dist; this.savedCam = null; } }
 
-  ride(dt, t, pos, facing, mode, speed = 0, cam = null) {
+  // camFacing: para onde a câmera tende a olhar (o remador vai de costas para a proa, a câmera não)
+  ride(dt, t, pos, facing, mode, speed = 0, cam = null, camFacing = facing) {
     this.rideCam = cam;
     this.pos.copy(pos); this.facing = facing; this.rig.root.rotation.y = facing;
     this.speed = speed; this.swimming = false; this.diving = false; this.wading = false; this.onGround = true; this.vy = 0;
@@ -412,7 +413,7 @@ export class Player {
     this.updateWet(dt, false, 0, -100);
     this.updateBreathBar();
     const idleMouse = t - this.lastMouse > 1.5;
-    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, facing + Math.PI, Math.min(1, dt * 0.8));
+    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, camFacing + Math.PI, Math.min(1, dt * 0.8));
     this.updateCamera(dt);
   }
 

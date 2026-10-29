@@ -874,3 +874,42 @@ export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22) {
     if (toe) aimBone(ft, toe, fwd.clone().multiplyScalar(0.9).addScaledVector(up, -0.45).addScaledVector(out, 0.1).normalize());
   }
 }
+
+// Remador: sobre a pose sentada, o quadril vai para o banco, o tronco se inclina para a frente e para trás com a
+// remada e os braços alcançam os punhos dos remos (IK de dois ossos, cotovelo para baixo e para fora).
+// seat = ponto do banco (mundo); fwd = para onde o remador olha; lean = inclinação do tronco (rad, + = para a
+// frente); hands = { Left, Right } = pontos (mundo) onde cada mão segura
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
+function bendSpine(bone, axis, ang) {
+  bone.getWorldQuaternion(_qw); _qw.premultiply(_q.setFromAxisAngle(axis, ang));
+  bone.parent.getWorldQuaternion(_qp); bone.quaternion.copy(_qp.invert().multiply(_qw));
+  bone.updateMatrixWorld(true);
+}
+function armIK(sh, el, wr, target, pole) {
+  const S = sh.getWorldPosition(_v1), E = el.getWorldPosition(_v2), W = wr.getWorldPosition(_v3);
+  const l1 = S.distanceTo(E), l2 = E.distanceTo(W);
+  const to = _v4.copy(target).sub(S); const d = Math.min(l1 + l2 - 0.002, Math.max(0.05, to.length())); to.normalize();
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  const pv = pole.clone().addScaledVector(to, -pole.dot(to)).normalize();
+  const elbow = S.clone().addScaledVector(to, a).addScaledVector(pv, h);
+  aimBone(sh, el, elbow.clone().sub(S).normalize());
+  el.getWorldPosition(_v2);
+  aimBone(el, wr, target.clone().sub(_v2).normalize());
+}
+export function rowPose(r, seat, fwd, lean, hands) {
+  const B = r.bones; if (!B.Hips || !B.LeftArm) return;
+  r.root.updateMatrixWorld(true);
+  const hp = B.Hips.getWorldPosition(new THREE.Vector3());
+  r.root.position.x += seat.x - hp.x; r.root.position.z += seat.z - hp.z; r.root.position.y += seat.y + 0.1 - hp.y;
+  r.root.updateMatrixWorld(true);
+  const up = new THREE.Vector3(0, 1, 0), axis = new THREE.Vector3().crossVectors(up, fwd).normalize(); // gira o "para cima" na direção de fwd
+  // tronco: a pose sentada já vem reta; a inclinação se divide entre a lombar e o peito
+  if (B.Spine) bendSpine(B.Spine, axis, lean * 0.55);
+  if (B.Spine1) bendSpine(B.Spine1, axis, lean * 0.45);
+  const side = new THREE.Vector3().crossVectors(up, fwd).normalize(); // esquerda do remador
+  for (const s of ['Left', 'Right']) {
+    const sh = B[s + 'Arm'], el = B[s + 'ForeArm'], wr = B[s + 'Hand']; if (!sh || !el || !wr || !hands[s]) continue;
+    const sg = s === 'Left' ? 1 : -1;
+    armIK(sh, el, wr, hands[s], new THREE.Vector3(0, -1, 0).addScaledVector(side, sg * 0.8));
+  }
+}
