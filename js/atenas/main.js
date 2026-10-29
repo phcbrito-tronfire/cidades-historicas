@@ -45,6 +45,11 @@ const MODEL_TABLE = {
   discobolo: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 },
   trirreme: { yaw: Math.PI, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 }, barco_pesca: { yaw: -Math.PI / 2, rough: 0.85 }, // proa (esporão/olho, ponta fina) sempre em +x: a trirreme vem de popa para +x e os dois barcos pequenos deitados no eixo z
   leao: { yaw: Math.PI / 2, rough: 0.7 },
+  // ruínas no fundo da baía (fotogrametria): tambor de coluna esculpido (Éfeso), coluna jônica com capitel, capitel
+  // jônico, e o Kyrenia — mercante grego do séc. IV a.C. — sem vela nem mastro, como naufrágio coberto de limo
+  tambor: { fit: 'y', rough: 0.85, tint: [0.82, 0.9, 0.8] }, coluna_jonica: { fit: 'y', rough: 0.85, tint: [0.84, 0.92, 0.82] },
+  capitel_jonico: { rough: 0.85, tint: [0.82, 0.9, 0.8] },
+  kyrenia: { rough: 0.95, tint: [0.36, 0.4, 0.3], hide: ['Object_2', 'Object_3', 'Object_4', 'Object_5', 'Object_12', 'Object_13'] },
   kouros: { yaw: Math.PI / 2, fit: 'y', rough: 0.55 },
   anforas: { fit: 'y', rough: 0.4, keepMetal: true }, anfora_negra: { fit: 'y', rough: 0.35 }, vaso: { fit: 'y', rough: 0.4 },
   oliveira: { fit: 'y', rough: 0.85, layer: 3 }, cipreste: { fit: 'y', rough: 0.85, layer: 3 },
@@ -417,7 +422,7 @@ async function main() {
     }
     if (!siteSeen && sea.site && player.diving && (player.pos.x - sea.site.x) ** 2 + (player.pos.z - sea.site.z) ** 2 < 14 * 14) {
       siteSeen = true;
-      artifacts.showInfo({ tag: 'Naufrágio', name: 'A carga de colunas', era: 'Baía do Falero', story: 'Tambores de coluna e capitéis de mármore espalhados no fundo, entre ânforas e as costelas de um casco apodrecido. Um navio de carga afundou aqui levando as peças desmontadas de um templo — as colunas viajavam assim, em tambores, e eram montadas no lugar. Naufrágios com cargas de mármore foram encontrados em vários pontos do Mediterrâneo.', foot: 'Volte à tona antes que o fôlego acabe.' });
+      artifacts.showInfo({ tag: 'Naufrágio', name: 'A carga de colunas', era: 'Baía do Falero', story: 'Um navio mercante adernado na areia, coberto de limo, e em volta a carga que ele levava: tambores de coluna — um deles esculpido com figuras —, capitéis jônicos e colunas inteiras, entre ânforas de vinho e azeite. As colunas viajavam desmontadas e eram montadas no lugar. O casco é como o do Kyrenia, um mercante grego achado no fundo do mar de Chipre com a carga quase intacta; naufrágios com mármore foram encontrados em vários pontos do Mediterrâneo.', foot: 'Volte à tona antes que o fôlego acabe.' });
     }
   };
 

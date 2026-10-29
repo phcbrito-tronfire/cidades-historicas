@@ -1,12 +1,13 @@
 // O fundo da baía do Falero: pradarias de posidônia balançando, estrelas-do-mar, ouriços nas pedras do raso,
-// ânforas perdidas e a carga de um navio que levava colunas de mármore do Pentélico (naufrágios assim existiram:
-// os tambores de coluna e os capitéis iam desmontados no porão). E os bichos: cardumes, pargos, golfinhos,
+// ânforas perdidas e um navio mercante afundado com a carga de mármore espalhada em volta — tambores de coluna,
+// capitéis e colunas jônicas (naufrágios assim existiram: as colunas iam desmontadas no porão). E os bichos: cardumes, pargos, golfinhos,
 // tartarugas e águas-vivas (estas queimam).
 import * as THREE from 'three';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
 import { SeaLife, scatterStatic, urchinGeometry } from '../comum/fauna.js';
 import { mulberry32 } from '../comum/util.js';
-import { addBox } from '../comum/collision.js';
+import { addBox, addCircle } from '../comum/collision.js';
+import { sculptureInstance } from '../comum/sculptures.js';
 
 const depthAt = (x, z) => WATER_Y - terrainHeight(x, z);
 
@@ -92,36 +93,28 @@ export async function buildSea(scene, tex, { onSting }) {
   for (let off = 38; off < 90 && !site; off += 4) for (let a = 110; a < 200 && !site; a += 6) { const p = coastPoint(a, off), dd = depthAt(p.x, p.z); if (dd > 4.5 && dd < 9) site = p; }
   const amph = [];
   if (site) {
-    const marble = new THREE.MeshStandardMaterial({ map: tex.plainMarble || null, color: 0xc8d0bc, roughness: 0.9 });
     const algae = new THREE.MeshStandardMaterial({ color: 0x5a6a3a, roughness: 1 });
-    const wood = new THREE.MeshStandardMaterial({ color: 0x2a2218, roughness: 1 });
     const g = new THREE.Group();
     const y0 = (x, z) => terrainHeight(site.x + x, site.z + z);
-    const drum = new THREE.CylinderGeometry(0.82, 0.82, 1.3, 20);
-    for (let i = 0; i < 9; i++) {
-      const x = (R() - 0.5) * 14, z = (R() - 0.5) * 8, lying = R() < 0.7;
-      const m = new THREE.Mesh(drum, marble);
-      m.position.set(site.x + x, y0(x, z) + (lying ? 0.7 : 0.6), site.z + z);
-      if (lying) m.rotation.set(0, R() * 3, Math.PI / 2); else m.rotation.y = R() * 3;
-      g.add(m);
-      addBox(site.x + x, site.z + z, 1.6, 1.6, y0(x, z) - 1, y0(x, z) + 1.3);
-    }
-    // dois capitéis dóricos (equino + ábaco), um deles virado
-    for (let i = 0; i < 2; i++) {
-      const cap = new THREE.Group();
-      const ech = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.8, 0.45, 20), marble); ech.position.y = 0.22;
-      const ab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.32, 2.2), marble); ab.position.y = 0.6;
-      cap.add(ech, ab);
-      const x = i ? 6 : -5, z = i ? -3 : 2.5;
-      cap.position.set(site.x + x, y0(x, z) + (i ? 0.75 : 0), site.z + z); if (i) cap.rotation.set(Math.PI, 0.5, 0.15);
-      g.add(cap);
-    }
-    // costelas do casco apodrecido, meio enterradas
-    for (let i = 0; i < 7; i++) {
-      const rib = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.09, 4, 10, Math.PI * 0.7), wood);
-      const x = -6 + i * 2;
-      rib.position.set(site.x + x, y0(x, 0) - 0.6, site.z); rib.rotation.set(0, Math.PI / 2, Math.PI * 0.15 + 0.1); g.add(rib);
-    }
+    // peças escaneadas de verdade (as mesmas de museus e sítios gregos): o navio afundado no meio, adernado e meio
+    // enterrado na areia, e a carga de mármore espalhada em volta
+    const put = async (name, size, x, z, { dy = 0, rx = 0, ry = 0, rz = 0, r = 1 } = {}) => {
+      const o = await sculptureInstance(name, size); if (!o.children.length) return;
+      const h = new THREE.Group(); h.position.set(site.x + x, y0(x, z) + dy, site.z + z); h.rotation.set(rx, ry, rz, 'YXZ'); h.add(o);
+      h.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } });
+      g.add(h); addCircle(site.x + x, site.z + z, r, y0(x, z) - 1, y0(x, z) + r * 1.4);
+    };
+    await Promise.all([
+      put('kyrenia', 13, 0, 0, { dy: -1.9, rx: 0.33, ry: 0.4, rz: 0.06, r: 2.2 }),
+      put('tambor', 1.5, -7.5, 3.2, { dy: 0.78, rz: Math.PI / 2, ry: 0.7, r: 0.9 }),
+      put('tambor', 1.4, 6.8, -4.1, { dy: -0.1, ry: 2.2, rx: 0.12, r: 0.9 }),
+      put('tambor', 1.5, 9.5, 2.6, { dy: 0.74, rz: Math.PI / 2, ry: -0.4, r: 0.9 }),
+      put('coluna_jonica', 2.3, -10.5, -3.5, { dy: -0.25, ry: 0.9, r: 1 }),
+      put('coluna_jonica', 1.9, 3.5, 6.5, { dy: -0.35, ry: 2.6, rx: 0.08, r: 1 }),
+      put('capitel_jonico', 1.6, -4, -5.5, { dy: 0.05, ry: 0.3, rz: 0.2, r: 0.8 }),
+      put('capitel_jonico', 1.6, 12, -1, { dy: 0.3, ry: 1.9, rx: Math.PI * 0.55, r: 0.8 }),
+    ]);
+    for (let k = -1; k <= 1; k += 2) addCircle(site.x + Math.cos(0.4) * k * 4.2, site.z - Math.sin(0.4) * k * 4.2, 1.6, y0(0, 0) - 1, y0(0, 0) + 2.2); // proa e popa do casco
     // limo e algas nas pedras
     for (let i = 0; i < 26; i++) { const x = (R() - 0.5) * 16, z = (R() - 0.5) * 10; const b = new THREE.Mesh(new THREE.SphereGeometry(0.25 + R() * 0.35, 6, 4), algae); b.position.set(site.x + x, y0(x, z), site.z + z); b.scale.y = 0.4; g.add(b); }
     g.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });

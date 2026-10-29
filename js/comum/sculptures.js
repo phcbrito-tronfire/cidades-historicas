@@ -19,6 +19,8 @@ async function loadModel(L, name) {
   const g = await L.loadAsync(ver(def.dir + (def.file || name) + '.glb'));
   const inner = g.scene;
   inner.rotation.set(...def.rot);
+  // peças que não entram (a vela e o cordame de um navio que virou naufrágio, o chão que veio no escaneamento)
+  if (def.hide) { const out = []; inner.traverse((n) => { if (n.isMesh && def.hide.includes(n.name)) out.push(n); }); for (const n of out) n.removeFromParent(); }
   const turn = new THREE.Group(); turn.rotation.y = def.yaw; turn.add(inner);
   const norm = new THREE.Group(); norm.add(turn);
   norm.updateMatrixWorld(true);
