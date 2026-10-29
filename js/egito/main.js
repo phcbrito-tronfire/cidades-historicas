@@ -36,6 +36,7 @@ import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
 import { buildNile } from './nilo.js';
+import { buildNileRuins } from './ruinas.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
 import { nextFrame, pick, rr, rand } from '../comum/util.js';
@@ -110,6 +111,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.35, 'Erguendo o templo de Ptah e as pirâmides de Gizé...');
   const city = buildCity(scene, tex);
+  const ruins = buildNileRuins(scene, city);
   if (city.pool) { city.pool.children.forEach((m) => (m.material = world.calmWater)); scene.add(city.pool); }
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');
   buildVegetation(scene, tex, city.exclusions);
@@ -375,6 +377,7 @@ async function main() {
     if (inR(city.zones.palacio)) return 'Palácio Real';
     if (inR(city.zones.quartel)) return 'Quartel da Divisão de Ptah';
     if (inR(city.zones.mercado)) return 'Mercado';
+    if (inR(city.zones.ilha)) return player.swimming ? 'Rio Nilo — junto à ilha de Hapi' : 'Ruínas do santuário de Hapi';
     if (inR(city.zones.cais)) return 'Cais do Nilo';
     if (dR > 40) return 'Margem Leste — Campos de Tiy';
     if (Math.abs(dR) < 46) return 'Margem do Nilo';
@@ -395,7 +398,7 @@ async function main() {
     });
   };
 
-  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -451,7 +454,7 @@ async function main() {
         }
       }
     }
-    if (started) { artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
+    if (started) { ruins.update(player, (c) => artifacts.showInfo(c)); artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
     actors.update(dt, t, player, quests, sky.state.night);
     nile.update(dt, t, player);
     if (started) health.update(dt, player);

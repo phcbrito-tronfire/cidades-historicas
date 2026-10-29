@@ -1,4 +1,4 @@
-// 20 artefatos inspirados em objetos reais do Egito Antigo (acervos de museus de hoje).
+// 26 artefatos inspirados em objetos reais do Egito Antigo (acervos de museus de hoje).
 // "where" diz em que lugar de Mênfis ele está escondido; "kind" escolhe o modelo 3D.
 export const ARTIFACTS = [
   {
@@ -132,5 +132,30 @@ export const ARTIFACTS = [
     name: 'Vaso de perfume de alabastro', era: 'Novo Império · calcita translúcida',
     museum: 'Os vasos de alabastro do túmulo de Tutancâmon, ainda com restos de perfume, estão no Grande Museu Egípcio, em Gizé.',
     story: 'Óleos perfumados de mirra, lírio e canela iam para o túmulo em vasos de alabastro, a pedra que deixa passar a luz. Na outra vida, o morto se perfumaria para os banquetes. Os túmulos de Sacara, a necrópole de Mênfis, estavam cheios deles — por isso mesmo foram tão saqueados.',
+  },
+  // ---- no rio: a ilha do santuário de Hapi, o nilômetro, o barco afundado e a margem dos crocodilos
+  {
+    id: 'hipopotamo-faianca', kind: 'hippo', where: 'ilha-santuario',
+    name: 'Hipopótamo de faiança azul', era: 'Médio Império · faiança',
+    museum: 'O mais famoso, apelidado de "William", está no Metropolitan Museum de Nova York.',
+    story: 'Hipopótamos azuis pintados com lótus e papiro, como se estivessem no meio do pântano. Eram postos nos túmulos — mas o hipopótamo era perigoso no rio, então muitas vezes quebravam três das patas da estatueta, para ela não fazer mal ao morto na outra vida.',
+  },
+  {
+    id: 'covado-real', kind: 'cubit', where: 'nilometro',
+    name: 'Côvado real', era: 'Novo Império · madeira',
+    museum: 'Há réguas de côvado no Louvre, no Museu Egípcio de Turim e no do Cairo.',
+    story: 'A régua oficial de medida: cerca de 52 cm, dividida em 7 palmos e 28 dedos. Era com ela que se marcavam os degraus do nilômetro e se construíam templos e pirâmides — por isso os blocos se encaixam com tanta precisão.',
+  },
+  {
+    id: 'ancora-pedra', kind: 'anchor', where: 'naufragio-nilo', underwater: true,
+    name: 'Âncora de pedra', era: 'Novo Império · calcário',
+    museum: 'Âncoras assim foram achadas em naufrágios do Mar Vermelho e no porto de Mersa Gawasis.',
+    story: 'Uma laje de pedra com um furo para a corda: os barcos do Nilo usavam âncoras assim, pesadas o bastante para segurar o casco contra a correnteza. Esta ficou presa ao lado do barco de carga que afundou perto da ilha.',
+  },
+  {
+    id: 'estatueta-sobek', kind: 'sobek', where: 'margem-crocodilos',
+    name: 'Estatueta de Sobek', era: 'Novo Império · bronze',
+    museum: 'Há estatuetas de Sobek no Museu Britânico e no Louvre.',
+    story: 'Sobek, o deus com cabeça de crocodilo, era o senhor das águas e da força do faraó. Os egípcios o adoravam justamente porque tinham medo dele: pescadores e barqueiros deixavam oferendas na margem para que os crocodilos os poupassem.',
   },
 ];

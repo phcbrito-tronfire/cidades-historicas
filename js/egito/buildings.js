@@ -711,6 +711,7 @@ export function buildCity(scene, tex) {
     }
   }
   B.build(scene);
+  out.M = M; // as ruínas do Nilo usam os mesmos materiais
   return out;
 }
 
@@ -846,7 +847,7 @@ const sHtop = () => 9.8;
 
 // coluna em feixe de papiro (8 hastes), com capitel em botão fechado ou flor aberta
 const LOBES = 8;
-function lobed(geo, amp) {
+export function lobed(geo, amp) {
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z);

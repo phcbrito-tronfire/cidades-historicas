@@ -46,6 +46,14 @@ function model(kind) {
     case 'tablet': add(new THREE.BoxGeometry(0.2, 0.26, 0.04), CLAY, 0, 0.13, 0, -0.2); for (let i = 0; i < 8; i++) add(new THREE.BoxGeometry(0.16, 0.006, 0.006), std(0x6a4a2a), 0, 0.05 + i * 0.026, 0.024, -0.2); break;
     case 'maat': add(new THREE.BoxGeometry(0.14, 0.16, 0.02), GOLD, 0, 0.12, 0); add(new THREE.ConeGeometry(0.025, 0.14, 6), GOLD, 0.03, 0.27, 0); add(new THREE.SphereGeometry(0.03, 10, 8), GOLD, -0.02, 0.24, 0); break;
     case 'alabaster': add(new THREE.LatheGeometry([[0.03, 0], [0.07, 0.02], [0.1, 0.1], [0.09, 0.2], [0.05, 0.26], [0.05, 0.3], [0.07, 0.32]].map(([r, y]) => new THREE.Vector2(r, y)), 18), ALAB); break;
+    case 'hippo': { const BLK = std(0x15232a, { roughness: 0.4 }); add(new THREE.SphereGeometry(0.12, 18, 12), FAI, 0, 0.12, 0, 0, 0, 0, [1, 0.8, 1.6]); add(new THREE.SphereGeometry(0.07, 14, 10), FAI, 0, 0.13, 0.19, 0, 0, 0, [1.05, 0.85, 1.2]);
+      for (const [x, z] of [[-0.06, 0.1], [0.06, 0.1], [-0.06, -0.1], [0.06, -0.1]]) add(new THREE.CylinderGeometry(0.03, 0.035, 0.07, 8), FAI, x, 0.035, z);
+      for (let i = 0; i < 5; i++) add(new THREE.TorusGeometry(0.03, 0.004, 4, 10), BLK, -0.05 + (i % 3) * 0.05, 0.2, -0.08 + i * 0.04, Math.PI / 2); } break;
+    case 'cubit': add(new THREE.BoxGeometry(0.52, 0.035, 0.05), WOOD, 0, 0.03, 0); for (let i = 0; i <= 28; i++) add(new THREE.BoxGeometry(0.003, 0.004, i % 4 ? 0.015 : 0.03), GOLD, -0.26 + i * (0.52 / 28), 0.05, 0.012); break;
+    case 'anchor': { const sh = new THREE.Shape([new THREE.Vector2(-0.14, 0), new THREE.Vector2(0.14, 0), new THREE.Vector2(0.09, 0.34), new THREE.Vector2(-0.09, 0.34)]); const hole = new THREE.Path(); hole.absarc(0, 0.26, 0.035, 0, Math.PI * 2); sh.holes.push(hole);
+      const g2 = new THREE.ExtrudeGeometry(sh, { depth: 0.07, bevelEnabled: true, bevelSize: 0.01, bevelThickness: 0.01, bevelSegments: 1 }); g2.translate(0, 0, -0.035); add(g2, STONE, 0, 0, 0); } break;
+    case 'sobek': add(new THREE.BoxGeometry(0.07, 0.1, 0.07), BRONZE, 0, 0.05, 0); add(new THREE.CapsuleGeometry(0.035, 0.1, 4, 10), BRONZE, 0, 0.16, 0); add(new THREE.SphereGeometry(0.035, 10, 8), BRONZE, 0, 0.25, 0); add(new THREE.BoxGeometry(0.03, 0.025, 0.09), BRONZE, 0, 0.245, 0.055);
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 12), GOLD, 0, 0.29, 0); break;
     case 'udjat': add(new THREE.SphereGeometry(0.08, 14, 10), FAI, 0, 0.1, 0, 0, 0, 0, [1.4, 0.65, 0.3]); add(new THREE.SphereGeometry(0.03, 10, 8), LAPIS, 0, 0.1, 0.02); add(new THREE.BoxGeometry(0.02, 0.08, 0.02), FAI, -0.03, 0.03, 0, 0, 0, 0.3); break;
   }
   return g;
@@ -82,6 +90,8 @@ export class Artifacts {
       canteiro: [H.x - 8, H.z + 10, 50], 'templo-vale': [-154, 48, 50], rainhas: [-183, -86, 50], miquerinos: [-200, 152, 50],
       esfinge: [-178, 13, 50], cais: [S.pier.x - 2, S.pier.z + 1.2, 3], quartel: [Q.x - 7, Q.z + 2, 50], vilarejo: [riverX(-118) + 50, -118, 50],
       vizir: [68, -124, 50], sacara: [-169, -58, 50],
+      'ilha-santuario': [S.hapiShrine.x, S.hapiShrine.z + 0.6, 3], nilometro: [S.nilometer.x - 3.2, S.nilometer.z, 50],
+      'naufragio-nilo': [S.nileWreckAnchor.x, S.nileWreckAnchor.z, 0], 'margem-crocodilos': [riverX(-122) + 44, -122, 50],
     };
     const gt = glowTex();
     this.glowMat = new THREE.SpriteMaterial({ map: gt, color: 0xffe2a0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -184,7 +194,7 @@ export class Artifacts {
       it.m.rotation.y = t * 0.8;
       it.m.position.y = 0.25 + Math.sin(t * 2 + it.base) * 0.05;
       it.glow.material.opacity = 0.6 + Math.sin(t * 3) * 0.25;
-      if (d2 < 1.7 * 1.7 && Math.abs(it.g.position.y - p.y) < 2 && !player.swimming) {
+      if (d2 < 1.7 * 1.7 && Math.abs(it.g.position.y - p.y) < 2 && (!player.swimming || (it.def.underwater && player.diving))) {
         it.g.visible = false;
         this.found.add(it.def.id);
         try { localStorage.setItem(SAVE, JSON.stringify([...this.found])); } catch (e) { /* */ }

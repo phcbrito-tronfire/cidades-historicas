@@ -14,6 +14,8 @@ export const PYRAMID_PADS = [
   { x: -258, z: -70, r: 56, y: 7.0 }, { x: -246, z: 52, r: 52, y: 7.4 }, { x: -228, z: 152, r: 28, y: 6.6 }, { x: -196, z: -86, r: 30, y: 6.2 },
 ];
 
+// ilhota de areia no meio do Nilo, com as ruínas do antigo santuário de Hapi (ver ruinas.js)
+export const ISLE = { z: -180, dx: 5, a: 11, b: 27, top: 1.35 };
 export function riverX(z) {
   return 150 + 18 * Math.sin(z / 110) + 8 * Math.sin(z / 37 + 1.3);
 }
@@ -39,6 +41,12 @@ export function terrainHeight(x, z) {
     const t = Math.min(ad, RIVER_HALF) / RIVER_HALF;
     const bed = -1.4 - 3.6 * (1 - t * t) + n2 * 0.6;
     h = lerp(land, bed, k);
+  }
+  // ilhota: sobe do leito do rio até um pouco acima da água, com a borda recortada
+  {
+    const ix = riverX(ISLE.z) + ISLE.dx, u = (x - ix) / ISLE.a, v = (z - ISLE.z) / ISLE.b;
+    const r = Math.hypot(u, v) + (fbm(Math.atan2(v, u) * 1.6 + 4, 2.7, 3) - 0.5) * 0.22;
+    if (r < 1.6) h = Math.max(h, lerp(h, ISLE.top + n2 * 0.3, smoothstep(1.45, 0.75, r)));
   }
   // dunas com crista no deserto (a oeste do planalto e no deserto leste)
   const duneZone = d < 0 ? smoothstep(-300, -340, x) + smoothstep(-200, -260, x) * smoothstep(200, 260, Math.abs(z)) : smoothstep(165, 200, d);
