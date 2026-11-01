@@ -93,6 +93,32 @@ export class Actors {
     return { outfit: 'chiton', cloth: c };
   }
 
+  // romanos: toga (cidadãos), túnica colorida (povo), estola e palla (mulheres), legionários e crianças
+  romanLook(kind) {
+    const tun = pick([0xd8c8a0, 0xb0402c, 0x8a6a3a, 0x6a7a4a, 0x3a5a8a, 0xc8a050, 0xefe8d8]);
+    if (kind === 'toga') return { outfit: 'himation', cloth: 0xf4efe2, border: rand() < 0.15 ? 0x6a1a4a : null, beard: rand() < 0.3 ? 'short' : null, hairColor: pick([0x2a1c14, 0x3a2a1e, 0x5a4a3a]) };
+    if (kind === 'woman') return { outfit: 'peplos', cloth: tun, border: rand() < 0.5 ? pick([0x8e2c22, 0xd8b45a, 0x2c4f8c]) : null, hair: rand() < 0.5 ? 'veil' : 'up', veilColor: pick([0xf2ecdc, 0xd8c8a8, 0x8e6a4a, 0x6a3a5a]) };
+    if (kind === 'soldier') return { outfit: 'chiton', cloth: 0xa82a20, border: null, beard: 'short', extras: ['lorica', 'galea', 'scutum', 'gladius'], shieldColor: 0xa8261e };
+    if (kind === 'worker') return { outfit: 'exomis', cloth: pick([0xa89a7a, 0x8a7a5a, 0xc8b89a]), border: null, beard: rand() < 0.5 ? 'short' : null };
+    if (kind === 'child') return { outfit: 'chiton', cloth: pick([0xf2ecdc, 0xd8b45a, 0x6a7f4a]), border: null, height: rr(1.05, 1.3) };
+    return { outfit: 'chiton', cloth: tun, border: null, beard: rand() < 0.5 ? 'short' : null };
+  }
+  spawnRome() {
+    const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z)) break; } return p; };
+    const walker = (kind, region, n, o = {}) => {
+      for (let i = 0; i < n; i++) {
+        const p = randIn(region), h = this.addHuman(this.romanLook(kind), p.x, p.z, rand() * 6);
+        this.agents.push({ ...h, kind: o.as || (kind === 'soldier' ? 'soldier' : kind === 'child' ? 'child' : 'villager'), region, speed: o.speed ?? rr(1.0, 1.5), wait: rr(0, 4), lines: o.lines || VILLAGER_LINES, mode: 'idle', run: o.run });
+      }
+    };
+    const R = (x, z, hw, hd) => [x - hw, x + hw, z - hd, z + hd];
+    walker('toga', R(-205, -18, 90, 30), 10); walker('woman', R(-205, -18, 90, 30), 6); walker('tunic', R(-205, -18, 90, 30), 6); // Fórum
+    walker('soldier', R(-205, -18, 80, 25), 3, { lines: SOLDIER_LINES, speed: 1.2 });
+    for (const [x, z] of [[-100, 0], [90, 10], [0, -75], [0, 80]]) { walker('tunic', R(x, z, 20, 12), 4); walker('woman', R(x, z, 20, 12), 2); walker('child', R(x, z, 20, 12), 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); } // em volta do Coliseu
+    walker('tunic', R(-235, 250, 120, 6), 6); walker('worker', R(-120, 120, 60, 40), 4, { lines: WORKER_LINES }); // Circo e ruas do Célio
+    for (const r of [R(160, -120, 80, 60), R(-380, -260, 90, 70), R(200, 180, 80, 60)]) { walker('tunic', r, 4); walker('woman', r, 3); walker('child', r, 2, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
+  }
+
   spawnAmbient() {
     const C = this.city, S = C.spots, A = AGORA;
     // ponto sorteado na região, sempre em chão seco (nada de gente nascendo no fundo do rio ou do porto)

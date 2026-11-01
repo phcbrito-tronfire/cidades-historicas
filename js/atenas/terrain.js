@@ -196,7 +196,7 @@ function surface(x, z, h, slope) {
   // cidade e ruas de terra batida; nos morros e fora dos muros, grama seca e pedras
   const hillness = (d < 0 ? ss(3, 10, h) : ss(14, 26, h)) + ss(0.12, 0.35, slope) * 0.6;
   const rural = ss(330, 420, Math.hypot(x + 140, z + 60));
-  grass = inland * clamp(hillness * 0.7 + rural * 0.8 + ss(0.55, 0.72, n) * 0.4, 0, 1);
+  grass = inland * clamp(hillness * 0.8 + rural * 0.85 + ss(0.5, 0.68, n) * 0.55, 0, 1);
   trail = inland * hillness * ss(0.4, 0.6, n2) * 0.7;
   ground = inland * Math.max(0, 1 - grass - trail);
   let r = 1, g = 1, b = 1;
@@ -254,8 +254,8 @@ vec3 cS = tri(tSand, P / 12.0).rgb * vec3(1.05, 1.0, 0.92);
 vec3 cWet = tri(tWet, P / 5.0).rgb * vec3(0.95, 0.92, 0.86);
 float wet = 1.0 - smoothstep(0.08, 0.5, vWP.y + (tri(tSand, P / 7.0).r - 0.5) * 0.3);
 cS = mix(cS, cWet, wet * 0.85);
-vec3 cG = tri(tGround, P / 4.5).rgb * vec3(1.12, 1.0, 0.84);
-vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(1.05, 1.0, 0.75);
+vec3 cG = tri(tGround, P / 4.5).rgb * vec3(1.14, 1.06, 0.94); // terra batida clara, de cascalho calcário
+vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(0.9, 1.04, 0.66); // mato verde-oliva
 vec3 cT = tri(tTrail, P / 5.0).rgb;
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.12;
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);

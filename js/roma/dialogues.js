@@ -301,27 +301,22 @@ export const NPCS = [
 
 export const GUARD_LINES = {};
 export const VILLAGER_LINES = [
-  'Você não é daqui, é? Pelo sotaque, parece bárbaro... sem ofensa! "Bárbaro" é só quem não fala grego.',
-  'Hoje tem assembleia na Pnyx. Os arqueiros citas passam com uma corda tingida de vermelho: quem chegar atrasado e sujo de tinta paga multa!',
-  'Já subiu para ver a deusa nova? Dizem que tem mais ouro que o tesouro do rei persa.',
-  'Meu filho rema na frota. Uma dracma por dia! No meu tempo, os pobres não tinham nem voz na assembleia.',
-  'Os figos de Mírrina são bons, mas o pão da Tebana, perto da fonte, é melhor.',
-  'Os comediantes vivem zombando de Péricles. Chamam-no de "cabeça de cebola". Ha!',
-  'Cuidado ao passar perto das hermas: Hermes protege as ruas e as portas.',
-  'Vou à fonte buscar água: aqui em casa não tem poço. É lá que as mulheres se encontram para conversar.',
-  'Os espartanos? Comem um caldo preto de sangue de porco e vinagre. Que gente!',
-  'A coruja é a ave de Atena. Levar corujas para Atenas é como levar areia para a praia.',
+  'Amanhã tem jogos no Coliseu! Dizem que vêm leões da África.',
+  'O pão é de graça para os cidadãos: o imperador distribui o trigo todo mês. Pão e circo, como dizem.',
+  'Trajano conquistou a Dácia e trouxe tanto ouro que pagou cem dias de jogos!',
+  'Moro numa ínsula de cinco andares. Lá em cima é barato, mas se pega fogo...',
+  'Vou às termas depois do trabalho: banho quente, banho frio, e uma boa conversa.',
+  'Cuidado com os carroceiros à noite: de dia as carroças são proibidas no centro.',
+  'Já foi ao Circo Máximo? Cabem mais de 150 mil pessoas! Eu torço pelos Verdes.',
 ];
 export const SOLDIER_LINES = [
-  'Os cidadãos servem dos dezoito aos sessenta anos. Os mais velhos guardam as muralhas.',
-  'O escudo é a parte mais importante: quem perde a lança é desastrado; quem perde o escudo é covarde.',
-  'Treinamos no ginásio da Academia, fora dos muros. Nus, como os atletas.',
-  'Dizem que os coríntios estão mandando homens para Potideia. Isso vai acabar mal.',
+  'Vinte anos de serviço na legião, e no fim um pedaço de terra. É o trato.',
+  'Marchamos trinta quilômetros por dia com tudo nas costas: armas, panela, estacas para o acampamento.',
+  'O escudo se chama scutum. Na formação da tartaruga, ninguém passa uma flecha.',
 ];
 export const WORKER_LINES = [
-  'Mais um bloco para os Propileus! Uma dracma por dia e as costas destruídas.',
-  'O mármore do Pentélico brilha com o sol: tem cristais pequenininhos que refletem a luz.',
-  'Cuidado com o guindaste! Se a corda escapa, ninguém sobra para contar.',
+  'Estou levando tijolos para as obras do Fórum de Trajano. Que construtor é aquele Apolodoro!',
+  'Concreto romano: cal, areia vulcânica de Putéoli e pedra. Dura para sempre.',
 ];
 export const FARMER_LINES = [
   'As oliveiras levam anos para dar azeite. Quem planta uma oliveira planta para os netos.',
@@ -334,11 +329,11 @@ export const SAILOR_LINES = [
   'Os fenícios são os melhores marinheiros do mundo, depois de nós, claro.',
 ];
 export const CHILD_LINES = [
-  'Quer jogar astrágalos? São ossinhos de carneiro: você joga e vê de que lado caem!',
-  'Meu pedagogo é escravo e me leva todo dia à escola. Lá aprendo letras, a lira e Homero de cor.',
-  'Dizem que no alto da Acrópole mora uma serpente sagrada. A sacerdotisa dá bolos de mel para ela!',
+  'Quer jogar nozes? A gente arruma em pirâmide e tenta derrubar com outra noz!',
+  'Meu pedagogo me leva à escola de manhã cedinho. Se eu errar a conta, o mestre bate com a vara!',
+  'Quando crescer vou ser gladiador! Ou auriga dos Verdes, no Circo Máximo.',
 ];
 export const PRIEST_LINES = [
-  'Os sacrifícios de bois são feitos no grande altar de Atena. A fumaça sobe para os deuses; a carne fica para o povo.',
-  'Lave as mãos na bacia de água lustral antes de entrar no recinto sagrado.',
+  'As vestais guardam o fogo sagrado no templo redondo de Vesta. Se ele apagar, é desgraça para Roma.',
+  'No Capitólio, o templo de Júpiter Ótimo Máximo: é lá que o general vitorioso termina o triunfo.',
 ];

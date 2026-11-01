@@ -28,11 +28,12 @@ function corinthian(h, r) {
 // templo romano: pódio alto com escadaria só na frente, pórtico de colunas, cela fechada, frontão e telhado de telhas
 // o = { x, z, face, w (largura), d (profundidade), h (coluna), podium, cols (na frente), deep (fileiras do pórtico), name }
 function temple(B, M, out, o) {
-  const y = Math.min(terrainHeight(o.x, o.z), terrainHeight(o.x + 3, o.z + 3)) - 0.2, ry = FACE[o.face];
+  const y = Math.max(terrainHeight(o.x, o.z), terrainHeight(o.x + 3, o.z + 3)) - 0.2, ry = FACE[o.face];
   const F = mat4(o.x, y, o.z, 0, ry, 0), box = (mat, w, h, d, x, yy, z, ex = {}) => B.box(mat, w, h, d, x, yy, z, { frame: F, ...ex });
   const W = o.w, D = o.d, P = o.podium, H = o.h, r = H / 20, cols = o.cols, ic = (W - r * 3) / (cols - 1);
   // pódio (concreto revestido de mármore) e escadaria na frente (+x local)
   box(M.marbleWall, D, P, W, 0, 0, 0);
+  box(M.travertine, D + 1.2, 9, W + 1.2, 0, -9, 0); // alicerce até o chão (em encosta o pódio não fica no ar)
   box(M.marble, D + 0.3, 0.35, W + 0.3, 0, P - 0.35, 0);
   const nSt = Math.ceil(P / 0.3), run = 0.38;
   for (let i = 0; i < nSt; i++) box(M.marble, run, (i + 1) * (P / nSt), W * 0.75, D / 2 + run * (nSt - i - 0.5), 0, 0);
@@ -75,7 +76,7 @@ function basilica(B, M, out, o) {
   }
   for (let lv = 0; lv < 2; lv++) for (const s of [-1, 1]) B.box(M.travertine, L, H * 0.1, 1.4, o.x, y + 0.8 + lv * H * 0.7 + H * 0.62, o.z + s * (W / 2 - 0.6));
   B.box(M.marbleWall, L - 6, H * 1.55, W - 9, o.x, y + 0.8, o.z); // nave central, mais alta
-  for (const s of [-1, 1]) B.geo(roofHalf(L + 1, W / 2 + 0.5, 3.4), M.tiles, o.x, y + 0.8 + H * 1.42, o.z, { ry: s > 0 ? -Math.PI / 2 : Math.PI / 2 });
+  for (const s of [-1, 1]) B.geo(roofHalf(L + 1, W / 2 + 0.5, 3.4), M.tiles, o.x, y + 0.8 + H * 1.42 + 3.4, o.z, { ry: s > 0 ? 0 : Math.PI }); // cumeeira ao longo do comprimento
   addBox(o.x, o.z, L - 6, W - 9, y - 1, y + 0.8 + H * 1.55);
   addBox(o.x, o.z, L + 2, W + 2, y - 1, y + 0.8);
   out.exclusions.push([o.x - L / 2 - 6, o.x + L / 2 + 6, o.z - W / 2 - 6, o.z + W / 2 + 6]);

@@ -111,6 +111,7 @@ async function main() {
   await step(0.68, 'Abrindo os portões do Coliseu...');
   const actors = new Actors(scene, city);
   actors.camera = camera;
+  actors.spawnRome(); // povo de Roma pelas ruas, no Fórum e em volta do Coliseu
   const items = new Items(scene, tex.glow);
 
   await step(0.82, 'Preparando o explorador...');
