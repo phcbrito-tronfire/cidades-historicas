@@ -10,6 +10,13 @@ export const OBJECTIVES = [
   { id: 'podio', text: 'Suba ao pódio, onde se sentavam os senadores' },
   { id: 'summa', text: 'Chegue à última fileira da arquibancada' },
   { id: 'tibre', text: 'Nade no rio Tibre' },
+  { id: 'apolodoro', text: 'Converse com Apolodoro de Damasco, o arquiteto de Trajano, no Fórum' },
+  { id: 'tacito', text: 'Ouça o historiador Tácito junto à Cúria do Senado' },
+  { id: 'cornelia', text: 'Conheça a vestal Cornélia no templo de Vesta' },
+  { id: 'domicio', text: 'Fale com o lanista na entrada oeste do Coliseu' },
+  { id: 'vero', text: 'Encontre o gladiador Vero esperando no hipogeu' },
+  { id: 'lucio', text: 'Fale com o centurião na entrada leste do Coliseu' },
+  { id: 'jogos', text: 'Assista a três programas diferentes dos jogos (aperte C para passar os dias)' },
 ];
 export const FINAL_REQ = 99;
 const SAVE = 'cidades-historicas:roma:v1';
@@ -21,6 +28,8 @@ export class Quests {
     const S = city.spots;
     this.hints = {};
     const H = (id, v) => { if (v) this.hints[id] = [v.x, v.z]; };
+    for (const id of ['apolodoro', 'tacito', 'cornelia', 'domicio', 'vero', 'lucio']) H(id, S['npc_' + id]);
+    this.seenEvents = new Set();
     H('coliseu', S.colGateW); H('arena', S.colArena); H('hipogeu', S.hypogeumStair); H('podio', S.podium); H('summa', S.topRow);
     this.load();
   }

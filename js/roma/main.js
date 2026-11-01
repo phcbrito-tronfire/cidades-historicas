@@ -112,6 +112,7 @@ async function main() {
   const actors = new Actors(scene, city);
   actors.camera = camera;
   actors.spawnRome(); // povo de Roma pelas ruas, no Fórum e em volta do Coliseu
+  actors.spawnRomeKey(COL); // personagens com conversa
   const items = new Items(scene, tex.glow);
 
   await step(0.82, 'Preparando o explorador...');
@@ -177,6 +178,32 @@ async function main() {
     if (quests.done.size === 0) ui.toast('À sua frente, o Coliseu. Entre por qualquer um dos arcos do térreo.', 'quest', 6500);
   });
 
+  // ---------------- conversas ----------------
+  const conversation = (k) => {
+    const def = k.def;
+    k.talking = true; player.locked = true; k.read = k.read || new Set();
+    ui.openDialog(def); audio.talk();
+    const close = () => { ui.closeDialog(); k.talking = false; player.locked = false; };
+    const topic = (i, page) => {
+      const tp = def.topics[i]; k.read.add(i);
+      if (def.objective) quests.complete(def.objective);
+      const last = page >= tp.a.length - 1;
+      ui.say(tp.a[page], [{ label: last ? 'Voltar às perguntas' : 'Continuar...', cb: () => (last ? menu(false) : topic(i, page + 1)) }]);
+    };
+    const menu = (first) => {
+      const opts = def.topics.map((tp, i) => ({ label: tp.q, read: k.read.has(i), cb: () => topic(i, 0) }));
+      opts.push({ label: 'Até logo.', cb: () => ui.say(def.bye, [{ label: '(Despedir-se)', cb: close }]) });
+      ui.say(first ? def.greet : ['O que mais você quer saber?', 'Pergunte, viajante.', 'Mais alguma curiosidade?'][Math.floor(Math.random() * 3)], opts);
+    };
+    menu(true);
+  };
+  const quickLine = (o, name, text) => {
+    o.talking = true; player.locked = true; ui.openDialog({ name, title: '' }); audio.talk();
+    ui.say(text, [{ label: '(Seguir caminho)', cb: () => { ui.closeDialog(); o.talking = false; player.locked = false; } }]);
+  };
+  const NAMES = { villager: 'Romano', soldier: 'Legionário', worker: 'Trabalhador', child: 'Criança' };
+  const talkTo = (target) => { if (target.type === 'npc') return conversation(target.o); const o = target.o; quickLine(o, NAMES[target.type] || 'Romano', (o.lines || ['...'])[Math.floor(Math.random() * (o.lines || ['...']).length)]); };
+
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
     if (!started || e.repeat) return;
@@ -184,6 +211,7 @@ async function main() {
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
+      case 'KeyE': { const tgt = actors.nearestInteractable(player.pos); if (tgt) talkTo(tgt); break; }
       case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); games.onTime(sky.current); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': mount.key(player); break;
@@ -275,6 +303,7 @@ async function main() {
     if (mount.state === 'riding') mount.update(dt, t, player);
     else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
+    if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }
     actors.update(dt, t, player, quests, sky.state.night);
     games.update(dt, t, player, sky.state.night);
     legion.update(dt, t, player);
@@ -290,12 +319,14 @@ async function main() {
     fx.update(dt);
     if (started) {
       const parts = [];
+      const tgt = !ui.dialogOpen && actors.nearestInteractable(player.pos);
+      if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : 'o ' + (NAMES[tgt.type] || 'romano').toLowerCase()}`);
       if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');
       else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));
       ui.setPlace(placeName());
       miniT -= dt;
-      if (miniT <= 0) { ui.drawMinimap(player, [], hints()); miniT = 0.1; }
+      if (miniT <= 0) { ui.drawMinimap(player, actors.key.map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) })), hints()); miniT = 0.1; }
       const cc = coastC(player.pos.x, player.pos.z);
       audio.update(dt, { nearWater: 0, night: sky.state.night > 0.5, market: 0, sea: Math.max(0, Math.min(1, 1 - -cc / 90)) });
     }

@@ -103,6 +103,26 @@ export class Actors {
     if (kind === 'child') return { outfit: 'chiton', cloth: pick([0xf2ecdc, 0xd8b45a, 0x6a7f4a]), border: null, height: rr(1.05, 1.3) };
     return { outfit: 'chiton', cloth: tun, border: null, beard: rand() < 0.5 ? 'short' : null };
   }
+  // personagens de Roma (com conversa e objetivo): Apolodoro no Fórum, Tácito na Cúria, a vestal no templo de Vesta,
+  // o lanista e o centurião nas entradas do Coliseu e o gladiador esperando no hipogeu
+  spawnRomeKey(COL) {
+    const S = this.city.spots, Y = COL.y;
+    const P = {
+      apolodoro: [-185, -50, 0], tacito: [S.curia.x + 1, S.curia.z + 3, Math.PI / 2], cornelia: [S.vesta.x, S.vesta.z, Math.PI / 2],
+      domicio: [-(COL.A + 6), 4, -Math.PI / 2], vero: [-12, 2.2, Math.PI / 2, Y - COL.hyp], lucio: [COL.A + 6, 4, Math.PI / 2],
+    };
+    for (const def of NPCS) {
+      const [x, z, ry, y] = P[def.id];
+      const h = this.addHuman({ ...def.look }, x, z, ry, y);
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(def.name, def.title), transparent: true, depthWrite: false }));
+      label.scale.set(2.6, 0.65, 1); label.position.y = 2.35; label.renderOrder = 5; h.rig.root.add(label);
+      const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false }));
+      marker.scale.setScalar(0.8); marker.position.y = 2.95; h.rig.root.add(marker);
+      this.key.push({ def, ...h, ry, label, marker, talking: false, kind: 'npc', mode: 'idle' });
+      S['npc_' + def.id] = new V3(x, h.pos.y, z);
+    }
+  }
+
   spawnRome() {
     const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z)) break; } return p; };
     const walker = (kind, region, n, o = {}) => {
