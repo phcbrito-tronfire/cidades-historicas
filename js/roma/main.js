@@ -136,7 +136,8 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
-  const artifacts = new Artifacts(scene, city, ui, audio, () => {});
+  const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
+  quests.artifactCount = artifacts.count;
   // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)
   const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality });
   games.lastPhase = sky.current;
@@ -316,6 +317,7 @@ async function main() {
     else if (mount.state === 'riding') mount.update(dt, t, player);
     else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
+    if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }
     actors.update(dt, t, player, quests, sky.state.night);
     games.update(dt, t, player, sky.state.night);

@@ -17,6 +17,7 @@ export const OBJECTIVES = [
   { id: 'vero', text: 'Encontre o gladiador Vero esperando no hipogeu' },
   { id: 'lucio', text: 'Fale com o centurião na entrada leste do Coliseu' },
   { id: 'jogos', text: 'Assista a três programas diferentes dos jogos (aperte C para passar os dias)' },
+  { id: 'artefatos', text: 'Encontre os 13 artefatos da Roma Antiga', count: 13 },
 ];
 export const FINAL_REQ = 99;
 const SAVE = 'cidades-historicas:roma:v1';
@@ -57,5 +58,5 @@ export class Quests {
   }
   save() { try { localStorage.setItem(SAVE, JSON.stringify({ done: [...this.done] })); } catch (e) { /* sem armazenamento */ } }
   load() { try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) d.done.forEach((x) => this.done.add(x)); } catch (e) { /* */ } }
-  reset() { try { localStorage.removeItem(SAVE); localStorage.removeItem(SAVE + ':artefatos'); } catch (e) { /* */ } }
+  reset() { try { localStorage.removeItem(SAVE); localStorage.removeItem('cidades-historicas:roma:artefatos'); } catch (e) { /* */ } }
 }

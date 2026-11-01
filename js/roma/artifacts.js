@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { ARTIFACTS } from './artifacts-data.js';
 import { groundAt, blocked, terrainAt } from '../comum/collision.js';
 import { getTextures } from './textures.js';
+import { coastPoint } from './terrain.js';
 
 const SAVE = 'cidades-historicas:roma:artefatos';
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...o });
@@ -49,6 +50,17 @@ function model(kind) {
     case 'chisel': for (let i = 0; i < 3; i++) { add(new THREE.CylinderGeometry(0.008, 0.012, 0.2, 6), std(0x5a5a5e, { metalness: 0.7, roughness: 0.5 }), -0.05 + i * 0.05, 0.012, 0, Math.PI / 2, i * 0.3, 0); } add(new THREE.CylinderGeometry(0.04, 0.04, 0.1, 10), WOOD, 0.1, 0.05, 0.05, 0, 0, Math.PI / 2); break;
     case 'arrowheads': for (let i = 0; i < 3; i++) { add(new THREE.ConeGeometry(0.03, 0.1, 3), BRONZE, -0.08 + i * 0.08, 0.06, 0, 0, i * 0.6, Math.PI / 2); add(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 5), BRONZE, -0.08 + i * 0.08, 0.06, 0.1, Math.PI / 2, 0, 0); } break;
     case 'shield': add(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24), BRONZE, 0, 0.24, 0, Math.PI / 2 - 0.25, 0, 0); add(new THREE.TorusGeometry(0.2, 0.015, 6, 24), BRONZE, 0, 0.24, 0.02, -0.25, 0, 0); break;
+    case 'coin': add(new THREE.CylinderGeometry(0.1, 0.1, 0.018, 28), GOLD, 0, 0.12, 0, Math.PI / 2 - 0.3); add(new THREE.CylinderGeometry(0.06, 0.06, 0.024, 20), GOLD, 0, 0.12, 0.004, Math.PI / 2 - 0.3); break;
+    case 'sestertius': { add(new THREE.CylinderGeometry(0.14, 0.14, 0.022, 28), std(0xc8a050, { metalness: 0.8, roughness: 0.4 }), 0, 0.16, 0, Math.PI / 2 - 0.3); const r = add(new THREE.TorusGeometry(0.07, 0.014, 6, 24), std(0x9a7a3a, { metalness: 0.8, roughness: 0.5 }), 0, 0.16, 0.012, -0.3); r.scale.set(1, 0.75, 1); } break;
+    case 'tessera': add(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 20), std(0xeae0c8, { roughness: 0.6 }), 0, 0.012, 0); add(new THREE.BoxGeometry(0.06, 0.004, 0.012), std(0x2a2220), 0, 0.024, 0); add(new THREE.BoxGeometry(0.012, 0.004, 0.06), std(0x2a2220), 0, 0.024, 0); break;
+    case 'gladius': { const IRON = std(0x8a8c90, { metalness: 0.9, roughness: 0.3 }), BONE = std(0xe8dcc0, { roughness: 0.5 }); add(new THREE.BoxGeometry(0.5, 0.008, 0.05), IRON, 0.05, 0.03, 0); add(new THREE.ConeGeometry(0.025, 0.07, 4), IRON, 0.335, 0.03, 0, 0, Math.PI / 4, -Math.PI / 2, [1, 1, 0.3]); add(new THREE.BoxGeometry(0.03, 0.03, 0.1), BONE, -0.21, 0.03, 0); add(new THREE.CylinderGeometry(0.018, 0.018, 0.1, 8), BONE, -0.27, 0.03, 0, 0, 0, Math.PI / 2); add(new THREE.SphereGeometry(0.03, 10, 8), BRONZE, -0.33, 0.03, 0); } break;
+    case 'tabula': for (const s of [-1, 1]) { add(new THREE.BoxGeometry(0.2, 0.02, 0.26), WOOD, s * 0.105, 0.012, 0, 0, 0, s * 0.08); add(new THREE.BoxGeometry(0.16, 0.004, 0.22), std(0x2a2018, { roughness: 0.4 }), s * 0.105, 0.032, 0, 0, 0, s * 0.08); } add(new THREE.CylinderGeometry(0.006, 0.003, 0.18, 6), BRONZE, 0.06, 0.05, 0.06, Math.PI / 2, 0.6, 0); break;
+    case 'bulla': add(new THREE.SphereGeometry(0.08, 18, 12), GOLD, 0, 0.14, 0, 0, 0, 0, [1, 1, 0.45]); add(new THREE.TorusGeometry(0.025, 0.008, 6, 12), GOLD, 0, 0.235, 0); add(new THREE.TorusGeometry(0.16, 0.006, 4, 30, Math.PI), std(0x5a3a1e), 0, 0.25, 0); break;
+    case 'fistula': { const PB = std(0x7a7e84, { metalness: 0.4, roughness: 0.6, side: THREE.DoubleSide }); add(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 12, 1, true), PB, 0, 0.05, 0, 0, 0, Math.PI / 2); add(new THREE.BoxGeometry(0.5, 0.02, 0.03), PB, 0, 0.1, 0); add(new THREE.BoxGeometry(0.18, 0.02, 0.05), std(0x5a5e64, { metalness: 0.4, roughness: 0.7 }), 0, 0.09, 0.03); } break;
+    case 'tegula': { const BZ = std(0xd6a548, { metalness: 0.9, roughness: 0.3 }); add(new THREE.BoxGeometry(0.42, 0.02, 0.3), BZ, 0, 0.02, 0, 0, 0.3, 0.1); for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.42, 0.04, 0.02), BZ, 0, 0.04, s * 0.14, 0, 0.3, 0.1); } break;
+    case 'defixio': { const PB = std(0x80848a, { metalness: 0.4, roughness: 0.6 }); add(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), PB, 0, 0.035, 0, 0, 0, Math.PI / 2); add(new THREE.BoxGeometry(0.16, 0.004, 0.12), PB, 0.14, 0.004, 0.04, 0, 0.3, 0); add(new THREE.CylinderGeometry(0.005, 0.002, 0.14, 5), std(0x5a4a3a, { metalness: 0.5 }), 0, 0.06, 0, 0.3, 0, 0); } break;
+    case 'lucerna': { const L = std(0xb0582e, { roughness: 0.7 }); add(new THREE.CylinderGeometry(0.08, 0.07, 0.05, 20), L, 0, 0.025, 0); add(new THREE.CylinderGeometry(0.03, 0.035, 0.04, 10), L, 0, 0.025, 0.1); add(new THREE.CylinderGeometry(0.05, 0.05, 0.004, 18), std(0x8a4222, { roughness: 0.8 }), 0, 0.052, 0); add(new THREE.TorusGeometry(0.025, 0.008, 5, 10), L, 0, 0.04, -0.09, Math.PI / 2); } break;
+    case 'amphora_r': lathe([[0.0, 0], [0.04, 0.03], [0.17, 0.12], [0.2, 0.24], [0.16, 0.38], [0.08, 0.44], [0.06, 0.5], [0.08, 0.52]], CLAY); for (const s of [-1, 1]) add(new THREE.TorusGeometry(0.05, 0.014, 5, 10, Math.PI), CLAY, s * 0.08, 0.45, 0, 0, Math.PI / 2, s * Math.PI / 2); break;
     case 'spindle': add(new THREE.CylinderGeometry(0.006, 0.006, 0.3, 5), WOOD, 0, 0.15, 0); add(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 10), CLAY, 0, 0.05, 0); add(new THREE.SphereGeometry(0.05, 10, 8), std(0xe8e0d0, { roughness: 1 }), 0, 0.3, 0, 0, 0, 0, [1, 1.4, 1]); break;
   }
   return g;
@@ -78,7 +90,13 @@ export class Artifacts {
     this.found = new Set();
     try { JSON.parse(localStorage.getItem(SAVE) || '[]').forEach((i) => this.found.add(i)); } catch (e) { /* sem armazenamento */ }
     const S = city.spots, at = (v, dx = 0, dz = 0, y0 = 50) => (v ? [v.x + dx, v.z + dz, y0] : [0, 0, 50]);
-    const W = {};
+    const lift = (v, dx, dz) => (v ? [v.x + dx, v.z + dz, v.y + 1] : [0, 0, 50]);
+    const W = {
+      rostra: at(S.rostra, -9, 6), colGateW: at(S.colGateW, -6, 4), topRow: lift(S.topRow, 3, 0), hypogeum: lift(S.hypogeum, 4, -3),
+      curia: at(S.curia, 3, 6), vesta: at(S.npc_cornelia, 3, -3), thermae: at(S.thermae, 10, -20), aqueduct: at(S.aqueduct, 6, -8),
+      pantheon: at(S.pantheon, 4, 30), circus: at(S.circus, 30, 16), forum: at(S.forum, 20, 12), quay: at(S.quay, -6, 0),
+      fundoOstia: (() => { const p = coastPoint(30, 70); return [p.x, p.z, 'fundo']; })(),
+    };
 
     const gt = glowTex();
     this.glowMat = new THREE.SpriteMaterial({ map: gt, color: 0xffe2a0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
