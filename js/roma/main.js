@@ -29,6 +29,7 @@ import { buildSea } from './mar.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
 import { nextFrame } from '../comum/util.js';
+import { Games } from './jogos.js';
 
 // modelos do Sketchfab já usados em Atenas (o naufrágio no mar de Óstia)
 registerSculptures('assets/models/gregos/', {
@@ -128,6 +129,9 @@ async function main() {
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
   const artifacts = new Artifacts(scene, city, ui, audio, () => {});
+  // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)
+  const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality });
+  games.lastPhase = sky.current;
 
   await step(0.96, 'Desenhando o mapa de Roma...');
   ui.buildMapBackground([
@@ -171,7 +175,7 @@ async function main() {
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
-      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
+      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); games.onTime(sky.current); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
@@ -222,7 +226,7 @@ async function main() {
     });
   };
 
-  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { games, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -263,6 +267,7 @@ async function main() {
     else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
     actors.update(dt, t, player, quests, sky.state.night);
+    games.update(dt, t, player, sky.state.night);
     sea.update(dt, t, player);
     if (started) health.update(dt, player);
     items.update(t, player.pos);
