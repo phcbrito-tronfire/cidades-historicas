@@ -103,7 +103,7 @@ export function groundHeight(x, z) {
 export function inRiver(x, z, margin = 0) { return tiberDist(x, z).d < TIBER_HALF + margin; }
 export function waterLevelAt(x, z) {
   if (coastC(x, z) > -30 || inRiver(x, z, 14)) return WATER_Y;
-  const N = NAUMACHIA; if (((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2 < 1.02) return N.flooded ? 0.2 : -100;
+  const N = NAUMACHIA; if (((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2 < 1.02) return WATER_Y; // o lago da naumaquia tem água sempre
   return -100;
 }
 

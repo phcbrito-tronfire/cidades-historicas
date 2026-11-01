@@ -112,5 +112,6 @@ export function buildCity(scene, tex) {
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   out.spots.quay = out.spots.start;
   B.build(scene);
+  for (const o of out.extra || []) scene.add(o);
   return out;
 }

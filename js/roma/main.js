@@ -30,11 +30,14 @@ import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
 import { nextFrame } from '../comum/util.js';
 import { Games } from './jogos.js';
+import { Legion } from './legiao.js';
+import { buildNaumachia } from './naumaquia.js';
 
 // modelos do Sketchfab já usados em Atenas (o naufrágio no mar de Óstia)
 registerSculptures('assets/models/gregos/', {
   tambor: { fit: 'y', rough: 0.85, tint: [0.82, 0.9, 0.8] }, coluna_jonica: { fit: 'y', rough: 0.85, tint: [0.84, 0.92, 0.82] },
   capitel_jonico: { rough: 0.85, tint: [0.82, 0.9, 0.8] },
+  trirreme: { yaw: Math.PI, rough: 0.7 }, // as galeras da naumaquia
   kyrenia: { rough: 0.95, tint: [0.36, 0.4, 0.3], hide: ['Object_2', 'Object_3', 'Object_4', 'Object_5', 'Object_12', 'Object_13'] },
 });
 const ui = new UI();
@@ -132,6 +135,8 @@ async function main() {
   // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)
   const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality });
   games.lastPhase = sky.current;
+  const legion = new Legion(scene); // uma centúria marchando em volta do Coliseu
+  const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material);
 
   await step(0.96, 'Desenhando o mapa de Roma...');
   ui.buildMapBackground([
@@ -268,6 +273,8 @@ async function main() {
     if (started) artifacts.update(dt, t, player);
     actors.update(dt, t, player, quests, sky.state.night);
     games.update(dt, t, player, sky.state.night);
+    legion.update(dt, t, player);
+    naumachia.update(dt, t, player, games.event.id === 'naumachia' && sky.state.night < 0.5);
     sea.update(dt, t, player);
     if (started) health.update(dt, player);
     items.update(t, player.pos);

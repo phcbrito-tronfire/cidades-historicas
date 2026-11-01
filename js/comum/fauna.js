@@ -15,7 +15,8 @@ const DEFS = {
   golfinho: {}, pargo: {}, cardume: {},
   tartaruga: { yaw: -Math.PI / 2 },
   aguaviva: { fit: 'y' },
-  jacare: { yaw: 0, base: true, keep: true }, // animado (andar): a animação é controlada pela velocidade
+  jacare: { yaw: 0, base: true, keep: true },
+  leao: { yaw: 0, base: true, keep: true }, urso: { yaw: 0, base: true, keep: true }, // feras da venatio (Coliseu) // animado (andar): a animação é controlada pela velocidade
   anfora_mar: { fit: 'y', base: true },
   estrela: { rot: [-Math.PI / 2, 0, 0], base: true },
   cavalo: { base: true, keep: true }, jumento: { base: true, keep: true }, // montarias: as animações são escolhidas por nome

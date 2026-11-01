@@ -12,7 +12,7 @@ import { rr, rand, pick, angleLerp, lerp } from '../comum/util.js';
 
 export const PROGRAM = [
   { id: 'munus', name: 'Munus — combates de gladiadores', desc: 'Hoje há combates de gladiadores: o mirmilão, com o escudo grande e o elmo de peixe, contra o trácio, de espada curva. O juiz (summa rudis) separa quando é preciso.' },
-  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas das províncias — hoje, crocodilos do Nilo, como nos jogos de Augusto.' },
+  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas de todo o império — crocodilos do Nilo (como nos jogos de Augusto), leões da África ou ursos das montanhas. As feras sobem do hipogeu pelos elevadores.' },
   { id: 'pompa', name: 'Pompa — o desfile de abertura', desc: 'Hoje abre um novo ciclo de jogos: o desfile dos gladiadores, com trompas e o organizador, e depois o primeiro combate.' },
   { id: 'naumachia', name: 'Naumaquia — batalha naval', desc: 'Hoje não há jogos no Coliseu: a batalha naval é na Naumaquia de Trajano, o lago artificial do outro lado do Tibre.' },
 ];
@@ -90,11 +90,16 @@ export class Games {
     this.judge = fighter('judge');
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
     this.venatores = [fighter('venator'), fighter('venator')];
-    this.beasts = [];
-    for (let i = 0; i < 2; i++) creature('jacare', 3.2, { still: true }).then((c) => {
+    // feras: cada dia de caçada traz uma (crocodilos do Nilo, leões da África, ursos da Dalmácia)
+    this.beasts = []; this.beastKind = 'jacare';
+    const BEASTS = { jacare: [3.2, 2], leao: [2.4, 2], urso: [2.1, 2] };
+    for (const [kind, [size, n]] of Object.entries(BEASTS)) for (let i = 0; i < n; i++) creature(kind, size, { still: true }).then((c) => {
       if (!c) return;
-      const b = { ...c, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0 };
-      if (c.mixer && c.clips[0]) { b.walk = c.mixer.clipAction(c.clips[0]); b.walk.play(); }
+      const b = { ...c, kind, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0, acts: {} };
+      if (c.mixer) for (const cl of c.clips) b.acts[cl.name] = c.mixer.clipAction(cl);
+      const pickA = (...names) => names.map((n) => b.acts[n]).find(Boolean) || Object.values(b.acts)[0];
+      b.aWalk = pickA('Walk', 'Play', 'Unreal Take'); b.aRun = pickA('Run', 'Walk', 'Play', 'Unreal Take'); b.aIdle = pickA('Stand_Idle_01'); b.aAtk = pickA('Attack_StandAngry_01_High');
+      for (const ac of new Set([b.aWalk, b.aRun, b.aIdle, b.aAtk])) if (ac) { ac.play(); ac.setEffectiveWeight(0); }
       c.mixer?.update(0.01); c.holder.updateMatrixWorld(true);
       let lo = 1e9; const v = new THREE.Vector3();
       c.holder.traverse((m) => { if (!m.isSkinnedMesh) return; const p = m.geometry.attributes.position; for (let j = 0; j < p.count; j += 9) { m.getVertexPosition(j, v); m.localToWorld(v); lo = Math.min(lo, v.y); } });
@@ -106,14 +111,15 @@ export class Games {
 
   resetBout() {
     const [a, b] = this.pair;
-    a.down = b.down = false; a.hp = b.hp = 1; this.boutT = 0; this.boutEnd = rr(28, 45); this.cool = 2; this.ang = rand() * 6;
-    for (const f of this.pair) { f.r.once = null; }
+    a.down = b.down = false; this.boutT = 0; this.boutEnd = rr(30, 48);
+    for (const f of this.pair) { f.r.once = null; f.pos.set(0, 0, 0); }
     this.loser = rand() < 0.5 ? 0 : 1;
+    this.ax = rand() * 6; this.cx = this.event?.id === 'pompa' ? 8 : -4; this.cz = 0; this.dist = 2.2;
+    this.phase = 'guard'; this.phaseT = rr(0.8, 1.6); this.atk = 0;
   }
-
   // dia de jogo: muda quando chega uma manhã nova
   onTime(phase) {
-    if (this.lastPhase === 'noite' && phase === 'manha') { this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
+    if (this.lastPhase === 'noite' && phase === 'manha') { this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso'][Math.floor(this.day / PROGRAM.length) % 3]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
     this.lastPhase = phase;
   }
 
@@ -134,37 +140,65 @@ export class Games {
     vis(this.pair, fightOn); this.judge.r.root.visible = fightOn;
     vis(this.parade, show && ev.id === 'pompa');
     vis(this.venatores, show && ev.id === 'venatio');
-    this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio'; });
+    this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && b.kind === this.beastKind; });
     if (!show) return;
     if (fightOn) this.bout(dt, t);
     if (ev.id === 'pompa') this.procession(dt, t);
     if (ev.id === 'venatio') this.hunt(dt, t);
   }
 
-  // combate: os dois rodeiam o centro, um ataca, o outro apara; no fim um cai, a plateia se levanta, e outro par entra
+  // combate: os dois sempre de frente um para o outro. Na guarda rodeiam devagar mantendo a distância; no ataque, quem
+  // ataca avança com o golpe e o outro recua um passo com o escudo — a dupla "anda" pela arena com o embalo. Às vezes
+  // vem o contra-ataque na hora. No fim um cai, a plateia se levanta, e entra outro par.
   bout(dt, t) {
-    const C = COL, Y = C.y, [a, b] = this.pair, cx = this.event.id === 'pompa' ? 8 : -4, cz = 0;
+    const C = COL, Y = C.y, [a, b] = this.pair;
     this.boutT += dt;
     const over = this.boutT > this.boutEnd;
     if (over && !a.down && !b.down) { const L = this.pair[this.loser]; L.down = true; playOnce(L.r, 'desmaiar', 4.5); this.excite = 1; this.audio?.chime?.(); }
     if (this.boutT > this.boutEnd + 9) this.resetBout();
-    if (!over) this.ang += dt * 0.35;
-    const R = 1.5 + Math.sin(t * 0.7) * 0.25;
-    this.cool -= dt;
+    this.phaseT -= dt;
+    let want = 2.1, push = 0;
+    if (!over) {
+      if (this.phase === 'guard') {
+        this.ax += dt * 0.35 * Math.sin(t * 0.4 + 1);
+        want = 2.0 + Math.sin(t * 1.3) * 0.25;
+        if (this.phaseT <= 0) { this.phase = 'attack'; this.phaseT = 0.95; this.atk = rand() < 0.6 ? 1 - this.atk : this.atk; playOnce(this.pair[this.atk].r, 'espada', 0.95); if (rand() < 0.35) this.excite = Math.max(this.excite, 0.45); }
+      } else {
+        const k = 1 - this.phaseT / 0.95; // progresso do golpe
+        want = k < 0.45 ? 1.35 : 1.7; push = k < 0.6 ? 1.6 : 0.4; // quem ataca empurra a dupla para o lado de quem defende
+        if (this.phaseT <= 0) {
+          if (rand() < 0.3) { this.phase = 'attack'; this.phaseT = 0.95; this.atk = 1 - this.atk; playOnce(this.pair[this.atk].r, 'espada', 0.95); } // contra-ataque
+          else { this.phase = 'guard'; this.phaseT = rr(0.7, 1.8); }
+        }
+      }
+    }
+    // centro da dupla anda na direção do defensor; não sai da arena
+    const dx = Math.cos(this.ax), dz = Math.sin(this.ax), sg = this.atk === 0 ? 1 : -1;
+    this.cx += dx * push * sg * dt; this.cz += dz * push * sg * dt;
+    const kk = Math.hypot(this.cx / (C.a0 - 5), this.cz / (C.b0 - 5)); if (kk > 1) { this.cx /= kk; this.cz /= kk; this.ax += dt * 1.2; }
+    this.dist = lerp(this.dist, want, Math.min(1, dt * 5));
     [a, b].forEach((f, i) => {
-      const o = this.pair[1 - i], an = this.ang + i * Math.PI;
-      const tx = cx + Math.cos(an) * R, tz = cz + Math.sin(an) * R;
-      if (!f.down) { f.pos.x = lerp(f.pos.x || tx, tx, Math.min(1, dt * 3)); f.pos.z = lerp(f.pos.z || tz, tz, Math.min(1, dt * 3)); }
+      const s2 = i === 0 ? -1 : 1, tx = this.cx + dx * s2 * this.dist / 2, tz = this.cz + dz * s2 * this.dist / 2;
+      if (!f.pos.lengthSq()) f.pos.set(tx, Y, tz);
+      const ox = f.pos.x, oz = f.pos.z;
+      if (!f.down) { f.pos.x = lerp(f.pos.x, tx, Math.min(1, dt * 8)); f.pos.z = lerp(f.pos.z, tz, Math.min(1, dt * 8)); }
       f.pos.y = Y; f.r.root.position.copy(f.pos);
-      f.h = angleLerp(f.h, Math.atan2(o.pos.x - f.pos.x, o.pos.z - f.pos.z), Math.min(1, dt * 6)); f.r.root.rotation.y = f.h;
-      if (!f.down && !o.down && !over && this.cool <= 0 && rand() < dt * 2.2) { playOnce(f.r, 'espada', 0.95); this.cool = rr(0.9, 2.2); if (rand() < 0.3) this.excite = Math.max(this.excite, 0.45); }
-      animateHumanoid(f.r, dt, f.down ? 0 : 0.7, f.down ? 'idle' : over ? 'idle' : 'walk', t);
+      const o = this.pair[1 - i];
+      if (!f.down) f.h = angleLerp(f.h, Math.atan2(o.pos.x - f.pos.x, o.pos.z - f.pos.z), Math.min(1, dt * 10));
+      f.r.root.rotation.y = f.h;
+      // passo: a velocidade para a frente (do jeito que ele olha) escolhe andar ou ficar em guarda
+      const fwd = ((f.pos.x - ox) * Math.sin(f.h) + (f.pos.z - oz) * Math.cos(f.h)) / Math.max(dt, 1e-4);
+      f.spd = lerp(f.spd || 0, fwd, Math.min(1, dt * 8));
+      animateHumanoid(f.r, dt, Math.max(0, f.spd), f.down || over || f.spd < 0.25 ? 'idle' : 'walk', t);
     });
-    // juiz: fica perto, um pouco de lado, olhando a luta
-    const J = this.judge, jx = cx + Math.cos(this.ang + Math.PI / 2) * 3.4, jz = cz + Math.sin(this.ang + Math.PI / 2) * 3.4;
-    J.pos.set(lerp(J.pos.x || jx, jx, Math.min(1, dt * 1.5)), Y, lerp(J.pos.z || jz, jz, Math.min(1, dt * 1.5))); J.r.root.position.copy(J.pos);
-    J.h = angleLerp(J.h, Math.atan2(cx - J.pos.x, cz - J.pos.z), Math.min(1, dt * 4)); J.r.root.rotation.y = J.h;
-    animateHumanoid(J.r, dt, 0.5, 'walk', t);
+    // juiz: acompanha de lado, a uns 3,5 m, olhando a luta
+    const J = this.judge, jx = this.cx + Math.cos(this.ax + Math.PI / 2) * 3.6, jz = this.cz + Math.sin(this.ax + Math.PI / 2) * 3.6;
+    if (!J.pos.lengthSq()) J.pos.set(jx, Y, jz);
+    const ox = J.pos.x, oz = J.pos.z;
+    J.pos.set(lerp(J.pos.x, jx, Math.min(1, dt * 1.5)), Y, lerp(J.pos.z, jz, Math.min(1, dt * 1.5))); J.r.root.position.copy(J.pos);
+    J.h = angleLerp(J.h, Math.atan2(this.cx - J.pos.x, this.cz - J.pos.z), Math.min(1, dt * 4)); J.r.root.rotation.y = J.h;
+    const js = Math.hypot(J.pos.x - ox, J.pos.z - oz) / Math.max(dt, 1e-4);
+    animateHumanoid(J.r, dt, js, js > 0.3 ? 'walk' : 'idle', t);
   }
 
   // desfile: a fila dá a volta na arena pela beirada
@@ -196,7 +230,7 @@ export class Games {
       const k = Math.hypot(v.pos.x / (C.a0 - 2), v.pos.z / (C.b0 - 2)); if (k > 1) v.pos.multiplyScalar(1 / k);
       v.pos.y = Y; v.r.root.position.copy(v.pos); v.r.root.rotation.y = v.h;
     });
-    this.beasts.forEach((b, i) => {
+    this.beasts.filter((b) => b.kind === this.beastKind).forEach((b, i) => {
       const tgt = this.venatores[i % 2].pos;
       b.flee = (b.flee || 0) - dt;
       const want = Math.atan2(tgt.x - b.pos.x, tgt.z - b.pos.z) + (b.flee > 0 ? Math.PI : 0);
@@ -206,7 +240,15 @@ export class Games {
       b.pos.x += Math.sin(b.h) * b.v * dt; b.pos.z += Math.cos(b.h) * b.v * dt;
       const k = Math.hypot(b.pos.x / (C.a0 - 2.5), b.pos.z / (C.b0 - 2.5)); if (k > 1) b.pos.multiplyScalar(1 / k);
       b.holder.position.set(b.pos.x, Y, b.pos.z); b.holder.rotation.y = b.h;
-      if (b.walk) { b.walk.timeScale = b.v > 0.1 ? 0.4 + b.v * 0.6 : 0; b.mixer.update(dt); }
+      if (b.mixer) {
+        const near = b.pos.distanceTo(tgt) < 3;
+        const w = { idle: b.v < 0.15 && !near ? 1 : 0, walk: b.v >= 0.15 && b.v < 1.8 ? 1 : 0, run: b.v >= 1.8 ? 1 : 0, atk: near && b.v < 0.3 ? 1 : 0 };
+        if (!b.aIdle) w.walk += w.idle; if (!b.aAtk) w.walk += w.atk;
+        b.wt = b.wt || { idle: 0, walk: 0, run: 0, atk: 0 };
+        for (const [k, ac] of [['idle', b.aIdle], ['walk', b.aWalk], ['run', b.aRun], ['atk', b.aAtk]]) { if (!ac) continue; b.wt[k] = lerp(b.wt[k], w[k], Math.min(1, dt * 5)); ac.setEffectiveWeight(b.wt[k]); }
+        if (b.aWalk && b.aWalk === b.aRun) b.aWalk.timeScale = Math.max(0.3, b.v * 0.7); // um clipe só (leão): o ritmo segue a velocidade
+        b.mixer.update(dt);
+      }
     });
   }
 }

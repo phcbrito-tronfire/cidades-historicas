@@ -273,6 +273,25 @@ export function buildColosseum(B, M, out) {
     // pilares ímpares: fora dos eixos dos túneis
     for (let i = 1; i < NB; i += 2) { const [x, z] = P(C.D + C.amb * 0.45, (i / NB) * TAU); B.geo(new THREE.CylinderGeometry(0.75, 0.75, 6.8, 8), M.travertine2, x, Y + 3.4, z, { uv: false }); addCircle(x, z, 0.75, Y - 1, Y + 6.8); }
   }
+  // ---- velário: o toldo de lona listrada esticado dos mastros do ático sobre a arquibancada (a arena fica a céu
+  // aberto). Marinheiros da frota de Miseno manobravam as cordas. Uma malha só, com listras radiais na textura.
+  {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 8; const x = c.getContext('2d');
+    for (let i = 0; i < 64; i++) { x.fillStyle = i % 2 ? '#f2e6cc' : (i % 8 === 0 ? '#b8402c' : '#e8d4ac'); x.fillRect(i * 16, 0, 16, 8); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;
+    const mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, side: THREE.DoubleSide });
+    const dIn = 9, dOut = C.D + C.amb + C.wall + 0.3, n = 160, m = 6, pos = [], uv = [], idx = [];
+    for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
+      const u = j / m, d = dIn + (dOut - dIn) * u, th = (i / n) * TAU, [px, pz] = P(d, th);
+      pos.push(px, Y + 23.5 + 6.6 * u - Math.sin(u * Math.PI) * 1.2, pz); uv.push((i / n) * 4, u);
+    }
+    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const a = j * (n + 1) + i, b = a + n + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const vel = new THREE.Mesh(g, mat); vel.castShadow = true; vel.receiveShadow = true;
+    out.extra = out.extra || []; out.extra.push(vel); out.velarium = vel;
+    // o anel de cordas que segura a borda de dentro
+    B.geo(ringWall(dIn, 0.12, 0, TAU, Y + 23.4, Y + 23.6), M.darkWood, 0, 0, 0);
+  }
   // tochas no ambulacro e nas entradas
   for (let i = 0; i < 16; i++) { const [x, z] = P(C.D + 1.2, (i / 16) * TAU + 0.1); out.torches.push(V(x, Y + 3.2, z)); }
   S.colosseum = V(C.x, Y, C.z);

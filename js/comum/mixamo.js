@@ -700,6 +700,7 @@ export function makeHumanoid(o = {}) {
       g.add(meshAt(new THREE.BoxGeometry(0.07, 0.02, 0.03), m(0xc9a040, { metalness: 0.8 }), 0, 0.06, 0));
       if (e === 'gladius') g.add(meshAt(new THREE.BoxGeometry(0.05, 0.5, 0.008), steel, 0, 0.32, 0));
       else { const bl = meshAt(new THREE.TorusGeometry(0.28, 0.018, 4, 12, Math.PI * 0.35), steel, 0.27, 0.07, 0); bl.rotation.z = Math.PI * 0.62; g.add(bl); }
+      g.rotation.x = Math.PI * 0.45; // na mão, o +y aponta para o ombro: a lâmina sai do punho para a frente, não pelo braço
       handR.add(g);
     }
     if (e === 'manica') for (const p of ['RightForeArm', 'RightArm']) { // braçadeira acolchoada do braço da espada
