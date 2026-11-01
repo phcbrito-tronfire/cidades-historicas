@@ -147,7 +147,7 @@ async function main() {
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
     ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
-    ['Campo de Marte', -420, -330], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 330, -40], ['Mar Tirreno', -1050, 1000], ['Óstia', -930, 830],
+    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 330, 330], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 330, -40], ['Mar Tirreno', -1050, 1000], ['Óstia', -930, 830],
   ]);
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
@@ -248,6 +248,9 @@ async function main() {
     if (inRiver(x, z, 20)) return 'Margem do Tibre';
     if (Math.abs(x - FORUM.x) < FORUM.hw && Math.abs(z - FORUM.z) < FORUM.hd) return 'Fórum Romano';
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw && Math.abs(z - CIRCUS.z) < CIRCUS.hd) return 'Circo Máximo';
+    { const z2 = city.zones.termas; if (z2 && x > z2[0] && x < z2[1] && z > z2[2] && z < z2[3]) return 'Termas de Trajano'; }
+    if (Math.hypot(x + 330, z + 250) < 40) return 'Panteão (em obras)';
+    if (Math.hypot(x - FORUM.x, z - FORUM.z) > 400 && Math.hypot(x, z) < 120) return 'Vale do Coliseu';
     if (Math.hypot(x - PALATINE.x, z - PALATINE.z) < 110) return 'Palatino';
     if (Math.hypot(x - CAPITOL.x, z - CAPITOL.z) < 70) return 'Capitólio';
     if (coastC(x, z) > -150) return 'Litoral de Óstia';

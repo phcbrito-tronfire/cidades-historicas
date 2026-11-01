@@ -7,6 +7,7 @@ import { rr, rand } from '../comum/util.js';
 import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
 import { buildForum } from './forum.js';
+import { buildMonuments } from './monumentos.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -21,6 +22,7 @@ export function createMaterials(tex) {
   M.marbleWall = std({ ...pbrSet(P.marble_01, 1), color: 0xf6ecdc, roughness: 0.55 }); M.marbleWall.userData.uv = { s: 2.2 };
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
   M.granite = std({ color: 0x8a5a4c, roughness: 0.45 });
+  M.water = std({ color: 0x3aa8c0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85 });
   M.brick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brick.userData.uv = { s: 2.2 }; // tijolo romano
   M.sand = std({ ...pbrSet(P.aerial_beach_01, 1), color: 0xf6e2b8, roughness: 1 }); M.sand.userData.uv = { s: 5 };
   M.wood = std({ ...pbrSet(P.madeira_clara, 1), color: 0xe8c8a0 }); M.wood.userData.uv = { s: 2 };
@@ -150,6 +152,7 @@ export function buildCity(scene, tex) {
   buildColosseum(B, M, out);
   buildStreets(B, M);
   buildForum(B, M, out);
+  buildMonuments(B, M, out); // aqueduto, Termas de Trajano, Panteão em obras
   buildInsulae(B, M, out);
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   out.spots.quay = out.spots.start;
