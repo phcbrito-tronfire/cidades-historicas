@@ -13,7 +13,7 @@ const imports = {
   'three/addons/': 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/',
 };
 for (const d of dirs) for (const f of readdirSync('js/' + d).filter((f) => f.endsWith('.js')).sort()) imports[`./js/${d}/${f}`] = `./js/${d}/${f}?v=${v}`;
-for (const page of ['egito.html', 'atenas.html']) {
+for (const page of ['egito.html', 'atenas.html', 'roma.html']) {
   if (!existsSync(page)) continue;
   let html = readFileSync(page, 'utf8');
   html = html.replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">\n  ${JSON.stringify({ imports }, null, 2).replace(/\n/g, '\n  ')}\n  </script>`);
