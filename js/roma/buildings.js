@@ -8,6 +8,7 @@ import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
 import { buildForum } from './forum.js';
 import { buildMonuments } from './monumentos.js';
+import { buildOstia } from './ostia.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -153,9 +154,9 @@ export function buildCity(scene, tex) {
   buildStreets(B, M);
   buildForum(B, M, out);
   buildMonuments(B, M, out); // aqueduto, Termas de Trajano, Panteão em obras
+  buildOstia(B, M, out); // o porto na foz do Tibre
   buildInsulae(B, M, out);
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
-  out.spots.quay = out.spots.start;
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);
   out.trees = buildTrees(scene, M);
