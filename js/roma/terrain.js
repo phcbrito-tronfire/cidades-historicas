@@ -138,8 +138,26 @@ function surface(x, z, h, slope) {
   let ground = urban * (1 - pave) * 0.9 + (1 - urban) * ss(0.6, 0.75, n3) * 0.35; // terra batida: becos e trilhas
   pave *= inland; grass *= inland * (1 - pave); ground *= inland;
   const v = 0.92 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.2;
+  let r = v, g = v, b = v;
+  // campo: fora da cidade, no plano, a terra é dividida em lotes (trigo maduro, terra arada em sulcos, pasto verde,
+  // vinha) separados por cercas vivas — o "ager" que alimentava Roma junto com o trigo do Egito
+  const rural = (1 - urban) * inland * (1 - ss(0.07, 0.15, slope)) * ss(50, 110, d) * (1 - riv);
+  if (rural > 0.02) {
+    const ca = Math.cos(0.35), sa = Math.sin(0.35), u = x * ca - z * sa, w = x * sa + z * ca;
+    const iu = Math.floor(u / 64), iw = Math.floor(w / 42), fu = u / 64 - iu, fw = w / 42 - iw;
+    const hh = Math.abs(Math.sin(iu * 127.1 + iw * 311.7) * 43758.5) % 1;
+    const edge = ss(0.015, 0.05, Math.min(fu, 1 - fu)) * ss(0.02, 0.07, Math.min(fw, 1 - fw)); // cerca viva entre os lotes
+    const k = rural * edge;
+    if (hh < 0.28) { r = lerp(r, 1.22, k); g = lerp(g, 1.08, k); b = lerp(b, 0.62, k); } // trigo maduro
+    else if (hh < 0.46) { const furrow = 0.5 + 0.5 * Math.sin(u * 2.4); const t = k * 0.9; ground = lerp(ground, 1, t); grass *= 1 - t; r = lerp(r, 0.8 + furrow * 0.25, t); g = lerp(g, 0.72 + furrow * 0.22, t); b = lerp(b, 0.62 + furrow * 0.2, t); } // terra arada
+    else if (hh < 0.66) { r = lerp(r, 0.78, k); g = lerp(g, 1.05, k); b = lerp(b, 0.7, k); } // pasto verde
+    else if (hh < 0.8) { const row = ss(0.55, 0.8, 0.5 + 0.5 * Math.sin(w * 2.1)); const t = k * 0.8; ground = lerp(ground, 1 - row * 0.7, t); grass = lerp(grass, row, t); } // vinha em fileiras
+    else { r = lerp(r, 1.05, k * 0.6); g = lerp(g, 1.0, k * 0.6); b = lerp(b, 0.82, k * 0.6); } // capim seco
+  }
+  // na cidade: o calçamento muda de quarteirão para quarteirão (pedra mais clara, mais escura, mais quente)
+  if (pave > 0.1) { const pv = fbm(x * 0.012 + 40, z * 0.012, 2) - 0.5; r *= 1 + pv * 0.35; g *= 1 + pv * 0.28; b *= 1 + pv * 0.18; }
   const sum = sand + ground + grass + pave || 1;
-  return [v, v, v, sand / sum, ground / sum, grass / sum, pave / sum];
+  return [r, g, b, sand / sum, ground / sum, grass / sum, pave / sum];
 }
 
 export function buildTerrain(scene, tex) {

@@ -1,6 +1,7 @@
 // Uma centúria da guarda marchando em formação pela rua em volta do Coliseu: 4 fileiras de 6 legionários (gálea,
 // lorica segmentata, scutum vermelho e gládio), o porta-estandarte (signifer) na frente e o centurião ao lado.
-// Passo sincronizado (todos com o mesmo pé), e de vez em quando a centúria para, dá meia-volta à direita e segue.
+// Passo sincronizado (todos com o mesmo pé), e de vez em quando a centúria para e forma a "tartaruga" (testudo):
+// as fileiras se apertam, a da frente e as das pontas fecham os escudos para fora e as de dentro os erguem por cima.
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
 import { COL } from './coliseu.js';
@@ -12,7 +13,9 @@ const at = (s) => { const th = s / ((RA + RB) / 2); return { x: RA * Math.cos(th
 
 export class Legion {
   constructor(scene) {
-    this.men = []; this.s = 40; this.halt = 0; this.phase = 0;
+    this.men = []; this.s = 40; this.halt = 0; this.phase = 0; this.f = 0;
+    const sGeo = new THREE.CylinderGeometry(0.62, 0.62, 1.05, 12, 1, true, -0.66 / 1.24, 0.66 / 0.62); sGeo.translate(0, 0, -0.6);
+    const sMat = new THREE.MeshStandardMaterial({ color: 0xa8261e, roughness: 0.6, side: THREE.DoubleSide });
     const skins = [0xc8a07e, 0xb48662, 0xa87a58, 0xd2aa8a];
     const add = (role, row, col) => {
       const look = { outfit: 'chiton', cloth: 0xa82a20, border: null, skin: pick(skins), beard: Math.random() < 0.4 ? 'short' : null, extras: ['lorica', 'galea', 'scutum', 'gladius'], shieldColor: 0xa8261e };
@@ -27,7 +30,15 @@ export class Legion {
         const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.3), new THREE.MeshStandardMaterial({ color: 0xa82a20, side: THREE.DoubleSide })); flag.position.set(0, 1.85, 0.0); g.add(flag);
         r.handR.add(g);
       }
-      this.men.push({ r, role, row, col });
+      let ts = null;
+      if (role === 'miles') { // o escudo da tartaruga (fica escondido na marcha): frente, lado de fora ou por cima
+        ts = new THREE.Mesh(sGeo, sMat); ts.visible = false; ts.castShadow = true;
+        if (row === 0) ts.position.set(0, 0.95, 0.45);
+        else if (Math.abs(col) > 2) { const sd = col > 0 ? -1 : 1; ts.position.set(sd * 0.42, 0.95, 0); ts.rotation.y = sd * Math.PI / 2; }
+        else { ts.position.set(0, 1.95, 0); ts.rotation.x = -Math.PI / 2; }
+        r.root.add(ts);
+      }
+      this.men.push({ r, role, row, col, ts });
     };
     add('signifer', -1.4, 0); add('centurio', 0, 3.6);
     for (let row = 0; row < 4; row++) for (let col = 0; col < 6; col++) add('miles', row, col - 2.5);
@@ -37,12 +48,16 @@ export class Legion {
     for (const m of this.men) m.r.root.visible = near;
     if (!near) return;
     // marcha a ~1,3 m/s; a cada volta e meia, uma parada de alguns segundos
-    if (this.halt > 0) this.halt -= dt; else { this.s += dt * 1.3; if (Math.random() < dt * 0.012) this.halt = rr(4, 8); }
+    if (this.halt > 0) this.halt -= dt; else { this.s += dt * 1.3; if (Math.random() < dt * 0.012) this.halt = rr(10, 15); }
     const moving = this.halt <= 0;
+    // a tartaruga fecha logo depois de parar e abre pouco antes de seguir
+    const tgt = this.halt > 1.5 ? 1 : 0; this.f += Math.sign(tgt - this.f) * Math.min(Math.abs(tgt - this.f), dt * 0.8);
+    const shut = this.f > 0.6, rs = 1.7 - 0.7 * this.f, cs = 1.25 - 0.53 * this.f;
     if (moving) this.phase = (this.phase + dt * 1.3 / 1.5) % 1; // um passo a cada ~0,75 m, todos juntos
     for (const m of this.men) {
-      const q = at(this.s - (m.row + 1) * 1.7), L = Math.hypot(q.tx, q.tz), nx = -q.tz / L, nz = q.tx / L;
-      const x = q.x + nx * m.col * 1.25, z = q.z + nz * m.col * 1.25;
+      const q = at(this.s - (m.row + 1) * rs), L = Math.hypot(q.tx, q.tz), nx = -q.tz / L, nz = q.tx / L;
+      const x = q.x + nx * m.col * cs, z = q.z + nz * m.col * cs;
+      if (m.ts) { m.ts.visible = shut; m.r.handL.visible = !shut; }
       m.r.root.position.set(x, terrainHeight(x, z), z);
       m.r.root.rotation.y = Math.atan2(q.tx, q.tz);
       m.r.locoPhase = this.phase;

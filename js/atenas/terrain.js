@@ -200,6 +200,23 @@ function surface(x, z, h, slope) {
   trail = inland * hillness * ss(0.4, 0.6, n2) * 0.7;
   ground = inland * Math.max(0, 1 - grass - trail);
   let r = 1, g = 1, b = 1;
+  // nos morros, manchas de terra vermelha (terra rossa) e de mato mais verde (maquis) quebram o tom único
+  const n3 = fbm(x * 0.008 + 70, z * 0.008, 3) - 0.5, hillK = inland * clamp(hillness, 0, 1);
+  if (n3 > 0) { r += n3 * 0.5 * hillK; g -= n3 * 0.1 * hillK; b -= n3 * 0.25 * hillK; } else { r += n3 * 0.35 * hillK; b += n3 * 0.2 * hillK; }
+  // fora dos muros, no plano: lotes de cevada madura, olivais em terra arada, pasto e restolho, com cercas de mato
+  const farm = inland * rural * (1 - ss(0.07, 0.15, slope)) * ss(50, 110, d) * (1 - clamp(hillness, 0, 1));
+  if (farm > 0.02) {
+    const ca = Math.cos(-0.5), sa = Math.sin(-0.5), u = x * ca - z * sa, w = x * sa + z * ca;
+    const iu = Math.floor(u / 56), iw = Math.floor(w / 38), fu = u / 56 - iu, fw = w / 38 - iw;
+    const hh = Math.abs(Math.sin(iu * 91.3 + iw * 271.9) * 43758.5) % 1;
+    const k = farm * ss(0.015, 0.05, Math.min(fu, 1 - fu)) * ss(0.02, 0.07, Math.min(fw, 1 - fw));
+    if (hh < 0.3) { r = lerp(r, 1.2, k); g = lerp(g, 1.06, k); b = lerp(b, 0.6, k); } // cevada madura
+    else if (hh < 0.55) { const t = k * 0.85; ground = lerp(ground, 1, t); grass *= 1 - t; trail *= 1 - t; r = lerp(r, 1.12, t); g = lerp(g, 0.86, t); b = lerp(b, 0.7, t); } // olival em terra arada
+    else if (hh < 0.72) { r = lerp(r, 0.85, k); g = lerp(g, 1.04, k); b = lerp(b, 0.72, k); } // pasto
+    else { r = lerp(r, 1.08, k * 0.7); g = lerp(g, 1.0, k * 0.7); b = lerp(b, 0.8, k * 0.7); } // restolho
+  }
+  // na cidade, a terra batida muda de bairro para bairro (mais clara, mais ocre)
+  { const pv = (fbm(x * 0.014 + 30, z * 0.014, 2) - 0.5) * inland * (1 - rural); r *= 1 + pv * 0.3; g *= 1 + pv * 0.2; }
   const v = 0.92 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.2;
   const s = sand + ground + grass + trail || 1;
   return [r * v, g * v, b * v, sand / s, ground / s, grass / s, trail / s];

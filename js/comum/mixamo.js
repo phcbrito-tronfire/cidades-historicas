@@ -656,7 +656,7 @@ export function makeHumanoid(o = {}) {
       attach('Spine2', sh, new THREE.Vector3(0.03, chest.y - 0.36, chest.z - 0.17), [0.12, Math.PI, 0.1]);
     }
     // ---- Roma: legionário (gálea, lorica segmentata, scutum, gládio) e gladiadores (mirmilão, trácio)
-    if (e === 'galea' || e === 'murmillo' || e === 'thraex') {
+    if (e === 'galea' || e === 'murmillo' || e === 'thraex' || e === 'secutor') {
       const fit = headFitOnce(), g = new THREE.Group(), iron = m(e === 'galea' ? 0x9a9ea2 : 0xa88848, { metalness: 0.85, roughness: 0.35 });
       const bowl = new THREE.Mesh(new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), iron); bowl.scale.set(fit.rx + 0.02, 0.15, fit.rz + 0.025); g.add(bowl);
       if (e === 'galea') { // capacete imperial gaulês: protetor de nuca, viseira na testa, faces e a crista vermelha
@@ -669,6 +669,11 @@ export function makeHumanoid(o = {}) {
         const face = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx + 0.02, fit.rx + 0.02, 0.2, 20, 1, true, -Math.PI * 0.45, Math.PI * 0.9), iron); face.position.y = -0.14; g.add(face);
         for (let i = 0; i < 5; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.07, 0.004), m(0x1a1410)); bar.position.set(-0.04 + i * 0.02, -0.06, fit.rz + 0.02); g.add(bar); }
         const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.13, fit.rz * 2.4), iron); fin.position.set(0, 0.2, -0.01); g.add(fin);
+      } else if (e === 'secutor') { // secutor: elmo liso e redondo, fechado, com dois furinhos nos olhos (para a rede não prender)
+        bowl.scale.set(fit.rx + 0.03, 0.2, fit.rz + 0.04);
+        const face = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.4), iron); face.scale.set(fit.rx + 0.03, 0.22, fit.rz + 0.04); g.add(face);
+        for (const sd of [-1, 1]) { const eye = new THREE.Mesh(new THREE.CircleGeometry(0.012, 8), m(0x0a0806)); eye.position.set(sd * 0.03, -0.07, fit.rz + 0.035); g.add(eye); }
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.05, fit.rz * 2), iron); fin.position.set(0, 0.19, -0.01); g.add(fin);
       } else { // trácio: crista com cabeça de grifo, aba e penas laterais
         const brim = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx * 1.6, fit.rx * 1.7, 0.015, 24), iron); brim.position.y = -0.06; g.add(brim);
         const face = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx + 0.02, fit.rx + 0.02, 0.2, 20, 1, true, -Math.PI * 0.45, Math.PI * 0.9), iron); face.position.y = -0.14; g.add(face);
@@ -706,6 +711,21 @@ export function makeHumanoid(o = {}) {
     if (e === 'manica') for (const p of ['RightForeArm', 'RightArm']) { // braçadeira acolchoada do braço da espada
       if (!bones[p]) continue; const a = bonePos(p);
       attach(p, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.24, 12, 1, true), m(0xd8ccb0, { roughness: 1 })), a.clone().add(new THREE.Vector3(0, -0.12, 0)), [0, 0, 0]);
+    }
+    if (e === 'trident') { // tridente do reciário
+      const g = new THREE.Group(), steel = m(0xc8cdd2, { metalness: 0.9, roughness: 0.3 });
+      g.add(meshAt(new THREE.CylinderGeometry(0.014, 0.014, 1.9, 6), m(0x7a5a36), 0, 0.5, 0));
+      g.add(meshAt(new THREE.BoxGeometry(0.16, 0.02, 0.02), steel, 0, 1.45, 0));
+      for (const x of [-0.07, 0, 0.07]) g.add(meshAt(new THREE.ConeGeometry(0.012, 0.22, 5), steel, x, 1.56, 0));
+      handR.add(g);
+    }
+    if (e === 'net') { // a rede pendurada na mão esquerda, pronta para ser lançada
+      const net = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.75, 12, 6, true), m(0xc8b48a, { wireframe: true, roughness: 1 }));
+      net.position.set(0, -0.3, 0.05); net.rotation.x = Math.PI; handL.add(net);
+    }
+    if (e === 'galerus') { // ombreira alta de metal no ombro esquerdo do reciário (no lugar do elmo) e a manica no braço da rede
+      attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.16), m(0xa88848, { metalness: 0.85, roughness: 0.35 })), new THREE.Vector3(0.22, neckY + 0.04, chest.z), [0, 0, 0.35]);
+      for (const p of ['LeftForeArm', 'LeftArm']) { if (!bones[p]) continue; const b = bonePos(p); attach(p, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.24, 12, 1, true), m(0xd8ccb0, { roughness: 1 })), b.clone().add(new THREE.Vector3(0, -0.12, 0)), [0, 0, 0]); }
     }
     if (e === 'rudis') handR.add(meshAt(new THREE.CylinderGeometry(0.012, 0.014, 1.1, 6), m(0x6b4a2e), 0, 0.3, 0)); // bastão do juiz (summa rudis)
     if (e === 'staff') handR.add(meshAt(new THREE.CylinderGeometry(0.013, 0.017, 1.7, 6), m(0x6b4a2e), 0, 0.3, 0));

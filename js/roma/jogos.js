@@ -12,7 +12,7 @@ import { rr, rand, pick, angleLerp, lerp } from '../comum/util.js';
 
 export const PROGRAM = [
   { id: 'munus', name: 'Munus — combates de gladiadores', desc: 'Hoje há combates de gladiadores: o mirmilão, com o escudo grande e o elmo de peixe, contra o trácio, de espada curva. O juiz (summa rudis) separa quando é preciso.' },
-  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas de todo o império — crocodilos do Nilo (como nos jogos de Augusto), leões da África ou ursos das montanhas. As feras sobem do hipogeu pelos elevadores.' },
+  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas de todo o império — crocodilos do Nilo (como nos jogos de Augusto), leões da África, ursos das montanhas ou touros bravos. As feras sobem do hipogeu pelos elevadores.' },
   { id: 'pompa', name: 'Pompa — o desfile de abertura', desc: 'Hoje abre um novo ciclo de jogos: o desfile dos gladiadores, com trompas e o organizador, e depois o primeiro combate.' },
   { id: 'naumachia', name: 'Naumaquia — batalha naval', desc: 'Hoje não há jogos no Coliseu: a batalha naval é na Naumaquia de Trajano, o lago artificial do outro lado do Tibre.' },
 ];
@@ -79,6 +79,8 @@ export class Games {
     const fighter = (kind) => {
       const look = kind === 'murmillo' ? { outfit: 'worker', skin: skin(), extras: ['murmillo', 'scutum', 'gladius', 'manica'], shieldColor: 0x9a2a1e, beard: 'short' }
         : kind === 'thraex' ? { outfit: 'worker', skin: skin(), extras: ['thraex', 'parmula', 'sica', 'manica'], shieldColor: 0x2a4a8a, beard: 'short' }
+        : kind === 'retiarius' ? { outfit: 'worker', skin: skin(), extras: ['trident', 'net', 'galerus'], beard: 'short' }
+        : kind === 'secutor' ? { outfit: 'worker', skin: skin(), extras: ['secutor', 'scutum', 'gladius', 'manica'], shieldColor: 0x2a6a3a, beard: 'short' }
         : kind === 'judge' ? { outfit: 'chiton', cloth: 0xf2ece0, border: 0x8e2c22, beard: 'full', extras: ['rudis'] }
         : kind === 'venator' ? { outfit: 'chiton', cloth: pick([0x8a6a3a, 0x6a7a4a]), border: null, skin: skin(), extras: ['spear'] }
         : kind === 'musician' ? { outfit: 'chiton', cloth: 0xd8c8a0, border: 0x8e2c22, skin: skin() }
@@ -86,19 +88,21 @@ export class Games {
       const r = makeHumanoid(look); r.root.visible = false; scene.add(r.root);
       return { r, kind, pos: new THREE.Vector3(), h: 0, hp: 1, down: false };
     };
-    this.pair = [fighter('murmillo'), fighter('thraex')];
+    // duplas clássicas: mirmilão contra trácio, e o reciário (rede e tridente, quase sem armadura) contra o secutor
+    this.pairs = [[fighter('murmillo'), fighter('thraex')], [fighter('retiarius'), fighter('secutor')]];
+    this.pair = this.pairs[0]; this.pairIdx = 0;
     this.judge = fighter('judge');
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
     this.venatores = [fighter('venator'), fighter('venator')];
     // feras: cada dia de caçada traz uma (crocodilos do Nilo, leões da África, ursos da Dalmácia)
     this.beasts = []; this.beastKind = 'jacare';
-    const BEASTS = { jacare: [3.2, 2], leao: [2.4, 2], urso: [2.1, 2] };
+    const BEASTS = { jacare: [3.2, 2], leao: [2.4, 2], urso: [2.1, 2], touro: [2.7, 2] };
     for (const [kind, [size, n]] of Object.entries(BEASTS)) for (let i = 0; i < n; i++) creature(kind, size, { still: true }).then((c) => {
       if (!c) return;
       const b = { ...c, kind, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0, acts: {} };
       if (c.mixer) for (const cl of c.clips) b.acts[cl.name] = c.mixer.clipAction(cl);
-      const pickA = (...names) => names.map((n) => b.acts[n]).find(Boolean) || Object.values(b.acts)[0];
-      b.aWalk = pickA('Walk', 'Play', 'Unreal Take'); b.aRun = pickA('Run', 'Walk', 'Play', 'Unreal Take'); b.aIdle = pickA('Stand_Idle_01'); b.aAtk = pickA('Attack_StandAngry_01_High');
+      const pickA = (...names) => names.map((n) => b.acts[n] || Object.entries(b.acts).find(([k]) => k.toLowerCase().endsWith('_' + n.toLowerCase()))?.[1]).find(Boolean) || Object.values(b.acts)[0];
+      b.aWalk = pickA('Walk', 'Play', 'Unreal Take'); b.aRun = pickA('Run', 'Trot', 'Walk', 'Play', 'Unreal Take'); b.aIdle = pickA('Stand_Idle_01', 'Idle'); b.aAtk = pickA('Attack_StandAngry_01_High');
       for (const ac of new Set([b.aWalk, b.aRun, b.aIdle, b.aAtk])) if (ac) { ac.play(); ac.setEffectiveWeight(0); }
       c.mixer?.update(0.01); c.holder.updateMatrixWorld(true);
       let lo = 1e9; const v = new THREE.Vector3();
@@ -110,6 +114,7 @@ export class Games {
   }
 
   resetBout() {
+    if (this.pairs) { this.pairIdx = (this.pairIdx + 1) % this.pairs.length; this.pairs.forEach((pr) => pr.forEach((f) => { f.r.root.visible = false; })); this.pair = this.pairs[this.pairIdx]; }
     const [a, b] = this.pair;
     a.down = b.down = false; this.boutT = 0; this.boutEnd = rr(30, 48);
     for (const f of this.pair) { f.r.once = null; f.pos.set(0, 0, 0); }
@@ -119,7 +124,7 @@ export class Games {
   }
   // dia de jogo: muda quando chega uma manhã nova
   onTime(phase) {
-    if (this.lastPhase === 'noite' && phase === 'manha') { this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso'][Math.floor(this.day / PROGRAM.length) % 3]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
+    if (this.lastPhase === 'noite' && phase === 'manha') { this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
     this.lastPhase = phase;
   }
 
@@ -137,7 +142,7 @@ export class Games {
     if (dIn && this.seenDay !== this.day) { this.seenDay = this.day; this.info({ tag: 'Programa do dia', name: night > 0.5 ? 'Noite no Coliseu' : this.event.name, era: `Dia ${this.day + 1} dos jogos · Roma, 117 d.C.`, story: night > 0.5 ? 'À noite não há espetáculo: os escravos limpam as arquibancadas e trocam a areia da arena. Volte de manhã (ou aperte C para passar o tempo).' : this.event.desc, foot: 'A cada novo dia o programa muda: gladiadores, caçada, desfile, batalha naval.' }); }
     const vis = (arr, on) => arr.forEach((f) => { f.r.root.visible = on; });
     const fightOn = show && (ev.id === 'munus' || ev.id === 'pompa');
-    vis(this.pair, fightOn); this.judge.r.root.visible = fightOn;
+    this.pairs.forEach((pr) => vis(pr, fightOn && pr === this.pair)); this.judge.r.root.visible = fightOn;
     vis(this.parade, show && ev.id === 'pompa');
     vis(this.venatores, show && ev.id === 'venatio');
     this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && b.kind === this.beastKind; });
