@@ -2,7 +2,7 @@
 // bairros de ínsulas em volta; o Fórum, os templos, as termas, o Circo Máximo, o porto e a Naumaquia vêm em seguida.
 import * as THREE from 'three';
 import { Batcher } from '../comum/batcher.js';
-import { addBox } from '../comum/collision.js';
+import { addBox, addCircle, blocked } from '../comum/collision.js';
 import { rr, rand } from '../comum/util.js';
 import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
@@ -101,6 +101,43 @@ function buildStreets(B, M) {
   strip(ring, 9);
 }
 
+// árvores: pinheiros-mansos (a copa em guarda-chuva, típica de Roma) e ciprestes, nas colinas, jardins, margens do
+// rio e arredores — instanciadas (duas malhas por espécie para a cidade toda)
+function buildTrees(scene, M) {
+  const pines = [], cyps = [];
+  for (let i = 0; i < 2600; i++) {
+    const x = rr(-1100, 480), z = rr(-540, 980), h = terrainHeight(x, z);
+    if (h < 1.2 || coastC(x, z) > -40) continue;
+    const e = (x / (COL.A + 30)) ** 2 + (z / (COL.B + 30)) ** 2; if (e < 1.3) continue;
+    if (Math.abs(x - FORUM.x) < FORUM.hw + 6 && Math.abs(z - FORUM.z) < FORUM.hd + 6) continue;
+    if (Math.abs(x - CIRCUS.x) < CIRCUS.hw + 4 && Math.abs(z - CIRCUS.z) < CIRCUS.hd + 4) continue;
+    if (((x - NAUMACHIA.x) / (NAUMACHIA.a + 18)) ** 2 + ((z - NAUMACHIA.z) / (NAUMACHIA.b + 18)) ** 2 < 1) continue;
+    const td = tiberDist(x, z).d; if (td < TIBER_HALF + 4) continue;
+    const hilly = h > 16, bank = td < TIBER_HALF + 40, out = Math.hypot(x + 160, z - 30) > 520;
+    if (!hilly && !bank && !out && rand() > 0.04) continue; // na cidade, só uma árvore aqui e ali (jardins)
+    if (blocked(x, z, h, 1.2, 4)) continue;
+    (rand() < 0.62 ? pines : cyps).push([x, h, z, rr(0.8, 1.25), rand() * 6]);
+  }
+  const trunkM = new THREE.MeshStandardMaterial({ color: 0x6a4a34, roughness: 0.95 });
+  const pineM = new THREE.MeshStandardMaterial({ color: 0x3f5f2c, roughness: 0.9, flatShading: true });
+  const cypM = new THREE.MeshStandardMaterial({ color: 0x2c4424, roughness: 0.9, flatShading: true });
+  const inst = (geo, mat, list, f) => {
+    const im = new THREE.InstancedMesh(geo, mat, list.length), d = new THREE.Object3D();
+    list.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
+    im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+  };
+  const trunk = new THREE.CylinderGeometry(0.22, 0.32, 9, 7); trunk.translate(0, 4.5, 0); trunk.rotateZ(0.06);
+  const crown = new THREE.IcosahedronGeometry(1, 1); crown.scale(4.2, 1.5, 4.2); crown.translate(0.5, 9.6, 0);
+  inst(trunk, trunkM, pines, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.3, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); });
+  inst(crown, pineM, pines, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.3, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); });
+  const cyp = new THREE.IcosahedronGeometry(1, 1); cyp.scale(1.1, 5.2, 1.1); cyp.translate(0, 5.4, 0);
+  const cypT = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 6); cypT.translate(0, 0.6, 0);
+  inst(cypT, trunkM, cyps, (d, [x, y, z, s]) => { d.position.set(x, y - 0.2, z); d.rotation.set(0, 0, 0); d.scale.setScalar(s); });
+  inst(cyp, cypM, cyps, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.2, z); d.rotation.set(0, r, 0); d.scale.set(s, s * rr(0.85, 1.2), s); });
+  for (const [x, y, z] of [...pines, ...cyps]) addCircle(x, z, 0.4, y - 1, y + 6);
+  return pines.length + cyps.length;
+}
+
 export function buildCity(scene, tex) {
   const M = createMaterials(tex);
   const B = new Batcher();
@@ -113,5 +150,6 @@ export function buildCity(scene, tex) {
   out.spots.quay = out.spots.start;
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);
+  out.trees = buildTrees(scene, M);
   return out;
 }

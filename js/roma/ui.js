@@ -9,12 +9,13 @@ const MX0 = -1180, MZ0 = -560, MS = 2.5, MP = 680;
 const $ = (s) => document.querySelector(s);
 
 const TIPS = [
-  'O Parthenon levou só nove anos para ser construído (447–438 a.C.); as esculturas ficaram prontas em 432 a.C.',
-  'Os templos gregos não eram brancos: frisos, frontões e estátuas eram pintados de azul, vermelho e dourado.',
-  'Na assembleia (ekklesia), qualquer cidadão podia falar — mas mulheres, estrangeiros e escravos não votavam.',
-  'Uma trirreme tinha 170 remadores em três fileiras, e muitos eram cidadãos pobres pagos pela cidade.',
-  'A dracma de prata ateniense trazia Atena de um lado e a coruja do outro: o "dinheiro com coruja".',
-  'As oliveiras eram sagradas para Atena: quem cortasse uma podia ser julgado e exilado.',
+  'O Coliseu foi inaugurado em 80 d.C. pelo imperador Tito, com 100 dias de jogos; cabiam umas 50 mil pessoas.',
+  'O nome "Coliseu" veio depois: os romanos o chamavam de Anfiteatro Flávio. O apelido vem do Colosso, a estátua gigante ao lado.',
+  'Debaixo da arena ficava o hipogeu: corredores, jaulas e elevadores que faziam feras e cenários surgirem do chão.',
+  'O velário, um toldo de lona sobre a arquibancada, era manobrado por marinheiros da frota de Miseno.',
+  'Nem todo combate de gladiadores terminava em morte: os bons lutadores custavam caro, e muitos sobreviviam a dezenas de lutas.',
+  'Em 117 d.C., sob Trajano, o Império Romano chegou ao seu maior tamanho: da Britânia ao golfo Pérsico.',
+  'Roma tinha mais de um milhão de habitantes; a maioria morava em ínsulas, prédios de aluguel com lojas no térreo.',
 ]
 
 export class UI {

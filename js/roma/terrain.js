@@ -118,28 +118,28 @@ setWater(waterLevelAt);
 // Malha do terreno com 4 fotos (areia da praia, terra batida, grama rala, trilha de pedras) + rocha calcária nas
 // encostas (projeção nos 3 eixos), areia molhada na beira e luz ondulante (cáusticas) no fundo raso do mar.
 // ---------------------------------------------------------------------------
+// Roma é verde: colinas de grama e jardins (o Palatino, os horti), pinheiros e ciprestes; na cidade, ruas e praças
+// calçadas de pedra (basalto nas vias, travertino em volta do Coliseu e do Fórum) e terra batida só nos becos
+// Canais: [areia/barro da margem, terra batida, grama, calçamento]
 function surface(x, z, h, slope) {
   const d = -coastC(x, z);
-  const n = fbm(x * 0.02 + 11, z * 0.02, 3), n2 = fbm(x * 0.11, z * 0.11, 2);
-  let sand = 0, ground = 0, grass = 0, trail = 0;
-  let beach = 1 - ss(30, 60, d);
-  // nas ilhas a praia é só a beira: acima de ~2,5 m, terra, mato e pedra
-  if (d < 0 && h > 0.6) beach = Math.min(beach, 1 - ss(0.8, 2.8, h));
-  sand = beach;
-  const inland = 1 - beach;
-  // cidade e ruas de terra batida; nos morros e fora dos muros, grama seca e pedras
-  const hillness = (d < 0 ? ss(3, 10, h) : ss(20, 34, h)) + ss(0.12, 0.35, slope) * 0.6;
-  // margens do Tibre: barro úmido e capim
-  const riv = 1 - ss(TIBER_HALF + 2, TIBER_HALF + 22, tiberDist(x, z).d);
-  if (riv > 0 && d > 30) beach = Math.max(beach, riv * 0.8);
-  const rural = ss(560, 700, Math.hypot(x + 150, z));
-  grass = inland * clamp(hillness * 0.7 + rural * 0.8 + ss(0.55, 0.72, n) * 0.4, 0, 1);
-  trail = inland * hillness * ss(0.4, 0.6, n2) * 0.7;
-  ground = inland * Math.max(0, 1 - grass - trail);
-  let r = 1, g = 1, b = 1;
+  const n = fbm(x * 0.02 + 11, z * 0.02, 3), n2 = fbm(x * 0.09, z * 0.09, 2), n3 = fbm(x * 0.35 + 5, z * 0.35, 2);
+  let sand = 1 - ss(30, 60, d);
+  if (d < 0 && h > 0.6) sand = Math.min(sand, 1 - ss(0.8, 2.8, h));
+  const riv = 1 - ss(TIBER_HALF + 2, TIBER_HALF + 18, tiberDist(x, z).d);
+  if (riv > 0 && d > 30) sand = Math.max(sand, riv * 0.75);
+  const inland = 1 - sand;
+  // cidade: dentro do círculo urbano, no plano (fora das encostas e do alto das colinas)
+  const urban = (1 - ss(470, 640, Math.hypot(x + 160, z - 30))) * (1 - ss(0.1, 0.22, slope)) * (1 - ss(14, 22, h - 8));
+  const colPlaza = 1 - ss(1.25, 1.55, Math.hypot(x / (COL.A + 30), z / (COL.B + 30)));
+  const forum = Math.max(0, 1 - Math.max(Math.abs(x - FORUM.x) - FORUM.hw, Math.abs(z - FORUM.z) - FORUM.hd, 0) / 14);
+  let pave = Math.max(colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1));
+  let grass = (1 - urban * 0.85) * clamp(0.75 + (n - 0.5) * 0.8, 0, 1) + ss(0.14, 0.3, slope) * 0.2;
+  let ground = urban * (1 - pave) * 0.9 + (1 - urban) * ss(0.6, 0.75, n3) * 0.35; // terra batida: becos e trilhas
+  pave *= inland; grass *= inland * (1 - pave); ground *= inland;
   const v = 0.92 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.2;
-  const s = sand + ground + grass + trail || 1;
-  return [r * v, g * v, b * v, sand / s, ground / s, grass / s, trail / s];
+  const sum = sand + ground + grass + pave || 1;
+  return [v, v, v, sand / sum, ground / sum, grass / sum, pave / sum];
 }
 
 export function buildTerrain(scene, tex) {
@@ -165,7 +165,7 @@ export function buildTerrain(scene, tex) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: P.dry_ground_rocks.map, normalMap: P.dry_ground_rocks.normalMap, roughness: 1, metalness: 0 });
   const U = {
     tSand: { value: P.aerial_beach_01.map }, tWet: { value: P.damp_beach_sand.map }, tGround: { value: P.dry_ground_rocks.map }, tGrass: { value: P.sparse_grass.map },
-    tTrail: { value: P.rocky_trail.map }, tRock: { value: P.rock_face_03.map }, tRockN: { value: P.rock_face_03.normalMap }, tSandN: { value: P.aerial_beach_01.normalMap },
+    tTrail: { value: P.seaworn_stone_tiles.map }, tRock: { value: P.rock_face_03.map }, tRockN: { value: P.rock_face_03.normalMap }, tSandN: { value: P.aerial_beach_01.normalMap },
     uTime: { value: 0 },
   };
   mat.userData.U = U;
@@ -192,8 +192,8 @@ vec3 cWet = tri(tWet, P / 5.0).rgb * vec3(0.95, 0.92, 0.86);
 float wet = 1.0 - smoothstep(0.08, 0.5, vWP.y + (tri(tSand, P / 7.0).r - 0.5) * 0.3);
 cS = mix(cS, cWet, wet * 0.85);
 vec3 cG = tri(tGround, P / 4.5).rgb * vec3(1.12, 1.0, 0.84);
-vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(1.05, 1.0, 0.75);
-vec3 cT = tri(tTrail, P / 5.0).rgb;
+vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(0.78, 1.08, 0.6); // grama verde (Roma, verão ameno)
+vec3 cT = tri(tTrail, P / 3.2).rgb * vec3(0.92, 0.9, 0.86); // calçamento de pedra
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.12;
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
 vec3 cR = (texture2D(tRock, vWP.zy / 16.0).rgb * bw.x + texture2D(tRock, vWP.xz / 16.0).rgb * bw.y + texture2D(tRock, vWP.xy / 16.0).rgb * bw.z) * vec3(1.25, 1.14, 1.0);
