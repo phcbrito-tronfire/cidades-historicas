@@ -15,6 +15,7 @@ import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA } from './terrain.js';
 import { COL, dOf } from './coliseu.js';
 import { buildCity } from './buildings.js';
+import { placeColossus } from './forum.js';
 import { registerSculptures } from '../comum/sculptures.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
@@ -37,7 +38,8 @@ import { buildNaumachia } from './naumaquia.js';
 registerSculptures('assets/models/gregos/', {
   tambor: { fit: 'y', rough: 0.85, tint: [0.82, 0.9, 0.8] }, coluna_jonica: { fit: 'y', rough: 0.85, tint: [0.84, 0.92, 0.82] },
   capitel_jonico: { rough: 0.85, tint: [0.82, 0.9, 0.8] },
-  trirreme: { yaw: Math.PI, rough: 0.7 }, // as galeras da naumaquia
+  trirreme: { yaw: Math.PI, rough: 0.7 },
+  doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 }, // o Colosso (bronze) // as galeras da naumaquia
   kyrenia: { rough: 0.95, tint: [0.36, 0.4, 0.3], hide: ['Object_2', 'Object_3', 'Object_4', 'Object_5', 'Object_12', 'Object_13'] },
 });
 const ui = new UI();
@@ -98,6 +100,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.42, 'Erguendo o Anfiteatro Flávio, arco por arco...');
   const city = buildCity(scene, tex);
+  await placeColossus(scene);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)

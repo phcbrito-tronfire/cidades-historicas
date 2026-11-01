@@ -6,6 +6,7 @@ import { addBox, addCircle, blocked } from '../comum/collision.js';
 import { rr, rand } from '../comum/util.js';
 import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
+import { buildForum } from './forum.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -18,6 +19,8 @@ export function createMaterials(tex) {
   M.facade = std({ ...pbrSet(P.pedra_clara, 1), color: 0xf0e2c6, roughness: 0.8 }); M.facade.userData.uv = { s: 3.2 };
   M.marble = std({ ...pbrSet(P.marble_01, 1), color: 0xfff6ea, roughness: 0.5 }); M.marble.userData.uv = { s: 3 };
   M.marbleWall = std({ ...pbrSet(P.marble_01, 1), color: 0xf6ecdc, roughness: 0.55 }); M.marbleWall.userData.uv = { s: 2.2 };
+  M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
+  M.granite = std({ color: 0x8a5a4c, roughness: 0.45 });
   M.brick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brick.userData.uv = { s: 2.2 }; // tijolo romano
   M.sand = std({ ...pbrSet(P.aerial_beach_01, 1), color: 0xf6e2b8, roughness: 1 }); M.sand.userData.uv = { s: 5 };
   M.wood = std({ ...pbrSet(P.madeira_clara, 1), color: 0xe8c8a0 }); M.wood.userData.uv = { s: 2 };
@@ -64,6 +67,7 @@ function insula(B, M, x, z, w, d, ry, floors) {
 // rio, Naumaquia)
 function buildInsulae(B, M, out) {
   const free = (x, z) => {
+    for (const [x0, x1, z0, z1] of out.exclusions) if (x > x0 - 12 && x < x1 + 12 && z > z0 - 9 && z < z1 + 9) return false; // monumentos
     const e = (x / (COL.A + 26)) ** 2 + (z / (COL.B + 26)) ** 2; if (e < 1) return false;
     if (Math.abs(x - FORUM.x) < FORUM.hw + 14 && Math.abs(z - FORUM.z) < FORUM.hd + 14) return false;
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw + 16 && Math.abs(z - CIRCUS.z) < CIRCUS.hd + 16) return false;
@@ -145,6 +149,7 @@ export function buildCity(scene, tex) {
   const out = { M, spots: {}, zones: {}, torches: [], lights: [], sculptures: [], exclusions: [], stalls: [], visitHouses: [], animated: [], boats: [], flags: [], statues: [], gates: [] };
   buildColosseum(B, M, out);
   buildStreets(B, M);
+  buildForum(B, M, out);
   buildInsulae(B, M, out);
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   out.spots.quay = out.spots.start;
