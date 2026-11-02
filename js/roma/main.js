@@ -142,7 +142,7 @@ async function main() {
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   quests.artifactCount = artifacts.count;
   // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)
-  const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality });
+  const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality, renderer });
   games.lastPhase = sky.current;
   const legion = new Legion(scene); // uma centúria marchando em volta do Coliseu
   const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material);

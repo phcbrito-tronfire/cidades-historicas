@@ -5,6 +5,7 @@
 //   naumachia — batalha naval na Naumaquia de Trajano, além do Tibre (o Coliseu fica vazio, varrendo a areia)
 // À noite não há jogos. A plateia é uma multidão instanciada (barata), que balança e se levanta nos momentos fortes.
 import * as THREE from 'three';
+import { makeCrowd } from '../comum/plateia.js';
 import { COL } from './coliseu.js';
 import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
 import { creature } from '../comum/fauna.js';
@@ -17,22 +18,8 @@ export const PROGRAM = [
   { id: 'naumachia', name: 'Naumaquia — batalha naval', desc: 'Hoje não há jogos no Coliseu: a batalha naval é na Naumaquia de Trajano, o lago artificial do outro lado do Tibre.' },
 ];
 
-// multidão: corpo + cabeça bem simples, uma instância por espectador, cor da túnica por instância
-function crowdGeometry() {
-  const body = new THREE.CylinderGeometry(0.17, 0.22, 0.62, 6); body.translate(0, 0.31, 0);
-  const head = new THREE.IcosahedronGeometry(0.11, 0); head.translate(0, 0.74, 0);
-  const g = new THREE.BufferGeometry();
-  const parts = [body.toNonIndexed(), head.toNonIndexed()];
-  const n = parts.reduce((a, p) => a + p.attributes.position.count, 0);
-  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), skin = new Float32Array(n);
-  let o = 0;
-  parts.forEach((p, i) => { p.computeVertexNormals(); pos.set(p.attributes.position.array, o * 3); nor.set(p.attributes.normal.array, o * 3); skin.fill(i, o, o + p.attributes.position.count); o += p.attributes.position.count; });
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('skin', new THREE.BufferAttribute(skin, 1));
-  return g;
-}
-
 export class Games {
-  constructor(scene, city, { toast, info, audio, quality }) {
+  constructor(scene, city, { toast, info, audio, quality, renderer }) {
     this.scene = scene; this.city = city; this.toast = toast; this.info = info; this.audio = audio;
     this.day = 0; this.lastPhase = null; this.event = PROGRAM[0]; this.seenDay = -1;
     this.excite = 0; this.t = 0;
@@ -49,21 +36,15 @@ export class Games {
       }
     }
     // senadores no pódio (de toga branca com a faixa púrpura)
-    for (let i = 0; i < 260; i++) { const th = rand() * TAU, d = rr(0.8, 2.2); seats.push([(C.a0 + d) * Math.cos(th), Y + C.podiumH, (C.b0 + d) * Math.sin(th), th, -1]); }
-    const mat = new THREE.MeshStandardMaterial({ roughness: 0.95 });
-    this.uTime = { value: 0 }; this.uExcite = { value: 0 };
-    mat.onBeforeCompile = (sh) => {
-      sh.uniforms.uTime = this.uTime; sh.uniforms.uExcite = this.uExcite;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float skin; uniform float uTime; uniform float uExcite; varying float vSkin;')
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          vSkin = skin;
-          float ph = float(gl_InstanceID) * 1.731;
-          // balança de leve; na empolgação, levanta e pula
-          transformed.y += (sin(uTime * 2.0 + ph) * 0.02 + uExcite * (0.35 + 0.15 * sin(uTime * 9.0 + ph))) * (0.6 + 0.4 * fract(ph));`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vSkin;')
-        .replace('#include <color_fragment>', '#include <color_fragment>\nif (vSkin > 0.5) diffuseColor.rgb = vec3(0.62, 0.42, 0.3);');
-    };
-    const im = new THREE.InstancedMesh(crowdGeometry(), mat, seats.length);
+    for (let i = 0; i < 260; i++) { const th = rand() * TAU, d = rr(0.8, 2.2); seats.push([(C.a0 + d) * Math.cos(th), Y + C.podiumH + 0.45, (C.b0 + d) * Math.sin(th), th, -1]); }
+    // os bancos de mármore dos senadores (bisellia), um debaixo de cada um
+    { const pod = seats.filter((q) => q[4] < 0), bm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.7, 0.45, 0.5).translate(0, -0.225, 0), new THREE.MeshStandardMaterial({ color: 0xf2eadc, roughness: 0.5 }), pod.length), o3 = new THREE.Object3D();
+      pod.forEach(([x, y, z, th], i) => { o3.position.set(x, y, z); o3.rotation.set(0, Math.PI / 2 - th, 0); o3.updateMatrix(); bm.setMatrixAt(i, o3.matrix); });
+      bm.receiveShadow = true; bm.castShadow = false; scene.add(bm); this.benches = bm; }
+    // gente de verdade: cartões com fotos do boneco humano sentado e de pé (ver comum/plateia.js)
+    const crowd = makeCrowd(renderer);
+    this.uTime = crowd.uTime; this.uExcite = crowd.uExcite;
+    const im = new THREE.InstancedMesh(crowd.geometry, crowd.material, seats.length);
     const d3 = new THREE.Object3D(), col = new THREE.Color();
     const tunics = [0xefe8d8, 0xe4dccb, 0xb0402c, 0x8c3a28, 0xc8a050, 0x6a7a4a, 0x3a5a8a, 0x9a8a70, 0xd8c8a8];
     seats.forEach(([x, y, z, th, k], i) => {
