@@ -10,6 +10,7 @@ import { buildForum } from './forum.js';
 import { buildMonuments } from './monumentos.js';
 import { buildOstia } from './ostia.js';
 import { buildMarket } from './mercado.js';
+import { buildDistricts } from './insulae.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -25,7 +26,12 @@ export function createMaterials(tex) {
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
   M.granite = std({ color: 0x8a5a4c, roughness: 0.45 });
   M.water = std({ color: 0x3aa8c0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85 });
-  M.brick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brick.userData.uv = { s: 2.2 }; // tijolo romano
+  M.brick = std({ ...pbrSet(P.medieval_red_brick, 1), color: 0xf0b090 }); M.brick.userData.uv = { s: 1.6 }; // tijolo romano (opus latericium): fino, alaranjado, argamassa grossa
+  M.brickY = std({ ...pbrSet(P.brown_brick_02, 1), color: 0xf4d0a8 }); M.brickY.userData.uv = { s: 1.6 }; // tijolo amarelado (outra olaria)
+  M.brickPl = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brickPl.userData.uv = { s: 2.2 }; // reboco gasto sobre tijolo
+  M.shutter = std({ ...pbrSet(P.madeira_clara, 1), color: 0x7a4a2a }); M.shutter.userData.uv = { s: 1.5 }; // venezianas de madeira
+  M.plant = std({ color: 0x4a7a32, roughness: 0.9, flatShading: true });
+  M.terracotta = std({ color: 0xb4623a, roughness: 0.85 });
   M.sand = std({ ...pbrSet(P.aerial_beach_01, 1), color: 0xf6e2b8, roughness: 1 }); M.sand.userData.uv = { s: 5 };
   M.wood = std({ ...pbrSet(P.madeira_clara, 1), color: 0xe8c8a0 }); M.wood.userData.uv = { s: 2 };
   M.darkWood = std({ ...pbrSet(P.madeira_clara, 1), color: 0x8a6446 }); M.darkWood.userData.uv = { s: 2 };
@@ -46,54 +52,6 @@ export function createMaterials(tex) {
   return M;
 }
 
-// ínsula: prédio de 3 a 5 andares de tijolo e reboco, lojas (tabernae) no térreo com as portas largas, janelas e
-// telhado de telhas vermelhas de quatro águas
-function insula(B, M, x, z, w, d, ry, floors) {
-  const y = terrainHeight(x, z) - 0.3, h = floors * 3.1, c = Math.cos(ry), s = Math.sin(ry);
-  const wall = rand() < 0.4 ? M.plasterOchre : rand() < 0.5 ? M.plaster : M.plasterRed;
-  B.box(wall, w, h + 0.3, d, x, y, z, { ry });
-  B.box(M.brick, w + 0.05, 3.3, d + 0.05, x, y, z, { ry });
-  // portas das lojas e janelas (faixas escuras nas duas fachadas compridas)
-  for (const sd of [-1, 1]) {
-    const fx = x - s * sd * (d / 2 + 0.02), fz = z - c * sd * (d / 2 + 0.02);
-    for (let i = 0; i < Math.floor(w / 3.6); i++) {
-      const u = -w / 2 + 1.8 + i * 3.6, px = fx + c * u, pz = fz - s * u;
-      B.box(M.dark, 2.2, 2.4, 0.06, px, y + 0.3, pz, { ry });
-      for (let f = 1; f < floors; f++) B.box(M.window, 0.9, 1.2, 0.06, px, y + 0.3 + f * 3.1 + 0.9, pz, { ry });
-    }
-  }
-  const roof = new THREE.ConeGeometry(Math.hypot(w, d) / 2 * 1.04, 2.2, 4, 1, true); roof.rotateY(Math.PI / 4); roof.scale(w / Math.hypot(w, d) * 1.42, 1, d / Math.hypot(w, d) * 1.42);
-  B.geo(roof, M.tiles, x, y + h + 0.3 + 1.1, z, { ry, uv: { s: 2.2 } });
-  addBox(x, z, Math.abs(c) * w + Math.abs(s) * d, Math.abs(s) * w + Math.abs(c) * d, y - 1, y + h + 2.5);
-}
-
-// bairros de ínsulas: quarteirões numa grade, fora dos lugares reservados (Coliseu, Fórum, Circo, colinas altas,
-// rio, Naumaquia)
-function buildInsulae(B, M, out) {
-  const free = (x, z) => {
-    for (const [x0, x1, z0, z1] of out.exclusions) if (x > x0 - 12 && x < x1 + 12 && z > z0 - 9 && z < z1 + 9) return false; // monumentos
-    const e = (x / (COL.A + 26)) ** 2 + (z / (COL.B + 26)) ** 2; if (e < 1) return false;
-    if (Math.abs(x - FORUM.x) < FORUM.hw + 14 && Math.abs(z - FORUM.z) < FORUM.hd + 14) return false;
-    if (Math.abs(x - CIRCUS.x) < CIRCUS.hw + 16 && Math.abs(z - CIRCUS.z) < CIRCUS.hd + 16) return false;
-    if (tiberDist(x, z).d < TIBER_HALF + 26 || coastC(x, z) > -120) return false;
-    if (((x - NAUMACHIA.x) / (NAUMACHIA.a + 30)) ** 2 + ((z - NAUMACHIA.z) / (NAUMACHIA.b + 30)) ** 2 < 1) return false;
-    if (Math.hypot(x - PALATINE.x, z - PALATINE.z) < 100 || Math.hypot(x - CAPITOL.x, z - CAPITOL.z) < 70) return false;
-    // terreno precisa ser razoavelmente plano no quarteirão
-    const hs = [[-9, -7], [9, -7], [-9, 7], [9, 7]].map(([a, b]) => terrainHeight(x + a, z + b));
-    return Math.max(...hs) - Math.min(...hs) < 2.2;
-  };
-  let n = 0;
-  for (let gx = -560; gx <= 480; gx += 30) for (let gz = -520; gz <= 640; gz += 26) {
-    const x = gx + rr(-2, 2), z = gz + rr(-2, 2);
-    if (Math.hypot(x, z) > 640 || !free(x, z) || rand() < 0.12) continue;
-    const ry = rr(-0.04, 0.04), floors = Math.hypot(x, z) < 300 ? 3 + Math.floor(rand() * 3) : 2 + Math.floor(rand() * 2);
-    insula(B, M, x, z, rr(15, 21), rr(11, 15), ry, floors); n++;
-    if (rand() < 0.08) out.torches.push(new THREE.Vector3(x + 11, terrainHeight(x + 11, z) + 2.4, z));
-  }
-  out.insulae = n;
-}
-
-// a Via Sacra (do Coliseu ao Fórum) e a rua em volta do Coliseu, de lajes de basalto
 function buildStreets(B, M) {
   const strip = (pts, w) => {
     for (let i = 0; i < pts.length - 1; i++) {
@@ -114,7 +72,7 @@ function buildStreets(B, M) {
 function buildTrees(scene, M, ex = []) {
   const pines = [], cyps = [];
   for (let i = 0; i < 2600; i++) {
-    const x = rr(-1100, 480), z = rr(-540, 980), h = terrainHeight(x, z);
+    const x = rr(-960, 270), z = rr(-410, 900), h = terrainHeight(x, z);
     if (h < 1.2 || coastC(x, z) > -40) continue;
     const e = (x / (COL.A + 30)) ** 2 + (z / (COL.B + 30)) ** 2; if (e < 1.3) continue;
     if (Math.abs(x - FORUM.x) < FORUM.hw + 6 && Math.abs(z - FORUM.z) < FORUM.hd + 6) continue;
@@ -158,7 +116,7 @@ export function buildCity(scene, tex) {
   buildMonuments(B, M, out); // aqueduto, Termas de Trajano, Panteão em obras
   buildOstia(B, M, out); // o porto na foz do Tibre
   buildMarket(B, M, out); // Fórum Boário: barracas, cercado do gado e o templo de Hércules
-  buildInsulae(B, M, out);
+  buildDistricts(B, M, out); // os bairros: Subura, Ópio, Célio, Aventino, Trastévere, Campo de Marte
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);

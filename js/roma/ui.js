@@ -4,7 +4,7 @@ import { terrainHeight, WATER_Y } from './terrain.js';
 import { boxes } from '../comum/collision.js';
 
 // mapa: 2 m por pixel, cobrindo x de -820 a 540 e z de -490 a 870
-const MX0 = -1180, MZ0 = -560, MS = 2.5, MP = 680;
+const MX0 = -980, MZ0 = -420, MS = 2.06, MP = 680;
 
 const $ = (s) => document.querySelector(s);
 

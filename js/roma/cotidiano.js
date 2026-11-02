@@ -53,7 +53,7 @@ export class Daily {
       scene.add(im); this.flocks.push({ im, cx, cz, r, y, n, off: [...Array(n)].map(() => [rr(-8, 8), rr(-3, 3), rr(-8, 8), rand() * 6]) });
     }
     // ---- barcaças no Tibre: um trecho do rio perto da cidade, cada uma num lado, subindo ou descendo devagar
-    this.river = polyline(TIBER.slice(3, 9));
+    this.river = polyline(TIBER.slice(3, 8));
     for (let i = 0; i < 2; i++) sculptureInstance('mercante', 13).then((o) => {
       if (!o.children.length) return;
       const g = new THREE.Group(); o.rotation.y = -Math.PI / 2; g.add(o); scene.add(g); // o modelo olha para +x: vira para +z

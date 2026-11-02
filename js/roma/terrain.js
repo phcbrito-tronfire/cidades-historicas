@@ -1,6 +1,7 @@
 // Roma, c. 117 d.C. (Trajano) — relevo: o vale do Coliseu entre o Palatino, o Célio e o Ópio (Esquilino), o Fórum
 // até o Capitólio, o Circo Máximo entre o Palatino e o Aventino, o Campo de Marte na várzea, o Tibre com suas curvas
-// e a ilha Tiberina, e o rio descendo até o mar Tirreno em Óstia. Distâncias encurtadas (o mar fica a ~25 km).
+// e a ilha Tiberina, e o rio descendo até o mar Tirreno em Óstia. Distâncias encurtadas de propósito (o mar fica a
+// ~25 km): um mapa compacto, sem campo vazio — do Aventino já se vê o mar, e do porto se volta a pé ao Circo.
 // Eixos: +x leste, +z sul. O Coliseu está em (0, 0).
 import * as THREE from 'three';
 import { fbm, smoothstep, lerp, clamp } from '../comum/util.js';
@@ -8,18 +9,18 @@ import { setTerrain, setWater } from '../comum/collision.js';
 import { COL, colGround, colTerrain } from './coliseu.js';
 
 export const WATER_Y = 0;
-export const BOUNDS = [-1180, 520, -560, 1060]; // x0, x1, z0, z1 andáveis (o mar segue até o horizonte)
+export const BOUNDS = [-980, 290, -420, 980]; // x0, x1, z0, z1 andáveis (o mar segue até o horizonte)
 const ss = smoothstep;
 
 // costa do Tirreno a sudoeste: distância assinada ao longo de N (c > 0 = mar)
 const NX = -0.72, NZ = 0.69;
 export const along = (x, z) => 0.69 * x + 0.72 * z;
-const shoreS = (a) => 1330 + 12 * Math.sin(a / 70) + 6 * Math.sin(a / 23 + 1);
+const shoreS = (a) => 800 + 12 * Math.sin(a / 70) + 6 * Math.sin(a / 23 + 1);
 export function coastC(x, z) { return NX * x + NZ * z - shoreS(along(x, z)); }
 export function coastPoint(a, off = 0) { const s = shoreS(a) + off; return { x: 0.69 * a + NX * s, z: 0.72 * a + NZ * s }; }
 
 // o Tibre: linha de pontos de norte a sul, com as curvas do Campo de Marte e a ilha Tiberina, até a foz em Óstia
-export const TIBER = [[-560, -620], [-520, -380], [-610, -200], [-570, -40], [-500, 90], [-470, 200], [-540, 360], [-660, 500], [-800, 640], [-930, 780], [-1060, 900]];
+export const TIBER = [[-560, -560], [-520, -380], [-610, -200], [-570, -40], [-500, 90], [-470, 200], [-540, 360], [-600, 470], [-660, 580], [-720, 690]];
 export const TIBER_HALF = 30;
 export const ISOLA = { x: -490, z: 150, a: 13, b: 34, rot: 0.25 }; // ilha Tiberina
 export function tiberDist(x, z) {
@@ -37,8 +38,21 @@ export function tiberDist(x, z) {
 export const FORUM = { x: -205, z: -18, hw: 105, hd: 40, y: 0 };
 export const CIRCUS = { x: -235, z: 250, hw: 150, hd: 34, y: 0 };
 export const PALATINE = { x: -165, z: 115, top: 0 };
-export const CAPITOL = { x: -345, z: -30, top: 0 };
-export const NAUMACHIA = { x: -720, z: -260, a: 90, b: 60, y: 0 }; // lago da Naumaquia de Trajano (109 d.C.), além do Tibre
+export const CAPITOL = { x: -356, z: -30, top: 32, rx: 42, rz: 50 }; // o platô do Capitólio (Área Capitolina)
+// Clivo Capitolino: a rampa calçada que sobe do Fórum, contorna o morro pelo sul e chega ao platô
+export const CLIVUS = [[-296, 54], [-342, 56], [-396, 40], [-406, 6], [-386, -8]];
+const CLV = (() => { const L = [0]; for (let i = 1; i < CLIVUS.length; i++) L.push(L[i - 1] + Math.hypot(CLIVUS[i][0] - CLIVUS[i - 1][0], CLIVUS[i][1] - CLIVUS[i - 1][1])); return L; })();
+export function clivus(x, z) { // distância à rampa e a altura dela ali
+  let best = 1e9, s = 0;
+  for (let i = 0; i < CLIVUS.length - 1; i++) {
+    const [ax, az] = CLIVUS[i], [bx, bz] = CLIVUS[i + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+    const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)), d = Math.hypot(x - ax - dx * u, z - az - dz * u);
+    if (d < best) { best = d; s = CLV[i] + u * Math.sqrt(L2); }
+  }
+  const top = CLV[3], y = s >= top ? CAPITOL.top : lerp(FORUM.y - 0.3, CAPITOL.top, s / top);
+  return { d: best, y };
+}
+export const NAUMACHIA = { x: -770, z: -170, a: 72, b: 48, y: 0 }; // lago da Naumaquia de Trajano (109 d.C.), além do Tibre
 
 const hill = (x, z, cx, cz, rx, rz, rot, hgt, pw = 2) => {
   const c = Math.cos(rot), s = Math.sin(rot), u = ((x - cx) * c + (z - cz) * s) / rx, v = (-(x - cx) * s + (z - cz) * c) / rz;
@@ -61,7 +75,6 @@ export function terrainHeight(x, z) {
   const n = fbm(x * 0.05 + 3, z * 0.05 + 1, 3) - 0.5;
   // ---- as colinas: Palatino (palácios), Capitólio (templo de Júpiter), Aventino, Célio, Ópio/Esquilino, Quirinal
   h += hill(x, z, PALATINE.x, PALATINE.z, 120, 82, 0.15, 30, 3) * (0.92 + n * 0.12);
-  h += hill(x, z, CAPITOL.x, CAPITOL.z, 62, 70, 0.3, 32, 3.2) * (0.9 + n * 0.15);
   h += hill(x, z, -330, 400, 115, 95, -0.3, 26, 2.6);
   h += hill(x, z, 95, 205, 120, 80, 0.2, 18);
   h += hill(x, z, 110, -170, 130, 95, -0.2, 17);
@@ -71,12 +84,15 @@ export function terrainHeight(x, z) {
   h = flat(x, z, FORUM.x, FORUM.z, FORUM.hw, FORUM.hd, FORUM.y, 22, h);
   h = flat(x, z, CIRCUS.x, CIRCUS.z, CIRCUS.hw, CIRCUS.hd, CIRCUS.y, 26, h);
   { const e = (x / (COL.A + 30)) ** 2 + (z / (COL.B + 30)) ** 2; if (e < 1.6) h = lerp(h, COL.y, ss(1.6, 1.0, e)); }
+  // ---- o Capitólio: platô no alto e penhascos em volta (a Rocha Tarpeia), e a rampa do Clivo subindo
+  { const e = Math.hypot((x - CAPITOL.x) / CAPITOL.rx, (z - CAPITOL.z) / CAPITOL.rz); if (e < 1.45 && x < CAPITOL.x + CAPITOL.rx + 9) h = Math.max(h, lerp(CAPITOL.top + n * 0.25, h, ss(1.0, 1.42, e))); }
+  { const c = clivus(x, z); if (c.d < 10) h = lerp(h, c.y, ss(10, 4, c.d)); }
   // ---- o Tibre: leito fundo, margens de terra e a ilha Tiberina
   {
     const { d } = tiberDist(x, z), half = TIBER_HALF + (fbm(x * 0.01, z * 0.01, 2) - 0.5) * 6;
     if (d < half + 30) {
       const t = Math.min(d, half) / half, bed = -1.8 - 3.8 * (1 - t * t) + n * 0.6;
-      h = lerp(h, bed, ss(half + 26, half - 2, d));
+      h = lerp(h, bed, ss(half + 26, half - 2, d) * (1 - ss(-60, 10, coastC(x, z)))); // no mar o leito some (a foz abre na praia)
     }
     const c = Math.cos(ISOLA.rot), s = Math.sin(ISOLA.rot), u = ((x - ISOLA.x) * c + (z - ISOLA.z) * s) / ISOLA.a, v = (-(x - ISOLA.x) * s + (z - ISOLA.z) * c) / ISOLA.b;
     const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.4 + n * 0.4, ss(1.4, 0.7, r)));
@@ -86,7 +102,7 @@ export function terrainHeight(x, z) {
   // ---- bordas do mundo em terra: os montes Albanos e Sabinos ao longe (leste e norte)
   {
     const d = -coastC(x, z);
-    const e = Math.max((x - 420) / 120, (-460 - z) / 110);
+    const e = Math.max((x - 230) / 110, (-360 - z) / 100);
     if (e > 0 && d > 60) h += ss(0, 1, e) * (24 + (fbm(x * 0.01, z * 0.01, 3) - 0.5) * 26) * ss(60, 160, d);
   }
   // ---- dentro do Coliseu: o chão do hipogeu sob a arena e o piso térreo sob a arquibancada
@@ -133,7 +149,8 @@ function surface(x, z, h, slope) {
   const urban = (1 - ss(470, 640, Math.hypot(x + 160, z - 30))) * (1 - ss(0.1, 0.22, slope)) * (1 - ss(14, 22, h - 8));
   const colPlaza = 1 - ss(1.25, 1.55, Math.hypot(x / (COL.A + 30), z / (COL.B + 30)));
   const forum = Math.max(0, 1 - Math.max(Math.abs(x - FORUM.x) - FORUM.hw, Math.abs(z - FORUM.z) - FORUM.hd, 0) / 14);
-  let pave = Math.max(colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1));
+  const capE = Math.hypot((x - CAPITOL.x) / CAPITOL.rx, (z - CAPITOL.z) / CAPITOL.rz), clv = clivus(x, z).d;
+  let pave = Math.max(colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1), 1 - ss(0.82, 0.96, capE), 1 - ss(3.5, 5.5, clv));
   let grass = (1 - urban * 0.85) * clamp(0.75 + (n - 0.5) * 0.8, 0, 1) + ss(0.14, 0.3, slope) * 0.2;
   let ground = urban * (1 - pave) * 0.9 + (1 - urban) * ss(0.6, 0.75, n3) * 0.35; // terra batida: becos e trilhas
   pave *= inland; grass *= inland * (1 - pave); ground *= inland;
@@ -141,7 +158,7 @@ function surface(x, z, h, slope) {
   let r = v, g = v, b = v;
   // campo: fora da cidade, no plano, a terra é dividida em lotes (trigo maduro, terra arada em sulcos, pasto verde,
   // vinha) separados por cercas vivas — o "ager" que alimentava Roma junto com o trigo do Egito
-  const rural = (1 - urban) * inland * (1 - ss(0.07, 0.15, slope)) * ss(50, 110, d) * (1 - riv);
+  const rural = (1 - urban) * inland * (1 - ss(0.07, 0.15, slope)) * ss(50, 110, d) * (1 - riv) * (1 - Math.min(1, pave * 1.5));
   if (rural > 0.02) {
     const ca = Math.cos(0.35), sa = Math.sin(0.35), u = x * ca - z * sa, w = x * sa + z * ca;
     const iu = Math.floor(u / 64), iw = Math.floor(w / 42), fu = u / 64 - iu, fw = w / 42 - iw;
@@ -161,8 +178,8 @@ function surface(x, z, h, slope) {
 }
 
 export function buildTerrain(scene, tex) {
-  const X0 = -1260, X1 = 600, Z0 = -640, Z1 = 1140;
-  const SX = X1 - X0, SZ = Z1 - Z0, SEGX = 560, SEGZ = 534;
+  const X0 = -1060, X1 = 380, Z0 = -500, Z1 = 1060;
+  const SX = X1 - X0, SZ = Z1 - Z0, SEGX = 554, SEGZ = 600;
   const geo = new THREE.PlaneGeometry(SX, SZ, SEGX, SEGZ);
   geo.rotateX(-Math.PI / 2);
   geo.translate((X0 + X1) / 2, 0, (Z0 + Z1) / 2);

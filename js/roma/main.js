@@ -95,7 +95,7 @@ async function main() {
   // o Tibre e o mar Tirreno: um plano d'água só (o rio é mais barrento perto da cidade, o mar mais azul)
   const water = makeWater({
     width: 7000, height: 7000, x: -350, z: 250, y: WATER_Y, normals: tex.waterNormals, waterColor: 0x1b6a8a, shallowColor: 0x6fb8a4, tint: 0.3, tintDepth: 12, reflect: 0.5, bright: 0.45,
-    clarity: 4, foam: 0.8, farDepth: 26, distortion: 3.0, size: 1.4, box: [-1260, -640, 600, 1140], res: [620, 590],
+    clarity: 4, foam: 0.8, farDepth: 26, distortion: 3.0, size: 1.4, box: [-1060, -500, 380, 1060], res: [560, 600],
     depthAt: (x, z) => WATER_Y - terrainHeight(x, z),
   });
   scene.add(water);
@@ -103,7 +103,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.42, 'Erguendo o Anfiteatro Flávio, arco por arco...');
   const city = buildCity(scene, tex);
-  await placeColossus(scene);
+  await placeColossus(scene, city);
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)
@@ -153,7 +153,7 @@ async function main() {
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
     ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z + MARKET.hd + 12], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
-    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 330, 330], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 330, -40], ['Mar Tirreno', -1050, 1000], ['Óstia', -930, 830],
+    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
   ]);
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
