@@ -9,6 +9,7 @@ import { buildColosseum, COL } from './coliseu.js';
 import { buildForum } from './forum.js';
 import { buildMonuments } from './monumentos.js';
 import { buildOstia } from './ostia.js';
+import { buildMarket } from './mercado.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
 
 export function createMaterials(tex) {
@@ -110,7 +111,7 @@ function buildStreets(B, M) {
 
 // árvores: pinheiros-mansos (a copa em guarda-chuva, típica de Roma) e ciprestes, nas colinas, jardins, margens do
 // rio e arredores — instanciadas (duas malhas por espécie para a cidade toda)
-function buildTrees(scene, M) {
+function buildTrees(scene, M, ex = []) {
   const pines = [], cyps = [];
   for (let i = 0; i < 2600; i++) {
     const x = rr(-1100, 480), z = rr(-540, 980), h = terrainHeight(x, z);
@@ -120,6 +121,7 @@ function buildTrees(scene, M) {
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw + 4 && Math.abs(z - CIRCUS.z) < CIRCUS.hd + 4) continue;
     if (((x - NAUMACHIA.x) / (NAUMACHIA.a + 18)) ** 2 + ((z - NAUMACHIA.z) / (NAUMACHIA.b + 18)) ** 2 < 1) continue;
     const td = tiberDist(x, z).d; if (td < TIBER_HALF + 4) continue;
+    if (ex.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1)) continue;
     const hilly = h > 16, bank = td < TIBER_HALF + 40, out = Math.hypot(x + 160, z - 30) > 520;
     if (!hilly && !bank && !out && rand() > 0.04) continue; // na cidade, só uma árvore aqui e ali (jardins)
     if (blocked(x, z, h, 1.2, 4)) continue;
@@ -155,10 +157,11 @@ export function buildCity(scene, tex) {
   buildForum(B, M, out);
   buildMonuments(B, M, out); // aqueduto, Termas de Trajano, Panteão em obras
   buildOstia(B, M, out); // o porto na foz do Tibre
+  buildMarket(B, M, out); // Fórum Boário: barracas, cercado do gado e o templo de Hércules
   buildInsulae(B, M, out);
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);
-  out.trees = buildTrees(scene, M);
+  out.trees = buildTrees(scene, M, out.exclusions);
   return out;
 }

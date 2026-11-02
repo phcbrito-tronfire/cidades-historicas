@@ -33,6 +33,9 @@ import { nextFrame } from '../comum/util.js';
 import { Games } from './jogos.js';
 import { Legion } from './legiao.js';
 import { buildNaumachia } from './naumaquia.js';
+import { Races } from './circo.js';
+import { Daily } from './cotidiano.js';
+import { MARKET } from './mercado.js';
 
 // modelos do Sketchfab já usados em Atenas (o naufrágio no mar de Óstia)
 registerSculptures('assets/models/gregos/', {
@@ -143,11 +146,13 @@ async function main() {
   games.lastPhase = sky.current;
   const legion = new Legion(scene); // uma centúria marchando em volta do Coliseu
   const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material);
+  const races = new Races(scene, { crowdGeo: games.crowd.geometry, crowdMat: games.crowd.material, quality, toast: (m, k, ms) => ui.toast(m, k, ms), excite: () => { games.excite = 1; } }); // bigas no Circo Máximo
+  const daily = new Daily(scene, city, { quality }); // jumentos, pombos, barcaças no Tibre, bois no mercado
 
   await step(0.96, 'Desenhando o mapa de Roma...');
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
-    ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
+    ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z + MARKET.hd + 12], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
     ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 330, 330], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 330, -40], ['Mar Tirreno', -1050, 1000], ['Óstia', -930, 830],
   ]);
   ui.renderObjectives(quests);
@@ -254,6 +259,7 @@ async function main() {
     if (player.swimming) return coastC(x, z) > 0 ? 'Mar Tirreno' : 'Rio Tibre';
     if (inRiver(x, z, 20)) return 'Margem do Tibre';
     if (Math.abs(x - FORUM.x) < FORUM.hw && Math.abs(z - FORUM.z) < FORUM.hd) return 'Fórum Romano';
+    { const m = city.zones.mercado; if (m && x > m[0] && x < m[1] && z > m[2] && z < m[3]) return 'Fórum Boário — mercado'; }
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw && Math.abs(z - CIRCUS.z) < CIRCUS.hd) return 'Circo Máximo';
     { const z2 = city.zones.termas; if (z2 && x > z2[0] && x < z2[1] && z > z2[2] && z < z2[3]) return 'Termas de Trajano'; }
     if (Math.hypot(x + 330, z + 250) < 40) return 'Panteão (em obras)';
@@ -274,7 +280,7 @@ async function main() {
     });
   };
 
-  window.__game = { games, legion, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { games, legion, races, daily, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -322,6 +328,8 @@ async function main() {
     actors.update(dt, t, player, quests, sky.state.night);
     games.update(dt, t, player, sky.state.night);
     legion.update(dt, t, player);
+    races.update(dt, t, player, sky.state.night);
+    daily.update(dt, t, player);
     naumachia.update(dt, t, player, games.event.id === 'naumachia' && sky.state.night < 0.5);
     sea.update(dt, t, player);
     if (started) health.update(dt, player);

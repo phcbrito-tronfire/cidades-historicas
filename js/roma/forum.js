@@ -99,7 +99,7 @@ function arch(B, M, out, o) {
 }
 
 // templo redondo (Vesta): pódio circular, anel de colunas e telhado cônico
-function roundTemple(B, M, out, o) {
+export function roundTemple(B, M, out, o) {
   const y = terrainHeight(o.x, o.z) - 0.2, R = o.r, P = 2.2, H = 7.5;
   B.geo(new THREE.CylinderGeometry(R + 1, R + 1.2, P, 32), M.marbleWall, o.x, y + P / 2, o.z);
   B.geo(new THREE.CylinderGeometry(R - 1.2, R - 1.2, H, 28), M.marbleWall, o.x, y + P + H / 2, o.z);

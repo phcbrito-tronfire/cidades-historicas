@@ -9,6 +9,7 @@ import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum
 import { terrainHeight, coastPoint } from './terrain.js'; // (os lugares de Atenas usados abaixo serão trocados pelos de Roma)
 const AGORA = {}, BEMA = {}, THEATER = {};
 import { labelTexture, markerTexture } from './textures.js';
+import { VENDOR_LINES, MARKET } from './mercado.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
@@ -136,6 +137,12 @@ export class Actors {
     walker('soldier', R(-205, -18, 80, 25), 3, { lines: SOLDIER_LINES, speed: 1.2 });
     for (const [x, z] of [[-100, 0], [90, 10], [0, -75], [0, 80]]) { walker('tunic', R(x, z, 20, 12), 4); walker('woman', R(x, z, 20, 12), 2); walker('child', R(x, z, 20, 12), 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); } // em volta do Coliseu
     walker('tunic', R(-235, 250, 120, 6), 6); walker('worker', R(-120, 120, 60, 40), 4, { lines: WORKER_LINES }); // Circo e ruas do Célio
+    // Fórum Boário: um vendedor atrás de cada barraca e fregueses andando pelo corredor
+    for (const st of this.city.marketStalls || []) {
+      const h = this.addHuman(this.romanLook(rand() < 0.4 ? 'woman' : 'tunic'), st.x, st.z, st.ry);
+      this.agents.push({ ...h, kind: 'villager', static: true, ry: st.ry, lines: VENDOR_LINES[st.type] || VILLAGER_LINES, mode: rand() < 0.5 ? 'talk' : 'idle' });
+    }
+    { const r = R(MARKET.x, MARKET.z, 4, MARKET.hd - 4); walker('toga', r, 2); walker('woman', r, 4); walker('tunic', r, 3); walker('child', r, 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
     for (const r of [R(160, -120, 80, 60), R(-380, -260, 90, 70), R(200, 180, 80, 60)]) { walker('tunic', r, 4); walker('woman', r, 3); walker('child', r, 2, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
   }
 
