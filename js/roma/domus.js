@@ -35,6 +35,8 @@ function wallsToCollision(obj, y0, step = 0.5) {
 
 export async function placeLandmarks(scene, city) {
   const S = city.spots;
+  // as estátuas de bronze de Trajano: no meio da praça e no alto da coluna
+  (city.trajanStatues || []).forEach((p, i) => sculptureInstance('doryphoros', i ? 4.2 : 5).then((o) => { if (!o.children.length) return; const h = new THREE.Group(); h.position.copy(p); h.rotation.y = Math.PI; h.add(o); scene.add(h); }));
   // a domus
   const d = await sculptureInstance('domus', 40);
   if (d.children.length) {

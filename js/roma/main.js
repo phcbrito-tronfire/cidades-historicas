@@ -157,7 +157,7 @@ async function main() {
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
     ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z + MARKET.hd + 12], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
-    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Portus de Trajano', city.spots.portus.x, city.spots.portus.z - 70], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
+    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Fórum de Trajano', -243, -150], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Portus de Trajano', city.spots.portus.x, city.spots.portus.z - 70], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
   ]);
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
@@ -263,6 +263,7 @@ async function main() {
     if (player.swimming) return coastC(x, z) > 0 ? 'Mar Tirreno' : 'Rio Tibre';
     if (inRiver(x, z, 20)) return 'Margem do Tibre';
     if (Math.abs(x - FORUM.x) < FORUM.hw && Math.abs(z - FORUM.z) < FORUM.hd) return 'Fórum Romano';
+    { const t2 = city.zones.trajano; if (t2 && x > t2[0] && x < t2[1] && z > t2[2] && z < t2[3]) return 'Fórum de Trajano'; }
     { const m = city.zones.mercado; if (m && x > m[0] && x < m[1] && z > m[2] && z < m[3]) return 'Fórum Boário — mercado'; }
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw && Math.abs(z - CIRCUS.z) < CIRCUS.hd) return 'Circo Máximo';
     { const z2 = city.zones.termas; if (z2 && x > z2[0] && x < z2[1] && z > z2[2] && z < z2[3]) return 'Termas de Trajano'; }

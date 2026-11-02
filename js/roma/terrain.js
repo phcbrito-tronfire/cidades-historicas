@@ -58,6 +58,7 @@ export function clivus(x, z) { // distância à rampa e a altura dela ali
   const top = CLV[3], y = s >= top ? CAPITOL.top : lerp(FORUM.y - 0.3, CAPITOL.top, s / top);
   return { d: best, y };
 }
+export const TRAJAN = { x: -243, z: -172, hw: 50, hd: 58 }; // Fórum de Trajano (112 d.C.), entre o Fórum Romano e o Quirinal
 export const DOMUS = { x: -332, z: 398, hw: 26, hd: 26, y: 33 }; // a casa rica (domus) no alto do Aventino
 export const NAUMACHIA = { x: -770, z: -170, a: 72, b: 48, y: 0 }; // lago da Naumaquia de Trajano (109 d.C.), além do Tibre
 
@@ -88,6 +89,7 @@ export function terrainHeight(x, z) {
   h += hill(x, z, -300, -300, 150, 90, 0.4, 20);
   h += hill(x, z, 330, -40, 160, 300, 0, 12); // Esquilino, a leste
   h = flat(x, z, DOMUS.x, DOMUS.z, DOMUS.hw, DOMUS.hd, DOMUS.y, 14, h); // terreiro plano da domus
+  h = flat(x, z, TRAJAN.x, TRAJAN.z, TRAJAN.hw, TRAJAN.hd, 8.6, 20, h); // o Fórum de Trajano foi aplainado cortando a encosta do Quirinal
   // ---- vales nivelados: o Fórum Romano, o Circo Máximo e o vale do Coliseu
   h = flat(x, z, FORUM.x, FORUM.z, FORUM.hw, FORUM.hd, FORUM.y, 22, h);
   h = flat(x, z, CIRCUS.x, CIRCUS.z, CIRCUS.hw, CIRCUS.hd, CIRCUS.y, 26, h);

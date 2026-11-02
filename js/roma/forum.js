@@ -16,7 +16,7 @@ const FACE = { '+x': 0, '-x': Math.PI, '+z': -Math.PI / 2, '-z': Math.PI / 2 };
 
 // coluna coríntia: fuste canelado (da jônica) e capitel em sino com folhas de acanto
 const corinthCache = {};
-function corinthian(h, r) {
+export function corinthian(h, r) {
   return (corinthCache[`${h}|${r}`] ??= (() => {
     const g = ionicColumn(h - r * 1.2, r).clone();
     const bell = new THREE.LatheGeometry([[r * 0.95, 0], [r * 1.0, r * 0.4], [r * 1.25, r * 0.9], [r * 1.5, r * 1.2]].map(([a, b]) => new THREE.Vector2(a, b)), 20); bell.translate(0, h - r * 1.2, 0);
@@ -66,7 +66,7 @@ function temple(B, M, out, o) {
 }
 
 // basílica: grande salão de colunas com telhado de duas águas e arcadas de dois andares na fachada comprida
-function basilica(B, M, out, o) {
+export function basilica(B, M, out, o) {
   const y = terrainHeight(o.x, o.z) - 0.2, L = o.L, W = o.W, H = 9;
   B.box(M.marble, L + 2, 0.8, W + 2, o.x, y, o.z);
   for (let lv = 0; lv < 2; lv++) for (let i = 0; i <= Math.floor(L / 5); i++) for (const s of [-1, 1]) {
@@ -83,7 +83,7 @@ function basilica(B, M, out, o) {
 }
 
 // arco do triunfo: um vão em arco pleno, colunas encostadas e o ático com a inscrição
-function arch(B, M, out, o) {
+export function arch(B, M, out, o) {
   const y = terrainHeight(o.x, o.z) - 0.2, w = o.w, h = o.h, d = o.d, ow = w * 0.4, oh = h * 0.62;
   const s = new THREE.Shape(); const r = ow / 2;
   s.moveTo(-w / 2, 0); s.lineTo(-ow / 2, 0); s.lineTo(-ow / 2, oh - r); s.absarc(0, oh - r, r, Math.PI, 0, true); s.lineTo(ow / 2, 0); s.lineTo(w / 2, 0); s.lineTo(w / 2, h); s.lineTo(-w / 2, h); s.lineTo(-w / 2, 0);

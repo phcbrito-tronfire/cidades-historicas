@@ -21,6 +21,7 @@ export const OBJECTIVES = [
   { id: 'jogos', text: 'Assista a três programas diferentes dos jogos (aperte C para passar os dias)' },
   { id: 'rostra', text: 'Suba à Rostra, a tribuna dos oradores enfeitada com esporões de navios' },
   { id: 'capitolio', text: 'Suba o Clivo Capitolino até o Templo de Júpiter' },
+  { id: 'trajano', text: 'Veja a Coluna de Trajano e os Mercados, no Fórum de Trajano' },
   { id: 'circo', text: 'Veja a chegada de uma corrida de bigas no Circo Máximo' },
   { id: 'mercado', text: 'Passeie pelo mercado do Fórum Boário' },
   { id: 'subura', text: 'Ande pelas ruas da Subura, o bairro mais populoso de Roma' },
@@ -48,7 +49,7 @@ export class Quests {
     for (const id of ['apolodoro', 'tacito', 'cornelia', 'domicio', 'vero', 'lucio']) H(id, S['npc_' + id]);
     this.seenEvents = new Set();
     H('coliseu', S.colGateW); H('arena', S.colArena); H('hipogeu', S.hypogeumStair); H('podio', S.podium); H('summa', S.topRow);
-    H('rostra', S.rostra); H('capitolio', S.clivus); H('circo', S.circus); H('mercado', S.market); H('domus', S.domus); H('termas', S.thermae); H('panteao', S.pantheon);
+    H('rostra', S.rostra); H('trajano', S.trajanColumn); H('capitolio', S.clivus); H('circo', S.circus); H('mercado', S.market); H('domus', S.domus); H('termas', S.thermae); H('panteao', S.pantheon);
     H('aqueduto', S.aqueduct); H('portus', S.portus); H('quadrirreme', S.quadrireme); H('subura', { x: -50, z: -210 }); H('tiberina', { x: ISOLA.x, z: ISOLA.z });
     this.load();
   }
@@ -78,6 +79,7 @@ export class Quests {
     if (near(S.rostra, 6) && p.y > S.rostra.y - 0.3) this.complete('rostra');
     if (Math.hypot((p.x - CAPITOL.x) / CAPITOL.rx, (p.z - CAPITOL.z) / CAPITOL.rz) < 0.9 && p.y > CAPITOL.top - 1) this.complete('capitolio');
     if (inZ(Z.mercado)) this.complete('mercado');
+    if (near(S.trajanColumn, 16)) this.complete('trajano');
     { const D = DISTRICTS[0]; if (p.x > D.x0 && p.x < D.x1 && p.z > D.z0 && p.z < D.z1) this.complete('subura'); }
     if (Math.abs(p.x - DOMUS.x) < DOMUS.hw - 4 && Math.abs(p.z - DOMUS.z) < DOMUS.hd - 4) this.complete('domus');
     if (inZ(Z.termas)) this.complete('termas');
