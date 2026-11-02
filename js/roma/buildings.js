@@ -12,7 +12,7 @@ import { buildOstia } from './ostia.js';
 import { buildMarket } from './mercado.js';
 import { buildPortus } from './portus.js';
 import { buildDistricts } from './insulae.js';
-import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
+import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, DOMUS } from './terrain.js';
 
 export function createMaterials(tex) {
   const P = tex.pbr, T = getTextures();
@@ -118,6 +118,7 @@ export function buildCity(scene, tex) {
   buildOstia(B, M, out); // o porto na foz do Tibre
   buildPortus(B, M, out); // o porto hexagonal de Trajano
   buildMarket(B, M, out); // Fórum Boário: barracas, cercado do gado e o templo de Hércules
+  out.exclusions.push([DOMUS.x - DOMUS.hw - 4, DOMUS.x + DOMUS.hw + 4, DOMUS.z - DOMUS.hd - 4, DOMUS.z + DOMUS.hd + 4]); // a domus vem pronta (modelo)
   buildDistricts(B, M, out); // os bairros: Subura, Ópio, Célio, Aventino, Trastévere, Campo de Marte
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   B.build(scene);

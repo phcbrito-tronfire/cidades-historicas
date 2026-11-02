@@ -16,6 +16,7 @@ import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BO
 import { COL, dOf } from './coliseu.js';
 import { buildCity } from './buildings.js';
 import { placeColossus } from './forum.js';
+import { placeLandmarks } from './domus.js';
 import { registerSculptures } from '../comum/sculptures.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
@@ -41,7 +42,7 @@ import { MARKET } from './mercado.js';
 registerSculptures('assets/models/gregos/', {
   tambor: { fit: 'y', rough: 0.85, tint: [0.82, 0.9, 0.8] }, coluna_jonica: { fit: 'y', rough: 0.85, tint: [0.84, 0.92, 0.82] },
   capitel_jonico: { rough: 0.85, tint: [0.82, 0.9, 0.8] },
-  trirreme: { yaw: Math.PI, rough: 0.7 }, quadrirreme: { yaw: Math.PI, rough: 0.7 }, liburna: { yaw: Math.PI, rough: 0.7 }, tiberina: { yaw: Math.PI / 2, rough: 0.85 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 },
+  trirreme: { yaw: Math.PI, rough: 0.7 }, quadrirreme: { yaw: Math.PI, rough: 0.7 }, liburna: { yaw: Math.PI, rough: 0.7 }, tiberina: { yaw: Math.PI / 2, rough: 0.85 }, domus: { rough: 0.8 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 },
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 }, // o Colosso (bronze) // as galeras da naumaquia
   kyrenia: { rough: 0.95, tint: [0.36, 0.4, 0.3], hide: ['Object_2', 'Object_3', 'Object_4', 'Object_5', 'Object_12', 'Object_13'] },
 });
@@ -104,6 +105,7 @@ async function main() {
   await step(0.42, 'Erguendo o Anfiteatro Flávio, arco por arco...');
   const city = buildCity(scene, tex);
   await placeColossus(scene, city);
+  await placeLandmarks(scene, city); // a domus do Aventino e a proa da Ilha Tiberina
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)
