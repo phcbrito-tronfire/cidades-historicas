@@ -21,6 +21,7 @@ export const OBJECTIVES = [
   { id: 'rahotep', text: 'Conheça Rahotep, o vizir do Norte, diante da porta do palácio', hint: [66, -128] },
   { id: 'tia', text: 'Encontre a princesa Tia, irmã do faraó, a caminho da necrópole', hint: [-165, -62] },
   { id: 'escaravelhos', text: 'Encontre os 5 escaravelhos dourados', count: 5 },
+  { id: 'festas', text: 'Veja as duas festas de Mênfis: a barca de Ptah e o touro Ápis (aperte C para passar o tempo)' },
   { id: 'artefatos', text: 'Encontre os 26 artefatos do Egito Antigo', count: 26 },
   { id: 'farao', text: 'Seja recebido pelo faraó Ramsés II no palácio, ao sul', hint: [30, -132] },
 ];

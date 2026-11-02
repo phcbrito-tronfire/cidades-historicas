@@ -17,8 +17,8 @@ const LOOKS = [
 ];
 const COLORS = [[0xb0402c, 0x3a5a8a, 0xd8c8a0], [0xf4efe2, 0xefe8d8, 0xe4dccb], [0x8e2c22, 0x6a7a4a, 0xc8a050], [0x2c4f8c, 0xd8b45a, 0x9a8a70]];
 
-export function makeCrowd(renderer) {
-  const n = LOOKS.length * 3 * 4, rows = Math.ceil(n / COLS);
+export function makeCrowd(renderer, { looks = LOOKS, colors = COLORS } = {}) {
+  const n = looks.length * 3 * 4, rows = Math.ceil(n / COLS);
   const rt = new THREE.WebGLRenderTarget(TW * COLS, TH * rows, { samples: 4 });
   const sc = new THREE.Scene();
   sc.add(new THREE.HemisphereLight(0xfff4e6, 0x8a7a6a, 2.6));
@@ -28,7 +28,7 @@ export function makeCrowd(renderer) {
   const prevTone = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
   renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.autoClear = false;
   let tile = 0;
-  LOOKS.forEach((lk, li) => COLORS[li].forEach((c) => {
+  looks.forEach((lk, li) => colors[li].forEach((c) => {
     const rig = makeHumanoid(lk(c)); sc.add(rig.root);
     for (const pose of ['sit', 'idle']) {
       for (let k = 0; k < 6; k++) animateHumanoid(rig, 0.4, 0, pose, k * 0.4);
@@ -57,7 +57,7 @@ uniform float uTime, uExcite; uniform vec2 uGrid;`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
   float cid = float(gl_InstanceID);
   float h1 = fract(sin(cid * 12.9898) * 43758.5453), h2 = fract(sin(cid * 78.233) * 12345.678);
-  float variant = floor(h1 * ${(LOOKS.length * 3).toFixed(1)});
+  float variant = floor(h1 * ${(looks.length * 3).toFixed(1)});
   float stand = step(1.0 - uExcite * 0.85, h2);
   vec3 fwdW = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * vec3(0.0, 0.0, -1.0));
   vec3 posW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;

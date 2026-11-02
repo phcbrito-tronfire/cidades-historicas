@@ -26,6 +26,7 @@ registerSculptures('assets/models/estatuas/', {
   navio2: { yaw: 0 },
   anubis_deitado: { rot: [Math.PI / 2, 0, 0], yaw: Math.PI, rough: 0.6, tint: [1.5, 1.45, 1.4] },
 });
+import { Festivals } from './festas.js';
 import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
 import { Player } from '../comum/player.js';
@@ -160,6 +161,9 @@ async function main() {
   if (quests.pharaohUnlocked()) actors.openGate(true);
   quests.listeners.push(() => { if (quests.pharaohUnlocked() && !actors.gateOpen) actors.openGate(true); });
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
+  // os dias de Mênfis: a procissão da barca de Ptah, o touro Ápis (muda a cada manhã nova)
+  const festas = new Festivals(scene, city, { renderer, toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), quality });
+  festas.lastPhase = sky.current;
   quests.artifactCount = artifacts.count;
   // placas sobre as portas das casas visitáveis
   const seenHouses = new Set();
@@ -310,7 +314,7 @@ async function main() {
       case 'KeyE': { const t = actors.nearestInteractable(player.pos); if (t) talkTo(t); break; }
       case 'KeyP': pickOrDrop(); break;
       case 'KeyR': useItem(); break;
-      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
+      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); festas.onTime(sky.current); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints(), city.pyramids); break;
@@ -398,7 +402,7 @@ async function main() {
     });
   };
 
-  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -456,6 +460,8 @@ async function main() {
     }
     if (started) { ruins.update(player, (c) => artifacts.showInfo(c)); artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
     actors.update(dt, t, player, quests, sky.state.night);
+    festas.update(dt, t, player, sky.state.night);
+    if (festas.seen.size >= 2) quests.complete('festas');
     nile.update(dt, t, player);
     if (started) health.update(dt, player);
     items.update(t, player.pos);
