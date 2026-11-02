@@ -19,6 +19,12 @@ const shoreS = (a) => 800 + 12 * Math.sin(a / 70) + 6 * Math.sin(a / 23 + 1);
 export function coastC(x, z) { return NX * x + NZ * z - shoreS(along(x, z)); }
 export function coastPoint(a, off = 0) { const s = shoreS(a) + off; return { x: 0.69 * a + NX * s, z: 0.72 * a + NZ * s }; }
 
+// Portus de Trajano (100–112 d.C.): a bacia hexagonal escavada ao lado da foz, ligada ao mar por um canal
+const TX = 0.69, TZ = 0.72; // direção da costa (tangente)
+export const PORTUS = (() => { const a = -255, off = -80, s = shoreS(a) + off; return { x: 0.69 * a + NX * s, z: 0.72 * a + NZ * s, R: 54, a, off }; })();
+export function portusLocal(x, z) { const dx = x - PORTUS.x, dz = z - PORTUS.z; return { u: dx * TX + dz * TZ, v: dx * NX + dz * NZ }; } // u ao longo da costa, v para o mar
+export function portusHex(x, z) { const { u, v } = portusLocal(x, z), ax = Math.abs(u), ay = Math.abs(v); return Math.max(ax * 0.8660254 + ay * 0.5, ay); } // < R·0,866 = dentro
+export function inPortus(x, z, m = 0) { const { u, v } = portusLocal(x, z); return portusHex(x, z) < PORTUS.R * 0.866 + m || (Math.abs(u) < 13 + m && v > 0 && v < 140); }
 // o Tibre: linha de pontos de norte a sul, com as curvas do Campo de Marte e a ilha Tiberina, até a foz em Óstia
 export const TIBER = [[-560, -560], [-520, -380], [-610, -200], [-570, -40], [-500, 90], [-470, 200], [-540, 360], [-600, 470], [-660, 580], [-720, 690]];
 export const TIBER_HALF = 30;
@@ -105,6 +111,10 @@ export function terrainHeight(x, z) {
     const e = Math.max((x - 230) / 110, (-360 - z) / 100);
     if (e > 0 && d > 60) h += ss(0, 1, e) * (24 + (fbm(x * 0.01, z * 0.01, 3) - 0.5) * 26) * ss(60, 160, d);
   }
+  // ---- Portus: bacia e canal escavados, fundo de 5 m (as paredes de cais são construídas por cima)
+  { const hd = portusHex(x, z), { u, v } = portusLocal(x, z), Rin = PORTUS.R * 0.866;
+    if (hd < Rin + 10) h = lerp(h, -5, ss(Rin + 3, Rin, hd));
+    if (Math.abs(u) < 22 && v > 0 && v < 150) h = Math.min(h, lerp(-5, h, ss(13, 16, Math.abs(u)))); }
   // ---- dentro do Coliseu: o chão do hipogeu sob a arena e o piso térreo sob a arquibancada
   const c = colTerrain(x, z); if (c !== null) h = c;
   return h;
@@ -118,7 +128,7 @@ export function groundHeight(x, z) {
 
 export function inRiver(x, z, margin = 0) { return tiberDist(x, z).d < TIBER_HALF + margin; }
 export function waterLevelAt(x, z) {
-  if (coastC(x, z) > -30 || inRiver(x, z, 14)) return WATER_Y;
+  if (coastC(x, z) > -30 || inRiver(x, z, 14) || inPortus(x, z, 2)) return WATER_Y;
   const N = NAUMACHIA; if (((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2 < 1.02) return WATER_Y; // o lago da naumaquia tem água sempre
   return -100;
 }

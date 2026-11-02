@@ -3,6 +3,7 @@
 // pé no convés e conduz o navio com as setas, como os outros barcos.
 import * as THREE from 'three';
 import { sculptureInstance } from '../comum/sculptures.js';
+import { hullMask } from '../comum/casco.js';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
 import { animateHumanoid, makeHumanoid, rowPose } from '../comum/mixamo.js';
 import { rr, rand, pick, clamp, lerp } from '../comum/util.js';
@@ -108,6 +109,7 @@ export class Boats {
       const empty = !o.children.length;
       const m = empty ? fallbackHull(d.model, d.len) : o;
       m.position.y = d.beached || d.shed ? 0 : sink;
+      if (!empty && !d.beached && !d.shed) holder.add(hullMask(m, 0.12)); // tampa invisível: a água não aparece dentro do casco
       holder.add(m);
       // altura do convés: um raio de cima para baixo no ponto onde o explorador fica
       g.updateMatrixWorld(true);

@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { mat4 } from '../comum/batcher.js';
 import { addBox } from '../comum/collision.js';
 import { roofHalf, pedimentGeo } from '../atenas/arquitetura.js';
-import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA } from './terrain.js';
+import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, inPortus } from './terrain.js';
 import { COL } from './coliseu.js';
 import { rr, rand, pick } from '../comum/util.js';
 
@@ -156,7 +156,7 @@ export function buildDistricts(B, M, out) {
     if ((x / (COL.A + 30)) ** 2 + (z / (COL.B + 30)) ** 2 < 1) return false;
     if (Math.abs(x - FORUM.x) < FORUM.hw + 16 && Math.abs(z - FORUM.z) < FORUM.hd + 16) return false;
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw + 18 && Math.abs(z - CIRCUS.z) < CIRCUS.hd + 18) return false;
-    if (tiberDist(x, z).d < TIBER_HALF + 22 || coastC(x, z) > -60) return false;
+    if (tiberDist(x, z).d < TIBER_HALF + 22 || coastC(x, z) > -60 || inPortus(x, z, 40)) return false;
     if (((x - NAUMACHIA.x) / (NAUMACHIA.a + 26)) ** 2 + ((z - NAUMACHIA.z) / (NAUMACHIA.b + 26)) ** 2 < 1) return false;
     if (Math.hypot(x - PALATINE.x, z - PALATINE.z) < 95 || Math.hypot(x - CAPITOL.x, z - CAPITOL.z) < 75) return false;
     return true;

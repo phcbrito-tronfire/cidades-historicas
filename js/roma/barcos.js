@@ -3,12 +3,14 @@
 // pé no convés e conduz o navio com as setas, como os outros barcos.
 import * as THREE from 'three';
 import { sculptureInstance } from '../comum/sculptures.js';
+import { hullMask } from '../comum/casco.js';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
 import { animateHumanoid, makeHumanoid, rowPose } from '../comum/mixamo.js';
 import { rr, rand, pick, clamp, lerp } from '../comum/util.js';
 import { blocked, groundAt } from '../comum/collision.js';
 
 const V3 = THREE.Vector3;
+const GAL = new Set(['trirreme', 'quadrirreme', 'liburna']); // galeras: convés alto, tripulação, conduzidas de pé
 const ray = new THREE.Raycaster();
 let FR = 0;
 
@@ -66,12 +68,12 @@ function poseOars(b, a) {
 
 function fallbackHull(kind, L) {
   const g = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: kind === 'trirreme' ? 0x3a2a1e : 0x8a6a44, roughness: 0.8 });
+  const wood = new THREE.MeshStandardMaterial({ color: GAL.has(kind) ? 0x3a2a1e : 0x8a6a44, roughness: 0.8 });
   const hull = new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
-  hull.scale(L / 2, kind === 'trirreme' ? 1.6 : 0.6, kind === 'trirreme' ? 2.6 : 1.0);
-  const h = new THREE.Mesh(hull, wood); h.position.y = kind === 'trirreme' ? 1.6 : 0.6; g.add(h);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, 0.08, kind === 'trirreme' ? 4.4 : 1.4), new THREE.MeshStandardMaterial({ color: 0xa88a60, roughness: 0.9 }));
-  deck.position.y = kind === 'trirreme' ? 1.55 : 0.35; g.add(deck);
+  hull.scale(L / 2, GAL.has(kind) ? 1.6 : 0.6, GAL.has(kind) ? 2.6 : 1.0);
+  const h = new THREE.Mesh(hull, wood); h.position.y = GAL.has(kind) ? 1.6 : 0.6; g.add(h);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, 0.08, GAL.has(kind) ? 4.4 : 1.4), new THREE.MeshStandardMaterial({ color: 0xa88a60, roughness: 0.9 }));
+  deck.position.y = GAL.has(kind) ? 1.55 : 0.35; g.add(deck);
   if (kind !== 'barco_remo') { const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, L * 0.45, 8), wood); mast.position.y = L * 0.24; g.add(mast); }
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
@@ -96,24 +98,25 @@ export class Boats {
   add(d) {
     const g = new THREE.Group(); // pivô na linha d'água (ou no chão), +x = proa
     const holder = new THREE.Group(); g.add(holder);
-    const b = { ...d, g, holder, bob: rand() * 6, deckY: d.model === 'trirreme' ? 1.6 : 0.4, yaw: d.ry || 0, v: 0, ready: false };
+    const b = { ...d, g, holder, bob: rand() * 6, deckY: GAL.has(d.model) ? 1.6 : 0.4, yaw: d.ry || 0, v: 0, ready: false };
     if (d.route) { const p = coastPoint(d.route.a0, d.route.off); g.position.set(p.x, WATER_Y, p.z); b.ra = d.route.a0; }
     else g.position.set(d.x, d.y ?? WATER_Y, d.z);
     g.rotation.y = b.yaw;
     if (d.beached) { g.rotation.z = rr(-0.12, 0.12); g.rotation.x = rr(-0.05, 0.05); }
     this.scene.add(g);
     // calado de cada modelo: quanto o casco afunda (o pivô é a linha d'água)
-    const sink = { trirreme: -0.9, mercante: -0.7, barco_remo: -0.02, barco_pesca: -0.3 }[d.model] ?? -0.3; // bote: o piso de dentro fica acima da água (senão o mar "entra" no barco)
+    const sink = { trirreme: -0.9, quadrirreme: -1.3, liburna: -1.6, mercante: -0.7, barco_remo: -0.02, barco_pesca: -0.3 }[d.model] ?? -0.3; // bote: o piso de dentro fica acima da água (senão o mar "entra" no barco)
     sculptureInstance(d.model, d.len).then((o) => {
       const empty = !o.children.length;
       const m = empty ? fallbackHull(d.model, d.len) : o;
       m.position.y = d.beached || d.shed ? 0 : sink;
+      if (!empty && !d.beached && !d.shed) holder.add(hullMask(m, 0.12)); // tampa invisível: a água não aparece dentro do casco
       holder.add(m);
       // altura do convés: um raio de cima para baixo no ponto onde o explorador fica
       g.updateMatrixWorld(true);
       // altura do piso num ponto do barco: o primeiro chão (normal para cima, no mundo) abaixo da altura do convés
       // (acima ficam mastro, vela e enfeites da proa)
-      const top = d.model === 'trirreme' ? 3.2 : d.model === 'mercante' ? 4 : 1.2;
+      const top = GAL.has(d.model) ? 3.2 : d.model === 'mercante' ? 4 : 1.2;
       const deckAt = (lx, lz) => {
         ray.set(new V3(lx, 30, lz).applyMatrix4(g.matrixWorld), new V3(0, -1, 0)); ray.far = 40;
         const h = ray.intersectObject(m, true).find((h) => h.face && h.point.y - g.position.y < top && h.face.normal.clone().transformDirection(h.object.matrixWorld).y > 0.5);
@@ -139,8 +142,8 @@ export class Boats {
     // nos três níveis de bancos — de fora só se veem os remos
     // lanterna na popa dos barcos que navegam ou estão na água (os da areia e dos galpões, não)
     if (!d.beached && !d.shed) {
-      const L = this.lantern, lg = new THREE.Group(), tall = d.model === 'trirreme' ? 1.6 : 1.1;
-      lg.position.set(-d.len * 0.43, (d.model === 'trirreme' ? 2.7 : 0.45), 0);
+      const L = this.lantern, lg = new THREE.Group(), tall = GAL.has(d.model) ? 1.6 : 1.1;
+      lg.position.set(-d.len * 0.43, (GAL.has(d.model) ? 2.7 : 0.45), 0);
       const pole = new THREE.Mesh(L.pole, L.wood); pole.scale.y = tall / 1.6; pole.position.y = tall / 2; lg.add(pole);
       const bowl = new THREE.Mesh(L.bowl, L.iron); bowl.position.y = tall + 0.05; lg.add(bowl);
       const fire = new THREE.Mesh(L.flame, L.fire); fire.position.y = tall + 0.08; lg.add(fire);
@@ -151,7 +154,7 @@ export class Boats {
     const sailor = () => ({ outfit: 'exomis', cloth: pick([0xd8cfb8, 0x8a7a5a, 0x3a5f8a, 0xa89a7a]), beard: rand() < 0.6 ? 'short' : null, extras: ['pilos'] });
     const hoplite = () => ({ outfit: 'hoplite', cloth: pick([0x8e2c22, 0x9a3a24]), border: 0x2a1a10, beard: 'short', extras: ['spear', 'aspis', 'helmet', 'cuirass'], device: 'owl', pose: 'spear' });
     const L = d.len, put = (look, fx, fz, mode, ry = Math.PI / 2) => { const r = makeHumanoid(look); b.crew.push({ r, lx: L * fx, lz: fz, mode, ry }); g.add(r.root); };
-    if (d.model === 'trirreme' && (d.moored || d.route)) {
+    if (GAL.has(d.model) && (d.moored || d.route)) {
       put(sailor(), -0.4, 0, 'idle'); // timoneiro
       put(sailor(), -0.3, 0.6, 'sit'); // auletes
       put(sailor(), -0.06, -0.5, 'idle'); // keleustes
@@ -164,13 +167,13 @@ export class Boats {
     return b;
   }
 
-  seatLocal(b) { return b.model === 'trirreme' ? new V3(-b.len * 0.18, 0, 0) : b.model === 'barco_pesca' ? new V3(-b.len * 0.28, 0, 0) : new V3(-b.len * 0.05, 0, 0); }
+  seatLocal(b) { return GAL.has(b.model) ? new V3(-b.len * 0.18, 0, 0) : b.model === 'barco_pesca' ? new V3(-b.len * 0.28, 0, 0) : new V3(-b.len * 0.05, 0, 0); }
 
   nearestBoardable(p) {
     let best = null, bd = 1e9;
     for (const b of this.list) {
       if (!b.board || !b.ready) continue;
-      const d = Math.hypot(b.g.position.x - p.x, b.g.position.z - p.z) - (b.model === 'trirreme' ? b.len * 0.45 : b.len * 0.5);
+      const d = Math.hypot(b.g.position.x - p.x, b.g.position.z - p.z) - (GAL.has(b.model) ? b.len * 0.45 : b.len * 0.5);
       if (d < 3.2 && d < bd) { bd = d; best = b; }
     }
     return best;
@@ -179,7 +182,7 @@ export class Boats {
   board(player, b) {
     this.riding = b; b.v = 0; b.turnV = 0;
     player.keys.clear();
-    player.boardCam(b.model === 'trirreme' ? 0.46 : 0.4);
+    player.boardCam(GAL.has(b.model) ? 0.46 : 0.4);
   }
 
   // desembarcar (E, a qualquer momento): desce pelo bordo mais perto da terra; atracado ao cais, sobe no cais;
@@ -190,7 +193,7 @@ export class Boats {
     player.leaveCam();
     b.v = 0; b.turnV = 0;
     let best = null;
-    const w = b.model === 'trirreme' ? 3.4 : 1.8;
+    const w = GAL.has(b.model) ? 3.4 : 1.8;
     for (const sd of [1, -1]) for (const dd of [w, w + 1.4, w + 3]) {
       const v = new V3(0, 0, sd * dd).applyAxisAngle(new V3(0, 1, 0), b.yaw), x = b.g.position.x + v.x, z = b.g.position.z + v.z;
       const g = groundAt(x, z, WATER_Y + 3), depth = WATER_Y - g; // (o topo do cais conta como chão)
@@ -211,7 +214,7 @@ export class Boats {
         if (lit) { const k = 0.85 + Math.sin(t * 13 + b.bob) * 0.1 + Math.sin(t * 27 + b.bob) * 0.06; b.lantern.fire.scale.set(1, k, 1);
           if (!this.riding) { const d2 = (g.position.x - player.pos.x) ** 2 + (g.position.z - player.pos.z) ** 2; if (d2 < best) { best = d2; lightBoat = b; } } }
       }
-      if (!b.beached && !b.shed) { g.position.y = (b.y ?? WATER_Y) + Math.sin(t * 1.1 + b.bob) * (b.model === 'trirreme' ? 0.05 : 0.08); g.rotation.z = Math.sin(t * 0.9 + b.bob) * 0.02; g.rotation.x = Math.sin(t * 0.7 + b.bob * 2) * 0.012; }
+      if (!b.beached && !b.shed) { g.position.y = (b.y ?? WATER_Y) + Math.sin(t * 1.1 + b.bob) * (GAL.has(b.model) ? 0.05 : 0.08); g.rotation.z = Math.sin(t * 0.9 + b.bob) * 0.02; g.rotation.x = Math.sin(t * 0.7 + b.bob * 2) * 0.012; }
       if (b.route && b !== this.riding) { // navegando ao longo da costa, ida e volta
         const dir = Math.sign(b.route.a1 - b.route.a0);
         b.ra += dir * b.speed * dt;
@@ -232,7 +235,7 @@ export class Boats {
     }
     // luz de fogo no barco escolhido (o de quem navega, ou o mais perto)
     if (lit && lightBoat?.lantern) {
-      const lb = lightBoat, top = new V3(-lb.len * 0.43, (lb.model === 'trirreme' ? 2.7 : 0.45) + lb.lantern.top, 0).applyAxisAngle(new V3(0, 1, 0), lb.yaw);
+      const lb = lightBoat, top = new V3(-lb.len * 0.43, (GAL.has(lb.model) ? 2.7 : 0.45) + lb.lantern.top, 0).applyAxisAngle(new V3(0, 1, 0), lb.yaw);
       this.light.position.set(lb.g.position.x + top.x, lb.g.position.y + top.y, lb.g.position.z + top.z);
       this.light.intensity = 16 * Math.min(1, (this.night - 0.35) * 3) * (0.88 + Math.sin(t * 12.3) * 0.08);
     } else this.light.intensity = 0;
@@ -244,9 +247,9 @@ export class Boats {
     const seat = this.seatLocal(b).applyAxisAngle(new V3(0, 1, 0), b.yaw);
     const pos = new V3(b.g.position.x + seat.x, b.g.position.y + b.deckY, b.g.position.z + seat.z);
     // câmera de barco: mira o meio do casco, bem mais alta e longe (dá para ver o barco inteiro e o mar à frente)
-    const cam = { x: b.g.position.x, y: b.g.position.y + b.deckY + (b.model === 'trirreme' ? 3 : 1.2), z: b.g.position.z, dist: b.model === 'trirreme' ? 34 : 11 };
+    const cam = { x: b.g.position.x, y: b.g.position.y + b.deckY + (GAL.has(b.model) ? 3 : 1.2), z: b.g.position.z, dist: GAL.has(b.model) ? 34 : 11 };
     if (b.oars && b.row) { this.row(b, dt, t, player, cam); }
-    else player.ride(dt, t, pos, b.yaw + Math.PI / 2, b.model === 'trirreme' ? 'idle' : 'sit', b.v, cam);
+    else player.ride(dt, t, pos, b.yaw + Math.PI / 2, GAL.has(b.model) ? 'idle' : 'sit', b.v, cam);
     if (Math.abs(b.v) > 0.6 && Math.random() < dt * 6) { const back = new V3(-b.len * 0.45, 0, 0).applyAxisAngle(new V3(0, 1, 0), b.yaw); this.fx?.ripple(new V3(b.g.position.x + back.x, WATER_Y + 0.02, b.g.position.z + back.z), 0.8 + Math.abs(b.v) * 0.3); }
   }
 
@@ -299,7 +302,7 @@ export class Boats {
     const dir = new V3(Math.cos(b.yaw), 0, -Math.sin(b.yaw)), side = new V3(-dir.z, 0, dir.x);
     const nx = b.g.position.x + dir.x * b.v * dt, nz = b.g.position.z + dir.z * b.v * dt;
     // casco: proa, popa e os dois bordos precisam de água e não podem entrar no cais nem em outro barco
-    const tri = b.model === 'trirreme', half = b.len * 0.48, beam = tri ? 2.4 : b.model === 'barco_pesca' ? 1.1 : 0.9, draft = WATER_Y - (tri ? 1.2 : 0.35), sg = Math.sign(b.v || 1);
+    const tri = GAL.has(b.model), half = b.len * 0.48, beam = tri ? 2.4 : b.model === 'barco_pesca' ? 1.1 : 0.9, draft = WATER_Y - (tri ? 1.2 : 0.35), sg = Math.sign(b.v || 1);
     const pts = [[half, 0], [-half * 0.7, 0], [0, beam], [0, -beam], [half * 0.5, beam * 0.7], [half * 0.5, -beam * 0.7]];
     // quantos pontos do casco estão em terra / no cais / em outro barco
     const hits = (x, z) => {

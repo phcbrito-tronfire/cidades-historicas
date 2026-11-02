@@ -46,8 +46,8 @@ export function buildOstia(B, M, out) {
     S.lighthouse = new V3(p.x, 2, p.z);
   }
   // navios: mercantes atracados, uma galera de guerra passando, o barco a remo para o jogador
-  for (let i = 0; i < 3; i++) { const a = 12 + i * 30, p = coastPoint(a, 27), ry = tang(a) - Math.PI / 2; out.boats.push({ model: 'mercante', x: p.x, z: p.z, ry, len: 19, moored: true }); }
-  out.boats.push({ model: 'trirreme', route: { a0: -300, a1: 120, off: 120 }, len: 30, speed: 2.4, name: 'Concórdia' });
+  { const a = 42, p = coastPoint(a, 27), ry = tang(a) - Math.PI / 2; out.boats.push({ model: 'mercante', x: p.x, z: p.z, ry, len: 19, moored: true }); } // um mercante estrangeiro, de passagem
+  out.boats.push({ model: 'quadrirreme', route: { a0: -320, a1: 140, off: 130 }, len: 30, speed: 2.4, name: 'Fortuna' }); // a quadrirreme de patrulha ao largo
   { const p = coastPoint(96, 22); out.boats.push({ model: 'barco_remo', x: p.x, z: p.z, y: 0, ry: tang(96), len: 4.2, board: true, pilot: true, name: 'barco a remo' }); S.rowboat = new V3(p.x, 0, p.z); }
   const qq = coastPoint(45, -8); S.quay = new V3(qq.x, terrainHeight(qq.x, qq.z), qq.z);
   out.zones.ostia = [qq.x - 120, qq.x + 120, qq.z - 120, qq.z + 120];

@@ -41,7 +41,7 @@ import { MARKET } from './mercado.js';
 registerSculptures('assets/models/gregos/', {
   tambor: { fit: 'y', rough: 0.85, tint: [0.82, 0.9, 0.8] }, coluna_jonica: { fit: 'y', rough: 0.85, tint: [0.84, 0.92, 0.82] },
   capitel_jonico: { rough: 0.85, tint: [0.82, 0.9, 0.8] },
-  trirreme: { yaw: Math.PI, rough: 0.7 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 },
+  trirreme: { yaw: Math.PI, rough: 0.7 }, quadrirreme: { yaw: Math.PI, rough: 0.7 }, liburna: { yaw: Math.PI, rough: 0.7 }, tiberina: { yaw: Math.PI / 2, rough: 0.85 }, mercante: { yaw: 0, rough: 0.8 }, barco_remo: { yaw: Math.PI / 2, rough: 0.85 },
   doryphoros: { yaw: Math.PI / 2, fit: 'y', rough: 0.4, tint: [0.7, 0.5, 0.33], metal: 0.8 }, // o Colosso (bronze) // as galeras da naumaquia
   kyrenia: { rough: 0.95, tint: [0.36, 0.4, 0.3], hide: ['Object_2', 'Object_3', 'Object_4', 'Object_5', 'Object_12', 'Object_13'] },
 });
@@ -153,7 +153,7 @@ async function main() {
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
     ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z + MARKET.hd + 12], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
-    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
+    ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Portus de Trajano', city.spots.portus.x, city.spots.portus.z - 70], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
   ]);
   ui.renderObjectives(quests);
   ui.setTime('Tarde');
@@ -266,6 +266,7 @@ async function main() {
     if (Math.hypot(x - FORUM.x, z - FORUM.z) > 400 && Math.hypot(x, z) < 120) return 'Vale do Coliseu';
     if (Math.hypot(x - PALATINE.x, z - PALATINE.z) < 110) return 'Palatino';
     if (Math.hypot(x - CAPITOL.x, z - CAPITOL.z) < 70) return 'Capitólio';
+    { const o = city.zones.portus; if (o && x > o[0] && x < o[1] && z > o[2] && z < o[3]) return 'Portus — o porto de Trajano'; }
     { const o = city.zones.ostia; if (o && x > o[0] && x < o[1] && z > o[2] && z < o[3]) return 'Porto de Óstia'; }
     if (coastC(x, z) > -150) return 'Litoral de Óstia';
     return 'Roma';
