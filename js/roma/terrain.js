@@ -117,8 +117,11 @@ export function terrainHeight(x, z) {
   }
   // ---- Portus: bacia e canal escavados, fundo de 5 m (as paredes de cais são construídas por cima)
   { const hd = portusHex(x, z), { u, v } = portusLocal(x, z), Rin = PORTUS.R * 0.866;
-    if (hd < Rin + 10) h = lerp(h, -5, ss(Rin + 3, Rin, hd));
-    if (Math.abs(u) < 22 && v > 0 && v < 150) h = Math.min(h, lerp(-5, h, ss(13, 16, Math.abs(u)))); }
+    // borda reta: dentro da bacia o fundo, fora dela o chão do cais na altura do calçamento (sem vala atrás da parede)
+    const quay = 1.3, inCh = Math.abs(u) < 13.3 && v > 0 && v < 150;
+    if (hd < Rin - 0.2 || inCh) h = Math.min(h, -5);
+    else { const band = Math.abs(u) < 32 && v > 0 && v < 84 ? Math.min(hd - Rin, Math.abs(u) - 13.3) : hd - Rin; // distância até a borda do cais
+      if (band < 26) h = lerp(quay + 0.1, h, ss(10, 26, band)); } }
   // ---- dentro do Coliseu: o chão do hipogeu sob a arena e o piso térreo sob a arquibancada
   const c = colTerrain(x, z); if (c !== null) h = c;
   return h;
@@ -132,7 +135,7 @@ export function groundHeight(x, z) {
 
 export function inRiver(x, z, margin = 0) { return tiberDist(x, z).d < TIBER_HALF + margin; }
 export function waterLevelAt(x, z) {
-  if (coastC(x, z) > -30 || inRiver(x, z, 14) || inPortus(x, z, 2)) return WATER_Y;
+  if (coastC(x, z) > -30 || inRiver(x, z, 14) || inPortus(x, z)) return WATER_Y;
   const N = NAUMACHIA; if (((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2 < 1.02) return WATER_Y; // o lago da naumaquia tem água sempre
   return -100;
 }
