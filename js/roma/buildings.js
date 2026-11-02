@@ -12,6 +12,8 @@ import { buildOstia } from './ostia.js';
 import { buildMarket } from './mercado.js';
 import { buildPortus } from './portus.js';
 import { buildTrajan } from './trajano.js';
+import { buildTiberina } from './tiberina.js';
+import { buildDomus } from './domus.js';
 import { buildDistricts } from './insulae.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, DOMUS } from './terrain.js';
 
@@ -119,8 +121,10 @@ export function buildCity(scene, tex) {
   buildOstia(B, M, out); // o porto na foz do Tibre
   buildPortus(B, M, out); // o porto hexagonal de Trajano
   buildTrajan(B, M, out); // o Fórum, a Coluna e os Mercados de Trajano
+  buildTiberina(B, M, out); // a ilha-navio, com o templo de Esculápio e as pontes
+  buildDomus(B, M, out); // a casa rica do Aventino, cômodo por cômodo
   buildMarket(B, M, out); // Fórum Boário: barracas, cercado do gado e o templo de Hércules
-  out.exclusions.push([DOMUS.x - DOMUS.hw - 4, DOMUS.x + DOMUS.hw + 4, DOMUS.z - DOMUS.hd - 4, DOMUS.z + DOMUS.hd + 4]); // a domus vem pronta (modelo)
+  out.exclusions.push([DOMUS.x - DOMUS.hw - 4, DOMUS.x + DOMUS.hw + 4, DOMUS.z - DOMUS.hd - 4, DOMUS.z + DOMUS.hd + 4]); // a domus
   buildDistricts(B, M, out); // os bairros: Subura, Ópio, Célio, Aventino, Trastévere, Campo de Marte
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   B.build(scene);

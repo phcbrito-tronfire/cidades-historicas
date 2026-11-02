@@ -1,6 +1,6 @@
 // O dia a dia em volta dos monumentos: jumentos carregados, puxados pelo tropeiro, indo e vindo pelas ruas; bandos de
-// pombos dando voltas sobre o Fórum e o Coliseu; barcaças (naves caudicariae) subindo e descendo o Tibre com
-// mercadoria de Óstia; e os bois do cercado do Fórum Boário, ruminando à espera de comprador.
+// pombos dando voltas sobre o Fórum e o Coliseu; quadrirremes da frota subindo e descendo o Tibre (vinham
+// atracar no Campo de Marte); e os bois do cercado do Fórum Boário, ruminando à espera de comprador.
 import * as THREE from 'three';
 import { creature } from '../comum/fauna.js';
 import { sculptureInstance } from '../comum/sculptures.js';
@@ -54,7 +54,7 @@ export class Daily {
     }
     // ---- barcaças no Tibre: um trecho do rio perto da cidade, cada uma num lado, subindo ou descendo devagar
     this.river = polyline(TIBER.slice(3, 8));
-    for (let i = 0; i < 2; i++) sculptureInstance('mercante', 13).then((o) => {
+    for (let i = 0; i < 2; i++) sculptureInstance('quadrirreme', 22).then((o) => { // (o mercante grego de Atenas não entra em Roma)
       if (!o.children.length) return;
       const g = new THREE.Group(); o.rotation.y = -Math.PI / 2; g.add(o); scene.add(g); // o modelo olha para +x: vira para +z
       this.barges.push({ g, s: rr(0.2, 0.8) * this.river.L, dir: i ? 1 : -1, side: i ? 11 : -11, p: {} });
@@ -116,7 +116,7 @@ export class Daily {
       const q = this.river.at(b.s, b.p), h = q.h + (b.dir < 0 ? Math.PI : 0);
       const x = q.x + Math.cos(q.h) * b.side, z = q.z - Math.sin(q.h) * b.side;
       b.h = b.h === undefined ? h : angleLerp(b.h, h, Math.min(1, dt * 0.5));
-      b.g.position.set(x, waterLevelAt(x, z) - 0.35 + Math.sin(t * 0.9 + b.side) * 0.05, z); b.g.rotation.set(Math.sin(t * 0.7) * 0.015, b.h, Math.sin(t * 0.8 + 1) * 0.02);
+      b.g.position.set(x, waterLevelAt(x, z) - 1.0 + Math.sin(t * 0.9 + b.side) * 0.05, z); b.g.rotation.set(Math.sin(t * 0.7) * 0.015, b.h, Math.sin(t * 0.8 + 1) * 0.02);
       b.g.visible = Math.hypot(x - p.x, z - p.z) < 600;
     }
     for (const c of this.oxen) { const near = Math.hypot(c.holder.position.x - p.x, c.holder.position.z - p.z) < 140; c.holder.visible = near; if (near) c.mixer.update(dt); }

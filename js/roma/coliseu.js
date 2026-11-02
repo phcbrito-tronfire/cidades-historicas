@@ -215,13 +215,16 @@ export function buildColosseum(B, M, out) {
       for (const sz of [-1, 1]) { B.box(M.brick, xb - xa, 3.2, 0.4, s * (xa + xb) / 2, Y, sz * (C.gate + 0.2)); addBox(s * (xa + xb) / 2, sz * (C.gate + 0.2), xb - xa, 0.4, Y - 1, Y + 3.2); }
       B.box(M.travertine, xb - xa, 0.4, C.gate * 2 + 0.8, s * (xa + xb) / 2, Y + 3.2, 0);
       // norte/sul: rampa (segmentos inclinados)
-      const n = 12;
+      const n = 14;
       for (let j = 0; j < n; j++) {
-        const dA = 8 + (j / n) * (C.D - 8), dB = 8 + ((j + 1) / n) * (C.D - 8), yA = rampY(dA), yB = rampY(dB), zc = s * (C.b0 + (dA + dB) / 2), len = dB - dA;
+        const dA = C.podium + (j / n) * (C.D - C.podium), dB = C.podium + ((j + 1) / n) * (C.D - C.podium), yA = rampY(dA), yB = rampY(dB), zc = s * (C.b0 + (dA + dB) / 2), len = dB - dA; // desde o pódio: sem vão entre a fila da frente e o túnel
         const slope = Math.atan2(yA - yB, len) * s;
         B.box(M.travertine, C.gate * 2, 0.3, len + 0.05, 0, (yA + yB) / 2 - 0.3, zc, { rx: slope });
         for (const sx of [-1, 1]) { B.box(M.brick, 0.4, 3.4, len + 0.05, sx * (C.gate + 0.2), Math.min(yA, yB), zc); addBox(sx * (C.gate + 0.2), zc, 0.4, len, Math.min(yA, yB) - 1, Math.max(yA, yB) + 3.2); }
-        if (rampY(dA) + 3.2 < rowY(Math.floor((dA - C.podium) / C.row))) B.box(M.travertine, C.gate * 2 + 0.8, 0.4, len + 0.05, 0, Math.max(yA, yB) + 3.2, zc);
+        // teto do túnel; onde as fileiras ficam mais baixas que ele, o teto vira o camarote elevado (o pulvinar), com mureta
+        { const top = Math.max(yA, yB) + 3.2, rowH = rowY(Math.min(C.rows - 1, Math.floor((dA - C.podium) / C.row)));
+          B.box(M.travertine, C.gate * 2 + 0.8, 0.4, len + 0.05, 0, top, zc); addBox(0, zc, C.gate * 2 + 0.8, len, top - 0.2, top + 0.4);
+          if (top > rowH) for (const sx of [-1, 1]) { B.box(M.marble, 0.3, 1.0, len + 0.05, sx * (C.gate + 0.25), top + 0.4, zc); addBox(sx * (C.gate + 0.25), zc, 0.3, len, top, top + 1.4); } }
       }
     }
     S.podium = V(0, Y + C.podiumH, -(C.b0 + 1.3)); S.topRow = V(0, rowY(C.rows - 1), -(C.b0 + C.D - 0.5));

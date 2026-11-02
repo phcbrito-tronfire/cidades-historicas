@@ -110,7 +110,7 @@ export class Boats {
       const empty = !o.children.length;
       const m = empty ? fallbackHull(d.model, d.len) : o;
       m.position.y = d.beached || d.shed ? 0 : sink;
-      if (!empty && !d.beached && !d.shed) holder.add(hullMask(m, 0.12)); // tampa invisível: a água não aparece dentro do casco
+      if (!empty && !d.beached && !d.shed && (d.model === 'barco_remo' || d.model === 'barco_pesca')) holder.add(hullMask(m, 0.12)); // tampa invisível nos barcos abertos: a água não aparece dentro do casco (nas galeras os remos alargariam a tampa e furariam o mar)
       holder.add(m);
       // altura do convés: um raio de cima para baixo no ponto onde o explorador fica
       g.updateMatrixWorld(true);
@@ -287,7 +287,7 @@ export class Boats {
     let f = (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0) - (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0);
     let s = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
     if (player.touch && Math.hypot(player.touch.x, player.touch.y) > 0.15) { f = -player.touch.y; s = player.touch.x; }
-    const P = { trirreme: [10, 0.3], barco_pesca: [9.5, 0.55], barco_remo: [6, 0.8], mercante: [8, 0.36] }[b.model] || [6, 0.6]; // velocidade (m/s) e giro do leme (rad/s): mais rápido que o real, para explorar sem tédio
+    const P = { trirreme: [10, 0.3], quadrirreme: [11, 0.3], liburna: [11, 0.32], barco_pesca: [9.5, 0.55], barco_remo: [6, 0.8], mercante: [8, 0.36] }[b.model] || [6, 0.6]; // velocidade (m/s) e giro do leme (rad/s): mais rápido que o real, para explorar sem tédio
     const maxV = P[0], turnRate = P[1];
     // controle de barco: ↑ rema/veleja para a frente, ↓ freia e dá ré, ← → viram a proa (do ponto de vista de quem
     // está no barco, não da câmera — com a câmera girando junto, a direção pedida mudava sem parar e o barco rodava)

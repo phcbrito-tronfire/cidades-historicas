@@ -12,7 +12,7 @@ const V3 = THREE.Vector3;
 const Y = 8.6 - 0.2;
 
 // vão de arcada para as lojas dos Mercados
-function bay(w, h, ow) {
+export function bay(w, h, ow) {
   const oh = h * 0.72, r = ow / 2, s = new THREE.Shape();
   s.moveTo(-w / 2, 0); s.lineTo(-ow / 2, 0); s.lineTo(-ow / 2, oh - r); s.absarc(0, oh - r, r, Math.PI, 0, true); s.lineTo(ow / 2, 0); s.lineTo(w / 2, 0); s.lineTo(w / 2, h); s.lineTo(-w / 2, h); s.lineTo(-w / 2, 0);
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.9, bevelEnabled: false, curveSegments: 8 }); g.translate(0, 0, -0.45); return g;

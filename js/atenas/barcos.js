@@ -109,7 +109,7 @@ export class Boats {
       const empty = !o.children.length;
       const m = empty ? fallbackHull(d.model, d.len) : o;
       m.position.y = d.beached || d.shed ? 0 : sink;
-      if (!empty && !d.beached && !d.shed) holder.add(hullMask(m, 0.12)); // tampa invisível: a água não aparece dentro do casco
+      if (!empty && !d.beached && !d.shed && (d.model === 'barco_remo' || d.model === 'barco_pesca')) holder.add(hullMask(m, 0.12)); // tampa invisível nos barcos abertos: a água não aparece dentro do casco (nas galeras os remos alargariam a tampa e furariam o mar)
       holder.add(m);
       // altura do convés: um raio de cima para baixo no ponto onde o explorador fica
       g.updateMatrixWorld(true);

@@ -30,6 +30,7 @@ export const OBJECTIVES = [
   { id: 'panteao', text: 'Veja o novo Panteão sendo construído no Campo de Marte' },
   { id: 'aqueduto', text: 'Chegue ao aqueduto que traz a água para a cidade' },
   { id: 'tiberina', text: 'Atravesse até a Ilha Tiberina, a ilha em forma de navio' },
+  { id: 'farol', text: 'Suba a escada do farol de Óstia até o terraço' },
   { id: 'portus', text: 'Conheça o Portus, o porto hexagonal de Trajano' },
   { id: 'quadrirreme', text: 'Comande a quadrirreme Concórdia (embarque no Portus e aperte as setas)' },
   { id: 'cavalo', text: 'Monte o cavalo da cavalaria (aperte H)' },
@@ -50,7 +51,7 @@ export class Quests {
     this.seenEvents = new Set();
     H('coliseu', S.colGateW); H('arena', S.colArena); H('hipogeu', S.hypogeumStair); H('podio', S.podium); H('summa', S.topRow);
     H('rostra', S.rostra); H('trajano', S.trajanColumn); H('capitolio', S.clivus); H('circo', S.circus); H('mercado', S.market); H('domus', S.domus); H('termas', S.thermae); H('panteao', S.pantheon);
-    H('aqueduto', S.aqueduct); H('portus', S.portus); H('quadrirreme', S.quadrireme); H('subura', { x: -50, z: -210 }); H('tiberina', { x: ISOLA.x, z: ISOLA.z });
+    H('aqueduto', S.aqueduct); H('portus', S.portus); H('farol', S.lighthouse); H('quadrirreme', S.quadrireme); H('subura', { x: -50, z: -210 }); H('tiberina', { x: ISOLA.x, z: ISOLA.z });
     this.load();
   }
   isDone(id) { return !id || this.done.has(id); }
@@ -87,6 +88,7 @@ export class Quests {
     if (near(S.aqueduct, 40)) this.complete('aqueduto');
     if (Math.hypot(p.x - ISOLA.x, p.z - ISOLA.z) < 30 && !player.swimming) this.complete('tiberina');
     if (inZ(Z.portus)) this.complete('portus');
+    if (near(S.lighthouseTop, 7) && p.y > S.lighthouseTop.y - 0.5) this.complete('farol');
     const R = this.refs || {};
     if (R.boats?.riding?.model === 'quadrirreme' && Math.abs(R.boats.riding.v) > 0.5) this.complete('quadrirreme');
     if (R.mount?.state === 'riding') this.complete('cavalo');

@@ -1,10 +1,11 @@
 // Óstia, o porto de Roma, na foz do Tibre (na realidade a ~25 km; aqui, encurtado): cais de pedra na beira do mar,
 // os horrea (armazéns de trigo, que vinha do Egito e da África para alimentar um milhão de pessoas), o farol, navios
-// mercantes atracados, uma galera de guerra passando ao largo e um barco a remo para quem quiser sair pelo mar.
+// navios atracados, a quadrirreme de patrulha passando ao largo e um barco a remo para quem quiser sair pelo mar.
 import * as THREE from 'three';
 import { addBox, addCircle } from '../comum/collision.js';
 import { terrainHeight, coastPoint, coastC } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
+import { insula } from './insulae.js';
 
 const V3 = THREE.Vector3;
 
@@ -22,31 +23,53 @@ export function buildOstia(B, M, out) {
   }
   // três píeres de madeira ligando a praia ao cais
   for (const a of [5, 48, 92]) for (let o = -4; o < 14; o += 3) { const p = coastPoint(a, o); B.box(M.wood, 3.2, 0.3, 3.2, p.x, 0.65, p.z, { ry: tang(a) }); B.geo(new THREE.CylinderGeometry(0.15, 0.15, 3, 6), M.darkWood, p.x, -0.8, p.z); addBox(p.x, p.z, 3.2, 3.2, -2, 0.95); }
-  // horrea: armazéns compridos de tijolo com pátio, em fila atrás do cais
+  // horrea: os armazéns de dois andares, de tijolo, com o portal no meio e as lojas em arco (como os Horrea
+  // Epagathiana, que ainda estão de pé em Óstia)
   for (let i = 0; i < 4; i++) {
-    const a = 5 + i * 28, p = coastPoint(a, -30), y = terrainHeight(p.x, p.z) - 0.3, ry = tang(a);
-    B.box(M.brick, 22, 7, 14, p.x, y, p.z, { ry });
-    B.geo(new THREE.ConeGeometry(14, 2.4, 4, 1, true).rotateY(Math.PI / 4).scale(1.1, 1, 0.72), M.tiles, p.x, y + 7 + 1.2, p.z, { ry, uv: { s: 2 } });
-    for (let k = 0; k < 4; k++) B.box(M.dark, 2.4, 3.2, 0.1, p.x + Math.sin(ry) * (-8 + k * 5.4) + Math.cos(ry) * 7.05, y, p.z + Math.cos(ry) * (-8 + k * 5.4) - Math.sin(ry) * 7.05, { ry });
-    addBox(p.x, p.z, 16, 16, y - 1, y + 7);
+    const a = 5 + i * 28, p = coastPoint(a, -30), ry = tang(a) + Math.PI / 2;
+    insula(B, M, out, { x: p.x, z: p.z, w: 24, d: 15, ry, floors: 2, portico: i % 2 === 0, balcony: false, wall: i % 2 ? M.brick : M.brickY });
     out.exclusions.push([p.x - 16, p.x + 16, p.z - 16, p.z + 16]);
   }
   // ânforas empilhadas e fardos no cais
   for (let i = 0; i < 40; i++) { const a = rr(0, 90), p = coastPoint(a, rr(-12, -6)); B.geo(new THREE.CylinderGeometry(0.16, 0.08, 0.8, 8), M.plasterRed, p.x, terrainHeight(p.x, p.z) + 0.4, p.z, { rz: rand() < 0.4 ? Math.PI / 2 : 0, ry: rand() * 6 }); }
-  // farol: torre de três andares no fim do quebra-mar, com o fogo no alto à noite
+  // farol (como o de Portus, de Cláudio): base quadrada com nichos em arco, segundo andar recuado e a lanterna
+  // redonda com o braseiro. Uma escada de pedra contorna a base até o terraço, de onde se vê o porto e o mar.
   {
-    const p = coastPoint(-25, 40), y = -1;
-    B.box(M.travertine, 12, 3, 12, p.x, y, p.z);
-    for (const [w, h, y0] of [[9, 12, 2], [7, 9, 14], [5, 7, 23]]) B.box(M.travertine, w, h, w, p.x, y0, p.z);
-    out.torches.push(new V3(p.x, 31, p.z));
-    addBox(p.x, p.z, 12, 12, -6, 32);
+    const p = coastPoint(-25, 40), x = p.x, z = p.z, L0 = 1.0, H1 = 13, H2 = 21, H3 = 26;
+    B.box(M.travertine2, 16, L0 + 2, 16, x, -2, z); addBox(x, z, 16, 16, -3, L0); // plataforma no mar
+    B.box(M.travertine, 10, H1 - L0, 10, x, L0, z); addBox(x, z, 10, 10, -3, H1);
+    const bayG = (w, h) => { const ow = w * 0.5, oh = h * 0.7, r = ow / 2, sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(-ow / 2, 0); sh.lineTo(-ow / 2, oh - r); sh.absarc(0, oh - r, r, Math.PI, 0, true); sh.lineTo(ow / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(w / 2, h); sh.lineTo(-w / 2, h); sh.lineTo(-w / 2, 0); const g = new THREE.ExtrudeGeometry(sh, { depth: 0.4, bevelEnabled: false, curveSegments: 8 }); g.translate(0, 0, -0.2); return g; };
+    const nich = bayG(10 / 3, 5), win = bayG(7 / 3, 4);
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, fx = Math.sin(a), fz = Math.cos(a);
+      for (let i = 0; i < 3; i++) { const u = -10 / 3 + i * 10 / 3, wx = x + fx * 5.2 + Math.cos(a) * u, wz = z + fz * 5.2 - Math.sin(a) * u;
+        B.geo(nich, M.travertine, wx, H1 - 5.5, wz, { ry: a }); B.box(M.dark, 1.5, 2.6, 0.05, wx - fx * 0.15, H1 - 5.5, wz - fz * 0.15, { ry: a }); }
+      for (let i = 0; i < 3; i++) { const u = -7 / 3 + i * 7 / 3, wx = x + fx * 3.7 + Math.cos(a) * u, wz = z + fz * 3.7 - Math.sin(a) * u;
+        B.geo(win, M.travertine, wx, H2 - 4.5, wz, { ry: a }); B.box(M.dark, 1.0, 2.2, 0.05, wx - fx * 0.15, H2 - 4.5, wz - fz * 0.15, { ry: a }); } }
+    B.box(M.marble, 11, 0.5, 11, x, H1 - 0.5, z); // cornija do primeiro andar
+    B.box(M.travertine, 7, H2 - H1, 7, x, H1, z); addBox(x, z, 7, 7, H1 - 1, H2);
+    B.box(M.marble, 7.8, 0.5, 7.8, x, H2 - 0.5, z);
+    // a lanterna: anel de colunas, telhado cônico e o braseiro aceso
+    B.geo(new THREE.CylinderGeometry(2.4, 2.6, H3 - H2, 16), M.travertine2, x, (H2 + H3) / 2, z);
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; B.geo(new THREE.CylinderGeometry(0.22, 0.25, H3 - H2, 8), M.marble, x + Math.cos(a) * 2.8, (H2 + H3) / 2, z + Math.sin(a) * 2.8); }
+    B.geo(new THREE.ConeGeometry(3.4, 2.2, 16), M.bronze, x, H3 + 1.1, z);
+    B.geo(new THREE.CylinderGeometry(0.9, 0.5, 0.8, 12), M.bronze, x, H3 + 2.6, z);
+    out.torches.push(new V3(x, H3 + 3.3, z));
+    // a escada em volta da base (4 lances, um por lado) e a mureta do terraço
+    const ring = 5.75, steps = 10, rise = (H1 - L0) / (steps * 4);
+    for (let k = 0; k < 4; k++) for (let i = 0; i < steps; i++) {
+      const n = k * steps + i + 1, top = L0 + rise * n, t = -5 + (i + 0.5);
+      const [sx, sz] = [[t, ring], [ring, -t], [-t, -ring], [-ring, t]][k];
+      B.box(M.travertine2, k % 2 ? 1.5 : 1.0, top - L0 + 0.02, k % 2 ? 1.0 : 1.5, x + sx, L0, z + sz);
+      addBox(x + sx, z + sz, k % 2 ? 1.5 : 1.0, k % 2 ? 1.0 : 1.5, -3, top);
+    }
+    for (const [mx, mz, w, d] of [[0, 4.95, 10, 0.3], [4.95, 0, 0.3, 10], [0, -4.95, 10, 0.3]]) { B.box(M.travertine, w, 0.9, d, x + mx, H1, z + mz); addBox(x + mx, z + mz, w, d, H1 - 1, H1 + 0.9); }
     // quebra-mar ligando o farol ao cais
     const q = coastPoint(-17, 0);
-    const n = 8; for (let k = 1; k < n; k++) { const t = k / n, x = q.x + (p.x - q.x) * t, z = q.z + (p.z - q.z) * t; B.box(M.travertine2, 6, 2, 6, x, -1.2, z); addBox(x, z, 6, 6, -2, 0.8); }
-    S.lighthouse = new V3(p.x, 2, p.z);
+    const nq = 8; for (let k = 1; k < nq; k++) { const t = k / nq, bx = q.x + (x - q.x) * t, bz = q.z + (z - q.z) * t; B.box(M.travertine2, 6, 2, 6, bx, -1.2, bz); addBox(bx, bz, 6, 6, -2, 0.8); }
+    S.lighthouse = new V3(x, L0, z + 8);
+    S.lighthouseTop = new V3(x - 3.5, H1, z);
   }
-  // navios: mercantes atracados, uma galera de guerra passando, o barco a remo para o jogador
-  { const a = 42, p = coastPoint(a, 27), ry = tang(a) - Math.PI / 2; out.boats.push({ model: 'mercante', x: p.x, z: p.z, ry, len: 19, moored: true }); } // um mercante estrangeiro, de passagem
+  // navios: a quadrirreme de patrulha ao largo e o barco a remo para o jogador (os grandes ficam no Portus)
   out.boats.push({ model: 'quadrirreme', route: { a0: -320, a1: 140, off: 130 }, len: 30, speed: 2.4, name: 'Fortuna' }); // a quadrirreme de patrulha ao largo
   { const p = coastPoint(96, 22); out.boats.push({ model: 'barco_remo', x: p.x, z: p.z, y: 0, ry: tang(96), len: 4.2, board: true, pilot: true, name: 'barco a remo' }); S.rowboat = new V3(p.x, 0, p.z); }
   const qq = coastPoint(45, -8); S.quay = new V3(qq.x, terrainHeight(qq.x, qq.z), qq.z);

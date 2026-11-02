@@ -27,7 +27,7 @@ export function corinthian(h, r) {
 
 // templo romano: pódio alto com escadaria só na frente, pórtico de colunas, cela fechada, frontão e telhado de telhas
 // o = { x, z, face, w (largura), d (profundidade), h (coluna), podium, cols (na frente), deep (fileiras do pórtico), name }
-function temple(B, M, out, o) {
+export function temple(B, M, out, o) {
   const y = Math.max(terrainHeight(o.x, o.z), terrainHeight(o.x + 3, o.z + 3)) - 0.2, ry = FACE[o.face];
   const F = mat4(o.x, y, o.z, 0, ry, 0), box = (mat, w, h, d, x, yy, z, ex = {}) => B.box(mat, w, h, d, x, yy, z, { frame: F, ...ex });
   const W = o.w, D = o.d, P = o.podium, H = o.h, r = H / 20, cols = o.cols, ic = (W - r * 3) / (cols - 1);

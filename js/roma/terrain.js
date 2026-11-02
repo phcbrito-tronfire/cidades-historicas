@@ -105,7 +105,7 @@ export function terrainHeight(x, z) {
       h = lerp(h, bed, ss(half + 26, half - 2, d) * (1 - ss(-60, 10, coastC(x, z)))); // no mar o leito some (a foz abre na praia)
     }
     const c = Math.cos(ISOLA.rot), s = Math.sin(ISOLA.rot), u = ((x - ISOLA.x) * c + (z - ISOLA.z) * s) / ISOLA.a, v = (-(x - ISOLA.x) * s + (z - ISOLA.z) * c) / ISOLA.b;
-    const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.4 + n * 0.4, ss(1.4, 0.7, r)));
+    const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.75, ss(1.4, 0.7, r)));
   }
   // ---- Naumaquia de Trajano: bacia oval escavada além do rio (vira lago nos dias de batalha naval)
   { const N = NAUMACHIA, e = ((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2; if (e < 1.8) { const ground = lerp(h, 3, ss(1.8, 1.25, e)); h = e < 1 ? lerp(-3.2, ground, ss(0.9, 1.0, e)) : ground; } }
