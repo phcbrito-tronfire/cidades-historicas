@@ -1,6 +1,6 @@
-// O fundo da baía do Falero: pradarias de posidônia balançando, estrelas-do-mar, ouriços nas pedras do raso,
-// ânforas perdidas e um navio mercante afundado com a carga de mármore espalhada em volta — tambores de coluna,
-// capitéis e colunas jônicas (naufrágios assim existiram: as colunas iam desmontadas no porão). E os bichos: cardumes, pargos, golfinhos,
+// O fundo do mar Tirreno diante de Óstia: pradarias de posidônia balançando, estrelas-do-mar, ouriços nas pedras do
+// raso, ânforas perdidas e um navio mercante romano afundado (costelas, a carga de ânforas e os fustes de mármore).
+// E os bichos: cardumes, pargos, golfinhos,
 // tartarugas e águas-vivas (estas queimam).
 import * as THREE from 'three';
 import { terrainHeight, coastPoint, WATER_Y } from './terrain.js';
@@ -96,25 +96,31 @@ export async function buildSea(scene, tex, { onSting }) {
     const algae = new THREE.MeshStandardMaterial({ color: 0x5a6a3a, roughness: 1 });
     const g = new THREE.Group();
     const y0 = (x, z) => terrainHeight(site.x + x, site.z + z);
-    // peças escaneadas de verdade (as mesmas de museus e sítios gregos): o navio afundado no meio, adernado e meio
-    // enterrado na areia, e a carga de mármore espalhada em volta
-    const put = async (name, size, x, z, { dy = 0, rx = 0, ry = 0, rz = 0, r = 1 } = {}) => {
-      const o = await sculptureInstance(name, size); if (!o.children.length) return;
-      const h = new THREE.Group(); h.position.set(site.x + x, y0(x, z) + dy, site.z + z); h.rotation.set(rx, ry, rz, 'YXZ'); h.add(o);
-      h.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } });
-      g.add(h); addCircle(site.x + x, site.z + z, r, y0(x, z) - 1, y0(x, z) + r * 1.4);
-    };
-    await Promise.all([
-      put('kyrenia', 13, 0, 0, { dy: -1.9, rx: 0.33, ry: 0.4, rz: 0.06, r: 2.2 }),
-      put('tambor', 1.5, -7.5, 3.2, { dy: 0.78, rz: Math.PI / 2, ry: 0.7, r: 0.9 }),
-      put('tambor', 1.4, 6.8, -4.1, { dy: -0.1, ry: 2.2, rx: 0.12, r: 0.9 }),
-      put('tambor', 1.5, 9.5, 2.6, { dy: 0.74, rz: Math.PI / 2, ry: -0.4, r: 0.9 }),
-      put('coluna_jonica', 2.3, -10.5, -3.5, { dy: -0.25, ry: 0.9, r: 1 }),
-      put('coluna_jonica', 1.9, 3.5, 6.5, { dy: -0.35, ry: 2.6, rx: 0.08, r: 1 }),
-      put('capitel_jonico', 1.6, -4, -5.5, { dy: 0.05, ry: 0.3, rz: 0.2, r: 0.8 }),
-      put('capitel_jonico', 1.6, 12, -1, { dy: 0.3, ry: 1.9, rx: Math.PI * 0.55, r: 0.8 }),
-    ]);
-    for (let k = -1; k <= 1; k += 2) addCircle(site.x + Math.cos(0.4) * k * 4.2, site.z - Math.sin(0.4) * k * 4.2, 1.6, y0(0, 0) - 1, y0(0, 0) + 2.2); // proa e popa do casco
+    // naufrágio romano, como os do Mediterrâneo (Madrague de Giens, Albenga): do casco só sobram a quilha e as
+    // costelas saindo da areia; a carga de ânforas de vinho (tipo Dressel 1) ainda empilhada em fileiras dentro do
+    // contorno do navio, fustes de mármore que iam para alguma obra de Roma e os cepos de chumbo das âncoras
+    const ry0 = 0.4, cs = Math.cos(ry0), sn = Math.sin(ry0), L = (u, v) => [u * cs + v * sn, -u * sn + v * cs];
+    const wood = new THREE.MeshStandardMaterial({ color: 0x3a3226, roughness: 1 }), marbleW = new THREE.MeshStandardMaterial({ color: 0xb8c4b0, roughness: 0.9 }), lead = new THREE.MeshStandardMaterial({ color: 0x5a6266, roughness: 0.7, metalness: 0.3 });
+    { const [x, z] = L(0, 0); const k = new THREE.Mesh(new THREE.BoxGeometry(17, 0.45, 0.5), wood); k.position.set(site.x + x, y0(x, z) - 0.05, site.z + z); k.rotation.y = ry0; g.add(k); }
+    for (let i = 0; i < 15; i++) { // costelas: meio arco de cada lado, quebradas em alturas diferentes
+      const u = -7.5 + i * 1.07, [x, z] = L(u, 0), w = 2.4 * Math.sqrt(Math.max(0.15, 1 - (u / 8.5) ** 2));
+      for (const sd of [-1, 1]) { if (R() < 0.18) continue; const arc = new THREE.Mesh(new THREE.TorusGeometry(w, 0.11, 5, 10, Math.PI * (0.22 + R() * 0.25)), wood); arc.position.set(site.x + x, y0(x, z) + w * 0.55 - 0.9, site.z + z); arc.rotation.set(0, ry0 + Math.PI / 2, sd > 0 ? -Math.PI / 2 : Math.PI / 2 + Math.PI * 0.02); arc.scale.z = 1; g.add(arc); }
+    }
+    { // as ânforas, instanciadas: fileiras dentro do casco e as que rolaram para fora
+      const prof = [[0.0, 0], [0.03, 0.08], [0.12, 0.3], [0.15, 0.55], [0.13, 0.75], [0.06, 0.85], [0.05, 1.15], [0.07, 1.18]].map(([r2, y]) => new THREE.Vector2(r2, y));
+      const geo = new THREE.LatheGeometry(prof, 10), mat = new THREE.MeshStandardMaterial({ color: 0x9a7a5a, roughness: 1 });
+      const list = []; for (let row = -2; row <= 2; row++) for (let i = 0; i < 11; i++) { if (R() < 0.15) continue; list.push([-5.5 + i * 1.0 + (R() - 0.5) * 0.3, row * 0.38 + (R() - 0.5) * 0.1, 0.25 + (row % 2 === 0 ? 0 : 0.35)]); }
+      for (let i = 0; i < 22; i++) list.push([(R() - 0.5) * 20, (R() - 0.5) * 12, 0]);
+      const im = new THREE.InstancedMesh(geo, mat, list.length), d3 = new THREE.Object3D();
+      list.forEach(([u, v, lift], i) => { const [x, z] = L(u, v); d3.position.set(site.x + x, y0(x, z) + lift - 0.1, site.z + z); d3.rotation.set(Math.PI / 2 + (R() - 0.5) * 0.5, ry0 + (Math.abs(v) < 1.2 ? Math.PI / 2 : R() * 6), (R() - 0.5) * 0.4, 'YXZ'); d3.scale.setScalar(0.9 + R() * 0.2); d3.updateMatrix(); im.setMatrixAt(i, d3.matrix); });
+      im.receiveShadow = true; g.add(im);
+      { const [x, z] = L(0, 0); addCircle(site.x + x, site.z + z, 2.2, y0(x, z) - 1, y0(x, z) + 1.2); }
+    }
+    for (const [u, v, len, rr0] of [[-11, -4, 5, 0.45], [10.5, 3, 4.4, 0.42], [12, -3.5, 3.8, 0.5]]) { // fustes de mármore lisos
+      const [x, z] = L(u, v), c = new THREE.Mesh(new THREE.CylinderGeometry(rr0, rr0 * 1.05, len, 18), marbleW); c.position.set(site.x + x, y0(x, z) + rr0 * 0.7, site.z + z); c.rotation.set(0, R() * 6, Math.PI / 2, 'YXZ'); g.add(c); addCircle(site.x + x, site.z + z, rr0 + 0.6, y0(x, z) - 1, y0(x, z) + rr0 * 1.6);
+    }
+    for (const [u, v] of [[-9.5, 1.5], [-8.6, -2.2]]) { const [x, z] = L(u, v), b = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.22, 0.2), lead); b.position.set(site.x + x, y0(x, z) + 0.05, site.z + z); b.rotation.y = R() * 6; g.add(b); }
+
     // limo e algas nas pedras
     for (let i = 0; i < 26; i++) { const x = (R() - 0.5) * 16, z = (R() - 0.5) * 10; const b = new THREE.Mesh(new THREE.SphereGeometry(0.25 + R() * 0.35, 6, 4), algae); b.position.set(site.x + x, y0(x, z), site.z + z); b.scale.y = 0.4; g.add(b); }
     g.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });

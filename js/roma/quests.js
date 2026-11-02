@@ -1,7 +1,9 @@
-// Objetivos da jornada em Roma (primeira etapa: o Coliseu). Os personagens, os eventos da arena e o resto da
-// cidade entram nas próximas etapas.
+// Objetivos da jornada em Roma: o Coliseu e os jogos, os personagens, e a cidade inteira — o Fórum e o Capitólio,
+// o Circo, o mercado, os bairros, a domus, o porto de Trajano, o mar e o rio.
 import { waterAt } from '../comum/collision.js';
 import { COL, dOf } from './coliseu.js';
+import { CAPITOL, DOMUS, ISOLA } from './terrain.js';
+import { DISTRICTS } from './insulae.js';
 
 export const OBJECTIVES = [
   { id: 'coliseu', text: 'Entre no Coliseu por um dos 80 arcos' },
@@ -17,7 +19,21 @@ export const OBJECTIVES = [
   { id: 'vero', text: 'Encontre o gladiador Vero esperando no hipogeu' },
   { id: 'lucio', text: 'Fale com o centurião na entrada leste do Coliseu' },
   { id: 'jogos', text: 'Assista a três programas diferentes dos jogos (aperte C para passar os dias)' },
-  { id: 'artefatos', text: 'Encontre os 13 artefatos da Roma Antiga', count: 13 },
+  { id: 'rostra', text: 'Suba à Rostra, a tribuna dos oradores enfeitada com esporões de navios' },
+  { id: 'capitolio', text: 'Suba o Clivo Capitolino até o Templo de Júpiter' },
+  { id: 'circo', text: 'Veja a chegada de uma corrida de bigas no Circo Máximo' },
+  { id: 'mercado', text: 'Passeie pelo mercado do Fórum Boário' },
+  { id: 'subura', text: 'Ande pelas ruas da Subura, o bairro mais populoso de Roma' },
+  { id: 'domus', text: 'Entre na domus do Aventino, a casa de uma família rica' },
+  { id: 'termas', text: 'Visite as Termas de Trajano' },
+  { id: 'panteao', text: 'Veja o novo Panteão sendo construído no Campo de Marte' },
+  { id: 'aqueduto', text: 'Chegue ao aqueduto que traz a água para a cidade' },
+  { id: 'tiberina', text: 'Atravesse até a Ilha Tiberina, a ilha em forma de navio' },
+  { id: 'portus', text: 'Conheça o Portus, o porto hexagonal de Trajano' },
+  { id: 'quadrirreme', text: 'Comande a quadrirreme Concórdia (embarque no Portus e aperte as setas)' },
+  { id: 'cavalo', text: 'Monte o cavalo da cavalaria (aperte H)' },
+  { id: 'naufragio', text: 'Mergulhe até o navio romano afundado diante de Óstia' },
+  { id: 'artefatos', text: 'Encontre os 22 artefatos da Roma Antiga', count: 22 },
 ];
 export const FINAL_REQ = 99;
 const SAVE = 'cidades-historicas:roma:v1';
@@ -32,6 +48,8 @@ export class Quests {
     for (const id of ['apolodoro', 'tacito', 'cornelia', 'domicio', 'vero', 'lucio']) H(id, S['npc_' + id]);
     this.seenEvents = new Set();
     H('coliseu', S.colGateW); H('arena', S.colArena); H('hipogeu', S.hypogeumStair); H('podio', S.podium); H('summa', S.topRow);
+    H('rostra', S.rostra); H('capitolio', S.clivus); H('circo', S.circus); H('mercado', S.market); H('domus', S.domus); H('termas', S.thermae); H('panteao', S.pantheon);
+    H('aqueduto', S.aqueduct); H('portus', S.portus); H('quadrirreme', S.quadrireme); H('subura', { x: -50, z: -210 }); H('tiberina', { x: ISOLA.x, z: ISOLA.z });
     this.load();
   }
   isDone(id) { return !id || this.done.has(id); }
@@ -55,6 +73,22 @@ export class Quests {
     if (d > 0 && d < COL.podium && p.y > Y + COL.podiumH - 0.3) this.complete('podio');
     if (d > COL.D - 2 && d < COL.D && p.y > Y + COL.podiumH + COL.rise * (COL.rows - 2)) this.complete('summa');
     if (player.swimming && waterAt(p.x, p.z) > -1) this.complete('tibre');
+    // a cidade
+    const S = this.city.spots, Z = this.city.zones, inZ = (z) => z && p.x > z[0] && p.x < z[1] && p.z > z[2] && p.z < z[3], near = (v, r) => v && Math.hypot(p.x - v.x, p.z - v.z) < r;
+    if (near(S.rostra, 6) && p.y > S.rostra.y - 0.3) this.complete('rostra');
+    if (Math.hypot((p.x - CAPITOL.x) / CAPITOL.rx, (p.z - CAPITOL.z) / CAPITOL.rz) < 0.9 && p.y > CAPITOL.top - 1) this.complete('capitolio');
+    if (inZ(Z.mercado)) this.complete('mercado');
+    { const D = DISTRICTS[0]; if (p.x > D.x0 && p.x < D.x1 && p.z > D.z0 && p.z < D.z1) this.complete('subura'); }
+    if (Math.abs(p.x - DOMUS.x) < DOMUS.hw - 4 && Math.abs(p.z - DOMUS.z) < DOMUS.hd - 4) this.complete('domus');
+    if (inZ(Z.termas)) this.complete('termas');
+    if (near(S.pantheon, 45)) this.complete('panteao');
+    if (near(S.aqueduct, 40)) this.complete('aqueduto');
+    if (Math.hypot(p.x - ISOLA.x, p.z - ISOLA.z) < 30 && !player.swimming) this.complete('tiberina');
+    if (inZ(Z.portus)) this.complete('portus');
+    const R = this.refs || {};
+    if (R.boats?.riding?.model === 'quadrirreme' && Math.abs(R.boats.riding.v) > 0.5) this.complete('quadrirreme');
+    if (R.mount?.state === 'riding') this.complete('cavalo');
+    if (R.sea?.site && player.diving && Math.hypot(p.x - R.sea.site.x, p.z - R.sea.site.z) < 16) this.complete('naufragio');
   }
   save() { try { localStorage.setItem(SAVE, JSON.stringify({ done: [...this.done] })); } catch (e) { /* sem armazenamento */ } }
   load() { try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) d.done.forEach((x) => this.done.add(x)); } catch (e) { /* */ } }

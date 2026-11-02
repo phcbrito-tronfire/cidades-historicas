@@ -122,6 +122,7 @@ export class Races {
     this.dolphins.forEach((d, i) => { d.rotation.z = lerp(d.rotation.z, i < laps ? -1.2 : 0, Math.min(1, dt * 3)); });
     if (this.state === 'run' && order[0].u >= LAPS) {
       this.state = 'end'; this.timer = 26; this.excite?.();
+      if (Math.hypot(p.x - C.x, p.z - C.z) < 260) this.onWin?.();
       if (Math.hypot(p.x - C.x, p.z - C.z) < 260) this.toast(`Vitória dos ${order[0].team.name}! O auriga recebe a palma e a coroa.`, 'quest', 6000);
     } else if (this.state === 'end') { this.timer -= dt; if (this.timer <= 0) this.resetRace(); }
   }

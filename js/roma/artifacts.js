@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { ARTIFACTS } from './artifacts-data.js';
 import { groundAt, blocked, terrainAt } from '../comum/collision.js';
 import { getTextures } from './textures.js';
-import { coastPoint } from './terrain.js';
+import { coastPoint, ISOLA, NAUMACHIA } from './terrain.js';
+import { COL } from './coliseu.js';
 
 const SAVE = 'cidades-historicas:roma:artefatos';
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...o });
@@ -61,6 +62,12 @@ function model(kind) {
     case 'defixio': { const PB = std(0x80848a, { metalness: 0.4, roughness: 0.6 }); add(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), PB, 0, 0.035, 0, 0, 0, Math.PI / 2); add(new THREE.BoxGeometry(0.16, 0.004, 0.12), PB, 0.14, 0.004, 0.04, 0, 0.3, 0); add(new THREE.CylinderGeometry(0.005, 0.002, 0.14, 5), std(0x5a4a3a, { metalness: 0.5 }), 0, 0.06, 0, 0.3, 0, 0); } break;
     case 'lucerna': { const L = std(0xb0582e, { roughness: 0.7 }); add(new THREE.CylinderGeometry(0.08, 0.07, 0.05, 20), L, 0, 0.025, 0); add(new THREE.CylinderGeometry(0.03, 0.035, 0.04, 10), L, 0, 0.025, 0.1); add(new THREE.CylinderGeometry(0.05, 0.05, 0.004, 18), std(0x8a4222, { roughness: 0.8 }), 0, 0.052, 0); add(new THREE.TorusGeometry(0.025, 0.008, 5, 10), L, 0, 0.04, -0.09, Math.PI / 2); } break;
     case 'amphora_r': lathe([[0.0, 0], [0.04, 0.03], [0.17, 0.12], [0.2, 0.24], [0.16, 0.38], [0.08, 0.44], [0.06, 0.5], [0.08, 0.52]], CLAY); for (const s of [-1, 1]) add(new THREE.TorusGeometry(0.05, 0.014, 5, 10, Math.PI), CLAY, s * 0.08, 0.45, 0, 0, Math.PI / 2, s * Math.PI / 2); break;
+    case 'statera': { add(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 6), BRONZE, 0, 0.32, 0, 0, 0, Math.PI / 2); add(new THREE.TorusGeometry(0.03, 0.006, 5, 10, Math.PI * 1.4), BRONZE, -0.22, 0.27, 0); add(new THREE.CylinderGeometry(0.004, 0.004, 0.18, 5), BRONZE, 0.2, 0.22, 0); add(new THREE.SphereGeometry(0.035, 10, 8), BRONZE, 0.2, 0.12, 0, 0, 0, 0, [1, 1.3, 1]); add(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 14), BRONZE, -0.2, 0.15, 0); } break;
+    case 'exvoto': { const C2 = std(0xc87a4a, { roughness: 0.9 }); add(new THREE.BoxGeometry(0.1, 0.07, 0.24), C2, 0, 0.035, 0.03); add(new THREE.CylinderGeometry(0.045, 0.05, 0.14, 10), C2, 0, 0.12, -0.06); for (let i = 0; i < 5; i++) add(new THREE.SphereGeometry(0.014, 6, 4), C2, -0.035 + i * 0.018, 0.04, 0.15); } break;
+    case 'seal': add(new THREE.CylinderGeometry(0.06, 0.06, 0.025, 16), std(0x80848a, { metalness: 0.4, roughness: 0.6 }), 0, 0.015, 0); add(new THREE.BoxGeometry(0.03, 0.004, 0.03), std(0x5a5e64), 0, 0.03, 0); add(new THREE.TorusGeometry(0.07, 0.008, 4, 12, Math.PI), std(0x8a7a5a), 0, 0.02, 0, Math.PI / 2); break;
+    case 'aquila': { const G2 = std(0xd8a83a, { metalness: 0.95, roughness: 0.25 }); add(new THREE.SphereGeometry(0.06, 12, 8), G2, 0, 0.2, 0, 0, 0, 0, [1, 1.3, 0.8]); add(new THREE.SphereGeometry(0.03, 10, 8), G2, 0, 0.29, 0.04); add(new THREE.ConeGeometry(0.012, 0.04, 5), G2, 0, 0.29, 0.08, Math.PI / 2); for (const sd of [-1, 1]) add(new THREE.BoxGeometry(0.16, 0.1, 0.012), G2, sd * 0.1, 0.25, 0, 0, sd * 0.3, sd * 0.5); add(new THREE.CylinderGeometry(0.02, 0.03, 0.12, 8), G2, 0, 0.06, 0); } break;
+    case 'diploma': for (const s2 of [0, 1]) add(new THREE.BoxGeometry(0.2, 0.006, 0.15), BRONZE, s2 * 0.02, 0.006 + s2 * 0.008, s2 * 0.02, 0, s2 * 0.2, 0); add(new THREE.BoxGeometry(0.16, 0.002, 0.11), std(0x6a4a20, { metalness: 0.6 }), 0.02, 0.019, 0.02, 0, 0.2, 0); break;
+    case 'pilum': add(new THREE.CylinderGeometry(0.006, 0.008, 0.45, 6), std(0x6a6a6e, { metalness: 0.7, roughness: 0.5 }), 0, 0.012, 0, Math.PI / 2, 0, 0); add(new THREE.ConeGeometry(0.018, 0.06, 4), std(0x6a6a6e, { metalness: 0.7, roughness: 0.5 }), 0, 0.012, 0.25, Math.PI / 2); add(new THREE.BoxGeometry(0.035, 0.035, 0.08), std(0x5a4a3a), 0, 0.02, -0.25); break;
     case 'spindle': add(new THREE.CylinderGeometry(0.006, 0.006, 0.3, 5), WOOD, 0, 0.15, 0); add(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 10), CLAY, 0, 0.05, 0); add(new THREE.SphereGeometry(0.05, 10, 8), std(0xe8e0d0, { roughness: 1 }), 0, 0.3, 0, 0, 0, 0, [1, 1.4, 1]); break;
   }
   return g;
@@ -95,6 +102,9 @@ export class Artifacts {
       rostra: at(S.rostra, -9, 6), colGateW: at(S.colGateW, -6, 4), topRow: lift(S.topRow, 3, 0), hypogeum: lift(S.hypogeum, 4, -3),
       curia: at(S.curia, 3, 6), vesta: at(S.npc_cornelia, 3, -3), thermae: at(S.thermae, 10, -20), aqueduct: at(S.aqueduct, 6, -8),
       pantheon: at(S.pantheon, 4, 30), circus: at(S.circus, 30, 16), forum: at(S.forum, 20, 12), quay: at(S.quay, -6, 0),
+      mercado: at(S.market, 4, -14), domus: S.domus ? [S.domus.x - 6, S.domus.z - 30, S.domus.y + 1] : [0, 0, 50], tiberina: [ISOLA.x + 4, ISOLA.z - 10, 50],
+      portus: at(S.portus, 8, 0), capitolio: S.capitol ? [S.capitol.x + 10, S.capitol.z - 2, S.capitol.y + 1] : [0, 0, 50], subura: [-62, -186, 50],
+      fundoNaumaquia: [NAUMACHIA.x + 10, NAUMACHIA.z, 'fundo'], tabularium: at(S.tabularium, 2, 14), legiao: [COL.A + 18, -6, 50],
       fundoOstia: (() => { const p = coastPoint(30, 70); return [p.x, p.z, 'fundo']; })(),
     };
 

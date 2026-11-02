@@ -191,7 +191,7 @@ function surface(x, z, h, slope) {
 
 export function buildTerrain(scene, tex) {
   const X0 = -1060, X1 = 380, Z0 = -500, Z1 = 1060;
-  const SX = X1 - X0, SZ = Z1 - Z0, SEGX = 554, SEGZ = 600;
+  const SX = X1 - X0, SZ = Z1 - Z0, SEGX = 424, SEGZ = 459; // ~3,4 m por quadrado (leve para PCs fracos)
   const geo = new THREE.PlaneGeometry(SX, SZ, SEGX, SEGZ);
   geo.rotateX(-Math.PI / 2);
   geo.translate((X0 + X1) / 2, 0, (Z0 + Z1) / 2);

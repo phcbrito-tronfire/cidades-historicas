@@ -18,8 +18,8 @@ const KINDS = {
 };
 
 export class Mount {
-  constructor(scene, kind, { toast, onMount } = {}) {
-    this.scene = scene; this.K = KINDS[kind]; this.kindName = kind; this.toast = toast || (() => {}); this.onMount = onMount;
+  constructor(scene, kind, { toast, onMount, roman = false } = {}) {
+    this.scene = scene; this.K = KINDS[kind]; this.kindName = kind; this.toast = toast || (() => {}); this.onMount = onMount; this.roman = roman;
     this.state = 'none'; // none · coming · waiting · riding
     this.pos = new V3(); this.h = 0; this.v = 0; this.loading = null;
   }
@@ -39,6 +39,15 @@ export class Mount {
       const bw = L * 0.2, bl = L * 0.3, drop = L * 0.1;
       const cloth = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.025, bl), m); g.add(cloth);
       for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.BoxGeometry(0.025, drop, bl), m); side.position.set(s * bw / 2, -drop / 2, 0); side.rotation.z = s * 0.12; g.add(side); const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, bl + 0.01), mb); b.position.set(s * (bw / 2 + drop * 0.12), -drop, 0); g.add(b); }
+      if (this.roman) { // cavalo da cavalaria romana: castanho escuro, sela de quatro cornos (sem estribos) e faleras no peitoral
+        c.o.traverse((o) => { if (o.isMesh && o.material && !o.userData.romano) { o.material = o.material.clone(); o.material.color.setHex(0x8a5a3a); o.userData.romano = true; } });
+        const leather = new THREE.MeshStandardMaterial({ color: 0x4a2a1a, roughness: 0.7 }), bronze = new THREE.MeshStandardMaterial({ color: 0xc89a48, metalness: 0.9, roughness: 0.3 });
+        const pad = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.92, 0.09, bl * 0.75), leather); pad.position.y = 0.05; g.add(pad);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.13, 8), leather); horn.position.set(sx * bw * 0.36, 0.14, sz * bl * 0.33); horn.rotation.set(sz * 0.35, 0, -sx * 0.3); g.add(horn); }
+        // peitoral: correia de couro no peito com três faleras de bronze (medalhas da cavalaria)
+        const cz = L * 0.27, cy = -L * 0.12, strap = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.15, 0.035, 0.02), leather); strap.position.set(0, cy, cz); g.add(strap);
+        for (const x of [-1, 0, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 16), bronze); d.rotation.x = Math.PI / 2; d.position.set(x * bw * 0.32, cy - 0.04 - (x === 0 ? 0.03 : 0), cz + 0.015); g.add(d); }
+      }
       g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       c.holder.add(g); this.blanket = g;
       c.holder.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.layers.set(0); } });

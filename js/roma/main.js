@@ -109,7 +109,7 @@ async function main() {
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)
-  const mount = new Mount(scene, 'cavalo', { toast: (m) => ui.toast(m) });
+  const mount = new Mount(scene, 'cavalo', { toast: (m) => ui.toast(m), roman: true }); // cavalo castanho com a sela de quatro cornos da cavalaria romana
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const sea = await buildSea(scene, tex, { onSting: () => { health.damage(12); ui.toast('Ai! Uma água-viva — queima como fogo.'); } });
 
@@ -149,7 +149,9 @@ async function main() {
   const legion = new Legion(scene); // uma centúria marchando em volta do Coliseu
   const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material);
   const races = new Races(scene, { crowdGeo: games.crowd.geometry, crowdMat: games.crowd.material, quality, toast: (m, k, ms) => ui.toast(m, k, ms), excite: () => { games.excite = 1; } }); // bigas no Circo Máximo
-  const daily = new Daily(scene, city, { quality }); // jumentos, pombos, barcaças no Tibre, bois no mercado
+  const daily = new Daily(scene, city, { quality });
+  quests.refs = { boats, mount, sea }; // objetivos que dependem do barco, da montaria e do naufrágio
+  races.onWin = () => quests.complete('circo'); // jumentos, pombos, barcaças no Tibre, bois no mercado
 
   await step(0.96, 'Desenhando o mapa de Roma...');
   ui.buildMapBackground([
