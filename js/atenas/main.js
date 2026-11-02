@@ -10,6 +10,7 @@ import { makeWaterFX } from '../comum/waterfx.js';
 import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
+import { Festivals } from './festas.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { buildTerrain, buildHorizon, terrainHeight, coastC, WATER_Y, BOUNDS, AGORA } from './terrain.js';
 import { buildCity } from './buildings.js';
@@ -164,6 +165,9 @@ async function main() {
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
+  // os dias de Atenas: assembleia, teatro, procissão das Panateneias (muda a cada manhã nova)
+  const festas = new Festivals(scene, city, { renderer, toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), quality });
+  festas.lastPhase = sky.current;
   artifacts.onFound = (def) => { if (def.id === 'naufragio') quests.complete('naufragio'); };
   quests.artifactCount = artifacts.count;
   for (const h of city.visitHouses) {
@@ -323,7 +327,7 @@ async function main() {
       case 'KeyE': { if (boats.riding) { boardOrLeave(); break; } const t = actors.nearestInteractable(player.pos); if (t) talkTo(t); else boardOrLeave(); break; }
       case 'KeyP': pickOrDrop(); break;
       case 'KeyR': useItem(); break;
-      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
+      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); festas.onTime(sky.current); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': if (!boats.riding) mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
@@ -426,7 +430,7 @@ async function main() {
     }
   };
 
-  window.__game = { mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -483,6 +487,8 @@ async function main() {
       if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     }
     actors.update(dt, t, player, quests, sky.state.night);
+    festas.update(dt, t, player, sky.state.night);
+    if (festas.seen.size >= 3) quests.complete('festas');
     sea.update(dt, t, player);
     if (started) lifeUpdate(dt);
     items.update(t, player.pos);

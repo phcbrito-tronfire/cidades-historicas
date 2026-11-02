@@ -29,6 +29,7 @@ export const OBJECTIVES = [
   { id: 'aminias', text: 'Ouça o veterano Amínias contar a batalha, em Psitália', hint: null },
   { id: 'euripides', text: 'Encontre o poeta Eurípides na sua gruta de Salamina', hint: null },
   { id: 'corujas', text: 'Encontre as 5 corujas de prata (tetradracmas)', count: 5 },
+  { id: 'festas', text: 'Viva três dias diferentes em Atenas: assembleia, teatro ou procissão (aperte C para passar o tempo)' },
   { id: 'artefatos', text: 'Encontre os 22 artefatos da Grécia Antiga', count: 22 },
   { id: 'pericles', text: 'Ouça Péricles na Pnyx', hint: null },
 ];
