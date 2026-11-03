@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { makeCrowd } from '../comum/plateia.js';
 import { Bout, Blood } from './combate.js';
+import { Hunt } from './caca.js';
 import { COL } from './coliseu.js';
 import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
 import { creature } from '../comum/fauna.js';
@@ -65,7 +66,7 @@ export class Games {
         : kind === 'secutor' ? { outfit: 'worker', skin: skin(), extras: ['secutor', 'scutum', 'gladius', 'manica'], shieldColor: 0x2a6a3a, beard: 'short' }
         : kind === 'hoplomachus' ? { outfit: 'worker', skin: skin(), extras: ['thraex', 'parmula', 'spear', 'manica'], shieldColor: 0xb8862a, beard: 'short' }
         : kind === 'judge' ? { outfit: 'chiton', cloth: 0xf2ece0, border: 0x8e2c22, beard: 'full', extras: ['rudis'] }
-        : kind === 'venator' ? { outfit: 'chiton', cloth: pick([0x8a6a3a, 0x6a7a4a]), border: null, skin: skin(), extras: ['spear'] }
+        : kind === 'venator' ? { outfit: 'chiton', cloth: pick([0x8a6a3a, 0x6a7a4a, 0x9a3a28, 0xc8b89a]), border: null, skin: skin(), beard: rand() < 0.5 ? 'short' : null, extras: rand() < 0.5 ? ['spear', 'manica'] : ['spear', 'parmula'], shieldColor: 0x6a4a2a }
         : kind === 'musician' ? { outfit: 'chiton', cloth: 0xd8c8a0, border: 0x8e2c22, skin: skin() }
         : { outfit: 'chiton', cloth: 0xb0402c, border: 0xd8b45a, beard: 'short', extras: ['lorica', 'galea'] };
       const r = makeHumanoid(look); r.root.visible = false; scene.add(r.root);
@@ -76,13 +77,15 @@ export class Games {
     this.blood = new Blood(scene, Y);
     this.bouts = []; for (let i = 0; i < nB; i++) this.bouts.push(new Bout(this, fighter(kinds[i][0]), fighter(kinds[i][1]), fighter('judge'), homes[i]));
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
-    this.venatores = [fighter('venator'), fighter('venator')];
+    this.venatores = []; for (let i = 0, n = quality === 'alto' ? 7 : quality === 'leve' ? 5 : 3; i < n; i++) this.venatores.push(fighter('venator'));
+    this.huntSys = new Hunt(this, this.venatores);
     // feras: cada dia de caçada traz uma (crocodilos do Nilo, leões da África, ursos da Dalmácia)
     this.beasts = []; this.beastKind = 'jacare';
-    const BEASTS = { jacare: [3.2, 2], leao: [2.4, 2], urso: [2.1, 2], touro: [2.7, 2] };
+    const q3 = quality === 'alto' ? 0 : quality === 'leve' ? 1 : 2;
+    const BEASTS = { leao: [2.4, [4, 3, 2][q3]], urso: [2.1, [3, 2, 1][q3]], touro: [2.7, [3, 2, 1][q3]], jacare: [3.2, [3, 2, 1][q3]] }; // leões em toda caçada, e a fera do dia
     for (const [kind, [size, n]] of Object.entries(BEASTS)) for (let i = 0; i < n; i++) creature(kind, size, { still: true }).then((c) => {
       if (!c) return;
-      const b = { ...c, kind, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0, acts: {} };
+      const b = { ...c, kind, size, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0, acts: {} };
       if (c.mixer) for (const cl of c.clips) b.acts[cl.name] = c.mixer.clipAction(cl);
       const pickA = (...names) => names.map((n) => b.acts[n] || Object.entries(b.acts).find(([k]) => k.toLowerCase().endsWith('_' + n.toLowerCase()))?.[1]).find(Boolean) || Object.values(b.acts)[0];
       b.aWalk = pickA('Walk', 'Play', 'Unreal Take'); b.aRun = pickA('Run', 'Trot', 'Walk', 'Play', 'Unreal Take'); b.aIdle = pickA('Stand_Idle_01', 'Idle'); b.aAtk = pickA('Attack_StandAngry_01_High');
@@ -100,7 +103,7 @@ export class Games {
 
   // dia de jogo: muda quando chega uma manhã nova
   onTime(phase) {
-    if (this.lastPhase === 'noite' && phase === 'manha') { this.blood.clear(); this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
+    if (this.lastPhase === 'noite' && phase === 'manha') { this.blood.clear(); this.huntSys.wave = 0; this.huntSys.active = []; this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
     this.lastPhase = phase;
   }
 
@@ -122,11 +125,11 @@ export class Games {
     this.blood.update(dt, !!show);
     vis(this.parade, show && ev.id === 'pompa');
     vis(this.venatores, show && ev.id === 'venatio');
-    this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && b.kind === this.beastKind; });
+    this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && this.huntSys.active.includes(b); });
     if (!show) return;
     if (fightOn) this.bouts.forEach((b, i) => { if (ev.id === 'munus' || i === 0) b.update(dt, t); });
     if (ev.id === 'pompa') this.procession(dt, t);
-    if (ev.id === 'venatio') this.hunt(dt, t);
+    if (ev.id === 'venatio') this.huntSys.update(dt, t);
   }
 
   // desfile: a fila dá a volta na arena pela beirada
@@ -141,42 +144,4 @@ export class Games {
     if (rand() < dt * 0.15) this.excite = Math.max(this.excite, 0.5);
   }
 
-  // caçada: as feras avançam no venator mais perto; ele espeta a lança e a fera recua; às vezes ela foge
-  hunt(dt, t) {
-    const C = COL, Y = C.y;
-    this.venatores.forEach((v, i) => {
-      if (!v.pos.lengthSq()) v.pos.set(i ? 8 : -8, Y, i ? 3 : -3);
-      const prey = this.beasts.reduce((m, b) => (!m || b.pos.distanceTo(v.pos) < m.pos.distanceTo(v.pos) ? b : m), null);
-      if (prey) {
-        const d = prey.pos.distanceTo(v.pos);
-        v.h = angleLerp(v.h, Math.atan2(prey.pos.x - v.pos.x, prey.pos.z - v.pos.z), Math.min(1, dt * 4));
-        if (d < 3.4 && !v.r.once && rand() < dt * 3) { playOnce(v.r, 'espada', 0.95); prey.flee = 1.6; this.excite = Math.max(this.excite, 0.6); }
-        const back = d < 2.2 ? -1.2 : d > 6 ? 1 : 0;
-        v.pos.x += Math.sin(v.h) * back * dt * 1.4; v.pos.z += Math.cos(v.h) * back * dt * 1.4;
-        animateHumanoid(v.r, dt, Math.abs(back) * 1.2, back ? 'walk' : 'idle', t);
-      } else animateHumanoid(v.r, dt, 0, 'idle', t);
-      const k = Math.hypot(v.pos.x / (C.a0 - 2), v.pos.z / (C.b0 - 2)); if (k > 1) v.pos.multiplyScalar(1 / k);
-      v.pos.y = Y; v.r.root.position.copy(v.pos); v.r.root.rotation.y = v.h;
-    });
-    this.beasts.filter((b) => b.kind === this.beastKind).forEach((b, i) => {
-      const tgt = this.venatores[i % 2].pos;
-      b.flee = (b.flee || 0) - dt;
-      const want = Math.atan2(tgt.x - b.pos.x, tgt.z - b.pos.z) + (b.flee > 0 ? Math.PI : 0);
-      b.h = angleLerp(b.h, want, Math.min(1, dt * 1.6));
-      const sp = b.flee > 0 ? 2.4 : b.pos.distanceTo(tgt) > 2.6 ? 1.3 : 0;
-      b.v = lerp(b.v, sp, Math.min(1, dt * 2));
-      b.pos.x += Math.sin(b.h) * b.v * dt; b.pos.z += Math.cos(b.h) * b.v * dt;
-      const k = Math.hypot(b.pos.x / (C.a0 - 2.5), b.pos.z / (C.b0 - 2.5)); if (k > 1) b.pos.multiplyScalar(1 / k);
-      b.holder.position.set(b.pos.x, Y, b.pos.z); b.holder.rotation.y = b.h;
-      if (b.mixer) {
-        const near = b.pos.distanceTo(tgt) < 3;
-        const w = { idle: b.v < 0.15 && !near ? 1 : 0, walk: b.v >= 0.15 && b.v < 1.8 ? 1 : 0, run: b.v >= 1.8 ? 1 : 0, atk: near && b.v < 0.3 ? 1 : 0 };
-        if (!b.aIdle) w.walk += w.idle; if (!b.aAtk) w.walk += w.atk;
-        b.wt = b.wt || { idle: 0, walk: 0, run: 0, atk: 0 };
-        for (const [k, ac] of [['idle', b.aIdle], ['walk', b.aWalk], ['run', b.aRun], ['atk', b.aAtk]]) { if (!ac) continue; b.wt[k] = lerp(b.wt[k], w[k], Math.min(1, dt * 5)); ac.setEffectiveWeight(b.wt[k]); }
-        if (b.aWalk && b.aWalk === b.aRun) b.aWalk.timeScale = Math.max(0.3, b.v * 0.7); // um clipe só (leão): o ritmo segue a velocidade
-        b.mixer.update(dt);
-      }
-    });
-  }
 }

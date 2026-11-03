@@ -46,14 +46,40 @@ export function buildOstia(B, M, out) {
       for (let i = 0; i < 3; i++) { const u = -7 / 3 + i * 7 / 3, wx = x + fx * 3.7 + Math.cos(a) * u, wz = z + fz * 3.7 - Math.sin(a) * u;
         B.geo(win, M.travertine, wx, H2 - 4.5, wz, { ry: a }); B.box(M.dark, 1.0, 2.2, 0.05, wx - fx * 0.15, H2 - 4.5, wz - fz * 0.15, { ry: a }); } }
     B.box(M.marble, 11, 0.5, 11, x, H1 - 0.5, z); // cornija do primeiro andar
-    B.box(M.travertine, 7, H2 - H1, 7, x, H1, z); addBox(x, z, 7, 7, H1 - 1, H2);
-    B.box(M.marble, 7.8, 0.5, 7.8, x, H2 - 0.5, z);
+    // segundo andar oco: paredes de 0,8 m, a porta virada para o sul (para o terraço da escada de fora) e, por dentro,
+    // a escada em quatro lances junto às paredes até o alto (o mirante, em volta da lanterna)
+    { const T = 0.8, hw = 3.5, h = H2 - H1;
+      for (const [cx, cz, w, d] of [[hw - T / 2, 0, T, 7], [-hw + T / 2, 0, T, 7], [0, -hw + T / 2, 7, T]]) { B.box(M.travertine, w, h, d, x + cx, H1, z + cz); addBox(x + cx, z + cz, w, d, H1 - 1, H2); }
+      for (const sx of [-1, 1]) { const w = (7 - 1.8) / 2; B.box(M.travertine, w, h, T, x + sx * (0.9 + w / 2), H1, z + hw - T / 2); addBox(x + sx * (0.9 + w / 2), z + hw - T / 2, w, T, H1 - 1, H2); }
+      B.box(M.travertine, 1.8, h - 2.8, T, x, H1 + 2.8, z + hw - T / 2); // verga da porta
+      const inn = hw - T, c = inn - 0.6, nS = 8, rise = h / (nS * 4), run = (2 * c) / nS;
+      // quatro lances, um por parede, com um patamar quadrado em cada canto (sem degraus desencontrados nas quinas)
+      const cor = [[c, c], [c, -c], [-c, -c], [-c, c]], land = 1.2, runL = 2 * c - land, stepL = runL / nS;
+      for (let k = 0; k < 4; k++) {
+        const [ax, az] = cor[k], [bx, bz] = cor[(k + 1) % 4], ux = Math.sign(bx - ax), uz = Math.sign(bz - az), alongX = ux !== 0;
+        for (let i = 0; i < nS; i++) {
+          const d0 = land / 2 + (i + 0.5) * stepL, sx2 = ax + ux * d0, sz2 = az + uz * d0, top = H1 + rise * (k * nS + i + 1);
+          const w = alongX ? stepL + 0.02 : land, d = alongX ? land : stepL + 0.02;
+          B.box(M.travertine2, w, 0.25, d, x + sx2, top - 0.25, z + sz2); addBox(x + sx2, z + sz2, w, d, top - 0.3, top);
+        }
+        const top = H1 + rise * (k + 1) * nS; B.box(M.travertine2, land, 0.25, land, x + bx, top - 0.25, z + bz); addBox(x + bx, z + bz, land, land, top - 0.3, top); // patamar
+      }
+      // o piso do mirante, com o vão da escada no canto sudeste, e a mureta em volta
+      // o vão da escada em L, sobre os dois últimos lances (paredes oeste e sul), com guarda-corpo na borda
+      B.box(M.marble, 5, 0.3, 5, x + 1, H2 - 0.3, z - 1); addBox(x + 1, z - 1, 5, 5, H2 - 0.3, H2);
+      B.box(M.travertine2, 2.7, 0.9, 0.12, x - 0.15, H2, z + 1.5); addBox(x - 0.15, z + 1.5, 2.7, 0.2, H2 - 0.2, H2 + 0.9);
+      B.box(M.travertine2, 0.12, 0.9, 5, x - 1.5, H2, z - 1); addBox(x - 1.5, z - 1, 0.2, 5, H2 - 0.2, H2 + 0.9);
+      for (const [cx, cz, w, d] of [[0, 3.65, 7.6, 0.3], [0, -3.65, 7.6, 0.3], [3.65, 0, 0.3, 7.6], [-3.65, 0, 0.3, 7.6]]) { B.box(M.marble, w, 1.0, d, x + cx, H2, z + cz); addBox(x + cx, z + cz, w, d, H2 - 0.5, H2 + 1.1); }
+      B.box(M.marble, 7.8, 0.4, 7.8, x, H2 - 0.75, z); // cornija
+      out.lights.push({ pos: new V3(x, H1 + 3, z), color: 0xffb060, intensity: 6, dist: 14 }); // luz quente da escada
+    }
     // a lanterna: anel de colunas, telhado cônico e o braseiro aceso
-    B.geo(new THREE.CylinderGeometry(2.4, 2.6, H3 - H2, 16), M.travertine2, x, (H2 + H3) / 2, z);
-    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; B.geo(new THREE.CylinderGeometry(0.22, 0.25, H3 - H2, 8), M.marble, x + Math.cos(a) * 2.8, (H2 + H3) / 2, z + Math.sin(a) * 2.8); }
-    B.geo(new THREE.ConeGeometry(3.4, 2.2, 16), M.bronze, x, H3 + 1.1, z);
+    B.geo(new THREE.CylinderGeometry(1.25, 1.35, H3 - H2, 16), M.travertine2, x, (H2 + H3) / 2, z); addCircle(x, z, 1.4, H2 - 0.1, H3); // (começa um pouco acima do piso: quem sobe o último lance passa rente ao tambor)
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; B.geo(new THREE.CylinderGeometry(0.16, 0.18, H3 - H2, 8), M.marble, x + Math.cos(a) * 1.5, (H2 + H3) / 2, z + Math.sin(a) * 1.5); }
+    B.geo(new THREE.ConeGeometry(2.0, 1.6, 16), M.bronze, x, H3 + 0.8, z);
     B.geo(new THREE.CylinderGeometry(0.9, 0.5, 0.8, 12), M.bronze, x, H3 + 2.6, z);
-    out.torches.push(new V3(x, H3 + 3.3, z));
+    for (const [dx, dz] of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]) out.torches.push(new V3(x + dx, H3 + 3.2, z + dz)); // o fogo do braseiro
+    out.lights.push({ pos: new V3(x, H3 + 3.6, z), color: 0xffa040, intensity: 90, dist: 260, night: true }); // ilumina o porto e o mar à noite
     // a escada em volta da base (4 lances, um por lado) e a mureta do terraço
     const ring = 5.75, steps = 10, rise = (H1 - L0) / (steps * 4);
     for (let k = 0; k < 4; k++) for (let i = 0; i < steps; i++) {
@@ -67,7 +93,7 @@ export function buildOstia(B, M, out) {
     const q = coastPoint(-17, 0);
     const nq = 8; for (let k = 1; k < nq; k++) { const t = k / nq, bx = q.x + (x - q.x) * t, bz = q.z + (z - q.z) * t; B.box(M.travertine2, 6, 2, 6, bx, -1.2, bz); addBox(bx, bz, 6, 6, -2, 0.8); }
     S.lighthouse = new V3(x, L0, z + 8);
-    S.lighthouseTop = new V3(x - 3.5, H1, z);
+    S.lighthouseTop = new V3(x - 3.5, H1, z); S.lighthouseView = new V3(x + 2.8, H2, z - 1);
   }
   // navios: a quadrirreme de patrulha ao largo e o barco a remo para o jogador (os grandes ficam no Portus)
   out.boats.push({ model: 'quadrirreme', route: { a0: -320, a1: 140, off: 130 }, len: 30, speed: 2.4, name: 'Fortuna' }); // a quadrirreme de patrulha ao largo

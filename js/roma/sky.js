@@ -149,7 +149,7 @@ export class TimeOfDay {
     this._fm = new THREE.Matrix4();
     this.pool = [];
     for (let i = 0; i < 6; i++) { const l = new THREE.PointLight(0xff9a48, 0, 20, 2); scene.add(l); this.pool.push(l); }
-    this.interior = lightsDef.map((d) => { const l = new THREE.PointLight(d.color, d.intensity, d.dist, 2); l.position.copy(d.pos); l.userData.base = d.intensity; scene.add(l); return l; });
+    this.interior = lightsDef.map((d) => { const l = new THREE.PointLight(d.color, d.intensity, d.dist, 2); l.position.copy(d.pos); l.userData.base = d.intensity; l.userData.night = !!d.night; scene.add(l); return l; });
 
     this.state = this.snapshot(PRESETS.tarde);
     this.envs = {};
@@ -254,7 +254,7 @@ export class TimeOfDay {
     this.flameScale = s.torches;
     if (this.M.window) this.M.window.emissiveIntensity = s.windows;
     this.torchI = s.torches;
-    for (const l of this.interior) l.intensity = l.userData.base * (0.45 + s.torches * 0.8);
+    for (const l of this.interior) l.intensity = l.userData.base * (l.userData.night ? s.torches : 0.45 + s.torches * 0.8); // as de "noite" só acendem com o escuro (o farol)
     if (this.envMats) { const k = 1 - 0.85 * s.night; for (const m of this.envMats) m.envMapIntensity = m.userData.envBase * k; }
     this.state = s;
   }

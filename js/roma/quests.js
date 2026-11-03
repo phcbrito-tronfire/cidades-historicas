@@ -30,12 +30,12 @@ export const OBJECTIVES = [
   { id: 'panteao', text: 'Veja o novo Panteão sendo construído no Campo de Marte' },
   { id: 'aqueduto', text: 'Chegue ao aqueduto que traz a água para a cidade' },
   { id: 'tiberina', text: 'Atravesse até a Ilha Tiberina, a ilha em forma de navio' },
-  { id: 'farol', text: 'Suba a escada do farol de Óstia até o terraço' },
+  { id: 'farol', text: 'Suba por dentro do farol de Óstia até o mirante e veja o porto, o mar e Roma' },
   { id: 'portus', text: 'Conheça o Portus, o porto hexagonal de Trajano' },
   { id: 'quadrirreme', text: 'Comande a quadrirreme Concórdia (embarque no Portus e aperte as setas)' },
   { id: 'cavalo', text: 'Monte o cavalo da cavalaria (aperte H)' },
   { id: 'naufragio', text: 'Mergulhe até o navio romano afundado diante de Óstia' },
-  { id: 'artefatos', text: 'Encontre os 22 artefatos da Roma Antiga', count: 22 },
+  { id: 'artefatos', text: 'Encontre os 23 artefatos da Roma Antiga', count: 23 },
 ];
 export const FINAL_REQ = 99;
 const SAVE = 'cidades-historicas:roma:v1';
@@ -88,7 +88,7 @@ export class Quests {
     if (near(S.aqueduct, 40)) this.complete('aqueduto');
     if (Math.hypot(p.x - ISOLA.x, p.z - ISOLA.z) < 30 && !player.swimming) this.complete('tiberina');
     if (inZ(Z.portus)) this.complete('portus');
-    if (near(S.lighthouseTop, 7) && p.y > S.lighthouseTop.y - 0.5) this.complete('farol');
+    if (near(S.lighthouseView, 5) && p.y > S.lighthouseView.y - 0.5) this.complete('farol');
     const R = this.refs || {};
     if (R.boats?.riding?.model === 'quadrirreme' && Math.abs(R.boats.riding.v) > 0.5) this.complete('quadrirreme');
     if (R.mount?.state === 'riding') this.complete('cavalo');

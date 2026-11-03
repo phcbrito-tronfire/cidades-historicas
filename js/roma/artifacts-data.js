@@ -1,4 +1,4 @@
-// 22 artefatos inspirados em objetos reais da Roma de Trajano (hoje em museus). "where" diz onde está escondido.
+// 23 artefatos inspirados em objetos reais da Roma de Trajano (hoje em museus). "where" diz onde está escondido.
 export const ARTIFACTS = [
   { id: 'aureo', kind: 'coin', where: 'rostra', name: 'Áureo de Trajano', era: 'c. 112–117 d.C. · ouro',
     museum: 'Há áureos de Trajano no Museu Britânico, no Museu Nacional Romano e em quase todas as grandes coleções de moedas.',
@@ -66,4 +66,7 @@ export const ARTIFACTS = [
   { id: 'pilo', kind: 'pilum', where: 'legiao', name: 'Ponta de pilo', era: 'Séc. I–II d.C. · ferro',
     museum: 'Pilos inteiros foram achados em Oberaden, na Alemanha, e estão no Museu de Haltern.',
     story: 'O dardo pesado do legionário: uma haste longa e fina de ferro mole na ponta da madeira. Quando cravava no escudo do inimigo, entortava e não dava para arrancar — o escudo virava um peso inútil, e aí vinha o ataque com o gládio.' },
+  { id: 'sestercioPorto', kind: 'sestertius', where: 'farol', name: 'Sestércio de Nero com o porto de Óstia', era: 'c. 64 d.C. · latão (oricalco)',
+    museum: 'Exemplares estão no Museu Britânico e no Museu Nacional Romano; a mesma cena aparece em moedas de Trajano com o Portus hexagonal.',
+    story: 'Nero comemorou o porto que Cláudio construiu na foz do Tibre com esta moeda: a bacia vista de cima, os navios ancorados, a estátua do Netuno e o farol no quebra-mar. É assim que os arqueólogos sabem como era o farol — erguido sobre o casco afundado do navio que trouxe um obelisco do Egito.' },
 ];

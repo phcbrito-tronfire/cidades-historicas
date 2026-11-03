@@ -105,6 +105,7 @@ export class Artifacts {
       mercado: at(S.market, 4, -14), domus: S.domus ? [S.domus.x - 6, S.domus.z - 30, S.domus.y + 1] : [0, 0, 50], tiberina: [ISOLA.x + 4, ISOLA.z - 10, 50],
       portus: at(S.portus, 8, 0), capitolio: S.capitol ? [S.capitol.x + 10, S.capitol.z - 2, S.capitol.y + 1] : [0, 0, 50], subura: [-62, -186, 50],
       fundoNaumaquia: [NAUMACHIA.x + 10, NAUMACHIA.z, 'fundo'], tabularium: at(S.tabularium, 2, 14), legiao: [COL.A + 18, -6, 50],
+      farol: S.lighthouseView ? [S.lighthouseView.x, S.lighthouseView.z - 1.6, S.lighthouseView.y + 1] : [0, 0, 50],
       fundoOstia: (() => { const p = coastPoint(30, 70); return [p.x, p.z, 'fundo']; })(),
     };
 

@@ -33,7 +33,7 @@ export function makeCrowd(renderer, { looks = LOOKS, colors = COLORS } = {}) {
     for (const pose of ['sit', 'idle']) {
       for (let k = 0; k < 6; k++) animateHumanoid(rig, 0.4, 0, pose, k * 0.4);
       // sentado: o quadril do boneco fica na altura do assento do cartão; de pé: os pés no chão do degrau de baixo
-      if (rig.skirt) rig.skirt.scale.y = pose === 'sit' ? 0.42 : 1; // sentado, a saia de pano dobra no colo (senão vira um disco em volta dos joelhos)
+      if (rig.skirt) rig.skirt.visible = pose !== 'sit'; // sentado, a saia de pano rígida viraria um disco em volta do colo
       for (const back of [0, 1]) {
         rig.root.rotation.y = back ? Math.PI : 0; rig.root.updateMatrixWorld(true);
         const cx = tile % COLS, cy = Math.floor(tile / COLS);
