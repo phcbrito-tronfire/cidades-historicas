@@ -88,6 +88,8 @@ export function buildOstia(B, M, out) {
       B.box(M.travertine2, k % 2 ? 1.5 : 1.0, top - L0 + 0.02, k % 2 ? 1.0 : 1.5, x + sx, L0, z + sz);
       addBox(x + sx, z + sz, k % 2 ? 1.5 : 1.0, k % 2 ? 1.0 : 1.5, -3, top);
     }
+    // patamares nas quinas, onde a escada vira (sem eles ficava um vão entre um lance e o outro)
+    for (const [k, cx, cz] of [[0, ring, ring], [1, ring, -ring], [2, -ring, -ring]]) { const top = L0 + rise * steps * (k + 1); B.box(M.travertine2, 1.55, top - L0 + 0.02, 1.55, x + cx, L0, z + cz); addBox(x + cx, z + cz, 1.55, 1.55, -3, top); }
     for (const [mx, mz, w, d] of [[0, 4.95, 10, 0.3], [4.95, 0, 0.3, 10], [0, -4.95, 10, 0.3]]) { B.box(M.travertine, w, 0.9, d, x + mx, H1, z + mz); addBox(x + mx, z + mz, w, d, H1 - 1, H1 + 0.9); }
     // quebra-mar ligando o farol ao cais
     const q = coastPoint(-17, 0);
