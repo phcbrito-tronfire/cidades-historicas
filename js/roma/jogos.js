@@ -6,6 +6,7 @@
 // À noite não há jogos. A plateia é uma multidão instanciada (barata), que balança e se levanta nos momentos fortes.
 import * as THREE from 'three';
 import { makeCrowd } from '../comum/plateia.js';
+import { Bout, Blood } from './combate.js';
 import { COL } from './coliseu.js';
 import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
 import { creature } from '../comum/fauna.js';
@@ -62,6 +63,7 @@ export class Games {
         : kind === 'thraex' ? { outfit: 'worker', skin: skin(), extras: ['thraex', 'parmula', 'sica', 'manica'], shieldColor: 0x2a4a8a, beard: 'short' }
         : kind === 'retiarius' ? { outfit: 'worker', skin: skin(), extras: ['trident', 'net', 'galerus'], beard: 'short' }
         : kind === 'secutor' ? { outfit: 'worker', skin: skin(), extras: ['secutor', 'scutum', 'gladius', 'manica'], shieldColor: 0x2a6a3a, beard: 'short' }
+        : kind === 'hoplomachus' ? { outfit: 'worker', skin: skin(), extras: ['thraex', 'parmula', 'spear', 'manica'], shieldColor: 0xb8862a, beard: 'short' }
         : kind === 'judge' ? { outfit: 'chiton', cloth: 0xf2ece0, border: 0x8e2c22, beard: 'full', extras: ['rudis'] }
         : kind === 'venator' ? { outfit: 'chiton', cloth: pick([0x8a6a3a, 0x6a7a4a]), border: null, skin: skin(), extras: ['spear'] }
         : kind === 'musician' ? { outfit: 'chiton', cloth: 0xd8c8a0, border: 0x8e2c22, skin: skin() }
@@ -69,10 +71,10 @@ export class Games {
       const r = makeHumanoid(look); r.root.visible = false; scene.add(r.root);
       return { r, kind, pos: new THREE.Vector3(), h: 0, hp: 1, down: false };
     };
-    // duplas clássicas: mirmilão contra trácio, e o reciário (rede e tridente, quase sem armadura) contra o secutor
-    this.pairs = [[fighter('murmillo'), fighter('thraex')], [fighter('retiarius'), fighter('secutor')]];
-    this.pair = this.pairs[0]; this.pairIdx = 0;
-    this.judge = fighter('judge');
+    // várias lutas ao mesmo tempo, cada uma com o seu árbitro: mirmilão × trácio, reciário × secutor, hoplômaco × mirmilão
+    const nB = quality === 'alto' ? 3 : quality === 'leve' ? 2 : 1, homes = [[-13, 0], [13, 0], [0, -7]], kinds = [['murmillo', 'thraex'], ['retiarius', 'secutor'], ['hoplomachus', 'murmillo']];
+    this.blood = new Blood(scene, Y);
+    this.bouts = []; for (let i = 0; i < nB; i++) this.bouts.push(new Bout(this, fighter(kinds[i][0]), fighter(kinds[i][1]), fighter('judge'), homes[i]));
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
     this.venatores = [fighter('venator'), fighter('venator')];
     // feras: cada dia de caçada traz uma (crocodilos do Nilo, leões da África, ursos da Dalmácia)
@@ -91,21 +93,14 @@ export class Games {
       if (lo < 1e8) c.o.position.y -= lo - c.holder.position.y;
       c.holder.visible = false; scene.add(c.holder); this.beasts.push(b);
     });
-    this.resetBout();
   }
 
-  resetBout() {
-    if (this.pairs) { this.pairIdx = (this.pairIdx + 1) % this.pairs.length; this.pairs.forEach((pr) => pr.forEach((f) => { f.r.root.visible = false; })); this.pair = this.pairs[this.pairIdx]; }
-    const [a, b] = this.pair;
-    a.down = b.down = false; this.boutT = 0; this.boutEnd = rr(30, 48);
-    for (const f of this.pair) { f.r.once = null; f.pos.set(0, 0, 0); }
-    this.loser = rand() < 0.5 ? 0 : 1;
-    this.ax = rand() * 6; this.cx = this.event?.id === 'pompa' ? 8 : -4; this.cz = 0; this.dist = 2.2;
-    this.phase = 'guard'; this.phaseT = rr(0.8, 1.6); this.atk = 0;
-  }
+  // fim de uma luta: entram dois novos (os mesmos lutadores, outra luta), depois de um respiro
+  nextPairing(b) { b.reset(); b.wait = rr(3, 8); }
+
   // dia de jogo: muda quando chega uma manhã nova
   onTime(phase) {
-    if (this.lastPhase === 'noite' && phase === 'manha') { this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
+    if (this.lastPhase === 'noite' && phase === 'manha') { this.blood.clear(); this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
     this.lastPhase = phase;
   }
 
@@ -123,68 +118,15 @@ export class Games {
     if (dIn && this.seenDay !== this.day) { this.seenDay = this.day; this.info({ tag: 'Programa do dia', name: night > 0.5 ? 'Noite no Coliseu' : this.event.name, era: `Dia ${this.day + 1} dos jogos · Roma, 117 d.C.`, story: night > 0.5 ? 'À noite não há espetáculo: os escravos limpam as arquibancadas e trocam a areia da arena. Volte de manhã (ou aperte C para passar o tempo).' : this.event.desc, foot: 'A cada novo dia o programa muda: gladiadores, caçada, desfile, batalha naval.' }); }
     const vis = (arr, on) => arr.forEach((f) => { f.r.root.visible = on; });
     const fightOn = show && (ev.id === 'munus' || ev.id === 'pompa');
-    this.pairs.forEach((pr) => vis(pr, fightOn && pr === this.pair)); this.judge.r.root.visible = fightOn;
+    this.bouts.forEach((b, i) => { b.visible = fightOn && (ev.id === 'munus' || i === 0); });
+    this.blood.update(dt, !!show);
     vis(this.parade, show && ev.id === 'pompa');
     vis(this.venatores, show && ev.id === 'venatio');
     this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && b.kind === this.beastKind; });
     if (!show) return;
-    if (fightOn) this.bout(dt, t);
+    if (fightOn) this.bouts.forEach((b, i) => { if (ev.id === 'munus' || i === 0) b.update(dt, t); });
     if (ev.id === 'pompa') this.procession(dt, t);
     if (ev.id === 'venatio') this.hunt(dt, t);
-  }
-
-  // combate: os dois sempre de frente um para o outro. Na guarda rodeiam devagar mantendo a distância; no ataque, quem
-  // ataca avança com o golpe e o outro recua um passo com o escudo — a dupla "anda" pela arena com o embalo. Às vezes
-  // vem o contra-ataque na hora. No fim um cai, a plateia se levanta, e entra outro par.
-  bout(dt, t) {
-    const C = COL, Y = C.y, [a, b] = this.pair;
-    this.boutT += dt;
-    const over = this.boutT > this.boutEnd;
-    if (over && !a.down && !b.down) { const L = this.pair[this.loser]; L.down = true; playOnce(L.r, 'desmaiar', 4.5); this.excite = 1; this.audio?.chime?.(); }
-    if (this.boutT > this.boutEnd + 9) this.resetBout();
-    this.phaseT -= dt;
-    let want = 2.1, push = 0;
-    if (!over) {
-      if (this.phase === 'guard') {
-        this.ax += dt * 0.35 * Math.sin(t * 0.4 + 1);
-        want = 2.0 + Math.sin(t * 1.3) * 0.25;
-        if (this.phaseT <= 0) { this.phase = 'attack'; this.phaseT = 0.95; this.atk = rand() < 0.6 ? 1 - this.atk : this.atk; playOnce(this.pair[this.atk].r, 'espada', 0.95); if (rand() < 0.35) this.excite = Math.max(this.excite, 0.45); }
-      } else {
-        const k = 1 - this.phaseT / 0.95; // progresso do golpe
-        want = k < 0.45 ? 1.35 : 1.7; push = k < 0.6 ? 1.6 : 0.4; // quem ataca empurra a dupla para o lado de quem defende
-        if (this.phaseT <= 0) {
-          if (rand() < 0.3) { this.phase = 'attack'; this.phaseT = 0.95; this.atk = 1 - this.atk; playOnce(this.pair[this.atk].r, 'espada', 0.95); } // contra-ataque
-          else { this.phase = 'guard'; this.phaseT = rr(0.7, 1.8); }
-        }
-      }
-    }
-    // centro da dupla anda na direção do defensor; não sai da arena
-    const dx = Math.cos(this.ax), dz = Math.sin(this.ax), sg = this.atk === 0 ? 1 : -1;
-    this.cx += dx * push * sg * dt; this.cz += dz * push * sg * dt;
-    const kk = Math.hypot(this.cx / (C.a0 - 5), this.cz / (C.b0 - 5)); if (kk > 1) { this.cx /= kk; this.cz /= kk; this.ax += dt * 1.2; }
-    this.dist = lerp(this.dist, want, Math.min(1, dt * 5));
-    [a, b].forEach((f, i) => {
-      const s2 = i === 0 ? -1 : 1, tx = this.cx + dx * s2 * this.dist / 2, tz = this.cz + dz * s2 * this.dist / 2;
-      if (!f.pos.lengthSq()) f.pos.set(tx, Y, tz);
-      const ox = f.pos.x, oz = f.pos.z;
-      if (!f.down) { f.pos.x = lerp(f.pos.x, tx, Math.min(1, dt * 8)); f.pos.z = lerp(f.pos.z, tz, Math.min(1, dt * 8)); }
-      f.pos.y = Y; f.r.root.position.copy(f.pos);
-      const o = this.pair[1 - i];
-      if (!f.down) f.h = angleLerp(f.h, Math.atan2(o.pos.x - f.pos.x, o.pos.z - f.pos.z), Math.min(1, dt * 10));
-      f.r.root.rotation.y = f.h;
-      // passo: a velocidade para a frente (do jeito que ele olha) escolhe andar ou ficar em guarda
-      const fwd = ((f.pos.x - ox) * Math.sin(f.h) + (f.pos.z - oz) * Math.cos(f.h)) / Math.max(dt, 1e-4);
-      f.spd = lerp(f.spd || 0, fwd, Math.min(1, dt * 8));
-      animateHumanoid(f.r, dt, Math.max(0, f.spd), f.down || over || f.spd < 0.25 ? 'idle' : 'walk', t);
-    });
-    // juiz: acompanha de lado, a uns 3,5 m, olhando a luta
-    const J = this.judge, jx = this.cx + Math.cos(this.ax + Math.PI / 2) * 3.6, jz = this.cz + Math.sin(this.ax + Math.PI / 2) * 3.6;
-    if (!J.pos.lengthSq()) J.pos.set(jx, Y, jz);
-    const ox = J.pos.x, oz = J.pos.z;
-    J.pos.set(lerp(J.pos.x, jx, Math.min(1, dt * 1.5)), Y, lerp(J.pos.z, jz, Math.min(1, dt * 1.5))); J.r.root.position.copy(J.pos);
-    J.h = angleLerp(J.h, Math.atan2(this.cx - J.pos.x, this.cz - J.pos.z), Math.min(1, dt * 4)); J.r.root.rotation.y = J.h;
-    const js = Math.hypot(J.pos.x - ox, J.pos.z - oz) / Math.max(dt, 1e-4);
-    animateHumanoid(J.r, dt, js, js > 0.3 ? 'walk' : 'idle', t);
   }
 
   // desfile: a fila dá a volta na arena pela beirada
