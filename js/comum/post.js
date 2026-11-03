@@ -7,10 +7,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, uNight: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uUnder: { value: 0 }, uUnderCol: { value: new THREE.Color(0.1, 0.45, 0.5) } },
+  uniforms: { tDiffuse: { value: null }, uNight: { value: 0 }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uUnder: { value: 0 }, uUnderCol: { value: new THREE.Color(0.1, 0.45, 0.5) }, uWarm: { value: 1 }, uSat: { value: 1.12 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform float uNight; uniform float uTime; uniform vec2 uRes; uniform float uUnder; uniform vec3 uUnderCol;
+    uniform sampler2D tDiffuse; uniform float uNight; uniform float uTime; uniform vec2 uRes; uniform float uUnder; uniform vec3 uUnderCol; uniform float uWarm; uniform float uSat;
     varying vec2 vUv;
     float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
     void main(){
@@ -20,9 +20,9 @@ const GradeShader = {
       // contraste suave em curva S e saturação
       c = mix(c, c * c * (3.0 - 2.0 * c), 0.35);
       float l = dot(c, vec3(0.299, 0.587, 0.114));
-      c = mix(vec3(l), c, mix(1.12, 0.9, uNight));
+      c = mix(vec3(l), c, mix(uSat, 0.9, uNight));
       // dia: sombras levemente azuladas, luzes douradas (look de cinema); noite: azul frio
-      vec3 dayTint = mix(vec3(1.0, 0.97, 0.95), vec3(1.07, 1.0, 0.86), smoothstep(0.15, 0.75, l));
+      vec3 dayTint = mix(vec3(1.0), mix(vec3(1.0, 0.97, 0.95), vec3(1.07, 1.0, 0.86), smoothstep(0.15, 0.75, l)), uWarm);
       vec3 nightTint = vec3(0.86, 0.94, 1.12);
       c *= mix(dayTint, nightTint, uNight);
       // debaixo d'água: verde-azulado, menos contraste, luz vinda de cima

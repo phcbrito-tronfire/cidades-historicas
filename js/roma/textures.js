@@ -117,6 +117,30 @@ export function getTextures() {
   }
   // mármore liso com veios suaves (colunas: sem as juntas de bloco da foto)
   cache.plainMarble = toTexture(pixels(512, (x, y) => { const n = fbm(x / 90, y / 40, 4, 0) * 0.6 + fbm(x / 20, y / 12, 2) * 0.25; const vein = Math.pow(Math.max(0, 1 - Math.abs(Math.sin((x * 0.02 + y * 0.05 + n * 6)))), 18) * 0.25; const v = 236 + (n - 0.5) * 18 - vein * 60; return [v, v * 0.985, v * 0.955]; }));
+  // toldo listrado (as tendas e lojas usavam lona de linho tingida em faixas)
+  cache.stripes = (a, b, n = 8) => {
+    const key = 'sp' + a + b + n; if (cache[key]) return cache[key];
+    const S = 256, c = makeCanvas(S), x = c.getContext('2d');
+    for (let i = 0; i < n; i++) { x.fillStyle = i % 2 ? b : a; x.fillRect((i * S) / n, 0, S / n + 1, S); }
+    const nz = pixels(S, (px, py) => { const v = 128 + (vnoise(px * 0.08, py * 0.5) - 0.5) * 60 + (vnoise(px * 2, py * 2) - 0.5) * 24; return [v, v, v]; });
+    x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.3; x.drawImage(nz, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+    return (cache[key] = toTexture(c));
+  };
+  // estandarte dos templos e arcos: pano vermelho com barra de ouro, coroa de louros e SPQR
+  {
+    const W = 128, H = 384, c = makeCanvas(W, H), x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#7a1410'); g.addColorStop(0.5, '#a8221a'); g.addColorStop(1, '#7a1410');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#d8a838'; x.fillRect(0, 0, W, 14); x.fillRect(0, H - 40, W, 10); x.fillRect(6, 14, 5, H - 54); x.fillRect(W - 11, 14, 5, H - 54);
+    for (let i = 0; i < 7; i++) { x.beginPath(); x.moveTo(i * (W / 6) - 10, H - 30); x.lineTo(i * (W / 6) + 10, H - 30); x.lineTo(i * (W / 6), H); x.fill(); } // franja em pontas
+    x.strokeStyle = '#e8bc48'; x.lineWidth = 5; x.beginPath(); x.arc(W / 2, 120, 34, Math.PI * 0.62, Math.PI * 2.38); x.stroke(); // coroa de louros
+    for (let k = 0; k < 14; k++) { const a = Math.PI * 0.68 + (k / 13) * Math.PI * 1.64, px = W / 2 + Math.cos(a) * 34, py = 120 + Math.sin(a) * 34; x.save(); x.translate(px, py); x.rotate(a + (k < 7 ? 0.9 : -0.9)); x.fillStyle = '#e8bc48'; x.beginPath(); x.ellipse(0, 0, 9, 3.5, 0, 0, 7); x.fill(); x.restore(); }
+    x.fillStyle = '#f0c850'; x.font = 'bold 30px Georgia, serif'; x.textAlign = 'center'; x.fillText('SPQR', W / 2, 230);
+    x.fillRect(W / 2 - 30, 250, 60, 3);
+    const nz = pixels(W, (px, py) => { const v = 128 + (vnoise(px * 0.05, py * 0.6) - 0.5) * 70; return [v, v, v]; }, H);
+    x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.35; x.drawImage(nz, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+    cache.banner = toTexture(c);
+  }
   cache.ready = true;
   return cache;
 }
@@ -140,6 +164,19 @@ export async function loadPBR(base, onProgress) {
       }));
   }));
   return out;
+}
+
+// tira o tom de uma foto (o "mármore" da Poly Haven é amarelado): mistura com o cinza, ajusta o brilho e puxa para
+// um tom-alvo; troca a imagem da própria textura, então todos os clones dela (pbrSet) já saem corrigidos
+export function retint(tex, { desat = 0.85, gain = 1, tint = [1, 1, 1] } = {}) {
+  const im = tex.image; if (!im || !im.width) return;
+  const c = makeCanvas(im.width, im.height), ctx = c.getContext('2d'); ctx.drawImage(im, 0, 0);
+  const d = ctx.getImageData(0, 0, c.width, c.height), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const l = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+    for (let k = 0; k < 3; k++) p[i + k] = clamp((p[i + k] + (l - p[i + k]) * desat) * gain * tint[k], 0, 255);
+  }
+  ctx.putImageData(d, 0, 0); tex.image = c; tex.needsUpdate = true;
 }
 
 export function pbrSet(set, repeat = 1, extra = {}) {

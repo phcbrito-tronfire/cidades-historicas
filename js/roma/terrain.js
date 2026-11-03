@@ -168,8 +168,8 @@ function surface(x, z, h, slope) {
   const forum = Math.max(0, 1 - Math.max(Math.abs(x - FORUM.x) - FORUM.hw, Math.abs(z - FORUM.z) - FORUM.hd, 0) / 14);
   const capE = Math.hypot((x - CAPITOL.x) / CAPITOL.rx, (z - CAPITOL.z) / CAPITOL.rz), clv = clivus(x, z).d;
   let pave = Math.max(colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1), 1 - ss(0.82, 0.96, capE), 1 - ss(3.5, 5.5, clv));
-  let grass = (1 - urban * 0.85) * clamp(0.75 + (n - 0.5) * 0.8, 0, 1) + ss(0.14, 0.3, slope) * 0.2;
-  let ground = urban * (1 - pave) * 0.9 + (1 - urban) * ss(0.6, 0.75, n3) * 0.35; // terra batida: becos e trilhas
+  let grass = (1 - urban * 0.4) * clamp(0.85 + (n - 0.5) * 0.7, 0, 1) + ss(0.14, 0.3, slope) * 0.2;
+  let ground = urban * (1 - pave) * 0.3 * ss(0.55, 0.75, n3) + (1 - urban) * ss(0.65, 0.8, n3) * 0.25; // terra batida: só alguns becos e trilhas (Roma era calçada e cheia de jardins)
   pave *= inland; grass *= inland * (1 - pave); ground *= inland;
   const v = 0.92 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.2;
   let r = v, g = v, b = v;
@@ -244,7 +244,8 @@ vec3 cWet = tri(tWet, P / 5.0).rgb * vec3(0.95, 0.92, 0.86);
 float wet = 1.0 - smoothstep(0.08, 0.5, vWP.y + (tri(tSand, P / 7.0).r - 0.5) * 0.3);
 cS = mix(cS, cWet, wet * 0.85);
 vec3 cG = tri(tGround, P / 4.5).rgb * vec3(1.12, 1.0, 0.84);
-vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(0.78, 1.08, 0.6); // grama verde (Roma, verão ameno)
+vec3 cGr0 = tri(tGrass, P / 5.0).rgb; float gL = dot(cGr0, vec3(0.3, 0.59, 0.11));
+vec3 cGr = mix(cGr0 * vec3(0.78, 1.08, 0.6), gL * vec3(1.25, 1.9, 0.72), 0.75); // grama verde de verdade (Roma, primavera)
 vec3 cT = tri(tTrail, P / 3.2).rgb * vec3(0.92, 0.9, 0.86); // calçamento de pedra
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.12;
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);

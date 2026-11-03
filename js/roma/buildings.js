@@ -3,7 +3,8 @@
 import * as THREE from 'three';
 import { Batcher } from '../comum/batcher.js';
 import { addBox, addCircle, blocked } from '../comum/collision.js';
-import { rr, rand } from '../comum/util.js';
+import { rr, rand, fbm } from '../comum/util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
 import { buildForum } from './forum.js';
@@ -22,9 +23,9 @@ export function createMaterials(tex) {
   const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
   const M = {};
   // travertino (a pedra do Coliseu): calcário claro, cor de mel, com furinhos; duas tonalidades para as fileiras
-  M.travertine = std({ ...pbrSet(P.marble_01, 1), color: 0xeadcc0, roughness: 0.82 }); M.travertine.userData.uv = { s: 2.6 };
-  M.travertine2 = std({ ...pbrSet(P.pedra_clara, 1), color: 0xe2d2b4, roughness: 0.88 }); M.travertine2.userData.uv = { s: 3 };
-  M.facade = std({ ...pbrSet(P.pedra_clara, 1), color: 0xf0e2c6, roughness: 0.8 }); M.facade.userData.uv = { s: 3.2 };
+  M.travertine = std({ ...pbrSet(P.marble_01, 1), color: 0xf4ecdc, roughness: 0.8 }); M.travertine.userData.uv = { s: 2.6 };
+  M.travertine2 = std({ ...pbrSet(P.pedra_clara, 1), color: 0xece2cc, roughness: 0.86 }); M.travertine2.userData.uv = { s: 3 };
+  M.facade = std({ ...pbrSet(P.pedra_clara, 1), color: 0xf8f0e2, roughness: 0.78 }); M.facade.userData.uv = { s: 3.2 };
   M.marble = std({ ...pbrSet(P.marble_01, 1), color: 0xfff6ea, roughness: 0.5 }); M.marble.userData.uv = { s: 3 };
   M.marbleWall = std({ ...pbrSet(P.marble_01, 1), color: 0xf6ecdc, roughness: 0.55 }); M.marbleWall.userData.uv = { s: 2.2 };
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
@@ -42,7 +43,7 @@ export function createMaterials(tex) {
   M.bronze = std({ color: 0xa8743a, metalness: 0.9, roughness: 0.35 });
   M.gold = std({ color: 0xffc64a, metalness: 1, roughness: 0.28 });
   M.dark = std({ color: 0x1e140c, roughness: 1 });
-  M.tiles = std({ ...pbrSet(P.clay_roof_tiles_02, 1), color: 0xffb08a }); M.tiles.userData.uv = { s: 2.2 }; // telhas de barro, bem vermelhas
+  M.tiles = std({ ...pbrSet(P.clay_roof_tiles_02, 1), color: 0xffd0b0 }); M.tiles.userData.uv = { s: 2.2 }; // telhas de barro, bem vermelhas
   M.plaster = std({ ...pbrSet(P.cal_branca, 1), color: 0xf6e6c8, roughness: 0.92 }); M.plaster.userData.uv = { s: 3 };
   M.plasterOchre = std({ ...pbrSet(P.barro_ocre, 1), color: 0xffd8a0 }); M.plasterOchre.userData.uv = { s: 3 };
   M.plasterRed = std({ ...pbrSet(P.cal_branca, 1), color: 0xd88468, roughness: 0.92 }); M.plasterRed.userData.uv = { s: 3 };
@@ -51,7 +52,8 @@ export function createMaterials(tex) {
   M.window = std({ color: 0x2a1a10, emissive: 0xffa040, emissiveIntensity: 0 });
   M.flame = new THREE.MeshBasicMaterial({ color: 0xffb050 });
   M.fire = new THREE.MeshBasicMaterial({ color: 0xffa040 });
-  M.awning = [0xefe6d2, 0xa8392a, 0xd8b45a].map((c) => std({ color: c, side: THREE.DoubleSide, roughness: 0.95 }));
+  M.awning = [['#efe6d2', '#b8322a'], ['#efe6d2', '#2f6aa8'], ['#f2e8d0', '#d89a30'], ['#efe6d2', '#3a7a4a']].map(([a, b]) => std({ map: T.stripes(a, b), side: THREE.DoubleSide, roughness: 0.95 })); // toldos listrados
+  M.banner = std({ map: T.banner, side: THREE.DoubleSide, roughness: 0.85 }); // estandartes vermelhos
   void T;
   return M;
 }
@@ -73,7 +75,8 @@ function buildStreets(B, M) {
 
 // árvores: pinheiros-mansos (a copa em guarda-chuva, típica de Roma) e ciprestes, nas colinas, jardins, margens do
 // rio e arredores — instanciadas (duas malhas por espécie para a cidade toda)
-function buildTrees(scene, M, ex = []) {
+function buildTrees(scene, M, ex = [], quality = 'leve') {
+  const DET = quality === 'alto' ? 2 : 1; // detalhe das esferas de folhagem (PC fraco: tufos mais simples)
   const pines = [], cyps = [];
   for (let i = 0; i < 2600; i++) {
     const x = rr(-960, 270), z = rr(-410, 900), h = terrainHeight(x, z);
@@ -85,23 +88,40 @@ function buildTrees(scene, M, ex = []) {
     const td = tiberDist(x, z).d; if (td < TIBER_HALF + 4) continue;
     if (ex.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1)) continue;
     const hilly = h > 16, bank = td < TIBER_HALF + 40, out = Math.hypot(x + 160, z - 30) > 520;
-    if (!hilly && !bank && !out && rand() > 0.04) continue; // na cidade, só uma árvore aqui e ali (jardins)
+    if (!hilly && !bank && !out && rand() > 0.1) continue; // na cidade, árvores dos jardins e pátios
     if (blocked(x, z, h, 1.2, 4)) continue;
     (rand() < 0.62 ? pines : cyps).push([x, h, z, rr(0.8, 1.25), rand() * 6]);
   }
   const trunkM = new THREE.MeshStandardMaterial({ color: 0x6a4a34, roughness: 0.95 });
-  const pineM = new THREE.MeshStandardMaterial({ color: 0x3f5f2c, roughness: 0.9, flatShading: true });
-  const cypM = new THREE.MeshStandardMaterial({ color: 0x2c4424, roughness: 0.9, flatShading: true });
+  // folhagem: manchas de luz e sombra de muitas folhinhas (canvas), cor por vértice (mais clara no alto, onde bate sol)
+  const leafTex = (() => { const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+    x.fillStyle = '#7a8a6a'; x.fillRect(0, 0, S, S);
+    for (let i = 0; i < 2600; i++) { const v = Math.random(); x.fillStyle = v < 0.45 ? 'rgba(40,60,30,0.55)' : v < 0.8 ? 'rgba(150,175,110,0.5)' : 'rgba(210,225,160,0.45)'; x.beginPath(); x.ellipse(Math.random() * S, Math.random() * S, 2 + Math.random() * 4, 1.2 + Math.random() * 2, Math.random() * 3, 0, 7); x.fill(); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.repeat.set(3, 3); return t; })();
+  const pineM = new THREE.MeshStandardMaterial({ color: 0x8aa868, map: leafTex, roughness: 0.92, vertexColors: true });
+  const cypM = new THREE.MeshStandardMaterial({ color: 0x5f7a4a, map: leafTex, roughness: 0.92, vertexColors: true });
+  // tufo: esfera amassada por ruído (sem cara de poliedro), com cor clara em cima e escura embaixo
+  const tuft = (rx, ry, rz, cx, cy, cz, seed, rough = 0.35) => {
+    const g = new THREE.IcosahedronGeometry(1, DET + (rough < 0.3 ? 1 : 0)), p = g.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + (fbm(x * 2.2 + seed, y * 2.2 + z * 1.7, 3) - 0.5) * rough * 2 + (fbm(x * 6 + seed, z * 6 + y * 5, 2) - 0.5) * rough * 0.6;
+      p.setXYZ(i, cx + x * rx * k, cy + y * ry * k, cz + z * rz * k);
+      const l = 0.62 + 0.45 * (y * 0.5 + 0.5); col.push(l * 0.95, l, l * 0.9);
+    }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
+  };
   const inst = (geo, mat, list, f) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length), d = new THREE.Object3D();
     list.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
     im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
   };
   const trunk = new THREE.CylinderGeometry(0.22, 0.32, 9, 7); trunk.translate(0, 4.5, 0); trunk.rotateZ(0.06);
-  const crown = new THREE.IcosahedronGeometry(1, 1); crown.scale(4.2, 1.5, 4.2); crown.translate(0.5, 9.6, 0);
+  // pinheiro-manso: a copa em guarda-chuva, larga e chata, feita de vários tufos
+  const crown = mergeGeometries([tuft(3.6, 1.25, 3.6, 0.5, 9.8, 0, 1), tuft(2.3, 1.0, 2.2, 2.5, 9.3, 1.3, 2), tuft(2.4, 1.0, 2.2, -1.7, 9.3, -1.4, 3), tuft(2.1, 0.9, 2.2, -0.4, 9.4, 2.4, 5)]);
   inst(trunk, trunkM, pines, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.3, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); });
   inst(crown, pineM, pines, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.3, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); });
-  const cyp = new THREE.IcosahedronGeometry(1, 1); cyp.scale(1.1, 5.2, 1.1); cyp.translate(0, 5.4, 0);
+  // cipreste: chama comprida e fechada, com a ponta fina
+  const cyp = tuft(1.15, 5.2, 1.15, 0, 5.4, 0, 9, 0.22); { const p = cyp.attributes.position; for (let i = 0; i < p.count; i++) { const t = Math.min(1, Math.max(0, (p.getY(i) - 0.2) / 10.4)), k = Math.sin(Math.PI * Math.pow(t, 0.72)) * 1.08 + 0.05; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); } cyp.computeVertexNormals(); }
   const cypT = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 6); cypT.translate(0, 0.6, 0);
   inst(cypT, trunkM, cyps, (d, [x, y, z, s]) => { d.position.set(x, y - 0.2, z); d.rotation.set(0, 0, 0); d.scale.setScalar(s); });
   inst(cyp, cypM, cyps, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.2, z); d.rotation.set(0, r, 0); d.scale.set(s, s * rr(0.85, 1.2), s); });
@@ -129,6 +149,6 @@ export function buildCity(scene, tex) {
   out.spots.start = new THREE.Vector3(-COL.A - 16, terrainHeight(-COL.A - 16, -6), -6);
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);
-  out.trees = buildTrees(scene, M, out.exclusions);
+  out.trees = buildTrees(scene, M, out.exclusions, tex.quality);
   return out;
 }

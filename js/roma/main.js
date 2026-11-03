@@ -2,7 +2,7 @@
 // Coliseu inteiro explorável (arquibancada, arena, hipogeu); a gente, os eventos da arena e o resto da cidade vêm depois.
 import * as THREE from 'three';
 const FRAME = { n: 0 };
-import { getTextures, setAniso, loadPBR } from './textures.js';
+import { getTextures, setAniso, loadPBR, retint } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp } from '../comum/aquecer.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
@@ -88,6 +88,9 @@ async function main() {
   const step = async (f, t) => { ui.progress(f, t); await nextFrame(); await nextFrame(); };
   await step(0.03, 'Cortando travertino nas pedreiras de Tívoli...');
   const pbr = await loadPBR('assets/textures', (f) => ui.progress(0.03 + f * 0.15));
+  retint(pbr.marble_01.map, { desat: 0.88, gain: 1.22, tint: [1, 1, 1.02] }); // mármore branco de Carrara, não cor de areia
+  retint(pbr.pedra_clara.map, { desat: 0.6, gain: 1.12, tint: [1.02, 1, 0.97] }); // travertino: claro, quase branco
+  retint(pbr.clay_roof_tiles_02.map, { desat: 0.08, gain: 1.2, tint: [1.04, 1, 0.94] }); // telhas de barro alaranjadas e vivas
   const tex = getTextures(); tex.pbr = pbr;
   await step(0.18, 'Chamando o povo de Roma...');
   await loadHumanModel(null, tex, (f) => ui.progress(0.18 + f * 0.07));
@@ -103,6 +106,7 @@ async function main() {
   { const rb = water.onBeforeRender; water.onBeforeRender = function (...a) { const ev = PROFILE[quality].reflEvery; if (FRAME.n % (FRAME.far ? ev + 1 : ev)) return; rb.apply(this, a); }; }
   const horizon = buildHorizon(scene, tex);
   await step(0.42, 'Erguendo o Anfiteatro Flávio, arco por arco...');
+  tex.quality = quality; // (as copas das árvores têm mais ou menos tufos conforme os gráficos)
   const city = buildCity(scene, tex);
   await placeColossus(scene, city);
   await placeLandmarks(scene, city); // as estátuas de bronze (Trajano, jardim da domus)
@@ -164,6 +168,7 @@ async function main() {
   const post = await createPost(renderer, scene, camera);
   const underwater = makeUnderwater(scene, water, { color: 0x2a8a8a, near: 0.8, far: 30 });
   post.grade.uniforms.uUnderCol.value.setRGB(0.18, 0.55, 0.55);
+  post.grade.uniforms.uWarm.value = 0.3; post.grade.uniforms.uSat.value = 1.2; // Roma de mármore branco e cores vivas: sem o filtro dourado que deixava tudo bege
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
   applyQuality(quality, { renderer, sun, post, actors });
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });

@@ -45,6 +45,11 @@ export function temple(B, M, out, o) {
     const lx = front - k * ic, lz = -W / 2 + r * 1.5 + i * ic;
     for (const g of colGeo) B.geo(g, M.colMarble, 0, 0, 0, { frame: F.clone().multiply(mat4(lx, P, lz)), uv: false });
   }
+  // estandartes vermelhos pendurados na arquitrave, nos vãos da frente (um sim, um não; o do meio sempre)
+  { const bw = Math.min(ic - r * 2.2, 2.2), bh = H * 0.58, mid = (cols - 2) / 2;
+    for (let i = 0; i < cols - 1; i++) { if (Math.abs(i - mid) % 2 > 0.6) continue;
+      const lz = -W / 2 + r * 1.5 + (i + 0.5) * ic;
+      B.geo(new THREE.PlaneGeometry(bw, bh), M.banner, front + r * 0.4, P + H - bh / 2 - 0.1, lz, { frame: F, ry: Math.PI / 2, uv: false }); } }
   const cellaL = D - deep * ic - r * 2;
   box(o.cellaMat || M.marbleWall, cellaL, H, W - r * 3, -D / 2 + cellaL / 2 + r, P, 0);
   box(M.dark, 0.1, H * 0.62, W * 0.22, -D / 2 + cellaL + r + 0.06, P, 0); // porta (bronze escuro)
