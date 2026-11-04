@@ -6,6 +6,7 @@
 // Tudo andável: a altura do chão sai de colGround (fileiras, rampas, túneis); arena, teto dos túneis e paredes são caixas.
 import * as THREE from 'three';
 import { addBox, addCircle } from '../comum/collision.js';
+import { buildHypogeumLife } from './hipogeu.js';
 
 export const COL = {
   x: 0, z: 0, y: 8,
@@ -122,15 +123,22 @@ export function buildColosseum(B, M, out) {
     const h = new THREE.Path(); h.moveTo(HOLE.x0, -HOLE.z); h.lineTo(HOLE.x1, -HOLE.z); h.lineTo(HOLE.x1, HOLE.z); h.lineTo(HOLE.x0, HOLE.z); h.lineTo(HOLE.x0, -HOLE.z); s.holes.push(h);
     const g = new THREE.ExtrudeGeometry(s, { depth: 0.35, bevelEnabled: false, curveSegments: 64 }); g.rotateX(-Math.PI / 2);
     B.geo(g, M.sand, 0, Y - 0.35, 0);
-    for (let x = -C.a0; x < C.a0; x += 3) for (let z = -C.b0; z < C.b0; z += 3) {
+    // (o chão vai até o muro: antes as caixas paravam antes da borda da areia e quem andava rente ao muro caía no hipogeu)
+    for (let x = -C.a0 - 1.5; x < C.a0 + 1.5; x += 3) for (let z = -C.b0 - 1.5; z < C.b0 + 1.5; z += 3) {
       const cx = x + 1.5, cz = z + 1.5;
-      if ((cx / C.a0) ** 2 + (cz / C.b0) ** 2 > 1.05) continue;
-      if (cx + 1.5 > HOLE.x0 && cx - 1.5 < HOLE.x1 && Math.abs(cz) < HOLE.z + 1.5) continue;
+      if ((Math.max(0, Math.abs(cx) - 1.5) / C.a0) ** 2 + (Math.max(0, Math.abs(cz) - 1.5) / C.b0) ** 2 > 1) continue; // fica se algum pedaço da caixa toca a arena
+      if (cx + 1.5 > HOLE.x0 && cx - 1.5 < HOLE.x1 && Math.abs(cz) - 1.5 < HOLE.z) { // perto do alçapão: em pedaços de 0,5 m, só fora do vão (antes sobravam frestas por onde se caía)
+        for (let u = cx - 1.25; u < cx + 1.5; u += 0.5) for (let v = cz - 1.25; v < cz + 1.5; v += 0.5) if (!(u + 0.25 > HOLE.x0 && u - 0.25 < HOLE.x1 && Math.abs(v) - 0.25 < HOLE.z)) addBox(u, v, 0.5, 0.5, Y - 0.35, Y);
+        continue;
+      }
       addBox(cx, cz, 3, 3, Y - 0.35, Y);
     }
     // tábuas ao redor da abertura (para não cair pelas frestas da grade de colisão)
     for (const sz of [-1, 1]) addBox((HOLE.x0 + HOLE.x1) / 2, sz * (HOLE.z + 0.75), HOLE.x1 - HOLE.x0, 1.5, Y - 0.35, Y);
     addBox(HOLE.x0 - 0.75, 0, 1.5, HOLE.z * 2 + 3, Y - 0.35, Y); addBox(HOLE.x1 + 0.75, 0, 1.5, HOLE.z * 2 + 3, Y - 0.35, Y);
+    // guarda-corpo de madeira nos lados e no fundo do alçapão (a entrada da escada fica livre, no lado leste)
+    for (const sz of [-1, 1]) { B.box(M.darkWood, HOLE.x1 - HOLE.x0, 0.08, 0.08, (HOLE.x0 + HOLE.x1) / 2, Y + 0.95, sz * (HOLE.z + 0.1)); for (let x = HOLE.x0; x <= HOLE.x1 + 0.01; x += (HOLE.x1 - HOLE.x0) / 4) B.box(M.darkWood, 0.1, 1.0, 0.1, x, Y, sz * (HOLE.z + 0.1)); addBox((HOLE.x0 + HOLE.x1) / 2, sz * (HOLE.z + 0.1), HOLE.x1 - HOLE.x0, 0.2, Y - 0.3, Y + 1.0); }
+    B.box(M.darkWood, 0.08, 0.08, HOLE.z * 2 + 0.2, HOLE.x0 - 0.1, Y + 0.95, 0); for (const sz of [-1, 0, 1]) B.box(M.darkWood, 0.1, 1.0, 0.1, HOLE.x0 - 0.1, Y, sz * HOLE.z); addBox(HOLE.x0 - 0.1, 0, 0.2, HOLE.z * 2 + 0.2, Y - 0.3, Y + 1.0);
     // escada: desce para oeste, do piso da arena ao fundo do hipogeu
     const n = 16, run = (HOLE.x1 - HOLE.x0) / n, rise = C.hyp / n;
     for (let k = 0; k < n; k++) {
@@ -170,6 +178,7 @@ export function buildColosseum(B, M, out) {
     }
     // tochas no hipogeu (é escuro debaixo do tablado)
     for (const [x, z] of [[-24, 0], [-10, 0], [4, 0], [14, -2.6], [-18, 10.8], [8, -10.8], [-4, 10.8]]) out.torches.push(V(x, y0 + 2.4, z));
+    buildHypogeumLife(B, M, out, y0); // arsenal, gladiadores, médico, jaulas com feras, cabrestantes, braseiros
     S.hypogeum = V(0, y0, 0);
   }
   // ---- muro do pódio (da base do hipogeu até o parapeito acima do terraço), com os portões leste e oeste

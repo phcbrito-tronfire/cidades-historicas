@@ -69,6 +69,12 @@ export class Daily {
       if (i === 1) c.holder.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.color.multiplyScalar(1.8); } });
       scene.add(c.holder); this.oxen.push(c);
     });
+    // ---- as feras nas jaulas do hipogeu, à espera da caçada
+    for (const b of city.hypoBeasts || []) creature(b.kind, b.kind === 'urso' ? 1.5 : 1.35, { still: true }).then((c) => {
+      if (!c) return;
+      const ai = c.clips.find((cl) => /idle|breath|stand/i.test(cl.name)) || c.clips[0]; if (ai) { const act = c.mixer.clipAction(ai); act.play(); act.time = rand() * 3; act.timeScale = 0.7; }
+      c.holder.position.set(b.x, b.y, b.z); c.holder.rotation.y = b.ry; scene.add(c.holder); this.oxen.push(c);
+    });
     this.d3 = new THREE.Object3D();
   }
 

@@ -144,6 +144,16 @@ export class Actors {
     }
     { const r = R(MARKET.x - 2, MARKET.z, 4, MARKET.hd - 14); walker('toga', r, 2); walker('woman', r, 4); walker('tunic', r, 3); walker('child', r, 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
     { const r = R(MARKET.x - 30, MARKET.z, 6, 30); walker('worker', r, 3, { lines: WORKER_LINES }); walker('tunic', r, 2); } // estivadores no cais
+    // o hipogeu: gladiadores, o médico e os homens dos cabrestantes (parados, cada um no seu trabalho)
+    { const sk = () => pick([0xc8a07e, 0xb48662, 0xa87a58, 0x8a5a3a, 0xd2aa8a]);
+      const LOOK = { murmillo: { outfit: 'worker', extras: ['murmillo', 'manica'], beard: 'short' }, thraex: { outfit: 'worker', extras: ['manica'], beard: 'short' },
+        retiarius: { outfit: 'worker', extras: ['galerus'], beard: 'short' }, secutor: { outfit: 'worker', extras: ['manica'], beard: 'short' }, hoplomachus: { outfit: 'worker', extras: ['thraex', 'parmula', 'spear', 'manica'], shieldColor: 0xb8862a, beard: 'short' },
+        medico: { outfit: 'chiton', cloth: 0xefe6d2, border: 0x2c4f8c, beard: 'full' } };
+      for (const p of this.city.hypoPeople || []) {
+        const look = p.kind === 'worker' ? this.romanLook('worker') : { ...LOOK[p.kind], skin: sk() };
+        const h = this.addHuman(look, p.x, p.z, p.ry, this.city.spots.hypogeum.y);
+        this.agents.push({ ...h, kind: p.kind === 'worker' ? 'worker' : 'villager', static: true, ry: p.ry, lines: p.lines, mode: p.mode });
+      } }
     for (const r of [R(160, -120, 80, 60), R(-380, -260, 90, 70), R(200, 180, 80, 60)]) { walker('tunic', r, 4); walker('woman', r, 3); walker('child', r, 2, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
   }
 
