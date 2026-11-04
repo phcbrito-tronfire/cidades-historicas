@@ -93,7 +93,11 @@ export function terrainHeight(x, z) {
   h += hill(x, z, 330, -40, 160, 300, 0, 12); // Esquilino, a leste
   h = flat(x, z, DOMUS.x, DOMUS.z, DOMUS.hw, DOMUS.hd, DOMUS.y, 14, h); // terreiro plano da domus
   h = flat(x, z, TRAJAN.x, TRAJAN.z, TRAJAN.hw, TRAJAN.hd, 8.6, 20, h); // o Fórum de Trajano foi aplainado cortando a encosta do Quirinal
-  h = flat(x, z, TRAJAN.x + 72, TRAJAN.z + 21, 25, 46, 8.6, 18, h); // os Mercados de Trajano: o terraço encaixado na encosta (antes o meio-círculo de tijolo ficava no ar sobre o vale)
+  h = flat(x, z, TRAJAN.x + 72, TRAJAN.z + 21, 25, 46, 8.6, 18, h);
+  // as Termas de Trajano num terraço plano no alto do Ópio, e o Panteão no plano do Campo de Marte (os dois ficavam
+  // sobre 12–19 m de desnível: os muros e o piso no ar e a entrada alta demais para subir)
+  h = flat(x, z, 120, -175, 62, 47, 21, 26, h);
+  h = flat(x, z, -330, -262, 37, 41, 14, 44, h); // os Mercados de Trajano: o terraço encaixado na encosta (antes o meio-círculo de tijolo ficava no ar sobre o vale)
   // ---- vales nivelados: o Fórum Romano, o Circo Máximo e o vale do Coliseu
   h = flat(x, z, FORUM.x, FORUM.z, FORUM.hw, FORUM.hd, FORUM.y, 22, h);
   h = flat(x, z, CIRCUS.x, CIRCUS.z, CIRCUS.hw, CIRCUS.hd, CIRCUS.y, 26, h);
