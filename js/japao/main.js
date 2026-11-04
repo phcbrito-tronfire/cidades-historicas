@@ -94,7 +94,7 @@ async function main() {
   // (depois dos prédios: nenhuma árvore nasce dentro de casa nem nos pátios)
   const avoid = (x, z, m) => city.houses.some((h) => { const c = Math.cos(h.ry), s = Math.sin(h.ry), dx = x - h.x, dz = z - h.z, u = dx * c - dz * s, v = dx * s + dz * c; return Math.abs(u) < h.w / 2 + 1 + m && Math.abs(v) < h.d / 2 + 1 + m; })
     || Object.values(city.zones).some((q) => x > q[0] - m && x < q[1] + m && z > q[2] - m && z < q[3] + m);
-  const nature = buildNature(scene, tex, quality, avoid);
+  const nature = buildNature(scene, tex, quality, avoid, city.summitTree ? { sakura: [[city.summitTree.x, city.summitTree.y, city.summitTree.z, 1.5, 0.4]] } : {});
   console.info('árvores:', nature.counts, '· casas:', city.houses.length);
   await step(0.7, 'Chamando o povo da vila e os peregrinos...');
   const actors = new Actors(scene, city);
@@ -259,7 +259,7 @@ async function main() {
     });
   };
 
-  window.__game = { artifacts, seasons, mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { cull, artifacts, seasons, mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -306,7 +306,8 @@ async function main() {
     if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
-    nature.update(dt);
+    nature.update(dt); nature.cull(camera, dt);
+    for (const a of city.animated) { if (a.spin) a.g.rotation.z += a.spin * dt; if (a.bob) a.g.position.y = 0.12 + Math.sin(t * 1.1 + a.g.position.x) * 0.05; } // o moinho girando e os barcos balançando
     water.material.uniforms.time.value += dt * 0.4;
     { const u = water.material.uniforms.uSwim.value; u.set(player.pos.x, 0, player.pos.z, player.swimming ? Math.min(1, u.w + dt * 2) : Math.max(0, u.w - dt * 2)); }
     world.mat.userData.U.uTime.value = t;

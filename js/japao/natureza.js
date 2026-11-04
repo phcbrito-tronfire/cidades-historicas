@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addCircle, blocked } from '../comum/collision.js';
 import { fbm, mulberry32 } from '../comum/util.js';
-import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, TEMPLE } from './terrain.js';
+import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, TEMPLE, BAMBOO, BAMBOO_PATH, meadowAt } from './terrain.js';
 
 const rnd = mulberry32(1790);
 const rr = (a, b) => a + rnd() * (b - a);
@@ -43,8 +43,9 @@ function layered(h, r0, n, seed) {
   const m = mergeGeometries(parts); m.computeVertexNormals(); return m;
 }
 
-export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
-  const dens = quality === 'alto' ? 1 : quality === 'minimo' ? 0.4 : 0.7;
+export function buildNature(scene, tex, quality = 'leve', avoid = () => false, extraTrees = {}) {
+  const dens = quality === 'alto' ? 0.62 : quality === 'minimo' ? 0.26 : 0.42; // (bem menos árvores que antes: a floresta fica em manchas)
+  const farR = quality === 'alto' ? 820 : quality === 'minimo' ? 380 : 560; // além disto, os pedaços de floresta não são desenhados (a cor escura do chão faz a mata ao longe)
   const kinds = { sugi: [], pine: [], broad: [], maple: [], sakura: [], fir: [], bamboo: [] };
   // grade com sorteio: 1 árvore a cada ~8 m onde a floresta é cheia
   const STEP = 8.5;
@@ -67,6 +68,10 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   // bambuzal: nas margens do riacho perto da vila e na encosta sul do templo
   const grove = (cx, cz, R, n) => { for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * R, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
     if (polyDist(STREAM, x, z).d < STREAM_HW + 1.5) continue; const h = terrainHeight(x, z); if (avoid(x, z, 1.5) || blocked(x, z, h, 0.3, 3)) continue; kinds.bamboo.push([x, h, z, rr(0.8, 1.15), rnd() * 6]); } };
+  for (const [k, list] of Object.entries(extraTrees)) for (const p of list) kinds[k].push(p); // (a cerejeira do cume e outras plantadas à mão)
+  // o bambuzal grande: um mar de colmos verdes, com o caminho estreito por dentro (a luz passando entre as folhas)
+  { const n = Math.round(4200 * dens); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * BAMBOO.r, x = BAMBOO.x + Math.cos(a) * d, z = BAMBOO.z + Math.sin(a) * d;
+    if (polyDist(BAMBOO_PATH, x, z).d < 2.2 || avoid(x, z, 0.5)) continue; const h = terrainHeight(x, z); kinds.bamboo.push([x, h, z, rr(0.95, 1.3), rnd() * 6]); } }
   grove(240, -30, 34, Math.round(700 * dens)); grove(180, -210, 26, Math.round(420 * dens)); grove(TEMPLE.x - 20, TEMPLE.z + 70, 30, Math.round(500 * dens));
 
   const bark = new THREE.MeshStandardMaterial({ color: 0x5a4434, roughness: 0.95 });
@@ -83,6 +88,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const M = { bark, barkRed, sugiM, firM, pineM, broadM, mapleM, sakuraM, sakuraBark, bambooM, bambooLeaf };
 
   // as árvores vão em pedaços de 120 m (a câmera e a sombra descartam os pedaços fora de vista)
+  const chunks = [];
   const inst = (geo, mat, list, f, shadow = true) => {
     const made = [];
     const cells = new Map();
@@ -91,7 +97,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
     for (const L of cells.values()) {
       const im = new THREE.InstancedMesh(geo, mat, L.length);
       L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
-      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); made.push(im);
+      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); made.push(im); chunks.push(im);
     }
     return made;
   };
@@ -120,6 +126,16 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const bTop = mergeGeometries([tuft(1.2, 1.6, 1.1, 0.55, 9.6, 0, 11, 0.5), tuft(0.9, 1.0, 0.9, 0.7, 7.8, 0.4, 12, 0.5)]);
   inst(culm, bambooM, kinds.bamboo, place, false); inst(bTop, bambooLeaf, kinds.bamboo, place);
 
+  // o capim susuki das clareiras: touceiras altas com os penachos (prateados no verão, dourados no outono)
+  const susukiM = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
+    for (let i = 0; i < 26; i++) { const bx = 8 + rnd() * 48; x.strokeStyle = 'rgba(255,255,255,0.95)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(32, 128); x.quadraticCurveTo(bx, 70, bx + (rnd() - 0.5) * 30, 10 + rnd() * 30); x.stroke(); }
+    for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(255,250,240,0.9)'; x.beginPath(); x.ellipse(16 + rnd() * 32, 14 + rnd() * 20, 3, 10, rnd() - 0.5, 0, 7); x.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), color: 0x9ab070, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 });
+  const tuftG = (() => { const a = new THREE.PlaneGeometry(1.4, 1.6), b = a.clone(); a.translate(0, 0.8, 0); b.translate(0, 0.8, 0); b.rotateY(Math.PI / 2); return mergeGeometries([a, b]); })();
+  kinds.susuki = [];
+  for (let i = 0; i < Math.round(9000 * dens); i++) { const x = rr(-650, 650), z = rr(-700, 420); if (!meadowAt(x, z) || avoid(x, z, 2) || polyDist(STREAM, x, z).d < 6) continue; const h = terrainHeight(x, z); if (blocked(x, z, h, 0.5, 2)) continue; kinds.susuki.push([x, h, z, rr(0.7, 1.2), rnd() * 6]); }
+  inst(tuftG, susukiM, kinds.susuki, (d, [x, y, z, sc, ry]) => { d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.scale.set(sc, sc * rr(0.8, 1.2), sc); }, false);
+  M.susukiM = susukiM;
   for (const k of ['sugi', 'pine', 'broad', 'maple', 'sakura', 'fir']) for (const [x, y, z, s] of kinds[k]) addCircle(x, z, 0.35 * s + 0.05, y - 1, y + 6);
   for (const [x, y, z] of kinds.bamboo) addCircle(x, z, 0.09, y - 1, y + 6);
 
@@ -145,11 +161,13 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
     outono: { broad: 0xd8a040, maple: 0xd84a2a, sakura: 0xc86a3a, show: true },
     inverno: { broad: 0x6a5a48, maple: 0x6a5048, sakura: 0x5a4a44, show: false },
   };
-  const setSeason = (sn) => { const S = SEASON[sn]; broadM.color.setHex(S.broad); mapleM.color.setHex(S.maple); sakuraM.color.setHex(S.sakura); sakuraM.map = sn === 'primavera' ? sakuraLeaf : broadM.map; sakuraM.needsUpdate = true;
-    for (const k of ['broad', 'maple', 'sakura']) for (const im of crowns[k]) im.visible = S.show;
+  const setSeason = (sn) => { const S = SEASON[sn]; M.susukiM.color.setHex({ primavera: 0x9ab070, verao: 0x7a9a50, outono: 0xd8b878, inverno: 0xa89a7a }[sn]); broadM.color.setHex(S.broad); mapleM.color.setHex(S.maple); sakuraM.color.setHex(S.sakura); sakuraM.map = sn === 'primavera' ? sakuraLeaf : broadM.map; sakuraM.needsUpdate = true;
+    for (const k of ['broad', 'maple', 'sakura']) for (const im of crowns[k]) { im.visible = S.show; im.userData.season = S.show; }
     firM.color.setHex(sn === 'inverno' ? 0x6a7a6a : 0x3f5a40); sugiM.color.setHex(sn === 'inverno' ? 0x6a7060 : sn === 'outono' ? 0x5a6a3e : 0x4f6a3e); }; // (no inverno os pinheiros e cedros ficam mais cinzentos, com geada)
   const sakuraLeaf = sakuraM.map;
-  return { M, water, counts, setSeason, kinds, update(dt) { fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
+  let cullT = 0; const cc = chunks.map((im) => im.boundingSphere ? im.boundingSphere.center.clone() : new THREE.Vector3());
+  return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; chunks[i].visible = dx * dx + dz * dz < (farR + 70) * (farR + 70) && chunks[i].userData.season !== false; } },
+    update(dt) { fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
 }
 
 function streamMesh(tex) {

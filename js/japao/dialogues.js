@@ -198,6 +198,19 @@ export const NPCS = [
     bye: 'Devagar e sempre. A oitava estação é a mais difícil.',
   },
   {
+    id: 'eremita', name: 'Velho Genzō', title: 'Eremita do cume (personagem de fantasia do jogo)', objective: 'eremita',
+    look: { outfit: 'monk', cloth: 0x8a7a6a, kesa: 0x4a3a2a, beard: 'full', hairColor: 0xd8d4cc },
+    greet: 'Ah, alguém subiu até aqui embaixo, no fundo da cratera! Sente-se perto do laguinho. Daqui de dentro não se vê o mundo, só o céu.',
+    topics: [
+      { q: 'Alguém morava mesmo no cume do Fuji?', a: [
+        'Não. Isto aqui é um sonho do jogo: no período Edo ninguém vivia no cume. Lá em cima havia a borda da cratera, os santuários de pedra e as cabanas onde os peregrinos esperavam o sol nascer — e o frio, mesmo no verão.',
+        'Os peregrinos davam a volta inteira na borda da cratera, o ohachi-meguri, "a volta da tigela". A cratera parece mesmo uma tigela de arroz virada para o céu.'] },
+      { q: 'Por que a cerejeira?', a: [
+        'A deusa do Fuji é Konohana-sakuya-hime, a princesa da flor de cerejeira. Diz a lenda que ela vive no cume e que a cerejeira floresce e cai tão depressa quanto a vida. Aqui ela tem a sua árvore.'] },
+    ],
+    bye: 'Desça com cuidado. A volta é mais difícil para os joelhos do que a subida.',
+  },
+  {
     id: 'kokan', name: 'Shiba Kōkan', title: 'Pintor (pessoa histórica — encontro imaginado)', objective: 'kokan',
     look: { outfit: 'kimono', cloth: 0x2a2a30, pattern: 'plain', haori: true, haoriColor: 0x4a3a2a, extras: [] },
     greet: 'Não se mexa, por favor, você está na frente do meu Fuji! Ah, perdão. Sou Shiba Kōkan, pintor de Edo. Estou desenhando o reflexo da montanha no lago.',

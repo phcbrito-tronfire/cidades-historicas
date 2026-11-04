@@ -22,7 +22,19 @@ export const SHRINE = { x: 40, z: 75, w: 90, d: 110 }; // o recinto do santuári
 export const RESIDENCE = { x: -275, z: -255, w: 86, d: 72, lift: 4 }; // a residência do senhor (jin'ya)
 export const TEMPLE = { x: 330, z: -110, r: 62, lift: 16 }; // templo budista no alto da colina
 export const FIELDS = { x0: 95, x1: 480, z0: -660, z1: -300 }; // arrozais
-export const SNOW_Y = 600; // neve acima disto (primavera); as estações mudam isto depois
+export const SNOW_Y = 600;
+// lugares para descobrir entre a vila e a montanha (a floresta abre espaço para eles)
+export const BAMBOO = { x: -150, z: -15, r: 62 }; // o bambuzal grande, com o caminho por dentro
+export const BAMBOO_PATH = [[-212, -40], [-185, -25], [-160, -5], [-135, -20], [-110, 5], [-88, -5]];
+export const INARI = [[-14, 6], [-32, 22], [-52, 36], [-70, 52], [-86, 70], [-96, 84]]; // o caminho dos mil torii até o santuário de Inari
+export const TEA = { x0: 382, x1: 446, z0: -82, z1: -18 }; // a plantação de chá na encosta leste do templo
+export const HAMLETS = [ // as aldeias espalhadas: pescadores no lago, lavradores, lenhadores
+  { id: 'pesca', x: -96, z: -585, r: 44, ry: -Math.PI / 2, n: 6 },
+  { id: 'leste', x: 545, z: -420, r: 40, ry: Math.PI / 2, n: 5 },
+  { id: 'sudoeste', x: -250, z: 55, r: 40, ry: Math.PI, n: 5 },
+  { id: 'norte', x: 375, z: -255, r: 36, ry: Math.PI, n: 4 },
+];
+export const MILL = { x: 196, z: -74 }; // o moinho d'água, na beira do riacho // neve acima disto (primavera); as estações mudam isto depois
 
 // o riacho (Katsura): nasce na floresta, desce a cachoeira, corta a vila a leste da rua e sai pelo nordeste
 export const STREAM = [[395, 330], [380, 240], [355, 170], [300, 60], [215, -40], [150, -150], [180, -300], [260, -430], [330, -560], [380, -800]];
@@ -65,7 +77,7 @@ export function fujiH(x, z) {
   const F = FUJI, r = fujiR(x, z);
   if (r > F.R) return 0;
   const a = Math.atan2(z - F.z, x - F.x);
-  if (r < F.crater) { const q = r / F.crater; return F.H - F.depth * Math.pow(1 - q * q, 0.7) + (fbm(a * 3 + 7, q * 2, 2) - 0.5) * 8 * q; }
+  if (r < F.crater) { const q = r / F.crater; const bowl = F.H - F.depth * Math.pow(1 - q * q, 0.7) + (fbm(a * 3 + 7, q * 2, 2) - 0.5) * 8 * q, floor = F.H - F.depth; return r < 26 ? floor : lerp(floor, bowl, ss(26, 40, r)); } // (o fundo da cratera é plano no meio: ali fica a casinha, a cerejeira e o laguinho)
   const t = 1 - (r - F.crater) / (F.R - F.crater);
   let h = F.H * Math.pow(t, F.p);
   // borda da cratera com picos (o Kengamine é o mais alto) e as ravinas (osawa) riscando a encosta
@@ -166,6 +178,7 @@ function surface(x, z, h, slope) {
 }
 
 // floresta: onde ficam as árvores (o shader escurece o chão debaixo delas)
+export function meadowAt(x, z) { return fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25); }
 export function forestAt(x, z) {
   const fuji = fujiH(x, z);
   if (fuji > 330) return 0;
@@ -178,6 +191,10 @@ export function forestAt(x, z) {
   f = Math.max(f, ss(480, 600, Math.abs(x - 30)) * 0.9);
   f = Math.max(f, (1 - ss(TEMPLE.r * 0.6, TEMPLE.r * 1.6, Math.hypot(x - TEMPLE.x, z - TEMPLE.z))) * 0.8);
   f *= clamp(0.75 + (n - 0.5) * 1.2, 0, 1);
+  // clareiras de capim (susuki) espalhadas: a floresta fica em manchas, não um tapete só (e o mapa fica mais leve)
+  if (fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.55) f = 0;
+  if (Math.hypot(x - BAMBOO.x, z - BAMBOO.z) < BAMBOO.r + 6 || polyDist(INARI, x, z).d < 6 || (x > TEA.x0 - 6 && x < TEA.x1 + 6 && z > TEA.z0 - 6 && z < TEA.z1 + 6) || Math.hypot(x - MILL.x, z - MILL.z) < 16) f = 0;
+  for (const H of HAMLETS) if (Math.hypot(x - H.x, z - H.z) < H.r + 8) f = 0;
   // clareiras: a vila, o santuário (só o recinto), a residência, o lago, os arrozais, a trilha e o riacho
   if (Math.abs(x - STREET.x) < 75 && z < STREET.z1 + 20) f = 0;
   if (Math.abs(x - SHRINE.x) < SHRINE.w / 2 + 2 && Math.abs(z - SHRINE.z) < SHRINE.d / 2 + 2) f = 0;
@@ -193,7 +210,7 @@ export function forestAt(x, z) {
 const TEXSET = (P) => ({
   tSand: { value: P.damp_beach_sand.map }, tGround: { value: P.dry_ground_rocks.map }, tGrass: { value: P.sparse_grass.map },
   tTrail: { value: P.rocky_trail.map }, tRock: { value: P.rock_face_03.map }, tScoria: { value: P.rock_boulder_dry.map },
-  uTime: { value: 0 }, uSnow: { value: SNOW_Y }, uTree: { value: 360 }, uLowSnow: { value: 0 }, uGrass: { value: new THREE.Vector3(0.86, 1.06, 0.72) },
+  uTime: { value: 0 }, uSnow: { value: SNOW_Y }, uTree: { value: 360 }, uLowSnow: { value: 0 }, uOasis: { value: new THREE.Vector4(FUJI.x, FUJI.z, 34, 0) }, uGrass: { value: new THREE.Vector3(0.86, 1.06, 0.72) },
 });
 function terrainMaterial(tex) {
   const P = tex.pbr;
@@ -207,7 +224,7 @@ function terrainMaterial(tex) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;\nvForest = forest;\nvWP = (modelMatrix * vec4(position, 1.0)).xyz;\nvWN = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-uniform sampler2D tSand, tGround, tGrass, tTrail, tRock, tScoria; uniform float uTime, uSnow, uTree, uLowSnow; uniform vec3 uGrass;
+uniform sampler2D tSand, tGround, tGrass, tTrail, tRock, tScoria; uniform float uTime, uSnow, uTree, uLowSnow; uniform vec3 uGrass; uniform vec4 uOasis;
 varying vec4 vSplat; varying float vForest; varying vec3 vWP; varying vec3 vWN;
 vec4 tri(sampler2D t, vec2 p){ return mix(texture2D(t, p), texture2D(t, p * 0.21 + 0.37), 0.4); }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -226,6 +243,9 @@ vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.1;
 // acima da floresta: escória vulcânica (vermelho-escura e preta) e a rocha das ravinas
 float hi = smoothstep(uTree - 80.0, uTree + 60.0, vWP.y + (vn(P / 40.0) - 0.5) * 60.0);
 vec3 cSc = tri(tScoria, P / 7.0).rgb * mix(vec3(0.62, 0.42, 0.36), vec3(0.34, 0.31, 0.32), vn(P / 90.0));
+float oasis = 1.0 - smoothstep(uOasis.z - 10.0, uOasis.z, length(vWP.xz - uOasis.xy)); // o fundo da cratera: um jardim abrigado do vento (fantasia do jogo)
+hi *= 1.0 - oasis;
+baseC = mix(baseC, cGr0 * vec3(0.7, 1.05, 0.55) * 1.15, oasis * 0.9); // grama verde no jardim da cratera
 baseC = mix(baseC, mix(cSc, cT, w.w * 0.6), hi);
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
 vec3 cR = (texture2D(tRock, vWP.zy / 16.0).rgb * bw.x + texture2D(tRock, vWP.xz / 16.0).rgb * bw.y + texture2D(tRock, vWP.xy / 16.0).rgb * bw.z) * mix(vec3(1.0, 0.98, 0.94), vec3(0.6, 0.52, 0.5), hi);
@@ -235,6 +255,7 @@ vec3 col = mix(baseC, cR, rockW);
 float sn = smoothstep(uSnow - 30.0, uSnow + 40.0, vWP.y + (vn(P / 25.0) - 0.5) * 70.0 + (vn(P / 6.0) - 0.5) * 12.0);
 sn *= 1.0 - smoothstep(0.55, 0.85, 1.0 - vWN.y) * 0.6;
 sn = max(sn, uLowSnow * smoothstep(0.7, 0.95, vWN.y) * smoothstep(0.2, 0.55, vn(P / 7.0) * 0.6 + 0.4 - vForest * 0.25) * (1.0 - smoothstep(0.0, -0.3, vWP.y))); // a neve do vale no inverno (menos debaixo das árvores)
+sn *= mix(1.0, uOasis.w, oasis);
 col = mix(col, vec3(0.92, 0.94, 0.98) * (0.94 + vn(P * 0.8) * 0.08), sn);
 // debaixo d'água: escurece e azula com a profundidade
 float under = smoothstep(0.0, -0.4, vWP.y); float dep = clamp(-vWP.y, 0.0, 14.0);

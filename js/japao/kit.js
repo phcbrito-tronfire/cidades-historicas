@@ -96,7 +96,8 @@ export function createMaterials(tex) {
   M.koshi = std({ map: koshiTex(), roughness: 0.8 }); M.koshi.userData.uv = { s: 1.6 };
   M.namako = std({ map: namakoTex(), roughness: 0.6 }); M.namako.userData.uv = { s: 1.2 };
   M.fusuma = std({ color: 0xe8dcc0, roughness: 0.9 }); // portas de correr de papel grosso, pintadas
-  M.straw = std({ color: 0xc8b070, roughness: 1 }); // corda de palha (shimenawa), tapetes, fardos
+  M.straw = std({ color: 0xc8b070, roughness: 1 });
+  M.netting = std({ map: toTexture(cv(64, 64, (x, W, H) => { x.fillStyle = '#5a5040'; x.fillRect(0, 0, W, H); x.strokeStyle = '#c8bca0'; x.lineWidth = 2; for (let i = 0; i < W; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 32, H); x.stroke(); x.beginPath(); x.moveTo(i + 32, 0); x.lineTo(i, H); x.stroke(); } })), side: THREE.DoubleSide, roughness: 1 }); M.netting.userData.uv = { s: 1 }; // a rede de pesca // corda de palha (shimenawa), tapetes, fardos
   M.paper = std({ color: 0xf6f2ea, roughness: 0.9 });
   M.dark = std({ color: 0x15100c, roughness: 1 });
   M.iron = std({ color: 0x2a2a2c, metalness: 0.6, roughness: 0.5 });

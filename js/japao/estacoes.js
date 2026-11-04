@@ -49,7 +49,7 @@ export class Seasons {
   onDay() { this.dayCount++; if (this.dayCount % 4 === 0) this.next(); this.rainDay = this.name === 'verao' && Math.random() < 0.5; }
   apply() {
     const c = this.cur, U = this.terrainU;
-    if (U) { U.uSnow.value = c.snowY; U.uLowSnow && (U.uLowSnow.value = c.lowSnow); U.uGrass && U.uGrass.value.set(...c.grass); }
+    if (U) { U.uSnow.value = c.snowY; U.uLowSnow && (U.uLowSnow.value = c.lowSnow); U.uGrass && U.uGrass.value.set(...c.grass); if (U.uOasis) U.uOasis.value.w = c.roofSnow; } // (no inverno até o jardim da cratera fica branco)
     if (this.roofU) this.roofU.value = c.roofSnow;
     if (this.post) { this.post.grade.uniforms.uWarm.value = c.warm; this.post.grade.uniforms.uSat.value = c.sat; }
   }

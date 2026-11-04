@@ -1,7 +1,7 @@
 // Objetivos da jornada no Japão (primeira etapa: a paisagem — o lago, a vila, a floresta e a subida do Fuji).
 // Os personagens, os prédios e os artefatos entram nas próximas etapas, com os objetivos deles.
 import { waterAt } from '../comum/collision.js';
-import { FUJI, LAKE, STREET, SHRINE, TEMPLE, RESIDENCE, FIELDS, SNOW_Y, fujiH, fujiR, inLake } from './terrain.js';
+import { FUJI, LAKE, STREET, SHRINE, TEMPLE, RESIDENCE, FIELDS, SNOW_Y, fujiH, fujiR, inLake, BAMBOO, BAMBOO_PATH, INARI, MILL, polyDist } from './terrain.js';
 
 export const OBJECTIVES = [
   { id: 'vila', text: 'Ande pela rua dos oshi, a rua das hospedarias dos peregrinos' },
@@ -32,6 +32,13 @@ export const OBJECTIVES = [
   { id: 'kyudo_tiro', text: 'Veja uma flecha acertar o alvo na raia de arco' },
   { id: 'kagura', text: 'Assista à dança kagura no santuário (aperte C para passar os dias)' },
   { id: 'cavalo', text: 'Monte o cavalo japonês (aperte H)' },
+  { id: 'eremita', text: 'Desça ao fundo da cratera e encontre a casinha do eremita, a cerejeira e o laguinho' },
+  { id: 'bambuzal', text: 'Atravesse o caminho do grande bambuzal' },
+  { id: 'inari', text: 'Passe pelo túnel de torii vermelhos até o santuário de Inari' },
+  { id: 'moinho', text: 'Veja a roda do moinho d\'água girando no riacho' },
+  { id: 'pagode', text: 'Veja o pagode de três andares no templo' },
+  { id: 'pescadores', text: 'Visite a aldeia dos pescadores e o píer no lago' },
+  { id: 'umagaeshi', text: 'Chegue a Umagaeshi, onde os cavalos voltavam e começava a subida a pé' },
   { id: 'artefatos', text: 'Encontre os 16 artefatos do Japão de Edo', count: 16 },
   { id: 'urso', text: 'Aviste o urso-negro na floresta alta (com cuidado, de longe)' },
   { id: 'sakura', text: 'Veja as cerejeiras em flor na primavera' },
@@ -49,7 +56,7 @@ export class Quests {
     this.done = new Set(); this.listeners = [];
     this.hints = {
       vila: [STREET.x, (STREET.z0 + STREET.z1) / 2], lago: [LAKE.x + LAKE.a * 0.7, LAKE.z + 40], nadar: [LAKE.x, LAKE.z], arrozal: [(FIELDS.x0 + FIELDS.x1) / 2, (FIELDS.z0 + FIELDS.z1) / 2],
-      residencia: [RESIDENCE.x, RESIDENCE.z], templo: [TEMPLE.x, TEMPLE.z], santuario: [SHRINE.x, SHRINE.z], cachoeira: [368, 200], arvores: [60, 1540], neve: [60, 1930], cume: [FUJI.x, FUJI.z - FUJI.crater],
+      residencia: [RESIDENCE.x, RESIDENCE.z], templo: [TEMPLE.x, TEMPLE.z], santuario: [SHRINE.x, SHRINE.z], cachoeira: [368, 200], arvores: [60, 1540], neve: [60, 1930], cume: [FUJI.x, FUJI.z - FUJI.crater], bambuzal: [BAMBOO.x, BAMBOO.z], inari: [INARI[0][0], INARI[0][1]], moinho: [MILL.x, MILL.z],
     };
     this.seenEvents = new Set();
     this.load();
@@ -81,6 +88,10 @@ export class Quests {
     if (p.y > SNOW_Y + 25) this.complete('neve');
     if (fujiR(p.x, p.z) < FUJI.crater + 12 && p.y > FUJI.H - 15) this.complete('cume');
     if (this.refs?.mount?.state === 'riding') this.complete('cavalo');
+    { const S = this.city.spots, nr = (v, rad) => v && Math.hypot(p.x - v.x, p.z - v.z) < rad;
+      if (Math.hypot(p.x - BAMBOO.x, p.z - BAMBOO.z) < BAMBOO.r * 0.4 && polyDist(BAMBOO_PATH, p.x, p.z).d < 3) this.complete('bambuzal');
+      if (nr(S.inari, 5)) this.complete('inari'); if (Math.hypot(p.x - MILL.x, p.z - MILL.z) < 14) this.complete('moinho'); if (nr(S.pagoda, 12)) this.complete('pagode');
+      if (nr(S.fishing, 30)) this.complete('pescadores'); if (nr(S.umagaeshi, 10)) this.complete('umagaeshi'); }
     const SE = this.refs?.seasons, NK = this.refs?.nature?.kinds;
     if (SE && NK) { const nr = (L, r) => L.some((q) => Math.abs(q[0] - p.x) < r && Math.abs(q[2] - p.z) < r);
       if (SE.name === 'primavera' && (this._sk = (this._sk || 0) + dt) > 1) { this._sk = 0; if (nr(NK.sakura, 14)) this.complete('sakura'); }
