@@ -4,9 +4,11 @@
 // peregrinos em volta do fogo das casas dos oshi e os donos das cabanas da montanha.
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
+import { makeAnimal, animateAnimal, makeBird } from '../comum/animals.js';
+import { creature } from '../comum/fauna.js';
 import { NPCS, VILLAGER_LINES, PILGRIM_LINES, SAMURAI_LINES, FARMER_LINES, MONK_LINES, MERCHANT_LINES, CHILD_LINES, PRIEST_LINES } from './dialogues.js';
 import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collision.js';
-import { terrainHeight, STREET, FIELDS, LAKE, SHRINE, TRAIL, inLake } from './terrain.js';
+import { terrainHeight, STREET, FIELDS, LAKE, SHRINE, TRAIL, inLake, fujiH, forestAt } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
 
@@ -21,7 +23,7 @@ function castsShadow(root, on) { if (root.userData.sh === on) return; root.userD
 export class Actors {
   constructor(scene, city) {
     this.viewR = 60; this.scene = scene; this.city = city;
-    this.key = []; this.agents = []; this.animals = [];
+    this.key = []; this.agents = []; this.animals = []; this.flocks = [];
     this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new V3();
     this.markerTex = markerTexture('!'); this.t = 0;
   }
@@ -96,7 +98,7 @@ export class Actors {
     if (C.dojo) { const d = C.dojo.f; for (const [lx, lz] of [[-3, -1.5], [-1, -1.5], [1, -1.5], [3, -1.5], [-2, 1.2], [2, 1.2]]) { const [x, z] = d.W(lx, lz); add('trainee', x, z, d.ry + (lz < 0 ? 0 : Math.PI), { lines: ['Hai!', 'Mais um golpe e eu caio...', 'O mestre vê tudo, até o que a gente pensa.'], mode: 'guard', as: 'samurai', y: C.dojo.y + C.dojo.FL, extra: { static: true, drill: rr(0, 3) } }); } }
     if (C.range) { const [fx, fz] = C.range.from; for (let i = 0; i < 2; i++) add('archer', fx + (i ? 2.2 : -2.2) * Math.cos(C.range.f.ry), fz - (i ? 2.2 : -2.2) * Math.sin(C.range.f.ry), C.range.f.ry, { lines: ['Shh. Respire antes de atirar.', 'O alvo é pequeno, a distância é grande, e o vento não ajuda.'], mode: 'guard', as: 'samurai', y: C.range.y, extra: { static: true, archer: true, shootT: rr(2, 8) } }); }
     // os lavradores nos arrozais: abaixados no barro, cada um no seu tabuleiro
-    for (let i = 0; i < 12; i++) { const x = rr(FIELDS.x0 + 15, FIELDS.x1 - 15), z = rr(FIELDS.z0 + 15, FIELDS.z1 - 15); add('farmer', x, z, rand() * 6, { lines: FARMER_LINES, mode: rand() < 0.75 ? 'work' : 'idle', as: 'farmer', extra: { static: true } }); }
+    for (let i = 0; i < 12; i++) { const x = rr(FIELDS.x0 + 15, FIELDS.x1 - 15), z = rr(FIELDS.z0 + 15, FIELDS.z1 - 15); add('farmer', x, z, rand() * 6, { lines: FARMER_LINES, mode: rand() < 0.75 ? 'work' : 'idle', as: 'farmer', extra: { static: true, field: true } }); }
     walker('farmer', [FIELDS.x0, FIELDS.x1, FIELDS.z0, FIELDS.z1], 3, { lines: FARMER_LINES, as: 'farmer', speed: 0.9 });
     // o templo, o santuário
     if (C.spots.hondo) { add('monk', C.spots.incense.x - 3, C.spots.incense.z + 6, 1.2, { lines: MONK_LINES, mode: 'work', as: 'monk', extra: { static: true } }); walker('monk', [C.spots.incense.x - 12, C.spots.incense.x + 4, C.spots.incense.z - 10, C.spots.incense.z + 10], 1, { lines: MONK_LINES, as: 'monk', speed: 0.7 }); }
@@ -110,6 +112,53 @@ export class Actors {
     for (const st of C.stations) { if (st.n === 5) continue; add('farmer', st.bench[0], st.bench[1], st.ry, { mode: 'sit', lines: ['Água quente, chá, sandália nova! E o carimbo no cajado.', 'Daqui para cima o vento muda de humor a cada hora.'], as: 'farmer', y: st.y + 0.45, extra: { static: true } }); }
   }
 
+  // ---- os bichos: cães e gatos na vila, bois de tração nos arrozais, patos no lago, bandos de corvos e de
+  // milhafres no céu e, raro, um urso-negro na floresta alta (longe da trilha). Raposa, cervo-sika, macaco, tanuki e
+  // faisão ficam para quando houver modelos 3D de verdade deles (o Pedro baixa do Sketchfab).
+  spawnAnimals() {
+    const add = (kind, x, z, o = {}) => { const a = makeAnimal(kind); const y = o.y ?? groundAt(x, z, terrainAt(x, z) + 1.6); a.g.position.set(x, y, z); a.g.rotation.y = rand() * 6; if (o.scale) a.g.scale.setScalar(o.scale); a.seed = rand() * 10; this.scene.add(a.g);
+      const q = { a, pos: a.g.position, home: new V3(x, y, z), radius: o.radius ?? 8, speed: a.speed * (o.speedMul || 1), wait: rr(0, 5), static: o.static, water: o.water }; this.animals.push(q); return q; };
+    const S = STREET;
+    for (let i = 0; i < 5; i++) add('dog', S.x + rr(-5, 5), rr(S.z0 + 20, S.z1), { radius: 14, scale: 0.85 });
+    for (let i = 0; i < 5; i++) add('cat', S.x + rr(-6, 6), rr(S.z0 + 20, S.z1), { radius: 6 });
+    for (let i = 0; i < 3; i++) add('ox', FIELDS.x0 - 12 + rr(-3, 3), rr(FIELDS.z0 + 30, FIELDS.z1 - 30), { radius: 5, scale: 0.9 });
+    for (let i = 0; i < 10; i++) { const a = rand() * 6.28, d = Math.sqrt(rand()) * 0.75, x = LAKE.x + Math.cos(a) * LAKE.a * d, z = LAKE.z + Math.sin(a) * LAKE.b * d; if (inLake(x, z, -10)) add('duck', x, z, { y: 0.02, radius: 18, water: true }); }
+    for (let k = 0; k < 6; k++) { const crow = k < 4, c = crow ? new V3(rr(-150, 300), rr(35, 60), rr(-500, 60)) : new V3(rr(-200, 300), rr(120, 220), rr(200, 900)), birds = [];
+      for (let i = 0; i < (crow ? 7 : 2); i++) { const b = makeBird(crow ? 0x141414 : 0x5a4030); b.off = new V3(rr(-8, 8), rr(-3, 3), rr(-8, 8)); b.ph = rand() * 6; b.g.scale.setScalar(crow ? 1.3 : 2.6); this.scene.add(b.g); birds.push(b); }
+      this.flocks.push({ center: c, r: rr(30, 90), w: rr(0.04, 0.09) * (rand() < 0.5 ? -1 : 1), birds, ph: rand() * 6, glide: !crow }); }
+    // o urso-negro: anda devagar num circuito da floresta alta, longe da trilha
+    creature('urso', 1.7, { tint: [0.32, 0.3, 0.3] }).then((c) => { if (!c) return; const pts = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28; let x = 360 + Math.cos(a) * 140, z = 760 + Math.sin(a) * 120; pts.push(new V3(x, 0, z)); }
+      c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(c.holder); this.bear = { c, pts, i: 0, pos: pts[0].clone() }; });
+  }
+  updateAnimals(dt, t, pp, night) {
+    const near = (p, r) => (p.x - pp.x) ** 2 + (p.z - pp.z) ** 2 < r * r;
+    for (const o of this.animals) {
+      const vis = near(o.pos, this.viewR); o.a.g.visible = vis; if (!vis) continue; castsShadow(o.a.g, near(o.pos, 25));
+      let moving = false;
+      if (o.wait > 0) o.wait -= dt;
+      else { if (!o.target) { for (let i = 0; i < 6; i++) { const c = new V3(o.home.x + rr(-o.radius, o.radius), 0, o.home.z + rr(-o.radius, o.radius)); if (o.water ? inLake(c.x, c.z, -8) : terrainHeight(c.x, c.z) > 0.5) { o.target = c; break; } } if (!o.target) o.wait = 2; }
+        if (o.target) { const dx = o.target.x - o.pos.x, dz = o.target.z - o.pos.z, d = Math.hypot(dx, dz);
+          if (d < 0.3) { o.target = null; o.wait = rr(2, 10); }
+          else { const sp = o.speed * dt, ox = o.pos.x, oz = o.pos.z; if (o.water) { o.pos.x += dx / d * sp; o.pos.z += dz / d * sp; } else { moveWithCollision(o.pos, dx / d * sp, dz / d * sp, 0.2, 0.6); if (Math.hypot(o.pos.x - ox, o.pos.z - oz) < sp * 0.3) { o.target = null; o.wait = 1; } o.pos.y = groundAt(o.pos.x, o.pos.z, o.pos.y + 0.3); }
+            o.a.g.rotation.y = angleLerp(o.a.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 4)); moving = true; } } }
+      animateAnimal(o.a, dt, moving, t);
+    }
+    for (const fl of this.flocks) { fl.ph += dt * fl.w; const cx = fl.center.x + Math.cos(fl.ph) * fl.r, cz = fl.center.z + Math.sin(fl.ph) * fl.r, hd = Math.atan2(-Math.sin(fl.ph) * Math.sign(fl.w), Math.cos(fl.ph) * Math.sign(fl.w));
+      for (const b of fl.birds) { b.g.position.set(cx + b.off.x, fl.center.y + b.off.y + Math.sin(t + b.ph) * 1.5, cz + b.off.z); b.g.rotation.y = hd; const flap = fl.glide ? Math.sin(t * 1.2 + b.ph) * 0.08 : Math.sin(t * 7 + b.ph) * 0.5; b.wl.rotation.z = flap; b.wr.rotation.z = -flap; b.g.visible = night < 0.5; } }
+    const B = this.bear; if (B) { const vis = near(B.pos, 120); B.c.holder.visible = vis; if (vis) { const tg = B.pts[B.i], dx = tg.x - B.pos.x, dz = tg.z - B.pos.z, d = Math.hypot(dx, dz); if (d < 2) B.i = (B.i + 1) % B.pts.length; else { B.pos.x += dx / d * dt * 0.9; B.pos.z += dz / d * dt * 0.9; }
+      B.pos.y = terrainHeight(B.pos.x, B.pos.z); B.c.holder.position.copy(B.pos); B.c.holder.rotation.y = angleLerp(B.c.holder.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 2)); B.c.mixer?.update(dt * 0.6);
+      if (near(B.pos, 30) && !this.bearSeen) { this.bearSeen = true; this.onBear?.(); } } }
+  }
+  // a estação: no inverno os arrozais ficam vazios (a terra descansa) e quem anda na rua usa capa de algodão acolchoado
+  setSeason(s) {
+    const winter = s === 'inverno';
+    for (const a of this.agents) {
+      if (a.field) a.rig.root.userData.off = winter;
+      if (a.static || a.route) continue;
+      if (!a.cloak && winter) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.27, 0.62, 16, 1, true), new THREE.MeshStandardMaterial({ color: pick([0x2a2a34, 0x3a2e26, 0x2e3a3a]), roughness: 0.95, side: THREE.DoubleSide })); m.position.y = 1.12; m.scale.z = 0.82; a.rig.root.add(m); a.cloak = m; }
+      if (a.cloak) a.cloak.visible = winter;
+    }
+  }
   nearestInteractable(p, max = 2.8) {
     let best = null, bd = max * max;
     const test = (o, type) => { const d = (o.pos.x - p.x) ** 2 + (o.pos.z - p.z) ** 2; if (d < bd && Math.abs(o.pos.y - p.y) < 2) { bd = d; best = { type, o }; } };
@@ -128,6 +177,7 @@ export class Actors {
   }
   update(dt, t, player, quests, nightFactor) {
     this.t = t; const pp = player.pos; this.pp = pp;
+    this.updateAnimals(dt, t, pp, nightFactor);
     if (this.camera) { this._pv.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse); this._fr.setFromProjectionMatrix(this._pv); }
     const near = (o, r) => (o.pos.x - pp.x) ** 2 + (o.pos.z - pp.z) ** 2 < r * r;
     const face = (o, target, k) => { if (!target) return; const ang = Math.atan2(target.x - o.pos.x, target.z - o.pos.z); o.rig.root.rotation.y = angleLerp(o.rig.root.rotation.y, ang, Math.min(1, dt * k)); };
@@ -140,7 +190,7 @@ export class Actors {
       k.marker.visible = !quests.isDone(k.def.objective) && near(k, 60); k.marker.position.y = 2.95 + Math.sin(t * 3) * 0.08;
     }
     for (const a of this.agents) {
-      const vis = near(a, this.viewR); a.rig.root.visible = vis; if (!vis) continue;
+      const vis = near(a, this.viewR) && !a.rig.root.userData.off; a.rig.root.visible = vis; if (!vis) continue;
       if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
       if (a.static) {
         if (a.ry !== undefined && a.mode !== 'work') a.rig.root.rotation.y = angleLerp(a.rig.root.rotation.y, a.ry, dt * 2);

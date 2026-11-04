@@ -73,10 +73,11 @@ export class AudioFX {
     const ctx = this.ctx, now = ctx.currentTime;
     const k = Math.min(1, dt * 2);
     this.waterGain.gain.value += ((nearWater ? 0.12 * nearWater : 0) - this.waterGain.gain.value) * k;
-    this.cricketGain.gain.value += ((night ? 0.05 : 0) - this.cricketGain.gain.value) * k;
+    const SI = { primavera: [0.2, 0.3], verao: [1, 0.6], outono: [0.1, 1], inverno: [0, 0] }[this.season || 'primavera'];
+    this.cricketGain.gain.value += ((night ? 0.05 * SI[1] : 0) - this.cricketGain.gain.value) * k;
     this.crowdGain.gain.value += ((market ? 0.09 * market : 0) - this.crowdGain.gain.value) * k;
     this.surfGain.gain.value += (0.22 * sea - this.surfGain.gain.value) * k;
-    this.cicadaGain.gain.value += ((night ? 0 : 0.018 * (1 - sea)) - this.cicadaGain.gain.value) * k;
+    this.cicadaGain.gain.value += ((night ? 0 : 0.018 * (1 - sea) * SI[0]) - this.cicadaGain.gain.value) * k; // (as cigarras do verão japonês)
     this.windGain.gain.value = Math.max(0.05, this.windGain.gain.value);
     if (this.musicOn && now > this.nextNote) {
       const scale = [146.8, 155.6, 196, 220, 233.1, 293.7, 311.1, 392, 440, 466.2]; // miyako-bushi em ré (ré, mi♭, sol, lá, si♭)

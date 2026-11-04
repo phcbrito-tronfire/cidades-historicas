@@ -131,3 +131,30 @@ Mapa-base navegável: o Fuji (1:5, cume 780 m acima do vale, cratera), o lago Ka
 - **Objetivos:** os de cada prédio, personagem e evento.
 - **Montaria:** um cavalo japonês (dosanko ou kiso: pequeno, robusto) com sela de estilo japonês.
 - **Artefatos:** katana, armadura, ukiyo-e (Hokusai é posterior: as 36 Vistas são de c. 1830; usar um mestre da época, como Shiba Kōkan ou Kitao Shigemasa), cerâmica, amuleto, mapa, ferramenta agrícola e utensílio de chá.
+
+## Etapas 3 a 7 — entregues (04/11/2026)
+- **Etapa 3, arquitetura:** kit Edo em código (`kit.js`). A vila tem 66 casas, todas abertas e testadas a pé. Também estão prontos o santuário Sengen, o templo zen, a residência do senhor (com dōjō, raia de arco e estábulo) e as estações da trilha em patamares, com o santuário do cume.
+- **Etapa 5, povo e acontecimentos:**
+  - Roupas japonesas nos bonecos.
+  - 14 personagens com conversa. Um deles é histórico: o pintor Shiba Kōkan, num encontro imaginado. Kakugyō e Jikigyō aparecem só como lembrança.
+  - 129 pessoas com ofício, incluindo filas de peregrinos subindo até o cume.
+  - Os dias trazem o treino de arco, a kagura, a partida dos peregrinos e a festa do fogo.
+  - Montaria: o cavalo japonês, com a tecla H.
+- **Etapa 4, natureza:**
+  - Arrozais em tabuleiros, com água, fileiras de arroz e varais de secar no outono.
+  - Cerejeiras e bordos entre as árvores.
+  - Bichos: cães, gatos, bois, patos, corvos, milhafres e o urso-negro.
+- **Etapa 6, estações:** primavera, verão, outono e inverno com a tecla T, avançando também a cada 4 dias. Mudam:
+  - a cor das copas, e as folhosas ficam sem folhas no inverno;
+  - o arroz;
+  - a neve no Fuji, no vale e nos telhados;
+  - o capim e o tom da luz;
+  - o que cai no ar: pétalas, folhas, chuva e neve;
+  - os insetos;
+  - a capa de inverno do povo e os arrozais vazios no inverno.
+- **Etapa 7, conteúdo:** 16 artefatos com ficha e 41 objetivos.
+
+## Ainda pendente
+- **Raposa, cervo-sika, macaco, tanuki e faisão:** precisam de modelos de verdade do Sketchfab, com o login do Pedro. Não foram feitos de caixinhas.
+- **Teste num PC fraco:** no PC de desenvolvimento roda a ~78 fps na rua, com resolução adaptativa a 0,7.
+- **Refinos possíveis:** a forma das árvores, a água do lago, a sombra das mangas dos quimonos e mais interiores mobiliados.

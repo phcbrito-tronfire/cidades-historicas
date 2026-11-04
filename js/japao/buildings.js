@@ -8,6 +8,7 @@ import { buildShrine } from './santuario.js';
 import { buildTemple } from './templo.js';
 import { buildResidence } from './residencia.js';
 import { buildMountain } from './montanha.js';
+import { buildPaddies } from './arrozal.js';
 import { terrainHeight, STREET } from './terrain.js';
 
 export function buildCity(scene, tex) {
@@ -22,6 +23,7 @@ export function buildCity(scene, tex) {
   buildTemple(B, M, out);
   buildResidence(B, M, out);
   buildMountain(B, M, out);
+  out.paddies = buildPaddies(scene, M, B, { floors });
   out.spots.start = new THREE.Vector3(STREET.x, terrainHeight(STREET.x, -330), -330);
   B.build(scene);
   out.floors = floors;

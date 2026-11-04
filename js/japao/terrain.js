@@ -193,7 +193,7 @@ export function forestAt(x, z) {
 const TEXSET = (P) => ({
   tSand: { value: P.damp_beach_sand.map }, tGround: { value: P.dry_ground_rocks.map }, tGrass: { value: P.sparse_grass.map },
   tTrail: { value: P.rocky_trail.map }, tRock: { value: P.rock_face_03.map }, tScoria: { value: P.rock_boulder_dry.map },
-  uTime: { value: 0 }, uSnow: { value: SNOW_Y }, uTree: { value: 360 },
+  uTime: { value: 0 }, uSnow: { value: SNOW_Y }, uTree: { value: 360 }, uLowSnow: { value: 0 }, uGrass: { value: new THREE.Vector3(0.86, 1.06, 0.72) },
 });
 function terrainMaterial(tex) {
   const P = tex.pbr;
@@ -207,7 +207,7 @@ function terrainMaterial(tex) {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;\nvForest = forest;\nvWP = (modelMatrix * vec4(position, 1.0)).xyz;\nvWN = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-uniform sampler2D tSand, tGround, tGrass, tTrail, tRock, tScoria; uniform float uTime, uSnow, uTree;
+uniform sampler2D tSand, tGround, tGrass, tTrail, tRock, tScoria; uniform float uTime, uSnow, uTree, uLowSnow; uniform vec3 uGrass;
 varying vec4 vSplat; varying float vForest; varying vec3 vWP; varying vec3 vWN;
 vec4 tri(sampler2D t, vec2 p){ return mix(texture2D(t, p), texture2D(t, p * 0.21 + 0.37), 0.4); }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -219,6 +219,7 @@ vec3 cS = tri(tSand, P / 5.0).rgb * vec3(0.86, 0.86, 0.84); // seixos cinzentos 
 vec3 cG = tri(tGround, P / 4.5).rgb * vec3(0.8, 0.74, 0.64); // terra batida escura (cinza vulcânica no chão)
 vec3 cGr0 = tri(tGrass, P / 5.0).rgb; float gL = dot(cGr0, vec3(0.3, 0.59, 0.11));
 vec3 cGr = mix(cGr0 * vec3(0.7, 1.05, 0.55), gL * vec3(1.05, 1.75, 0.68), 0.75); // o verde úmido do Japão
+cGr *= uGrass / vec3(0.86, 1.06, 0.72); // (a cor do capim muda com a estação)
 cGr = mix(cGr, cGr * vec3(0.62, 0.68, 0.5), vForest * 0.6); // chão de floresta: musgo e sombra
 vec3 cT = tri(tTrail, P / 3.0).rgb * vec3(0.62, 0.52, 0.48); // cascalho vulcânico da trilha
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.1;
@@ -233,6 +234,7 @@ vec3 col = mix(baseC, cR, rockW);
 // neve: acima de uSnow, mais nas ravinas e menos nas cristas ao vento (com a borda recortada)
 float sn = smoothstep(uSnow - 30.0, uSnow + 40.0, vWP.y + (vn(P / 25.0) - 0.5) * 70.0 + (vn(P / 6.0) - 0.5) * 12.0);
 sn *= 1.0 - smoothstep(0.55, 0.85, 1.0 - vWN.y) * 0.6;
+sn = max(sn, uLowSnow * smoothstep(0.7, 0.95, vWN.y) * smoothstep(0.2, 0.55, vn(P / 7.0) * 0.6 + 0.4 - vForest * 0.25) * (1.0 - smoothstep(0.0, -0.3, vWP.y))); // a neve do vale no inverno (menos debaixo das árvores)
 col = mix(col, vec3(0.92, 0.94, 0.98) * (0.94 + vn(P * 0.8) * 0.08), sn);
 // debaixo d'água: escurece e azula com a profundidade
 float under = smoothstep(0.0, -0.4, vWP.y); float dep = clamp(-vWP.y, 0.0, 14.0);

@@ -45,7 +45,7 @@ function layered(h, r0, n, seed) {
 
 export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const dens = quality === 'alto' ? 1 : quality === 'minimo' ? 0.4 : 0.7;
-  const kinds = { sugi: [], pine: [], broad: [], fir: [], bamboo: [] };
+  const kinds = { sugi: [], pine: [], broad: [], maple: [], sakura: [], fir: [], bamboo: [] };
   // grade com sorteio: 1 árvore a cada ~8 m onde a floresta é cheia
   const STEP = 8.5;
   for (let gx = -715; gx < 715; gx += STEP) for (let gz = -775; gz < 1600; gz += STEP) {
@@ -59,6 +59,8 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
     else if (Math.abs(x - 40) < 60 && z > 0 && z < 240) k = 'sugi'; // a alameda de cedros do santuário
     else if (z < -450 || Math.abs(x - 30) > 480) k = n > 0.55 ? 'pine' : rnd() < 0.5 ? 'broad' : 'pine';
     else k = n > 0.6 ? 'sugi' : n < 0.38 ? 'pine' : rnd() < 0.6 ? 'broad' : 'sugi';
+    if (k === 'broad' && rnd() < 0.45) k = 'maple'; // bordos (momiji) misturados às faias e carvalhos
+    if (z < 60 && up < 0.2 && (polyDist(STREAM, x, z).d < 30 || (k === 'broad' && rnd() < 0.18))) k = 'sakura'; // cerejeiras na beira do riacho e soltas no vale
     const s = k === 'fir' ? 1.1 - up * 0.6 : rr(0.8, 1.25);
     kinds[k].push([x, h, z, s, rnd() * 6]);
   }
@@ -75,18 +77,23 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const broadM = new THREE.MeshStandardMaterial({ color: 0x7aa05a, map: leafTex('#6e9450', ['rgba(36,60,26,0.55)', 'rgba(130,170,80,0.5)', 'rgba(190,215,130,0.45)']), roughness: 0.9, vertexColors: true });
   const bambooM = new THREE.MeshStandardMaterial({ color: 0x8aa858, roughness: 0.6 });
   const bambooLeaf = new THREE.MeshStandardMaterial({ color: 0x9ab860, map: leafTex('#86a454', ['rgba(50,80,30,0.5)', 'rgba(150,190,90,0.5)', 'rgba(200,225,140,0.4)']), roughness: 0.85, vertexColors: true });
-  const M = { bark, barkRed, sugiM, firM, pineM, broadM, bambooM, bambooLeaf };
+  const mapleM = new THREE.MeshStandardMaterial({ color: 0x7aa05a, map: broadM.map, roughness: 0.9, vertexColors: true });
+  const sakuraM = new THREE.MeshStandardMaterial({ color: 0xf2c4d4, map: leafTex('#e8b4c4', ['rgba(200,120,150,0.5)', 'rgba(255,230,238,0.6)', 'rgba(255,250,252,0.55)']), roughness: 0.85, vertexColors: true });
+  const sakuraBark = new THREE.MeshStandardMaterial({ color: 0x4a3a36, roughness: 0.8 });
+  const M = { bark, barkRed, sugiM, firM, pineM, broadM, mapleM, sakuraM, sakuraBark, bambooM, bambooLeaf };
 
   // as árvores vão em pedaços de 120 m (a câmera e a sombra descartam os pedaços fora de vista)
   const inst = (geo, mat, list, f, shadow = true) => {
+    const made = [];
     const cells = new Map();
     for (const p of list) { const k = Math.floor(p[0] / 120) + ',' + Math.floor(p[2] / 120); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(p); }
     const d = new THREE.Object3D();
     for (const L of cells.values()) {
       const im = new THREE.InstancedMesh(geo, mat, L.length);
       L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
-      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); made.push(im);
     }
+    return made;
   };
   const place = (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.3, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); };
   // cedro: tronco reto e alto, copa estreita em camadas
@@ -102,13 +109,18 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   // folhosa: copa redonda de 3 tufos
   const broadT = new THREE.CylinderGeometry(0.2, 0.34, 6, 7); broadT.translate(0, 3, 0);
   const broadC = mergeGeometries([tuft(3.4, 2.8, 3.2, 0, 8.0, 0, 6), tuft(2.4, 2.0, 2.3, 2.0, 7.0, 1.2, 7), tuft(2.3, 2.0, 2.4, -1.8, 7.4, -0.9, 8)]);
-  inst(broadT, bark, kinds.broad, place); inst(broadC, broadM, kinds.broad, place);
+  inst(broadT, bark, kinds.broad, place); const crowns = { broad: inst(broadC, broadM, kinds.broad, place) };
+  inst(broadT, bark, kinds.maple, place); crowns.maple = inst(broadC, mapleM, kinds.maple, (d, p) => { place(d, p); d.scale.multiplyScalar(0.82); });
+  // cerejeira: tronco escuro e torto, copa larga e baixa em vários tufos
+  const sakT = new THREE.CylinderGeometry(0.16, 0.3, 4.2, 7); sakT.translate(0, 2.1, 0); sakT.rotateZ(0.15);
+  const sakC = mergeGeometries([tuft(2.8, 1.5, 2.6, 0.4, 5.0, 0, 21, 0.45), tuft(1.9, 1.2, 1.8, 2.2, 4.4, 0.9, 22, 0.45), tuft(1.8, 1.1, 1.8, -1.8, 4.6, -0.8, 23, 0.45), tuft(1.6, 1.0, 1.6, 0.6, 5.6, -1.6, 24, 0.45)]);
+  inst(sakT, sakuraBark, kinds.sakura, place); crowns.sakura = inst(sakC, sakuraM, kinds.sakura, place);
   // bambu: colmo fino e alto, levemente curvado, com as folhas em cima
   const culm = new THREE.CylinderGeometry(0.05, 0.065, 11, 5, 4); { const p = culm.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 5.5; p.setX(i, p.getX(i) + (y / 11) ** 2 * 0.7); p.setY(i, y); } culm.computeVertexNormals(); }
   const bTop = mergeGeometries([tuft(1.2, 1.6, 1.1, 0.55, 9.6, 0, 11, 0.5), tuft(0.9, 1.0, 0.9, 0.7, 7.8, 0.4, 12, 0.5)]);
   inst(culm, bambooM, kinds.bamboo, place, false); inst(bTop, bambooLeaf, kinds.bamboo, place);
 
-  for (const k of ['sugi', 'pine', 'broad', 'fir']) for (const [x, y, z, s] of kinds[k]) addCircle(x, z, 0.35 * s + 0.05, y - 1, y + 6);
+  for (const k of ['sugi', 'pine', 'broad', 'maple', 'sakura', 'fir']) for (const [x, y, z, s] of kinds[k]) addCircle(x, z, 0.35 * s + 0.05, y - 1, y + 6);
   for (const [x, y, z] of kinds.bamboo) addCircle(x, z, 0.09, y - 1, y + 6);
 
   // ---- o riacho: faixa d'água que acompanha o leito (desce a cachoeira), com espuma onde corre rápido
@@ -126,7 +138,18 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const foam = new THREE.Mesh(new THREE.CircleGeometry(4.2, 20), new THREE.MeshStandardMaterial({ map: fallTex, color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
   foam.rotation.x = -Math.PI / 2; foam.position.set(F.x - F.dx * 2.5, bot + 0.04, F.z - F.dz * 2.5); foam.renderOrder = 3; scene.add(foam);
   const counts = Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, v.length]));
-  return { M, water, counts, update(dt) { fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
+  // as estações: a cor das copas (e as folhosas sem folhas no inverno)
+  const SEASON = {
+    primavera: { broad: 0x8ab85a, maple: 0x9ac060, sakura: 0xf6c8d8, show: true },
+    verao: { broad: 0x6a9a4a, maple: 0x6a9a48, sakura: 0x6a9a4a, show: true },
+    outono: { broad: 0xd8a040, maple: 0xd84a2a, sakura: 0xc86a3a, show: true },
+    inverno: { broad: 0x6a5a48, maple: 0x6a5048, sakura: 0x5a4a44, show: false },
+  };
+  const setSeason = (sn) => { const S = SEASON[sn]; broadM.color.setHex(S.broad); mapleM.color.setHex(S.maple); sakuraM.color.setHex(S.sakura); sakuraM.map = sn === 'primavera' ? sakuraLeaf : broadM.map; sakuraM.needsUpdate = true;
+    for (const k of ['broad', 'maple', 'sakura']) for (const im of crowns[k]) im.visible = S.show;
+    firM.color.setHex(sn === 'inverno' ? 0x6a7a6a : 0x3f5a40); sugiM.color.setHex(sn === 'inverno' ? 0x6a7060 : sn === 'outono' ? 0x5a6a3e : 0x4f6a3e); }; // (no inverno os pinheiros e cedros ficam mais cinzentos, com geada)
+  const sakuraLeaf = sakuraM.map;
+  return { M, water, counts, setSeason, kinds, update(dt) { fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
 }
 
 function streamMesh(tex) {

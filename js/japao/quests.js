@@ -32,6 +32,12 @@ export const OBJECTIVES = [
   { id: 'kyudo_tiro', text: 'Veja uma flecha acertar o alvo na raia de arco' },
   { id: 'kagura', text: 'Assista à dança kagura no santuário (aperte C para passar os dias)' },
   { id: 'cavalo', text: 'Monte o cavalo japonês (aperte H)' },
+  { id: 'artefatos', text: 'Encontre os 16 artefatos do Japão de Edo', count: 16 },
+  { id: 'urso', text: 'Aviste o urso-negro na floresta alta (com cuidado, de longe)' },
+  { id: 'sakura', text: 'Veja as cerejeiras em flor na primavera' },
+  { id: 'momiji', text: 'Veja os bordos vermelhos do outono' },
+  { id: 'neve_vila', text: 'Ande pela rua da vila coberta de neve, no inverno' },
+  { id: 'estacoes', text: 'Passe pelas quatro estações do ano (aperte T)' },
   { id: 'himatsuri', text: 'Veja a festa do fogo à noite, com as tochas acesas na rua' },
 ];
 export const FINAL_REQ = 99;
@@ -75,6 +81,12 @@ export class Quests {
     if (p.y > SNOW_Y + 25) this.complete('neve');
     if (fujiR(p.x, p.z) < FUJI.crater + 12 && p.y > FUJI.H - 15) this.complete('cume');
     if (this.refs?.mount?.state === 'riding') this.complete('cavalo');
+    const SE = this.refs?.seasons, NK = this.refs?.nature?.kinds;
+    if (SE && NK) { const nr = (L, r) => L.some((q) => Math.abs(q[0] - p.x) < r && Math.abs(q[2] - p.z) < r);
+      if (SE.name === 'primavera' && (this._sk = (this._sk || 0) + dt) > 1) { this._sk = 0; if (nr(NK.sakura, 14)) this.complete('sakura'); }
+      if (SE.name === 'outono' && (this._mk = (this._mk || 0) + dt) > 1) { this._mk = 0; if (nr(NK.maple, 14)) this.complete('momiji'); }
+      if (SE.name === 'inverno' && Math.abs(p.x - STREET.x) < STREET.hw + 4 && p.z > STREET.z0 && p.z < STREET.z1) this.complete('neve_vila');
+      if (SE.seen.size >= 4) this.complete('estacoes'); }
   }
   save() { try { localStorage.setItem(SAVE, JSON.stringify({ done: [...this.done] })); } catch (e) { /* sem armazenamento */ } }
   load() { try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) d.done.forEach((x) => this.done.add(x)); } catch (e) { /* */ } }

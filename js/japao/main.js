@@ -17,6 +17,8 @@ import { buildNature } from './natureza.js';
 import { buildCity } from './buildings.js';
 import { Actors } from './npcs.js';
 import { Festas } from './festas.js';
+import { Seasons, roofSnow } from './estacoes.js';
+import { Artifacts } from './artifacts.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
@@ -86,6 +88,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.45, 'Erguendo as casas dos oshi e o santuário Sengen...');
   const city = buildCity(scene, tex);
+  const roofU = roofSnow([city.M.thatch, city.M.kawara, city.M.bark]); // (a neve dos telhados no inverno)
   { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.6, 'Plantando os cedros da alameda do santuário...');
   // (depois dos prédios: nenhuma árvore nasce dentro de casa nem nos pátios)
@@ -96,7 +99,7 @@ async function main() {
   await step(0.7, 'Chamando o povo da vila e os peregrinos...');
   const actors = new Actors(scene, city);
   actors.camera = camera;
-  actors.spawnKey(); actors.spawnTown();
+  actors.spawnKey(); actors.spawnTown(); actors.spawnAnimals();
   const fx = makeWaterFX(scene);
   // a montaria (H): o cavalo japonês, pequeno e forte, com a sela laqueada
   const mount = new Mount(scene, 'uma', { toast: (m) => ui.toast(m), japanese: true });
@@ -123,9 +126,12 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
+  const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
+  quests.artifactCount = artifacts.count;
   const festas = new Festas(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), glow: tex.glow, audio });
   festas.onSeen = (id) => quests.complete(id);
   quests.refs = { mount };
+  actors.onBear = () => { quests.complete('urso'); ui.toast('Um urso-negro! No Japão ele vive nas florestas das montanhas. Fique longe e não corra: ele costuma fugir de gente.', 'quest', 8000); };
   setupWardrobe({ player, city: 'japao', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 
   await step(0.96, 'Desenhando o mapa da região...');
@@ -134,11 +140,15 @@ async function main() {
     ['Templo', TEMPLE.x, TEMPLE.z - 50], ['Arrozais', (FIELDS.x0 + FIELDS.x1) / 2, (FIELDS.z0 + FIELDS.z1) / 2], ['Cachoeira', 400, 200], ['Trilha Yoshida', 140, 1000], ['Monte Fuji', FUJI.x, FUJI.z - 160],
   ]);
   ui.renderObjectives(quests);
-  ui.setTime('Tarde');
+  ui.setTime('Tarde · Primavera');
   const post = await createPost(renderer, scene, camera);
   const underwater = makeUnderwater(scene, water, { color: 0x24606a, near: 0.6, far: 22 });
   post.grade.uniforms.uUnderCol.value.setRGB(0.16, 0.42, 0.44);
   post.grade.uniforms.uWarm.value = 0.15; post.grade.uniforms.uSat.value = 1.08; // verdes úmidos, sem o dourado do Mediterrâneo
+  const seasons = new Seasons(scene, { terrainU: world.mat.userData.U, nature, paddies: city.paddies, roofU, post, actors, audio, toast: null });
+  seasons.set(0, true); seasons.toast = (m, k, ms) => ui.toast(m, k, ms);
+  quests.refs = { ...quests.refs, seasons, nature };
+  const timeLabel = () => `${{ manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' }[sky.current]} · ${seasons.label()}`;
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
   applyQuality(quality, { renderer, sun, post, actors });
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });
@@ -192,11 +202,13 @@ async function main() {
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
     if (!started || e.repeat) return;
+    if (!ui.dialogOpen && !paused && artifacts.key(e)) return;
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
       case 'KeyE': { const tgt = actors.nearestInteractable(player.pos); if (tgt) talkTo(tgt); break; }
-      case 'KeyC': { const p = sky.next(); festas.onTime(sky.current); ui.setTime(p.label); ui.toast(p.msg); break; }
+      case 'KeyC': { const p = sky.next(); festas.onTime(sky.current); if (sky.current === 'manha') seasons.onDay(); ui.setTime(timeLabel()); ui.toast(p.msg); break; }
+      case 'KeyT': seasons.next(); ui.setTime(timeLabel()); break;
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
@@ -247,7 +259,7 @@ async function main() {
     });
   };
 
-  window.__game = { mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { artifacts, seasons, mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -273,7 +285,7 @@ async function main() {
   const gate = frameGate();
   function loop(now = performance.now()) {
     requestAnimationFrame(loop);
-    const idle = !started || paused || mapOpen;
+    const idle = !started || paused || mapOpen || artifacts.open;
     if (!gate(now, idle)) return;
     const raw = clock.getDelta();
     const dt = Math.min(raw, 0.05);
@@ -288,7 +300,10 @@ async function main() {
     else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     actors.update(dt, t, player, quests, sky.state.night);
     festas.update(dt, t, player, sky.state.night);
+    seasons.update(dt, t, camera, sky.current === 'tarde');
     if (started) health.update(dt, player);
+    if (started) artifacts.update(dt, t, player);
+    if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
     nature.update(dt);
