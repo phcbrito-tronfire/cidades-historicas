@@ -8,6 +8,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { rr, rand, pick, ver } from './util.js';
 import { mergeSiblings } from './merge.js';
+import { dress, graftHead, LOOKS } from './roupas.js';
 
 const BASES = {};
 export const _BASES = BASES; // (depuração)
@@ -33,6 +34,7 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   await Promise.all([
     loadHat(L).then(tick),
     loadHelmet(L),
+    loadGear(L, 'galea', 'assets/models/estatuas/galea.glb', [0.3, 0.45]),
     ...names.map(async (n) => { const g = await L.loadAsync(ver(DIR + n + '.glb')); BASES[n] = g.scene; tick(); }),
     ...ANIMS.map(async (n) => {
       const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb'));
@@ -58,21 +60,41 @@ export async function loadHumanModel(_unused, tex, onProgress) {
   calibrateLocomotion();
 }
 
-// chapéu fedora modelado (Sketchfab, CC BY): mede a copa na base (altura 20–30% do chapéu) para encaixar na cabeça
+// chapéu fedora modelado (Sketchfab, CC BY): mede a copa logo acima da aba (42–62% da altura) para encaixar na cabeça
 let HAT = null;
 async function loadHat(L) {
   try {
-    const g = await L.loadAsync(ver('assets/models/estatuas/chapeu.glb'));
+    const g = await L.loadAsync(ver('assets/models/estatuas/chapeu_indy.glb'));
     const sc = g.scene; sc.updateMatrixWorld(true);
     const v = new THREE.Vector3(), pts = [];
     sc.traverse((o) => { if (o.isMesh) { const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone()); o.castShadow = true; } });
     const b = new THREE.Box3().setFromPoints(pts), h = b.max.y - b.min.y;
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= 0.2 && f < 0.35) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
+    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= 0.42 && f < 0.62) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
     // eixo comprido da copa = frente-trás da cabeça
     const alongX = x1 - x0 >= z1 - z0;
-    HAT = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, baseY: b.min.y + 0.2 * h, len: Math.max(x1 - x0, z1 - z0), wid: Math.min(x1 - x0, z1 - z0), alongX };
+    HAT = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, baseY: b.min.y + 0.36 * h, len: Math.max(x1 - x0, z1 - z0), wid: Math.min(x1 - x0, z1 - z0), alongX };
   } catch (e) { console.warn('chapéu', e); }
+}
+
+// peças de cabeça modeladas (Sketchfab, CC BY): mede a abertura numa faixa de altura (frac) para caber na cabeça
+const GEAR = {};
+async function loadGear(L, name, url, frac) {
+  try {
+    const g = await L.loadAsync(ver(url)), sc = g.scene; sc.updateMatrixWorld(true);
+    const v = new THREE.Vector3(), pts = []; sc.traverse((o) => { if (o.isMesh) { o.castShadow = true; const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone()); } });
+    const b = new THREE.Box3().setFromPoints(pts), h = b.max.y - b.min.y; let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= frac[0] && f < frac[1]) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
+    GEAR[name] = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, y: b.min.y + h * (frac[0] + frac[1]) / 2, w: x1 - x0 };
+  } catch (e) { /* sem o modelo: a peça feita de formas simples */ }
+}
+// coloca a peça: a faixa medida fica 'depth' abaixo do topo da cabeça, com 'gap' de folga de cada lado
+function gearOn(name, { depth = 0.1, gap = 0.012, tilt = 0, dz = 0, tint = null } = {}, headFit, attach) {
+  const G = GEAR[name]; if (!G) return null;
+  const fit = headFit(), k = (fit.rx * 2 + gap * 2) / G.w, inner = G.scene.clone(); inner.position.set(-G.cx, -G.y, -G.cz);
+  if (tint) inner.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.multiply(new THREE.Color(tint)); } });
+  const sc = new THREE.Group(); sc.scale.setScalar(k); sc.add(inner); const g = new THREE.Group(); g.add(sc);
+  return attach('Head', g, new THREE.Vector3(fit.cx, fit.top - depth, fit.cz + dz), [tilt, 0, 0]);
 }
 
 // elmo coríntio modelado (Sketchfab, se existir): mede a abertura para caber na cabeça
@@ -240,12 +262,16 @@ function meshAt(geo, mat, x, y, z, rot) {
 }
 
 export function makeHumanoid(o = {}) {
+  // as roupas do explorador (o jogador): outfit 'explorer' é o traje de sempre
+  const look = o.look || (o.outfit === 'explorer' ? 'explorer' : null);
+  const LK = look ? LOOKS[look] || LOOKS.explorer : null;
+  if (look) o = { hair: LK.hair || 'natural', skin: 0xc48d62, collar: null, extras: LK.extras || [], ...o, outfit: 'explorer' };
   const outfit = o.outfit || 'kilt';
   const isExp = outfit === 'explorer';
   const greek = GREEK.has(outfit);
   const female = outfit === 'dress' || outfit === 'peplos';
   // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
-  const baseName = isExp ? 'explorador' : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
+  const baseName = isExp ? (LK?.base || 'explorador') : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group();
   // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
   root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
@@ -259,6 +285,8 @@ export function makeHumanoid(o = {}) {
     if (n.isBone) bones[n.name.replace(/^mixamorig\d*:?/, '')] = n;
     if (n.isSkinnedMesh) meshes.push(n);
   });
+  // roupas do explorador em outro corpo (inteiro por baixo da roupa): a cabeça dele é transplantada, o rosto é sempre o mesmo
+  if (LK && baseName !== 'explorador') graftHead(model, meshes, bones, BASES.explorador);
   const rootInv = new THREE.Matrix4().copy(model.matrixWorld).invert();
   const bonePos = (b) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(rootInv, bones[b].matrixWorld));
   if (bones.HeadTop_End) headTop = bonePos('HeadTop_End').y; // topo do crânio (o osso do Mixamo)
@@ -276,13 +304,7 @@ export function makeHumanoid(o = {}) {
   for (const me of meshes) {
     const p = part(me.name);
     const mat = me.material;
-    if (isExp) { // visual de aventureiro: jaqueta de couro marrom e calça cáqui (estilo Indiana Jones / Nathan Drake)
-      if (/Suit/.test(p)) me.material = fold(mat, 0x6e4528, 0.62);
-      if (/Pants/.test(p)) me.material = fold(mat, 0x8f7a54, 0.9);
-      if (/Shoes/.test(p)) me.material = fold(mat, 0x3a2616, 0.7);
-      if (/Body/.test(p)) me.material = skinMat(mat);
-      continue;
-    }
+    if (isExp) continue; // o traje do explorador é tingido e completado em roupas.js
     if (/Body/.test(p)) { const c = skinMat(mat); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
     if (greek) {
       if (/Hair/.test(p)) { // cabelo natural do modelo, escurecido (só nos homens; as mulheres usam o penteado preso)
@@ -386,14 +408,14 @@ export function makeHumanoid(o = {}) {
     } break;
     case 'fedora': {
       // chapéu feito na medida da cabeça: mede os vértices reais de rosto e cabelo (pose T) na altura da fita
-      const fit = headFit(0.115);
+      const fit = headFit(0.13);
       if (HAT) { // chapéu modelado, escalado para a copa abraçar a cabeça com 1 cm de folga
         const sL = (fit.rz * 2 + 0.02) / HAT.len, sW = (fit.rx * 2 + 0.02) / HAT.wid, sH = (sL + sW) / 2;
         const inner = HAT.scene.clone(); inner.position.set(-HAT.cx, -HAT.baseY, -HAT.cz);
         const scaler = new THREE.Group(); scaler.add(inner);
         if (HAT.alongX) scaler.scale.set(sL, sH, sW); else scaler.scale.set(sW, sH, sL);
         const hat = new THREE.Group(); hat.add(scaler);
-        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.085, fit.cz), [0.04, HAT.alongX ? Math.PI / 2 : 0, 0]); // base da copa 8,5 cm abaixo do topo: aba na testa, olhos livres
+        attach('Head', hat, new THREE.Vector3(fit.cx, fit.top - 0.074, fit.cz - 0.006), [0.05, HAT.alongX ? Math.PI / 2 : 0, 0]); // fundo como o do Indiana Jones: aba logo acima das sobrancelhas, um pouco caída na frente
         break;
       }
       const felt = m(0x6b4a2e, { roughness: 0.85 });
@@ -543,43 +565,37 @@ export function makeHumanoid(o = {}) {
     const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffffff, { map: stripeTex('collar'), metalness: 0.75, roughness: 0.32, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
   }
-  if (isExp) { // bolsa a tiracolo, alça e chicote
-    // bolsa de couro junto ao quadril direito, um pouco para trás (sem alça atravessando o corpo)
-    const bag = new THREE.Group();
-    bag.add(meshAt(new THREE.BoxGeometry(0.07, 0.2, 0.24), m(0x6b4a2a, { roughness: 0.8 }), 0, 0, 0));
-    bag.add(meshAt(new THREE.BoxGeometry(0.075, 0.08, 0.245), m(0x5a3d22, { roughness: 0.8 }), 0.002, 0.065, 0));
-    attach('Hips', bag, new THREE.Vector3(-0.2, hips.y - 0.1, hips.z - 0.03));
-    const whip = attach('Hips', new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 16), m(0x2a1a0e)), new THREE.Vector3(0.2, hips.y - 0.04, hips.z + 0.02), [0, Math.PI / 2, 0]);
-    void whip;
-  }
 
   // ---- pés descalços com sandália de couro (no lugar dos tênis do Mixamo, que escondem pés só esboçados)
-  if (!isExp) {
-    const skinFlat = m(new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 });
-    const sandal = m(outfit === 'pharaoh' ? 0xd9a23e : 0x8a6a42, { roughness: outfit === 'pharaoh' ? 0.35 : 0.85, metalness: outfit === 'pharaoh' ? 0.8 : 0 });
+  if (!isExp || LK?.sandals) {
+    const skinFlat = m(LK ? 0x6a4232 : new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 }); // (o explorador: no tom da pele dele)
+    const sandal = m(outfit === 'pharaoh' ? 0xd9a23e : LK ? 0x5a3a22 : 0x8a6a42, { roughness: outfit === 'pharaoh' ? 0.35 : 0.85, metalness: outfit === 'pharaoh' ? 0.8 : 0 });
     for (const side of ['Left', 'Right']) {
       if (!bones[side + 'Foot']) continue;
       const ank = bonePos(side + 'Foot');
       const toe = bones[side + 'Toe_End'] ? bonePos(side + 'Toe_End') : bones[side + 'ToeBase'] ? bonePos(side + 'ToeBase').add(new THREE.Vector3(0, 0, 0.06)) : ank.clone().add(new THREE.Vector3(0, 0, 0.2));
-      const heelZ = ank.z - 0.05, toeZ = toe.z - 0.005, L = toeZ - heelZ, cx = (ank.x + toe.x) / 2;
-      const g = new THREE.Group();
-      // dorso do pé: elipsoide achatado, mais largo nos dedos; tornozelo liga a perna ao pé
-      const footG = new THREE.SphereGeometry(1, 18, 12);
+      // o pé segue a direção do osso (os pés abrem um pouco para fora): tudo é feito num grupo girado no tornozelo
+      const yaw = Math.atan2(toe.x - ank.x, toe.z - ank.z), reach = Math.hypot(toe.x - ank.x, toe.z - ank.z);
+      const L = Math.min(0.27, (reach + 0.05) * 0.93), heelZ = -0.05;
+      const g = new THREE.Group(), f = new THREE.Group(); f.position.set(ank.x, 0, ank.z); f.rotation.y = yaw; g.add(f);
+      // dorso do pé: elipsoide achatado, mais largo nos dedos e com a ponta redonda (não de chinelo)
+      const footG = new THREE.SphereGeometry(1, 20, 12);
       const fp = footG.attributes.position;
       for (let i = 0; i < fp.count; i++) {
-        const z = fp.getZ(i), y = fp.getY(i);
-        const t = (z + 1) / 2; // 0 calcanhar, 1 dedos
-        fp.setX(i, fp.getX(i) * (0.033 + 0.02 * Math.sqrt(t)) * (t > 0.85 ? 1 - (t - 0.85) * 1.2 : 1));
-        fp.setY(i, Math.max(y, -0.35) * (0.068 - 0.046 * t));
+        const x = fp.getX(i), y = fp.getY(i), z = fp.getZ(i), t = (z + 1) / 2; // 0 calcanhar, 1 dedos
+        const r0 = Math.sqrt(Math.max(0, 1 - z * z)), r1 = Math.pow(Math.max(0, 1 - z ** 4), 0.25), k = r0 > 1e-4 ? r1 / r0 : 1; // ponta romba
+        fp.setX(i, x * k * (0.034 + 0.018 * Math.sqrt(t)));
+        fp.setY(i, Math.max(y * k, -0.3) * (0.062 - 0.04 * t));
         fp.setZ(i, z * L / 2);
       }
       footG.computeVertexNormals();
-      g.add(meshAt(footG, skinFlat, cx, 0.03, heelZ + L / 2));
-      g.add(meshAt(new THREE.CylinderGeometry(0.026, 0.046, Math.max(0.07, ank.y + 0.03), 16), skinFlat, ank.x, Math.max(0.07, ank.y + 0.03) / 2 + 0.015, ank.z - 0.015, [0, 0, 0]));
+      f.add(meshAt(footG, skinFlat, 0, 0.026, heelZ + L / 2));
+      const ah = Math.max(0.07, ank.y + 0.04);
+      f.add(meshAt(new THREE.CylinderGeometry(0.03, 0.04, ah, 16), skinFlat, 0, ah / 2 + 0.012, -0.012, [0, 0, 0]));
       // sola, tira sobre o peito do pé e tira do calcanhar
-      g.add(meshAt(new THREE.BoxGeometry(0.1, 0.012, L + 0.025), sandal, cx, 0.006, heelZ + L / 2));
-      g.add(meshAt(new THREE.TorusGeometry(0.043, 0.007, 5, 16, Math.PI), sandal, cx, 0.012, heelZ + L * 0.62, [0, 0, 0]));
-      g.add(meshAt(new THREE.TorusGeometry(0.04, 0.006, 5, 14, Math.PI), sandal, cx, 0.02, ank.z - 0.02, [0, 0, 0]));
+      f.add(meshAt(new THREE.BoxGeometry(LK ? 0.078 : 0.1, 0.012, L + 0.012), sandal, 0, 0.006, heelZ + L / 2));
+      f.add(meshAt(new THREE.TorusGeometry(0.042, 0.007, 5, 16, Math.PI), sandal, 0, 0.012, heelZ + L * 0.6, [0, 0, 0]));
+      f.add(meshAt(new THREE.TorusGeometry(0.036, 0.006, 5, 14, Math.PI), sandal, 0, 0.03, -0.02, [0, 0, 0]));
       g.traverse((n) => { if (n.material === skinFlat) n.userData.skinPart = true; });
       attach(side + 'Foot', g, new THREE.Vector3(0, 0, 0));
     }
@@ -735,6 +751,9 @@ export function makeHumanoid(o = {}) {
     if (e === 'jar') { const pts = []; for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push(new THREE.Vector2(0.03 + Math.sin(t * Math.PI) * 0.12, t * 0.32)); } headPart(new THREE.LatheGeometry(pts, 12), m(0xa4552f), [0, R * 1.0, 0]); }
     if (e === 'khopesh') { const k = new THREE.Group(); k.add(meshAt(new THREE.CylinderGeometry(0.017, 0.017, 0.14, 6), m(0x3a2414), 0, 0.02, 0)); const bl = meshAt(new THREE.TorusGeometry(0.18, 0.016, 4, 12, Math.PI * 0.8), bronze(), 0.16, 0.25, 0); bl.rotation.z = 0.5; bl.scale.z = 0.4; k.add(bl); handR.add(k); }
   }
+
+  // o traje do explorador (e as outras roupas dele): moldado sobre o corpo, em roupas.js
+  if (look) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
 
   const h = o.height || (female ? rr(1.58, 1.7) : rr(1.66, 1.8));
   const natural = headTop;

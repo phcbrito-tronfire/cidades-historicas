@@ -22,6 +22,7 @@ import { loadHumanModel } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
+import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
 import { Items } from './items.js';
 import { UI } from './ui.js';
@@ -145,6 +146,7 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
+  setupWardrobe({ player, city: 'roma', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) }); // roupas do explorador (V)
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   quests.artifactCount = artifacts.count;
   // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)

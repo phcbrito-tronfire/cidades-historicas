@@ -20,6 +20,7 @@ import { loadHumanModel } from '../comum/mixamo.js';
 import { Actors } from './npcs.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
+import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
 import { Items } from './items.js';
 import { UI } from './ui.js';
@@ -164,6 +165,7 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
+  setupWardrobe({ player, city: 'atenas', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) }); // roupas do explorador (V)
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   // os dias de Atenas: assembleia, teatro, procissão das Panateneias (muda a cada manhã nova)
   const festas = new Festivals(scene, city, { renderer, toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), quality });

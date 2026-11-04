@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
 import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
+import { wornLook } from './roupas.js';
 
 const BREATH = 60; // fôlego do mergulho, em segundos
 
@@ -13,7 +14,8 @@ const TORCH_ROT = [1.15, 0, 0], TORCH_GRIP = [0, -0.04, 0.06];
 export class Player {
   constructor(scene, camera) {
     this.scene = scene; this.camera = camera;
-    this.rig = makeHumanoid({ outfit: 'explorer', hair: 'fedora', skin: 0xc48d62, height: 1.8, collar: null, realHead: false }); // cabeça escaneada desligada até os corpos do Mixamo chegarem
+    this.look = wornLook(); // a roupa escolhida no guarda-roupa (roupas.js)
+    this.rig = makeHumanoid({ look: this.look, height: 1.8 });
     this.rig.root.traverse((n) => n.layers.set(0)); // o explorador aparece no reflexo do Nilo
     scene.add(this.rig.root);
     this.pos = this.rig.root.position;
@@ -59,6 +61,17 @@ export class Player {
     this.rig.handL.add(mount);
     this.torch = { mount, flame, f1, glow, light, on: 0, wq: new THREE.Quaternion() };
     mount.visible = false;
+  }
+
+  // troca de roupa: o corpo novo entra no mesmo grupo raiz (quem guarda a posição, a câmera, o recorte por distância);
+  // a tocha e o objeto na mão passam para as mãos novas
+  setLook(id) {
+    const old = this.rig, r = makeHumanoid({ look: id, height: 1.8 });
+    r.model.traverse((n) => n.layers.set(0));
+    old.mixer.stopAllAction(); old.root.remove(old.model); old.root.add(r.model); old.root.scale.copy(r.root.scale);
+    for (const [a, b] of [[old.handL, r.handL], [old.handR, r.handR]]) for (const c of [...a.children]) b.add(c);
+    Object.assign(old, { model: r.model, mixer: r.mixer, act: r.act, handR: r.handR, handL: r.handL, armR: r.armR, bones: r.bones, tail: r.tail, skirt: r.skirt, walkClip: r.walkClip, once: null, w: {} });
+    this.wetMats = null; this.limbs = null; this._layerWet = false; this.look = id;
   }
 
   updateTorch(dt, t) {

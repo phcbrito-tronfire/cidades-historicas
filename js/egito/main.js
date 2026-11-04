@@ -31,6 +31,7 @@ import { loadHumanModel, makeHumanoid, animateHumanoid, playOnce, makeStatue } f
 import { Actors } from './npcs.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
+import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
 import { Items } from './items.js';
 import { UI } from './ui.js';
@@ -158,6 +159,7 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, city.M.gold, tex.glow, ui, audio);
+  setupWardrobe({ player, city: 'egito', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) }); // roupas do explorador (V)
   if (quests.pharaohUnlocked()) actors.openGate(true);
   quests.listeners.push(() => { if (quests.pharaohUnlocked() && !actors.gateOpen) actors.openGate(true); });
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));

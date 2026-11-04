@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vestiário (teste)</title>
+<style>html, body { margin: 0; height: 100%; background: #8a9aa8; overflow: hidden; font: 13px sans-serif; } #hud { position: fixed; left: 8px; top: 8px; color: #fff; text-shadow: 0 1px 2px #000; }</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div id="hud">vestiário — página de teste das roupas do explorador</div>
+<script type="module">
+// Página de desenvolvimento: mostra o explorador com cada roupa, de frente, de lado e de costas, parado ou andando.
+// No console: V.show(['explorer', 'campo']), V.mode = 'walk', V.view(ângulo, distância, altura)
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { getTextures } from './js/atenas/textures.js';
+import { loadHumanModel, makeHumanoid, animateHumanoid } from './js/comum/mixamo.js';
+import { LOOKS } from './js/comum/roupas.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9aaab8);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.6;
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 200); camera.layers.enable(2);
+const ctl = new OrbitControls(camera, renderer.domElement); ctl.target.set(0, 1.1, 0); camera.position.set(0, 1.5, 5);
+const sun = new THREE.DirectionalLight(0xffffff, 3); sun.position.set(3, 6, 4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.layers.enable(2);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 }); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xd8e6f4, 0xb8a078, 1.1));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0xc8b898, roughness: 0.9 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+await loadHumanModel(null, getTextures());
+const V = window.V = { rigs: [], mode: 'idle', speed: 0, t: 0, paused: false, THREE, scene, camera, renderer, ctl, makeHumanoid, LOOKS };
+V.show = (ids, gap = 1.1) => {
+  for (const r of V.rigs) scene.remove(r.root);
+  V.rigs = ids.map((id, i) => { const r = makeHumanoid({ look: id, height: 1.8 }); r.root.position.x = (i - (ids.length - 1) / 2) * gap; scene.add(r.root); return r; });
+  return V.rigs.length;
+};
+V.view = (yaw = 0, dist = 5, y = 1.1, ty = y) => { ctl.target.set(0, ty, 0); camera.position.set(Math.sin(yaw) * dist, y, Math.cos(yaw) * dist); ctl.update(); };
+V.frame = (dt = 1 / 60) => { V.t += dt; for (const r of V.rigs) animateHumanoid(r, dt, V.speed, V.mode, V.t); scene.updateMatrixWorld(); renderer.render(scene, camera); };
+V.shot = (ids, yaws, v) => { V.paused = true; V.show(ids, v[4] ?? 1.0); V.rigs.forEach((r, i) => { r.root.rotation.y = yaws[i] ?? 0; }); V.view(v[0], v[1], v[2], v[3]); for (let i = 0; i < 3; i++) V.frame(); return 'ok'; };
+V.show(['explorer']); V.ready = true;
+renderer.setAnimationLoop(() => { if (!V.paused) V.frame(); });
+</script>
+</body>
+</html>
