@@ -12,7 +12,7 @@ import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA, BOARIO, boarioLocal } from './terrain.js';
+import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA } from './terrain.js';
 import { COL, dOf } from './coliseu.js';
 import { buildCity } from './buildings.js';
 import { placeColossus } from './forum.js';
@@ -36,7 +36,7 @@ import { Legion } from './legiao.js';
 import { buildNaumachia } from './naumaquia.js';
 import { Races } from './circo.js';
 import { Daily } from './cotidiano.js';
-import { MARKET, placeBoario } from './mercado.js';
+import { MARKET } from './mercado.js';
 
 // modelos do Sketchfab já usados em Atenas (o naufrágio no mar de Óstia)
 registerSculptures('assets/models/gregos/', {
@@ -110,7 +110,6 @@ async function main() {
   const city = buildCity(scene, tex);
   await placeColossus(scene, city);
   await placeLandmarks(scene, city); // as estátuas de bronze (Trajano, jardim da domus)
-  await placeBoario(scene, city, quality); // o Fórum Boário (modelo), com colisão, antes de pôr os vendedores
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)
@@ -267,7 +266,7 @@ async function main() {
     }
     if (boats.riding) return coastC(x, z) > 0 ? 'De barco no mar Tirreno' : 'De barco no Tibre';
     if (player.swimming) return coastC(x, z) > 0 ? 'Mar Tirreno' : 'Rio Tibre';
-    { const q = boarioLocal(x, z); if (q.u > BOARIO.fx0 && q.u < BOARIO.x1 && q.v > BOARIO.z0 && q.v < BOARIO.z1 + 1) return 'Fórum Boário — mercado'; }
+    { const m = city.zones.mercado; if (m && x > m[0] && x < m[1] && z > m[2] && z < m[3] && !inRiver(x, z, 0)) return 'Fórum Boário — mercado'; }
     if (inRiver(x, z, 20)) return 'Margem do Tibre';
     if (Math.abs(x - FORUM.x) < FORUM.hw && Math.abs(z - FORUM.z) < FORUM.hd) return 'Fórum Romano';
     { const t2 = city.zones.trajano; if (t2 && x > t2[0] && x < t2[1] && z > t2[2] && z < t2[3]) return 'Fórum de Trajano'; }

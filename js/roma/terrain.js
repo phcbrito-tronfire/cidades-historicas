@@ -28,15 +28,9 @@ export function inPortus(x, z, m = 0) { const { u, v } = portusLocal(x, z); retu
 // o Tibre: linha de pontos de norte a sul, com as curvas do Campo de Marte e a ilha Tiberina, até a foz em Óstia
 export const TIBER = [[-560, -560], [-520, -380], [-610, -200], [-570, -40], [-500, 90], [-470, 200], [-540, 360], [-600, 470], [-660, 580], [-720, 690]];
 export const TIBER_HALF = 30;
-// Fórum Boário (modelo "Rome River Side"): o cais encosta no Tibre pela margem leste. Origem do modelo, giro (o +z do
-// modelo aponta para o rio), escala (1 unidade = 70 m) e a planta em metros no sistema do modelo
-export const BOARIO = (() => {
-  const dx = -70, dz = 160, L = Math.hypot(dx, dz), nx = dz / L, nz = -dx / L; // normal da margem, apontando para a cidade
-  const px = -470 + dx * (100 / 160), pz = 300, q = 49.8; // ponto do eixo do rio em z = 300; o cais fica a 29 m dele
-  return { x: px + nx * q, z: pz + nz * q, ry: Math.atan2(-nx, -nz), s: 70, y0: 0.69, floor: 1.55, x0: -35.5, x1: 32.4, z0: -42.2, z1: 20.8, fx0: -60 };
-})();
-export function boarioLocal(x, z) { const B = BOARIO, c = Math.cos(B.ry), s = Math.sin(B.ry), dx = x - B.x, dz = z - B.z; return { u: dx * c - dz * s, v: dx * s + dz * c }; }
-export function boarioWorld(u, v) { const B = BOARIO, c = Math.cos(B.ry), s = Math.sin(B.ry); return { x: B.x + u * c + v * s, z: B.z - u * s + v * c }; }
+// Fórum Boário: a praça do mercado na margem leste do Tibre (x0..x1, z0..z1), plana na altura y; o aterro vai até
+// o cais, a `quay` metros do eixo do rio (dali para a água o leito continua escavado)
+export const FB = { x0: -466, x1: -418, z0: 258, z1: 342, y: 2.4, quay: 31 };
 export const ISOLA = { x: -490, z: 150, a: 13, b: 34, rot: 0.25 }; // ilha Tiberina
 export function tiberDist(x, z) {
   let best = 1e9, t = 0;
@@ -116,9 +110,9 @@ export function terrainHeight(x, z) {
     const c = Math.cos(ISOLA.rot), s = Math.sin(ISOLA.rot), u = ((x - ISOLA.x) * c + (z - ISOLA.z) * s) / ISOLA.a, v = (-(x - ISOLA.x) * s + (z - ISOLA.z) * c) / ISOLA.b;
     const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.75, ss(1.4, 0.7, r)));
   }
-  // ---- o aterro do Fórum Boário: plano na altura do piso do modelo; do lado do rio o cais cai direto na água
-  { const B = BOARIO, { u, v } = boarioLocal(x, z);
-    if (v <= B.z1) { const m = Math.max(B.fx0 - u, u - B.x1, B.z0 - v), e = 16; if (m < e) h = lerp(h, B.floor, ss(e, 0, m)); } }
+  // ---- o aterro do Fórum Boário: plano na altura da praça, do lado leste até o cais (lá o rio continua fundo)
+  if (x > FB.x0 - 60 && x < FB.x1 + 30 && z > FB.z0 - 30 && z < FB.z1 + 30) { const { d } = tiberDist(x, z);
+    if (d >= FB.quay) { const m = Math.max(x - FB.x1, FB.z0 - z, z - FB.z1, 0), e = 22; if (m < e) h = lerp(h, FB.y, ss(e, 0, m)); } }
   // ---- Naumaquia de Trajano: bacia oval escavada além do rio (vira lago nos dias de batalha naval)
   { const N = NAUMACHIA, e = ((x - N.x) / N.a) ** 2 + ((z - N.z) / N.b) ** 2; if (e < 1.8) { const ground = lerp(h, 3, ss(1.8, 1.25, e)); h = e < 1 ? lerp(-3.2, ground, ss(0.9, 1.0, e)) : ground; } }
   // ---- bordas do mundo em terra: os montes Albanos e Sabinos ao longe (leste e norte)
@@ -179,7 +173,8 @@ function surface(x, z, h, slope) {
   const colPlaza = 1 - ss(1.25, 1.55, Math.hypot(x / (COL.A + 30), z / (COL.B + 30)));
   const forum = Math.max(0, 1 - Math.max(Math.abs(x - FORUM.x) - FORUM.hw, Math.abs(z - FORUM.z) - FORUM.hd, 0) / 14);
   const capE = Math.hypot((x - CAPITOL.x) / CAPITOL.rx, (z - CAPITOL.z) / CAPITOL.rz), clv = clivus(x, z).d;
-  let pave = Math.max(colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1), 1 - ss(0.82, 0.96, capE), 1 - ss(3.5, 5.5, clv));
+  const fbq = (x > FB.x0 - 40 && x < FB.x1 && z > FB.z0 - 4 && z < FB.z1 + 4 && tiberDist(x, z).d > FB.quay - 1) ? 1 : 0;
+  let pave = Math.max(fbq, colPlaza, forum, urban * clamp(0.55 + (n2 - 0.5) * 1.6, 0, 1), 1 - ss(0.82, 0.96, capE), 1 - ss(3.5, 5.5, clv));
   let grass = (1 - urban * 0.4) * clamp(0.85 + (n - 0.5) * 0.7, 0, 1) + ss(0.14, 0.3, slope) * 0.2;
   let ground = urban * (1 - pave) * 0.3 * ss(0.55, 0.75, n3) + (1 - urban) * ss(0.65, 0.8, n3) * 0.25; // terra batida: só alguns becos e trilhas (Roma era calçada e cheia de jardins)
   pave *= inland; grass *= inland * (1 - pave); ground *= inland;
