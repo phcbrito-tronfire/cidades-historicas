@@ -223,6 +223,9 @@ export function buildColosseum(B, M, out) {
       const xa = C.a0, xb = C.a0 + C.D;
       for (const sz of [-1, 1]) { B.box(M.brick, xb - xa, 3.2, 0.4, s * (xa + xb) / 2, Y, sz * (C.gate + 0.2)); addBox(s * (xa + xb) / 2, sz * (C.gate + 0.2), xb - xa, 0.4, Y - 1, Y + 3.2); }
       B.box(M.travertine, xb - xa, 0.4, C.gate * 2 + 0.8, s * (xa + xb) / 2, Y + 3.2, 0);
+      // piso de pedra do túnel, da fachada até dentro da arena: o chão desenhado (grade de 3,4 m) descia em rampa da
+      // altura do túnel até o fundo do hipogeu bem na soleira, e ali aparecia um buraco
+      { const x0 = C.a0 - 0.8, x1 = C.A + 0.3; B.box(M.travertine2, x1 - x0, 0.3, C.gate * 2 + 0.1, s * (x0 + x1) / 2, Y - 0.28, 0); }
       // norte/sul: rampa (segmentos inclinados)
       const n = 14;
       for (let j = 0; j < n; j++) {
