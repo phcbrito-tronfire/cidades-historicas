@@ -119,3 +119,15 @@ O que foi corrigido de 01 a 04/11 e testado andando ficou fora da tabela: escada
 - **Música:** nada de frases nem trilha elaborada. Só um instrumental leve de fundo, típico do Japão, sem pesar.
 - **Estações:** as quatro são obrigatórias.
 - **Fuji:** aprovada a compressão de ~1:5, com cume a ~750 m, a trilha Yoshida numa fatia da montanha e o resto do cone ao fundo. Vale compacto de ~1,2 km.
+
+## Etapa 2 — entregue (04/11/2026, commit d9712ed)
+Mapa-base navegável: o Fuji (1:5, cume 780 m acima do vale, cratera), o lago Kawaguchi, a rua da vila, os planos da residência, do templo e dos arrozais, o riacho com a cachoeira e a trilha Yoshida até a cratera. A subida foi testada a pé, sem travar: 5 min correndo e uns 10 andando. Há também uma primeira floresta: cedros, pinheiros, folhosas, abetos e bambuzal.
+
+## O que o Pedro pediu para não esquecer (04/11) — tudo com qualidade máxima
+- **Vila e casas:** minka de palha, machiya, casas dos oshi com hospedaria, lojas, oficinas e cozinhas, com interiores mobiliados e acessíveis.
+- **Pessoas com rotina:** moradores, peregrinos Fuji-kō, mercadores, artesãos, agricultores, monges e sacerdotes.
+- **Samurais:** guarda, patrulha, treino de katana, yari e kyūdō, e a residência do senhor.
+- **Personagens históricos:** Hasegawa Kakugyō, o fundador da tradição Fuji-kō (historicamente morreu em 1646, então entra como lenda contada pelos oshi ou estátua, não vivo em 1790), Jikigyō Miroku (o asceta do Fuji, morreu em 1733, entra como memória) e um oshi da vila. Cada um precisa ficar claro: histórico, fictício ou representação.
+- **Objetivos:** os de cada prédio, personagem e evento.
+- **Montaria:** um cavalo japonês (dosanko ou kiso: pequeno, robusto) com sela de estilo japonês.
+- **Artefatos:** katana, armadura, ukiyo-e (Hokusai é posterior: as 36 Vistas são de c. 1830; usar um mestre da época, como Shiba Kōkan ou Kitao Shigemasa), cerâmica, amuleto, mapa, ferramenta agrícola e utensílio de chá.
