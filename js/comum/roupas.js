@@ -35,7 +35,7 @@ function meanLum(mesh) {
 }
 export function retint(mesh, color, { rough = 0.8, metal = 0, detail = 0.9, grain = null, grainScale = 6, sheen = 0, lo = 0.3, hi = 2.0 } = {}) {
   const src = mesh.material, mat = src.clone();
-  mat.color.set(color); mat.roughness = rough; mat.metalness = metal; mat.side = THREE.FrontSide; mat.transparent = false; mat.opacity = 1;
+  mat.color.set(color); mat.roughness = rough; mat.metalness = metal; mat.side = /Shirt|Suit|Tops/.test(mesh.name) ? THREE.DoubleSide : THREE.FrontSide; // (camisa e jaqueta: de lado, faces viradas para dentro sumiam e o tronco ficava transparente) mat.transparent = false; mat.opacity = 1;
   if (mat.metalnessMap && metal === 0) mat.metalnessMap = null; // o "metal" da textura do Mixamo embranquecia a roupa sob as tochas
   const uMean = { value: meanLum(mesh) }, uDetail = { value: detail }, uGrain = { value: grain }, uGS = { value: grainScale };
   mat.onBeforeCompile = (sh) => {
@@ -56,7 +56,7 @@ uniform float uMean, uDetail, uGS;${grain ? '\nuniform sampler2D uGrain;' : ''}`
   return mat;
 }
 
-const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...o });
+const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide, ...o });
 // muda a base de um grupo rígido (construído em x = lado, y = cima, z = para fora do corpo) para o ponto da superfície
 function placeOn(geo, at, up = new THREE.Vector3(0, 1, 0), roll = 0) {
   // nas peças penduradas (bolsa, coldre) a frente fica na horizontal; com outro "cima" (relógio) vale a normal inteira
@@ -180,7 +180,7 @@ function dressDrake(ctx, desert) {
   const byPart = (re) => meshes.find((me) => re.test(me.name) && !/Graft/.test(me.name));
   const shirt = byPart(/Shirt/), pants = byPart(/Pants/), shoes = byPart(/Sneakers|Shoes/);
   if (shirt) retint(shirt, desert ? 0xcdbf9e : 0x2c5560, { rough: 0.95, detail: 0.55, lo: 0.82, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.12 }), grainScale: 9 });
-  if (pants) retint(pants, desert ? 0x6e6248 : 0x9a7650, { rough: 0.92, detail: 0.9, grain: clothTex('#8a8a8a', { weave: 0.1 }), grainScale: 8 });
+  if (pants) retint(pants, desert ? 0x7a6c50 : 0x9a7650, { rough: 0.92, detail: 0.6, lo: 0.78, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.1 }), grainScale: 8 });
   if (shoes) retint(shoes, 0x3a2a1e, { rough: 0.6, detail: 0.6, lo: 0.6, hi: 1.05 }); // (sem o limite, o forro branco do tênis brilhava como meia)
   // o alto do braço e o ombro do corpo têm uma faixa escura na textura, que aparecia abaixo da manga curta: ficam no tom do antebraço
   { const body = meshes.find((me) => /_Body$/.test(me.name) && !/Graft/.test(me.name));
@@ -344,6 +344,7 @@ function dressAncient(ctx, id) {
     out.push(...fitH.finish());
   }
   if (id === 'grecia') {
+    for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false; // debaixo do elmo coríntio
     const red = 0x8a2a1e;
     if (shirt) retint(shirt, red, { rough: 0.95, detail: 0.6, lo: 0.7, hi: 1.25, grain: clothTex('#8a8a8a', { weave: 0.12 }), grainScale: 9 });
     if (shorts) retint(shorts, red, { rough: 0.95, detail: 0.6, lo: 0.7, hi: 1.25 });
@@ -359,11 +360,9 @@ function dressAncient(ctx, id) {
     for (const sd of [1, -1]) { const x = sd * 0.12; fit.band(bronze, [{ p: V3(x, ch.y + 0.07, 0.5), c: V3(x * 0.7, ch.y + 0.07, 0) }, { p: V3(x, neck.y + 0.3, 0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.07, -0.5), c: V3(x * 0.7, ch.y + 0.07, 0) }], { w: 0.075, th: 0.005, off: 0.022, n: 24 }); } // placas dos ombros
     fit.band(bronze, waist(hy + 0.055), { w: 0.025, th: 0.008, off: 0.024, n: 64, closed: true }); // borda dobrada da couraça
     // grevas de bronze, do joelho ao tornozelo
-    for (const s of ['Left', 'Right']) { const k = bonePos(s + 'Leg'), f = bonePos(s + 'Foot'), ax = k.clone().sub(f), len = ax.length() - 0.1;
-      const g = new THREE.CylinderGeometry(0.062, 0.05, len, 22, 6, true, -1.35, 2.7); // aberta atrás (presa por tiras)
-      { const q = g.attributes.position; for (let i = 0; i < q.count; i++) { const yy = q.getY(i) / len + 0.5, z = q.getZ(i); q.setZ(i, z + 0.012 * Math.sin(yy * Math.PI) * Math.max(0, z / 0.06)); } g.computeVertexNormals(); } // a barriga da panturrilha
-      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), ax.clone().normalize())); const mid = f.clone().lerp(k, 0.5 + 0.02); g.translate(mid.x, mid.y + 0.01, mid.z + 0.012);
-      fit.solid(M(0xffe2b0, { map: metalTex('#b98a46'), metalness: 0.55, roughness: 0.38, side: THREE.DoubleSide }), g, null, { w: { [s + 'Leg']: 1 } }); }
+    const greaveM = M(0xffe2b0, { map: metalTex('#b98a46'), metalness: 0.55, roughness: 0.38 }); // (o bronze escuro da couraça parecia couro nas pernas)
+    for (const s of ['Left', 'Right']) { const k = bonePos(s + 'Leg'), f = bonePos(s + 'Foot');
+      fit.shell(greaveM, { y0: f.y + 0.06, y1: k.y + 0.04, rows: 14, cols: 28, off: 0.008, r0: 0.11, cx: (k.x + f.x) / 2, cz: (k.z + f.z) / 2 + 0.01, bump: (a, y, t) => 0.006 * Math.max(0, Math.cos(a)) * Math.sin(t * Math.PI), uvScale: [2, 2] }); }
     out.push(...fit.finish());
   }
   if (id === 'roma') {
@@ -378,6 +377,7 @@ function dressAncient(ctx, id) {
     const nb = 6, y0 = hy + 0.09, y1 = ch.y + 0.03, bh = (y1 - y0) / nb;
     for (let i = 0; i < nb; i++) fit.shell(iron, { y0: y0 + i * bh - 0.004, y1: y0 + (i + 1) * bh + 0.006, rows: 3, cols: 56, off: 0.016 + (nb - i) * 0.0025, r0: 0.34, cx: hips.x, cz: hips.z, bump: (a, y, s) => 0.007 * (1 - s), uvScale: [4, 0.3] }); // (a borda de baixo de cada cinta sobressai: as placas se sobrepõem)
     fit.shell(iron, { y0: ch.y + 0.03, y1: neck.y - 0.02, rows: 10, cols: 56, off: 0.02, r0: 0.34, cx: hips.x, cz: hips.z, uvScale: [4, 1], mask: (a) => Math.abs(Math.sin(a)) < 0.7 });
+    for (const s of [1, -1]) { const x = s * 0.15; fit.band(iron, [{ p: V3(x, ch.y + 0.08, 0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }, { p: V3(x, neck.y + 0.3, 0.0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.08, -0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }], { w: 0.17, th: 0.004, off: 0.019, n: 24 }); } // placa de base: sem frestas entre as lâminas
     for (const s of [1, -1]) for (let k = 0; k < 4; k++) { // ombreiras: lâminas curvas uma sobre a outra, do pescoço para o braço
       const x = s * (0.09 + k * 0.04);
       fit.band(iron, [{ p: V3(x, ch.y + 0.08, 0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }, { p: V3(x, neck.y + 0.3, 0.0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.08, -0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }], { w: 0.05, th: 0.004, off: 0.022 + (3 - k) * 0.003, n: 24 });
@@ -400,7 +400,8 @@ function dressAncient(ctx, id) {
     const fitN = fitterFor(ctx, /Shirt|Graft_Body/);
     fitN.shell(M(0xffffff, { map: clothTex('#e6dcc6', { weave: 0.14 }), roughness: 1, side: THREE.DoubleSide }), { y0: neck.y - 0.03, y1: neck.y + 0.045, rows: 8, cols: 40, off: 0.02, r0: 0.12, cx: neck.x, cz: neck.z + 0.01, bump: (a, y, s) => 0.01 * Math.sin(s * Math.PI) + 0.004 * Math.sin(a * 6 + s * 7) });
     out.push(...fitN.finish());
-    ctx.gear('galea', { depth: 0.125, gap: 0.006, tilt: 0.02 });
+    for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false; // (o cabelo saía por baixo e o elmo parecia flutuar)
+    ctx.gear('galea', { depth: 0.15, gap: 0.0, tilt: 0.06 });
   }
   return out;
 }

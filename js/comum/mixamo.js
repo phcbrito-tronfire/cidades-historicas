@@ -62,6 +62,7 @@ export async function loadHumanModel(_unused, tex, onProgress) {
 
 // chapéu fedora modelado (Sketchfab, CC BY): mede a copa logo acima da aba (42–62% da altura) para encaixar na cabeça
 let HAT = null;
+const HAT_BRIM = 0.5; // quanto da aba (além da copa) fica
 async function loadHat(L) {
   try {
     const g = await L.loadAsync(ver('assets/models/estatuas/chapeu_indy.glb'));
@@ -74,6 +75,12 @@ async function loadHat(L) {
     // eixo comprido da copa = frente-trás da cabeça
     const alongX = x1 - x0 >= z1 - z0;
     HAT = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, baseY: b.min.y + 0.36 * h, len: Math.max(x1 - x0, z1 - z0), wid: Math.min(x1 - x0, z1 - z0), alongX };
+    // a aba do modelo é larguíssima para o boneco (o chapéu parecia enorme): encolhe só o que passa da copa
+    { const cx = HAT.cx, cz = HAT.cz, hx = (x1 - x0) / 2, hz = (z1 - z0) / 2, Mi = new THREE.Matrix4();
+      sc.traverse((o) => { if (!o.isMesh) return; o.geometry = o.geometry.clone(); const p = o.geometry.attributes.position; Mi.copy(o.matrixWorld).invert();
+        for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); const dx = v.x - cx, dz = v.z - cz, e = Math.hypot(dx / hx, dz / hz);
+          if (e > 1.08) { const k = (1.08 + (e - 1.08) * HAT_BRIM) / e; v.x = cx + dx * k; v.z = cz + dz * k; v.applyMatrix4(Mi); p.setXYZ(i, v.x, v.y, v.z); } }
+        p.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere(); }); }
   } catch (e) { console.warn('chapéu', e); }
 }
 
