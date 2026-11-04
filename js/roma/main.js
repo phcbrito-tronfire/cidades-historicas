@@ -12,7 +12,7 @@ import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA } from './terrain.js';
+import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA, BOARIO, boarioLocal } from './terrain.js';
 import { COL, dOf } from './coliseu.js';
 import { buildCity } from './buildings.js';
 import { placeColossus } from './forum.js';
@@ -36,7 +36,7 @@ import { Legion } from './legiao.js';
 import { buildNaumachia } from './naumaquia.js';
 import { Races } from './circo.js';
 import { Daily } from './cotidiano.js';
-import { MARKET } from './mercado.js';
+import { MARKET, placeBoario } from './mercado.js';
 
 // modelos do Sketchfab já usados em Atenas (o naufrágio no mar de Óstia)
 registerSculptures('assets/models/gregos/', {
@@ -110,6 +110,7 @@ async function main() {
   const city = buildCity(scene, tex);
   await placeColossus(scene, city);
   await placeLandmarks(scene, city); // as estátuas de bronze (Trajano, jardim da domus)
+  await placeBoario(scene, city, quality); // o Fórum Boário (modelo), com colisão, antes de pôr os vendedores
   const fx = makeWaterFX(scene);
   const boats = new Boats(scene, city, fx, tex.glow);
   // montaria (H): cavalo — o da cavalaria romana (sem estribos, que ainda não existiam)
@@ -160,7 +161,7 @@ async function main() {
   await step(0.96, 'Desenhando o mapa de Roma...');
   ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
-    ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z + MARKET.hd + 12], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
+    ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
     ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Fórum de Trajano', -243, -150], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Portus de Trajano', city.spots.portus.x, city.spots.portus.z - 70], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
   ]);
   ui.renderObjectives(quests);
@@ -266,10 +267,10 @@ async function main() {
     }
     if (boats.riding) return coastC(x, z) > 0 ? 'De barco no mar Tirreno' : 'De barco no Tibre';
     if (player.swimming) return coastC(x, z) > 0 ? 'Mar Tirreno' : 'Rio Tibre';
+    { const q = boarioLocal(x, z); if (q.u > BOARIO.fx0 && q.u < BOARIO.x1 && q.v > BOARIO.z0 && q.v < BOARIO.z1 + 1) return 'Fórum Boário — mercado'; }
     if (inRiver(x, z, 20)) return 'Margem do Tibre';
     if (Math.abs(x - FORUM.x) < FORUM.hw && Math.abs(z - FORUM.z) < FORUM.hd) return 'Fórum Romano';
     { const t2 = city.zones.trajano; if (t2 && x > t2[0] && x < t2[1] && z > t2[2] && z < t2[3]) return 'Fórum de Trajano'; }
-    { const m = city.zones.mercado; if (m && x > m[0] && x < m[1] && z > m[2] && z < m[3]) return 'Fórum Boário — mercado'; }
     if (Math.abs(x - CIRCUS.x) < CIRCUS.hw && Math.abs(z - CIRCUS.z) < CIRCUS.hd) return 'Circo Máximo';
     { const z2 = city.zones.termas; if (z2 && x > z2[0] && x < z2[1] && z > z2[2] && z < z2[3]) return 'Termas de Trajano'; }
     if (Math.hypot(x + 330, z + 250) < 40) return 'Panteão (em obras)';

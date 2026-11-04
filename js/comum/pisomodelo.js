@@ -13,7 +13,7 @@ async function loadBVH() {
 
 // root: o objeto já posicionado na cena; y0: altura da base; cell: tamanho da célula (m)
 // devolve { floorAt(x, z) } para quem quiser saber a altura do piso (ex.: escada de entrada)
-export async function collideModel(root, { y0, cell = 0.5, scanH = 3.2, chest = 1.0 } = {}) {
+export async function collideModel(root, { y0, cell = 0.5, scanH = 3.2, chest = 1.0, top = 0 } = {}) {
   const B = await loadBVH();
   root.updateMatrixWorld(true);
   const meshes = [], saved = [];
@@ -32,7 +32,10 @@ export async function collideModel(root, { y0, cell = 0.5, scanH = 3.2, chest = 
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const x = box.min.x + (i + 0.5) * cell, z = box.min.z + (j + 0.5) * cell;
     o.set(x, y0 + scanH, z); ray.set(o, down); ray.far = scanH + 1;
-    const hit = ray.intersectObjects(meshes, false)[0];
+    let hit = ray.intersectObjects(meshes, false)[0];
+    // (top) dentro de um prédio oco, sem piso modelado: olha de cima de tudo e o prédio vira um bloco maciço
+    if (!hit && top) { o.set(x, top, z); ray.set(o, down); ray.far = top - y0 + 1; hit = ray.intersectObjects(meshes, false)[0]; if (hit && hit.point.y > y0 + scanH) { floor[j * nx + i] = hit.point.y; solid[j * nx + i] = 1; ray.far = scanH + 1; continue; } }
+    ray.far = scanH + 1;
     if (!hit) continue;
     const h = hit.point.y;
     floor[j * nx + i] = h;
@@ -57,5 +60,6 @@ export async function collideModel(root, { y0, cell = 0.5, scanH = 3.2, chest = 
     }
   }
   const floorAt = (x, z) => { const i = Math.floor((x - box.min.x) / cell), j = Math.floor((z - box.min.z) / cell); if (i < 0 || j < 0 || i >= nx || j >= nz) return NaN; return floor[j * nx + i]; };
-  return { boxes: n, floorAt, box };
+  const solidAt = (x, z) => { const i = Math.floor((x - box.min.x) / cell), j = Math.floor((z - box.min.z) / cell); if (i < 0 || j < 0 || i >= nx || j >= nz) return true; return !!solid[j * nx + i]; };
+  return { boxes: n, floorAt, solidAt, box };
 }

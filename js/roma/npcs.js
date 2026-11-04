@@ -9,7 +9,7 @@ import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum
 import { terrainHeight, coastPoint } from './terrain.js'; // (os lugares de Atenas usados abaixo serão trocados pelos de Roma)
 const AGORA = {}, BEMA = {}, THEATER = {};
 import { labelTexture, markerTexture } from './textures.js';
-import { VENDOR_LINES, MARKET } from './mercado.js';
+import { VENDOR_LINES } from './mercado.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
@@ -142,7 +142,7 @@ export class Actors {
       const h = this.addHuman(this.romanLook(rand() < 0.4 ? 'woman' : 'tunic'), st.x, st.z, st.ry);
       this.agents.push({ ...h, kind: 'villager', static: true, ry: st.ry, lines: VENDOR_LINES[st.type] || VILLAGER_LINES, mode: rand() < 0.5 ? 'talk' : 'idle' });
     }
-    { const r = R(MARKET.x, MARKET.z, 4, MARKET.hd - 4); walker('toga', r, 2); walker('woman', r, 4); walker('tunic', r, 3); walker('child', r, 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
+    (this.city.boarioPeople || []).forEach((p, i) => { const h = this.addHuman(this.romanLook(['toga', 'woman', 'tunic', 'woman', 'child'][i % 5]), p.x, p.z, p.ry); this.agents.push({ ...h, kind: i % 5 === 4 ? 'child' : 'villager', static: true, ry: p.ry, lines: i % 5 === 4 ? CHILD_LINES : VILLAGER_LINES, mode: i % 2 ? 'talk' : 'idle' }); }); // fregueses em volta da fonte
     for (const r of [R(160, -120, 80, 60), R(-380, -260, 90, 70), R(200, 180, 80, 60)]) { walker('tunic', r, 4); walker('woman', r, 3); walker('child', r, 2, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
   }
 
