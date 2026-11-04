@@ -45,7 +45,7 @@ export function buildOstia(B, M, out) {
         B.geo(nich, M.travertine, wx, H1 - 5.5, wz, { ry: a }); B.box(M.dark, 1.5, 2.6, 0.05, wx - fx * 0.15, H1 - 5.5, wz - fz * 0.15, { ry: a }); }
       for (let i = 0; i < 3; i++) { const u = -7 / 3 + i * 7 / 3, wx = x + fx * 3.7 + Math.cos(a) * u, wz = z + fz * 3.7 - Math.sin(a) * u;
         B.geo(win, M.travertine, wx, H2 - 4.5, wz, { ry: a }); B.box(M.dark, 1.0, 2.2, 0.05, wx - fx * 0.15, H2 - 4.5, wz - fz * 0.15, { ry: a }); } }
-    B.box(M.marble, 11, 0.5, 11, x, H1 - 0.5, z); // cornija do primeiro andar
+    B.box(M.marble, 10.3, 0.5, 10.3, x, H1 - 0.5, z); // cornija do primeiro andar (rente: larga, ela ficava sobre os últimos degraus da escada de fora e a cabeça batia)
     // segundo andar oco: paredes de 0,8 m, a porta virada para o sul (para o terraço da escada de fora) e, por dentro,
     // a escada em quatro lances junto às paredes até o alto (o mirante, em volta da lanterna)
     { const T = 0.8, hw = 3.5, h = H2 - H1;
@@ -60,9 +60,13 @@ export function buildOstia(B, M, out) {
         for (let i = 0; i < nS; i++) {
           const d0 = land / 2 + (i + 0.5) * stepL, sx2 = ax + ux * d0, sz2 = az + uz * d0, top = H1 + rise * (k * nS + i + 1);
           const w = alongX ? stepL + 0.02 : land, d = alongX ? land : stepL + 0.02;
-          B.box(M.travertine2, w, 0.25, d, x + sx2, top - 0.25, z + sz2); addBox(x + sx2, z + sz2, w, d, top - 0.3, top);
+          // o primeiro lance é maciço até o chão (por baixo dele a cabeça batia nos degraus e o explorador travava)
+          if (k === 0) { B.box(M.travertine2, w, top - H1, d, x + sx2, H1, z + sz2); addBox(x + sx2, z + sz2, w, d, H1 - 1, top); }
+          else { B.box(M.travertine2, w, 0.25, d, x + sx2, top - 0.25, z + sz2); addBox(x + sx2, z + sz2, w, d, top - 0.3, top); }
         }
-        const top = H1 + rise * (k + 1) * nS; B.box(M.travertine2, land, 0.25, land, x + bx, top - 0.25, z + bz); addBox(x + bx, z + bz, land, land, top - 0.3, top); // patamar
+        const top = H1 + rise * (k + 1) * nS; // patamar (o primeiro, a 2 m, também maciço)
+        if (k === 0) { B.box(M.travertine2, land, top - H1, land, x + bx, H1, z + bz); addBox(x + bx, z + bz, land, land, H1 - 1, top); }
+        else { B.box(M.travertine2, land, 0.25, land, x + bx, top - 0.25, z + bz); addBox(x + bx, z + bz, land, land, top - 0.3, top); }
       }
       // o piso do mirante, com o vão da escada no canto sudeste, e a mureta em volta
       // o vão da escada em L, sobre os dois últimos lances (paredes oeste e sul), com guarda-corpo na borda
