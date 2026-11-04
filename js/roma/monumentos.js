@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { addBox, addCircle } from '../comum/collision.js';
 import { terrainHeight } from './terrain.js';
 import { rr } from '../comum/util.js';
+import { getTextures } from './textures.js';
 
 const V3 = THREE.Vector3;
 
@@ -50,12 +51,63 @@ export function buildMonuments(B, M, out) {
     B.box(M.marble, 46, 0.6, 22, x, y - 0.1, z + 18); B.box(M.water, 44, 0.05, 20, x, y + 0.45, z + 18);
     addBox(x, z + 18 - 11.5, 46, 1, y - 1, y + 0.6); addBox(x, z + 18 + 11.5, 46, 1, y - 1, y + 0.6); addBox(x - 23.5, z + 18, 1, 22, y - 1, y + 0.6); addBox(x + 23.5, z + 18, 1, 22, y - 1, y + 0.6);
     // o prédio dos banhos: salão alto com abóbada e as janelas, os dois blocos laterais e a cúpula do caldário
-    B.box(M.plasterOchre, 60, 18, 26, x, y, z - 22); addBox(x, z - 22, 60, 26, y - 1, y + 18);
-    const vault = new THREE.CylinderGeometry(13, 13, 60, 24, 1, false, 0, Math.PI); vault.rotateZ(Math.PI / 2); vault.rotateX(Math.PI / 2);
+    // o prédio dos banhos, por dentro: no meio o frigidário (salão alto, piscina fria, colunas de granito, mosaico e
+    // teto em caixotões), a oeste o caldário (piscina quente redonda e a boca da fornalha) e a leste o tepidário
+    // (salão morno com bancos de mármore). Seis portas abertas para o jardim e uma passagem para cada ala.
+    {
+      const T = getTextures(), H = 18, t = 1.2, hx = x, hz = z - 22, W2 = 30, D2 = 13, F = hz + D2; // F = fachada (sul)
+      const mosaic = new THREE.MeshStandardMaterial({ map: mosaicTex(), roughness: 0.6 }), ceil = new THREE.MeshStandardMaterial({ map: T.coffers, roughness: 0.8 });
+      const wall = (mat, w, h, d, cx, cy, cz) => { B.box(mat, w, h, d, cx, cy, cz, { noGround: cy > y + 0.5 }); addBox(cx, cz, w, d, cy - 1, cy + h); };
+      // fachada: seis portas de 2,4 × 4 m entre pilares, e a parede cheia por cima delas
+      const doors = [0, 1, 2, 3, 4, 5].map((i) => hx - 18 + i * 7.2);
+      let x0 = hx - W2; for (const dx of doors) { wall(M.plasterOchre, dx - 1.2 - x0, 4, t, (x0 + dx - 1.2) / 2, y, F - t / 2); x0 = dx + 1.2; } wall(M.plasterOchre, hx + W2 - x0, 4, t, (x0 + hx + W2) / 2, y, F - t / 2);
+      B.box(M.plasterOchre, W2 * 2, H - 4, t, hx, y + 4, F - t / 2, { noGround: true }); addBox(hx, F - t / 2, W2 * 2, t, y + 4, y + H);
+      for (const dx of doors) B.box(M.travertine, 2.8, 0.35, t + 0.1, dx, y + 4, F - t / 2, { noGround: true }); // vergas
+      wall(M.plasterOchre, W2 * 2, H, t, hx, y, hz - D2 + t / 2); // fundo
+      // laterais do salão, com a passagem (3 × 5 m) para cada ala
+      for (const s of [-1, 1]) { const wx = hx + s * (W2 - t / 2);
+        wall(M.plasterOchre, t, H, 12, wx, y, hz - 7); wall(M.plasterOchre, t, H, 11, wx, y, hz + 7.5);
+        B.box(M.plasterOchre, t, H - 5, 3, wx, y + 5, hz + 0.5, { noGround: true }); addBox(wx, hz + 0.5, t, 3, y + 5, y + H); }
+      B.box(mosaic, W2 * 2 - t * 2, 0.12, D2 * 2 - t * 2, hx, y + 0.3, hz); // (registrada como piso: o chão do terreno fica por baixo)
+      B.box(ceil, W2 * 2, 0.4, D2 * 2, hx, y + H - 0.4, hz, { noGround: true }); // teto em caixotões (por baixo da abóbada de telhas)
+      // a piscina fria no meio do salão (borda de mármore: não se entra andando)
+      { const pw = 20, pd = 7, pz = hz - 1.5;
+        for (const [w, d, dx, dz] of [[pw, 0.5, 0, -pd / 2], [pw, 0.5, 0, pd / 2], [0.5, pd, -pw / 2, 0], [0.5, pd, pw / 2, 0]]) wall(M.marble, w, 0.75, d, hx + dx, y, pz + dz); // (0,75 m: com 0,6 o explorador subia na borda e andava sobre a água)
+        B.box(M.water, pw - 0.5, 0.05, pd - 0.5, hx, y + 0.58, pz, { noGround: true }); }
+      for (const cz of [hz + 7.5, hz - 9]) for (let i = 0; i < 7; i++) { const cx = hx - 24 + i * 8; B.geo(new THREE.CylinderGeometry(0.7, 0.8, H - 0.4, 14), M.granite, cx, y + (H - 0.4) / 2, cz, { uv: false }); addCircle(cx, cz, 0.8, y - 1, y + H); }
+      out.lights.push({ pos: new V3(hx, y + 9, hz), color: 0xfff0d8, intensity: 9, dist: 40 });
+      // as duas alas (22 × 30 m), ocas, com a cúpula por cima
+      for (const s of [-1, 1]) {
+        const cx = hx + s * 40, cz = z - 20, w = 22, d = 30, h = 12;
+        wall(M.plasterOchre, t, h, d, cx + s * (w / 2 - t / 2), y, cz); // de fora
+        wall(M.plasterOchre, w - t, h, t, cx - s * t / 2, y, cz + d / 2 - t / 2); wall(M.plasterOchre, w - t, h, t, cx - s * t / 2, y, cz - d / 2 + t / 2); // frente e fundo
+        // o lado do salão: a parede de 13 m do salão grande já fecha o meio; nas pontas, o que sobra da ala
+        wall(M.plasterOchre, t, h, 3.4, hx + s * (W2 - t / 2), y, hz + 14.7); // o trecho da ala que passa da fachada do salão
+        B.box(mosaic, w - t * 2, 0.12, d - t * 2, cx, y + 0.3, cz); B.box(ceil, w, 0.4, d, cx, y + h - 0.4, cz, { noGround: true });
+        out.lights.push({ pos: new V3(cx, y + 6, cz), color: s < 0 ? 0xffc890 : 0xffe6c0, intensity: 6, dist: 26 });
+        if (s < 0) { // caldário: a piscina quente redonda e a boca da fornalha (o hipocausto aquecia o chão por baixo)
+          B.geo(new THREE.CylinderGeometry(4.2, 4.2, 0.75, 28), M.marble, cx, y + 0.375, cz - 2); B.geo(new THREE.CylinderGeometry(3.8, 3.8, 0.05, 28), M.water, cx, y + 0.73, cz - 2); addCircle(cx, cz - 2, 4.2, y - 1, y + 0.75);
+          B.box(M.brick, 3, 2.2, 1.2, cx - s * 0 - 8, y, cz + 12); B.box(new THREE.MeshBasicMaterial({ color: 0xff7a2a }), 1.6, 1.0, 0.1, cx - 8, y + 0.3, cz + 11.35); addBox(cx - 8, cz + 12, 3, 1.2, y - 1, y + 2.2);
+        } else { // tepidário: bancos de mármore em volta
+          for (const sz of [-1, 1]) { B.box(M.marble, 16, 0.45, 0.6, cx + 1, y, cz + sz * (d / 2 - t - 0.4)); addBox(cx + 1, cz + sz * (d / 2 - t - 0.4), 16, 0.6, y - 1, y + 0.45); }
+          B.box(M.marble, 0.6, 0.45, 20, cx + s * (w / 2 - t - 0.4), y, cz); addBox(cx + s * (w / 2 - t - 0.4), cz, 0.6, 20, y - 1, y + 0.45);
+        }
+      }
+      // os banhistas: conversando à beira da piscina fria, sentados no tepidário, no vapor do caldário
+      out.bathPeople = [
+        { kind: 'toga', x: hx - 6, z: hz + 3.2, ry: Math.PI, mode: 'talk', lines: ['Primeiro o tepidário, depois o caldário, e por fim um mergulho aqui no frio. É assim que se faz.', 'Aqui se fecham mais negócios do que no Fórum.'] },
+        { kind: 'tunic', x: hx - 4.6, z: hz + 3.4, ry: Math.PI, mode: 'idle', lines: ['A entrada custa um quadrante: quase de graça. Até escravo vem às termas.'] },
+        { kind: 'tunic', x: hx + 8, z: hz - 6.4, ry: 0, mode: 'talk', lines: ['Trajano mandou construir isto em cima da Domus Aurea de Nero. Dizem que os salões dele ainda estão aí embaixo.'] },
+        { kind: 'toga', x: hx + 40 + 1, z: hz + 15.1, ry: Math.PI, mode: 'sit', lines: ['O segredo é não ter pressa: o corpo esquenta devagar aqui no tepidário.'] },
+        { kind: 'tunic', x: hx + 40 - 4, z: hz - 11.1, ry: 0, mode: 'sit', lines: ['O chão é quente porque, por baixo, corre o ar da fornalha entre as pilhas de tijolo.'] },
+        { kind: 'worker', x: hx - 48, z: hz + 12.4, ry: 0, mode: 'work', lines: ['Lenha, lenha e mais lenha. Se a fornalha apagar, o caldário esfria e o povo reclama.'] },
+        { kind: 'tunic', x: hx - 40 + 4.6, z: z - 20 - 2, ry: -Math.PI / 2, mode: 'idle', lines: ['No caldário a gente sua e depois raspa a pele com o estrígil. Sai limpo como um bebê.'] },
+      ];
+    }
+    const vault = new THREE.CylinderGeometry(13, 13, 60, 24, 1, false, 0, Math.PI); vault.rotateZ(Math.PI / 2); vault.rotateX(-Math.PI / 2); // (com +π/2 a abóbada ficava de cabeça para baixo, pendurada dentro do salão)
     B.geo(vault, M.tiles, x, y + 18, z - 22);
-    for (const s of [-1, 1]) { B.box(M.plasterOchre, 22, 12, 30, x + s * 40, y, z - 20); addBox(x + s * 40, z - 20, 22, 30, y - 1, y + 12); B.geo(new THREE.SphereGeometry(10, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.plaster, x + s * 40, y + 12, z - 20); }
+    for (const s of [-1, 1]) { B.geo(new THREE.SphereGeometry(10, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.plaster, x + s * 40, y + 12, z - 20); }
     for (let i = 0; i < 8; i++) B.box(M.dark, 3, 5, 0.1, x - 26 + i * 7.4, y + 10, z - 8.95); // janelões
-    for (let i = 0; i < 6; i++) B.box(M.dark, 2.4, 4, 0.1, x - 18 + i * 7.2, y, z - 8.95); // portas
     out.exclusions.push([x - W / 2 - 4, x + W / 2 + 4, z - D / 2 - 4, z + D / 2 + 4]);
     S.thermae = new V3(x, y, z + D / 2 + 4);
     out.zones.termas = [x - W / 2, x + W / 2, z - D / 2, z + D / 2];
@@ -80,4 +132,17 @@ export function buildMonuments(B, M, out) {
     out.exclusions.push([x - R - 14, x + R + 14, z - R - 26, z + R + 12]);
     S.pantheon = new V3(px, y, pz - 10);
   }
+}
+
+// mosaico de pedrinhas em preto e branco, com a borda de ondas (como os das termas de Óstia)
+let MOS = null;
+function mosaicTex() {
+  if (MOS) return MOS;
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  x.fillStyle = '#ece4d2'; x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 2600; i++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)'; x.fillRect(Math.random() * S, Math.random() * S, 6, 6); }
+  x.strokeStyle = '#2a2622'; x.lineWidth = 10; x.strokeRect(24, 24, S - 48, S - 48);
+  x.fillStyle = '#2a2622'; for (let k = 0; k < 8; k++) { x.beginPath(); x.arc(64 + k * 54, 64, 18, Math.PI, 0); x.fill(); x.beginPath(); x.arc(64 + k * 54, S - 64, 18, 0, Math.PI); x.fill(); }
+  x.beginPath(); x.arc(S / 2, S / 2, 90, 0, 7); x.lineWidth = 8; x.stroke(); x.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; x.moveTo(S / 2, S / 2); x.lineTo(S / 2 + Math.cos(a) * 90, S / 2 + Math.sin(a) * 90); } x.lineWidth = 4; x.stroke();
+  MOS = new THREE.CanvasTexture(c); MOS.wrapS = MOS.wrapT = THREE.RepeatWrapping; MOS.repeat.set(6, 3); MOS.colorSpace = THREE.SRGBColorSpace; return MOS;
 }

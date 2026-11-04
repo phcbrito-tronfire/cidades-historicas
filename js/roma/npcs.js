@@ -144,6 +144,8 @@ export class Actors {
     }
     { const r = R(MARKET.x - 2, MARKET.z, 4, MARKET.hd - 14); walker('toga', r, 2); walker('woman', r, 4); walker('tunic', r, 3); walker('child', r, 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); }
     { const r = R(MARKET.x - 30, MARKET.z, 6, 30); walker('worker', r, 3, { lines: WORKER_LINES }); walker('tunic', r, 2); } // estivadores no cais
+    // os banhistas das Termas de Trajano
+    for (const p of this.city.bathPeople || []) { const h = this.addHuman(this.romanLook(p.kind), p.x, p.z, p.ry); this.agents.push({ ...h, kind: p.kind === 'worker' ? 'worker' : 'villager', static: true, ry: p.ry, lines: p.lines, mode: p.mode }); }
     // o hipogeu: gladiadores, o médico e os homens dos cabrestantes (parados, cada um no seu trabalho)
     { const sk = () => pick([0xc8a07e, 0xb48662, 0xa87a58, 0x8a5a3a, 0xd2aa8a]);
       const LOOK = { murmillo: { outfit: 'worker', extras: ['murmillo', 'manica'], beard: 'short' }, thraex: { outfit: 'worker', extras: ['manica'], beard: 'short' },
