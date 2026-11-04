@@ -181,7 +181,7 @@ function dressDrake(ctx, desert) {
   const shirt = byPart(/Shirt/), pants = byPart(/Pants/), shoes = byPart(/Sneakers|Shoes/);
   if (shirt) retint(shirt, desert ? 0xcdbf9e : 0x2c5560, { rough: 0.95, detail: 0.55, lo: 0.82, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.12 }), grainScale: 9 });
   if (pants) retint(pants, desert ? 0x7a6c50 : 0x9a7650, { rough: 0.92, detail: 0.6, lo: 0.78, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.1 }), grainScale: 8 });
-  if (shoes) retint(shoes, 0x3a2a1e, { rough: 0.6, detail: 0.6, lo: 0.6, hi: 1.05 }); // (sem o limite, o forro branco do tênis brilhava como meia)
+  if (shoes) retint(shoes, 0x3a2a1e, { rough: 0.6, detail: 0.6, lo: 0.6, hi: 0.88 }); // (sem o limite, o forro branco do tênis brilhava como meia; com 1,05 ainda saía claro)
   // o alto do braço e o ombro do corpo têm uma faixa escura na textura, que aparecia abaixo da manga curta: ficam no tom do antebraço
   { const body = meshes.find((me) => /_Body$/.test(me.name) && !/Graft/.test(me.name));
     if (body) { const W = weightsOf(body); let best = -1, bw = 0; for (let i = 0; i < W.length; i++) { const w = W[i].LeftForeArm || 0; if (w > bw) { bw = w; best = i; } }
@@ -377,9 +377,9 @@ function dressAncient(ctx, id) {
     const nb = 6, y0 = hy + 0.09, y1 = ch.y + 0.03, bh = (y1 - y0) / nb;
     for (let i = 0; i < nb; i++) fit.shell(iron, { y0: y0 + i * bh - 0.004, y1: y0 + (i + 1) * bh + 0.006, rows: 3, cols: 56, off: 0.016 + (nb - i) * 0.0025, r0: 0.34, cx: hips.x, cz: hips.z, bump: (a, y, s) => 0.007 * (1 - s), uvScale: [4, 0.3] }); // (a borda de baixo de cada cinta sobressai: as placas se sobrepõem)
     fit.shell(iron, { y0: ch.y + 0.03, y1: neck.y - 0.02, rows: 10, cols: 56, off: 0.02, r0: 0.34, cx: hips.x, cz: hips.z, uvScale: [4, 1], mask: (a) => Math.abs(Math.sin(a)) < 0.7 });
-    for (const s of [1, -1]) { const x = s * 0.15; fit.band(iron, [{ p: V3(x, ch.y + 0.08, 0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }, { p: V3(x, neck.y + 0.3, 0.0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.08, -0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }], { w: 0.17, th: 0.004, off: 0.019, n: 24 }); } // placa de base: sem frestas entre as lâminas
+    for (const s of [1, -1]) { const x = s * 0.168; fit.band(iron, [{ p: V3(x, ch.y + 0.08, 0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }, { p: V3(x, neck.y + 0.3, 0.0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.08, -0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }], { w: 0.13, th: 0.004, off: 0.019, n: 24 }); } // placa de base: sem frestas entre as lâminas
     for (const s of [1, -1]) for (let k = 0; k < 4; k++) { // ombreiras: lâminas curvas uma sobre a outra, do pescoço para o braço
-      const x = s * (0.09 + k * 0.04);
+      const x = s * (0.115 + k * 0.038); // (começando em 0,09 a lâmina de dentro subia pelo pescoço como uma barbatana)
       fit.band(iron, [{ p: V3(x, ch.y + 0.08, 0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }, { p: V3(x, neck.y + 0.3, 0.0), c: V3(x, neck.y - 0.15, 0) }, { p: V3(x, ch.y + 0.08, -0.5), c: V3(x * 0.6, ch.y + 0.08, 0) }], { w: 0.05, th: 0.004, off: 0.022 + (3 - k) * 0.003, n: 24 });
     }
     // cinturão (cingulum) com placas de latão e o avental de tiras com tachas
@@ -401,7 +401,7 @@ function dressAncient(ctx, id) {
     fitN.shell(M(0xffffff, { map: clothTex('#e6dcc6', { weave: 0.14 }), roughness: 1, side: THREE.DoubleSide }), { y0: neck.y - 0.03, y1: neck.y + 0.045, rows: 8, cols: 40, off: 0.02, r0: 0.12, cx: neck.x, cz: neck.z + 0.01, bump: (a, y, s) => 0.01 * Math.sin(s * Math.PI) + 0.004 * Math.sin(a * 6 + s * 7) });
     out.push(...fitN.finish());
     for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false; // (o cabelo saía por baixo e o elmo parecia flutuar)
-    ctx.gear('galea', { depth: 0.15, gap: 0.0, tilt: 0.06 });
+    ctx.gear('galea', { depth: 0.15, gap: 0.008, tilt: 0.06, dz: -0.014, metal: 0.45 }); // (com folga zero a nuca atravessava a cúpula: mancha preta do cabelo)
   }
   return out;
 }

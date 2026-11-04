@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { fbm, smoothstep, lerp, clamp } from '../comum/util.js';
 import { setTerrain, setWater } from '../comum/collision.js';
+import { pressAt } from '../comum/chao.js';
+export { pressTerrain } from '../comum/chao.js';
 
 export const WATER_Y = 0;
 export const BOUNDS = [-790, 470, -470, 860]; // x0, x1, z0, z1 andáveis (o mar segue até o horizonte)
@@ -166,7 +168,7 @@ export function theaterStep(x, z) {
 // altura do chão para andar (colisão): igual ao terreno, mas com os degraus do teatro
 export function groundHeight(x, z) {
   const t = theaterStep(x, z);
-  return t ? t.y : terrainHeight(x, z);
+  return t ? t.y : Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05);
 }
 
 export function waterLevelAt(x, z) { return coastC(x, z) > -30 ? WATER_Y : -100; }

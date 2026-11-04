@@ -81,7 +81,7 @@ export function buildMarket(B, M, out) {
     else if (type === 'pao') for (let k = 0; k < 7; k++) B.geo(new THREE.CylinderGeometry(0.16, 0.17, 0.08, 10), G.bread, cx + rr(-0.25, 0.25), top + 0.04, z - 1.4 + k * 0.45);
     else if (type === 'peixe') for (let k = 0; k < 8; k++) { const g = new THREE.SphereGeometry(0.06, 6, 4); g.scale(4, 1, 1.4); B.geo(g, G.fish, cx + rr(-0.2, 0.2), top + 0.05, z - 1.4 + k * 0.38, { ry: rr(-0.3, 0.3) }); }
     else if (type === 'anforas') { amphoraLean(B, M.terracotta, x - fx * 0.5, y, z - 1.0); amphoraLean(B, M.terracotta, x - fx * 0.5, y, z + 1.0); amphoraPile(B, M.terracotta, cx, top, z, Math.PI / 2, 3, 1); }
-    else if (type === 'panos') for (let k = 0; k < 5; k++) B.box(G.cloth[k % 4], 0.6, 0.12, 0.5, cx, top + k * 0.12, z - 0.8 + (k % 2) * 0.9);
+    else if (type === 'panos') for (let k = 0; k < 5; k++) B.box(G.cloth[k % 4], 0.6, 0.12, 0.5, cx, top + Math.floor(k / 2) * 0.12, z - 0.8 + (k % 2) * 0.9); // duas pilhas de panos
     else if (type === 'ceramica') for (let k = 0; k < 6; k++) B.geo(new THREE.CylinderGeometry(0.14, 0.09, 0.28, 10), G.clay, cx + rr(-0.2, 0.2), top + 0.14, z - 1.3 + k * 0.5);
     else if (type === 'lamparinas') for (let k = 0; k < 10; k++) { const g = new THREE.SphereGeometry(0.07, 8, 5); g.scale(1, 0.45, 1.3); B.geo(g, G.clay, cx + rr(-0.25, 0.25), top + 0.03, z - 1.4 + k * 0.3); }
     out.marketStalls.push({ x: x - fx * 0.6, z, ry: side < 0 ? Math.PI / 2 : -Math.PI / 2, type });
@@ -121,7 +121,7 @@ export function buildMarket(B, M, out) {
     for (let q = z0 + 0.3; q <= z1; q += 4.2) { B.geo(new THREE.CylinderGeometry(0.28, 0.32, 3.6, 12), M.colMarble, xb - 3, y + 1.8, q, { uv: false }); addCircle(xb - 3, q, 0.34, y - 1, y + 3.6); }
     B.box(M.travertine, 3.6, 0.45, L + 0.6, xb - 1.6, y + 3.6, zc); // a arquitrave do pórtico
     B.box(M.tiles, 4.2, 0.22, L + 1, xb - 1.5, y + 4.0, zc, { rz: 0.28 }); // telhadinho do pórtico
-    for (let q = z0 + 6; q < z1 - 4; q += 13) B.box(M.awning[Math.round(q) % 4], 1.6, 0.04, 2.6, xb - 3.9, y + 3.0, q, { rz: 0.3 }); // toldos entre as colunas
+    for (let q = z0 + 6; q < z1 - 4; q += 13) B.box(M.awning[Math.round(q) % 4], 1.6, 0.04, 2.6, xb - 3.9, y + 3.32, q, { rz: 0.3 }); // (presos na arquitrave) // toldos entre as colunas
   }
   // ---- cercado dos bois, num canto da praça
   const px = MARKET.x + 12, pz = FB.z0 + 9;

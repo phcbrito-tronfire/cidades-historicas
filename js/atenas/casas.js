@@ -127,7 +127,7 @@ function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   roofZ(-w / 2 - 0.3, w / 2 + 0.3, -d / 2 - 0.35, cz0 + 0.4, HX + 0.1, H - 0.1);
   // ---- pátio: chão de terra batida com seixos, altar de Zeus Herkeios e a boca da cisterna
   { const [px, pz] = P((cx0 + cx1) / 2, (cz0 + cz1 - pastas) / 2); B.box(M.marble, 0.75, 0.8, 0.6, px, y, pz, { ry }); addBox(px, pz, 0.8, 0.8, y, y + 0.8); }
-  if (big) { const [px, pz] = P(cx1 - 1.2, cz0 + 1.2); B.geo(new THREE.CylinderGeometry(0.45, 0.5, 0.65, 14), M.poros, px, y + 0.32, pz); addBox(px, pz, 1, 1, y, y + 0.65); }
+  if (big) { const [px, pz] = P(cx1 - 1.2, cz0 + 1.2); const g0 = Math.min(y, terrainHeight(px, pz)) - 0.15; B.geo(new THREE.CylinderGeometry(0.45, 0.5, y + 0.65 - g0, 14), M.poros, px, (y + 0.65 + g0) / 2, pz); addBox(px, pz, 1, 1, y, y + 0.65); } // a boca da cisterna desce até o chão
   if (o.rich) { const [px, pz] = P(doorX + 1.3, -d / 2 - 0.5); B.box(M.marble, 0.3, 1.3, 0.26, px, y, pz, { ry }); B.geo(new THREE.SphereGeometry(0.15, 10, 8), M.marble, px, y + 1.45, pz); } // herma na porta
   const out = { center: new V3(x, y, z), door: new V3(...(() => { const [a, b] = P(doorX, -d / 2 - 1.2); return [a, y, b]; })()), rect: null };
   const corners = [P(-w / 2, -d / 2), P(w / 2, -d / 2), P(-w / 2, d / 2), P(w / 2, d / 2)];

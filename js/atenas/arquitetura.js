@@ -161,7 +161,7 @@ export function doricTemple(B, o) {
   // antefixas de palmeta pintada ao longo dos beirais dos lados compridos
   if (o.rich && M.antefix && !o.stoa) {
     const n = Math.floor((EL + 0.6) / 1.3);
-    for (const t of [-1, 1]) for (let i = 0; i <= n; i++) box(M.antefix, 0.42, 0.55, 0.03, -EL / 2 - 0.3 + i * ((EL + 0.6) / n), ry0 - 0.12, ez + t * (EW / 2 + 0.62), { uv: false });
+    for (const t of [-1, 1]) for (let i = 0; i <= n; i++) box(M.antefix, 0.42, 0.55, 0.03, -EL / 2 - 0.3 + i * ((EL + 0.6) / n), ry0 - 0.12, ez + t * (EW / 2 + 0.44), { uv: false }); // (na beira do telhado: a 0,62 ficavam soltas no ar)
   }
   if (!o.stoa) for (const s of [-1, 1]) {
     // tímpano recuado (fundo azul onde ficam as estátuas) e a cornija inclinada na frente

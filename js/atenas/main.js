@@ -12,7 +12,7 @@ import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { Festivals } from './festas.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildHorizon, terrainHeight, coastC, WATER_Y, BOUNDS, AGORA } from './terrain.js';
+import { pressTerrain, buildTerrain, buildHorizon, terrainHeight, coastC, WATER_Y, BOUNDS, AGORA } from './terrain.js';
 import { buildCity } from './buildings.js';
 import { buildVegetation } from './vegetacao.js';
 import { placeSculptures, registerSculptures } from '../comum/sculptures.js';
@@ -126,6 +126,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.38, 'Construindo a ágora, as stoas e as casas...');
   const city = buildCity(scene, tex, avail);
+  { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.55, 'Plantando oliveiras e ciprestes...');
   await buildVegetation(scene, tex, city);
   const placed = await placeSculptures(scene, city.sculptures.filter((s) => avail.has(s.model)));

@@ -75,9 +75,9 @@ export function insula(B, M, out, o) {
         box(M.brick, 0.75, H0, 0.75, u, 0, fz + sd * depth); addBox(px, pz, 0.8, 0.8, y - 1, y + H0);
       }
       box(M.travertine, w - 1.2, 0.5, depth + 0.4, 0, H0 - 0.5, fz + sd * (depth / 2 + 0.1));
-      for (let i = 0; i < Math.floor(w / 0.9); i++) box(M.travertine2, 0.12, 0.8, 0.12, -w / 2 + 0.8 + i * 0.9, H0, fz + sd * (depth - 0.1)); // balaústres
+      for (let i = 0; i < Math.floor((w - 1.4) / 0.9); i++) box(M.travertine2, 0.12, 0.8, 0.12, -w / 2 + 0.8 + i * 0.9, H0, fz + sd * (depth - 0.1)); // balaústres (só em cima da laje)
       box(M.travertine2, w - 1.4, 0.1, 0.18, 0, H0 + 0.8, fz + sd * (depth - 0.1));
-      for (let k = 0; k < 4; k++) { const u = rr(-w / 2 + 2, w / 2 - 2); geo(pot, M.terracotta, u, H0 + 0.15, fz + sd * rr(1, 2.6)); geo(bush, M.plant, u, H0 + 0.5, fz + sd * rr(1, 2.6)); }
+      for (let k = 0; k < 4; k++) { const u = rr(-w / 2 + 2, w / 2 - 2); const v = fz + sd * rr(1, Math.min(2.6, depth - 0.4)); geo(pot, M.terracotta, u, H0 + 0.15, v); geo(bush, M.plant, u, H0 + 0.5, v); } // (o arbusto dentro do vaso, e o vaso sobre a laje)
     } else if (o.balcony && sd === (o.balconySide || 1)) { // sacada de madeira no primeiro andar, sobre vigas
       const bw = w * rr(0.55, 0.8), bu = rr(-(w - bw) / 2, (w - bw) / 2);
       box(M.wood, bw, 0.14, 1.15, bu, H0 + 0.26, fz + sd * 0.6);

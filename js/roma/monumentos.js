@@ -2,7 +2,7 @@
 // Trajano no Ópio (piscina, salões abobadados e o jardim do ginásio) e o Panteão em obras — o de Agripa queimou com
 // um raio em 110; o novo, de cúpula de concreto, começou sob Trajano e só ficou pronto com Adriano, por volta de 125.
 import * as THREE from 'three';
-import { addBox, addCircle } from '../comum/collision.js';
+import { addBox, addCircle, addRotBox } from '../comum/collision.js';
 import { terrainHeight } from './terrain.js';
 import { rr } from '../comum/util.js';
 import { getTextures } from './textures.js';
@@ -104,7 +104,7 @@ export function buildMonuments(B, M, out) {
         { kind: 'tunic', x: hx - 40 + 4.6, z: z - 20 - 2, ry: -Math.PI / 2, mode: 'idle', lines: ['No caldário a gente sua e depois raspa a pele com o estrígil. Sai limpo como um bebê.'] },
       ];
     }
-    const vault = new THREE.CylinderGeometry(13, 13, 60, 24, 1, false, 0, Math.PI); vault.rotateZ(Math.PI / 2); vault.rotateX(-Math.PI / 2); // (com +π/2 a abóbada ficava de cabeça para baixo, pendurada dentro do salão)
+    const vault = new THREE.CylinderGeometry(13, 13, 60, 24, 1, false, 0, Math.PI); vault.rotateZ(Math.PI / 2); // meia-abóbada por cima do salão, eixo leste-oeste (girar também em x a deixava de lado, descendo por dentro do salão até 5 m do chão — a "linha vermelha")
     B.geo(vault, M.tiles, x, y + 18, z - 22);
     for (const s of [-1, 1]) { B.geo(new THREE.SphereGeometry(10, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.plaster, x + s * 40, y + 12, z - 20); }
     for (let i = 0; i < 8; i++) B.box(M.dark, 3, 5, 0.1, x - 26 + i * 7.4, y + 10, z - 8.95); // janelões
@@ -115,8 +115,29 @@ export function buildMonuments(B, M, out) {
   // ---- Panteão em obras, no Campo de Marte: rotunda, a cúpula pela metade com andaimes, guindaste e o pórtico
   {
     const x = -330, z = -250, y = terrainHeight(x, z) - 0.3, R = 22, H = 22;
-    B.geo(new THREE.CylinderGeometry(R, R, H, 48, 1, true), M.brick, x, y + H / 2, z);
-    B.geo(new THREE.CylinderGeometry(R - 3, R - 3, H, 48, 1, true), M.plaster, x, y + H / 2, z);
+    // a rotunda é oca: parede de 3 m de tijolo com a porta ao norte (para o pórtico), piso de mármore e, por dentro,
+    // o canteiro da cúpula — o céu aparece pelo buraco que ainda falta fechar
+    const dA = 0.16, t0 = Math.PI + dA, tL = Math.PI * 2 - dA * 2; // (no CylinderGeometry, θ = π aponta para -z: o norte)
+    B.geo(new THREE.CylinderGeometry(R, R, H, 48, 1, true, t0, tL), M.brick, x, y + H / 2, z);
+    B.geo(new THREE.CylinderGeometry(R - 3, R - 3, H, 48, 1, true, t0, tL), M.plaster, x, y + H / 2, z);
+    for (const sd of [-1, 1]) { const a = Math.PI + sd * dA; B.box(M.brick, 0.3, H, 3.1, x + Math.sin(a) * (R - 1.5), y, z + Math.cos(a) * (R - 1.5), { noGround: true }); } // os lados da porta
+    B.box(M.brick, 7.2, H - 9, 3.1, x, y + 9, z - R + 1.5, { noGround: true }); // em cima da porta (9 m de vão)
+    B.geo(new THREE.CylinderGeometry(R - 3, R - 3, 0.4, 48), M.marble, x, y + 0.15, z); // o piso
+    for (let i = 0; i < 48; i++) { // a colisão da parede, em gomos (menos na porta)
+      const a = ((i + 0.5) / 48) * Math.PI * 2, ax = Math.sin(a), az = Math.cos(a);
+      if (Math.abs(Math.atan2(ax, -az)) < dA) continue; // (vão livre de ~5,4 m)
+      addRotBox(x + ax * (R - 1.5), z + az * (R - 1.5), 3.2, (R * Math.PI * 2) / 48 + 0.3, -Math.atan2(az, ax), y - 1, y + H, true);
+    }
+    // no meio, a torre de andaimes que segura o cimbramento da cúpula; pedras e a masseira; os operários
+    for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) { B.box(M.darkWood, 0.35, H + 4, 0.35, x + dx, y + 0.3, z + dz, { noGround: true }); addBox(x + dx, z + dz, 0.4, 0.4, y - 1, y + H + 4); }
+    for (let lv = 1; lv <= 5; lv++) for (const sd of [-1, 1]) { B.box(M.wood, 6.4, 0.2, 0.25, x, y + lv * 4.4, z + sd * 3, { noGround: true }); B.box(M.wood, 0.25, 0.2, 6.4, x + sd * 3, y + lv * 4.4, z, { noGround: true }); }
+    for (let k = 0; k < 4; k++) B.box(M.travertine2, 1.2, 0.6, 0.9, x - 8 + k * 1.4, y + 0.35, z + 9, { noGround: true });
+    B.box(M.wood, 2.6, 0.9, 1.4, x + 9, y + 0.35, z + 7, { noGround: true });
+    addBox(x - 5.9, z + 9, 5.4, 1, y - 1, y + 1); addBox(x + 9, z + 7, 2.6, 1.4, y - 1, y + 1.3);
+    (out.bathPeople ||= []).push(
+      { kind: 'worker', x: x + 9, z: z + 5.6, ry: 0, mode: 'work', lines: ['Cal, areia vulcânica de Putéolos e água: a argamassa que vira pedra. Lá no alto da cúpula vai pedra-pomes no lugar do tijolo, para pesar menos.'] },
+      { kind: 'tunic', x: x - 5, z: z - 6, ry: Math.PI * 0.8, mode: 'talk', lines: ['O Panteão de Agripa queimou. O Imperador mandou fazer outro, redondo, com uma cúpula maior que qualquer outra. Dizem que no alto vai ficar um olho aberto para o céu.', 'Quando a cúpula fechar, caberia uma esfera inteira aqui dentro: a altura vai ser igual à largura.'] },
+      { kind: 'worker', x: x + 2.2, z: z - 3.6, ry: Math.PI, mode: 'idle', lines: ['Cuidado com o andaime: amanhã sobem mais seis vigas para o cimbramento.'] });
     B.geo(new THREE.CylinderGeometry(R + 0.4, R + 0.4, 1, 48, 1, true), M.travertine, x, y + H, z);
     // a cúpula: anéis de concreto subindo (só a parte de baixo), o resto ainda em cimbramento de madeira
     for (let k = 0; k < 5; k++) { const a0 = (k / 10) * Math.PI / 2, a1 = ((k + 1) / 10) * Math.PI / 2; B.geo(new THREE.SphereGeometry(R, 48, 2, 0, Math.PI * 2, Math.PI / 2 - a1, a1 - a0), M.plaster, x, y + H, z); }
@@ -128,7 +149,7 @@ export function buildMonuments(B, M, out) {
     B.box(M.marble, 33, 2, 14, px, y + 14, pz); B.box(M.tiles, 33, 0.4, 14, px, y + 16, pz);
     // guindaste de roda (movido por homens andando dentro da roda)
     B.box(M.darkWood, 0.4, 26, 0.4, x + R + 8, y, z + 6, { rz: -0.25 }); B.geo(new THREE.TorusGeometry(2.6, 0.2, 6, 20), M.darkWood, x + R + 10, y + 2.8, z + 6, { ry: Math.PI / 2 });
-    addCircle(x, z, R + 0.6, y - 1, y + H);
+
     out.exclusions.push([x - R - 14, x + R + 14, z - R - 26, z + R + 12]);
     S.pantheon = new V3(px, y, pz - 10);
   }

@@ -82,8 +82,8 @@ export function buildOstia(B, M, out) {
     B.geo(new THREE.CylinderGeometry(1.25, 1.35, H3 - H2, 16), M.travertine2, x, (H2 + H3) / 2, z); addCircle(x, z, 1.4, H2 - 0.1, H3); // (começa um pouco acima do piso: quem sobe o último lance passa rente ao tambor)
     for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; B.geo(new THREE.CylinderGeometry(0.16, 0.18, H3 - H2, 8), M.marble, x + Math.cos(a) * 1.5, (H2 + H3) / 2, z + Math.sin(a) * 1.5); }
     B.geo(new THREE.ConeGeometry(2.0, 1.6, 16), M.bronze, x, H3 + 0.8, z);
-    B.geo(new THREE.CylinderGeometry(0.9, 0.5, 0.8, 12), M.bronze, x, H3 + 2.6, z);
-    for (const [dx, dz] of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]) out.torches.push(new V3(x + dx, H3 + 3.2, z + dz)); // o fogo do braseiro
+    B.geo(new THREE.CylinderGeometry(0.9, 0.5, 0.8, 12), M.bronze, x, H3 + 1.9, z); // o braseiro apoiado na ponta do cone
+    for (const [dx, dz] of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]) out.torches.push(new V3(x + dx, H3 + 2.5, z + dz)); // o fogo do braseiro
     out.lights.push({ pos: new V3(x, H3 + 3.6, z), color: 0xffa040, intensity: 90, dist: 260, night: true }); // ilumina o porto e o mar à noite
     // a escada em volta da base (4 lances, um por lado) e a mureta do terraço
     const ring = 5.75, steps = 10, rise = (H1 - L0) / (steps * 4);

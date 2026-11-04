@@ -260,6 +260,8 @@ export function createMaterials(tex) {
 export function buildCity(scene, tex) {
   const M = createMaterials(tex);
   const B = new Batcher();
+  B.ground = terrainHeight; // bases apoiadas no chão descem até o terreno nos cantos (nada flutuando em declive)
+  const floors = []; B.onFloor = (r) => floors.push(r); // lajes de piso: o terreno fica por baixo delas
   const out = { torches: [], flags: [], animated: [], exclusions: [], zones: {}, spots: {}, M, lights: [] };
   const G = (x, z) => terrainHeight(x, z);
   const torch = (x, y, z, stand = true) => {
@@ -492,7 +494,8 @@ export function buildCity(scene, tex) {
   B.box(M.wood, 4, 0.3, 0.3, cx + 6, cy, cz - 6 - 0.8); B.box(M.wood, 4, 0.3, 0.3, cx + 6, cy, cz - 6 + 0.8);
   for (let i = -1; i <= 1; i++) B.box(M.wood, 0.3, 0.2, 2, cx + 6 + i * 1.3, cy + 0.3, cz - 6);
   B.box(M.limestone, 2.4, 1.6, 1.8, cx + 6, cy + 0.5, cz - 6);
-  for (let i = 0; i < 3; i++) B.geo(new THREE.CylinderGeometry(0.04, 0.04, 6, 4), M.rope, cx + 10 + i * 0.3, cy + 0.6, cz - 6 + (i - 1) * 0.4, { rz: Math.PI / 2 - 0.05 });
+  { const gy = G(cx + 13, cz - 6) + 0.05, a = Math.atan2(cy + 0.6 - gy, 6); // as cordas de puxar o bloco descem do trenó até o chão
+    for (let i = 0; i < 3; i++) B.geo(new THREE.CylinderGeometry(0.04, 0.04, Math.hypot(6, cy + 0.6 - gy), 4), M.rope, cx + 10 + i * 0.3, (cy + 0.6 + gy) / 2, cz - 6 + (i - 1) * 0.4, { rz: Math.PI / 2 - a }); }
   addBox(cx + 6, cz - 6, 4, 2, -5, cy + 2);
   // tendas
   for (let i = 0; i < 4; i++) {
@@ -543,7 +546,7 @@ export function buildCity(scene, tex) {
   B.box(M.wood, 0.42, 0.26, 0.7, -8.62, PY + 0.5, -132.5);
   B.box(M.gold, 0.44, 0.04, 0.72, -8.62, PY + 0.76, -132.5);
   addBox(-9.3, -132.5, 1.6, 1.6, -5, PY + 2.6);
-  for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 1.4, z); torch(-5.5, PY + 0.1, z, false); }
+  for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 0.9, z); torch(-5.5, PY + 1.85, z, false); }
   torch(18, PY - 0.3, -146); torch(18, PY - 0.3, -119);
   out.lights.push({ pos: new V3(2, PY + 5, -132.5), color: 0xffb070, intensity: 150, dist: 30 });
   out.spots.throne = new V3(-6, PY + 0.5, -132.5);
@@ -711,6 +714,7 @@ export function buildCity(scene, tex) {
     }
   }
   B.build(scene);
+  out.floors = floors;
   out.M = M; // as ruínas do Nilo usam os mesmos materiais
   return out;
 }
@@ -945,7 +949,7 @@ function stall(B, M, x, y, z, type, seed) {
   B.box(aw, 3.6, 0.05, 3.0, x, y + 2.7, z + 0.1, { rx: 0.14, uv: false });
   B.box(M.wood, 3.1, 0.9, 1.3, x, y, z + 0.3);
   const top = y + 0.9;
-  const pile = (mat, n, r = 0.12, sy = 1) => { for (let i = 0; i < n; i++) B.geo(new THREE.SphereGeometry(r, 7, 5), mat, x + rr(-1.3, 1.3), top + r * sy * 0.8 + (i % 3) * r * 0.5, z + 0.3 + rr(-0.45, 0.45), { sy }); };
+  const pile = (mat, n, r = 0.12, sy = 1) => { for (let i = 0; i < n; i++) B.geo(new THREE.SphereGeometry(r, 7, 5), mat, x + rr(-1.3, 1.3), top + r * sy * 0.8, z + 0.3 + rr(-0.45, 0.45), { sy }); };
   switch (type) {
     case 'bread': pile(M.bread, 16, 0.18, 0.6); B.geo(new THREE.CylinderGeometry(0.7, 0.8, 1.3, 12), M.mud, x - 2.6, y + 0.65, z + 1.4); break;
     case 'fruit':
@@ -955,6 +959,8 @@ function stall(B, M, x, y, z, type, seed) {
     case 'fish':
       for (let i = 0; i < 9; i++) B.geo(new THREE.SphereGeometry(0.12, 8, 5), M.fish, x + rr(-1.2, 1.2), top + 0.06, z + 0.3 + rr(-0.4, 0.4), { sx: 3, sy: 0.5, ry: rand() * 3 });
       for (let i = 0; i < 6; i++) B.geo(new THREE.SphereGeometry(0.1, 6, 4), M.fish, x - 1.4 + i * 0.55, y + 2.1, z - 1.2, { sy: 3 });
+      B.geo(new THREE.CylinderGeometry(0.03, 0.03, 3.6, 5), M.wood, x - 0.03, y + 2.42, z - 1.2, { rz: Math.PI / 2 }); // a vara dos peixes secando, em dois paus
+      for (const dx of [-1.8, 1.75]) B.box(M.wood, 0.08, 2.46, 0.08, x + dx, y, z - 1.2);
       break;
     case 'linen': for (let i = 0; i < 6; i++) B.geo(new THREE.CylinderGeometry(0.14, 0.14, 1.1, 10), i % 3 ? M.linen : M.awnings[i % 4], x - 1 + i * 0.4, top + 0.14, z + 0.3, { rx: Math.PI / 2, uv: false }); break;
     case 'spice':

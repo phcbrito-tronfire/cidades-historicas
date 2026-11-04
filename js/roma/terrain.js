@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { fbm, smoothstep, lerp, clamp } from '../comum/util.js';
 import { setTerrain, setWater } from '../comum/collision.js';
+import { pressAt } from '../comum/chao.js';
 import { COL, colGround, colTerrain } from './coliseu.js';
 
 export const WATER_Y = 0;
@@ -138,22 +139,7 @@ export function terrainHeight(x, z) {
   return h;
 }
 
-// lajes de piso (praças, cais, calçadas) registradas pela cidade: o chão fica logo abaixo delas — antes o terreno
-// ondulado atravessava o calçamento (manchas e briga de texturas) e o pé afundava ou flutuava
-const PRESS = new Map(), PCELL = 8;
-const pressAt = (x, z) => { const L = PRESS.get(Math.floor(x / PCELL) + ',' + Math.floor(z / PCELL)); if (!L) return Infinity; let t = Infinity;
-  for (const r of L) { const dx = x - r.x, dz = z - r.z, u = dx * r.c - dz * r.s, v = dx * r.s + dz * r.c; if (Math.abs(u) <= r.w / 2 + r.m && Math.abs(v) <= r.d / 2 + r.m) t = Math.min(t, r.top); } return t; };
-export function pressTerrain(mesh, rects, margin = 1.8) {
-  for (const q of rects) {
-    const r = { ...q, c: Math.cos(q.ry), s: Math.sin(q.ry), m: margin, top: q.top - 0.07 }, R = Math.hypot(q.w, q.d) / 2 + margin;
-    for (let i = Math.floor((q.x - R) / PCELL); i <= Math.floor((q.x + R) / PCELL); i++) for (let j = Math.floor((q.z - R) / PCELL); j <= Math.floor((q.z + R) / PCELL); j++) { const k = i + ',' + j; if (!PRESS.has(k)) PRESS.set(k, []); PRESS.get(k).push(r); }
-  }
-  if (!mesh) return;
-  const p = mesh.geometry.attributes.position; let n = 0;
-  for (let i = 0; i < p.count; i++) { const t = pressAt(p.getX(i), p.getZ(i)); if (t < p.getY(i)) { p.setY(i, t); n++; } }
-  p.needsUpdate = true; mesh.geometry.computeVertexNormals(); mesh.geometry.computeBoundingSphere();
-  return n;
-}
+export { pressTerrain } from '../comum/chao.js';
 // altura do chão para andar: o terreno, mas com as fileiras, rampas e túneis do Coliseu (e abaixo das lajes de piso)
 export function groundHeight(x, z) {
   const c = colGround(x, z);

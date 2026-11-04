@@ -10,7 +10,7 @@ import { makeWaterFX } from '../comum/waterfx.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight, WORLD } from './terrain.js';
+import { pressTerrain, buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight, WORLD } from './terrain.js';
 import { buildCity } from './buildings.js';
 import { setCharTextures } from './characters.js';
 import { placeSculptures, sculptureInstance, registerSculptures } from '../comum/sculptures.js';
@@ -113,6 +113,7 @@ async function main() {
   const horizon = buildHorizon(scene, tex);
   await step(0.35, 'Erguendo o templo de Ptah e as pirâmides de Gizé...');
   const city = buildCity(scene, tex);
+  { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
   const ruins = buildNileRuins(scene, city);
   if (city.pool) { city.pool.children.forEach((m) => (m.material = world.calmWater)); scene.add(city.pool); }
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');

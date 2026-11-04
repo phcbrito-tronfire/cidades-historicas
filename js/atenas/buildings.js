@@ -71,6 +71,8 @@ export function buildCity(scene, tex, available = new Set()) {
   const M = createMaterials(tex);
   const B = new Batcher();
   B.yxz = true; // peças giradas e inclinadas: inclinação no eixo da própria peça
+  B.ground = terrainHeight; // bases apoiadas no chão descem até o terreno nos cantos (nada flutuando em declive)
+  const floors = []; B.onFloor = (r) => floors.push(r); // lajes de piso: o terreno fica por baixo delas
   const out = {
     M, spots: {}, zones: {}, torches: [], lights: [], sculptures: [], exclusions: [], stalls: [], visitHouses: [], animated: [],
     boats: [], flags: [], statues: [], gates: [], available,
@@ -92,6 +94,7 @@ export function buildCity(scene, tex, available = new Set()) {
     S.owl5 = V(-150, terrainHeight(-150, -98), -98); // no alto do Areópago
   }
   B.build(scene);
+  out.floors = floors;
   for (const o of out.extra || []) scene.add(o);
   return out;
 }

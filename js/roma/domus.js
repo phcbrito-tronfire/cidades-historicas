@@ -38,7 +38,7 @@ export function buildDomus(B, M, out) {
     for (const zz of [zA0 - 6, zA0 - 11]) wall(s < 0 ? x0 : ax1, zz, s < 0 ? ax0 : x1, zz, [], M.plasterRed); }
   { const ix = X, iz = (zA0 + zA1) / 2;
     B.box(M.marble, 6, 0.35, 6, ix, Y, iz); B.box(M.water, 5.4, 0.05, 5.4, ix, Y + 0.2, iz); addBox(ix, iz, 6, 6, Y - 1, Y + 0.35);
-    for (const s of [-1, 1]) { B.geo(roofHalf(18, 4.5, 1.1, 0.2), M.tiles, ix, Y + H - 0.2, iz + s * 7.5, { ry: s > 0 ? Math.PI : 0 }); B.geo(roofHalf(4, 4.0, 1.0, 0.2), M.tiles, ix + s * 7, Y + H - 0.2, iz, { ry: s > 0 ? -Math.PI / 2 : Math.PI / 2 }); }
+    for (const s of [-1, 1]) { B.geo(roofHalf(18, 4.5, 1.1, 0.2), M.tiles, ix, Y + H - 0.2, iz + s * 7.5, { ry: s > 0 ? Math.PI : 0 }); B.geo(roofHalf(6.2, 6.0, 1.5, 0.2), M.tiles, ix + s * 9, Y + H - 0.2, iz, { ry: s > 0 ? -Math.PI / 2 : Math.PI / 2 }); }
     B.box(M.travertine2, 1.2, 1.1, 0.6, ax0 + 1, Y, zA0 - 1); B.box(M.plasterRed, 1.0, 1.0, 0.1, ax0 + 1, Y + 1.1, zA0 - 0.75); } // o lararium
   // ---- tablinum: a sala do dono, aberta para o átrio e para o jardim
   wall(x0, zA1, ax0, zA1, [], M.plasterRed); wall(ax1, zA1, x1, zA1, [], M.plasterRed);

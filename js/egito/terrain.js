@@ -4,6 +4,8 @@ import { makeWater } from '../comum/agua.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm, smoothstep, lerp, rand, rr, clamp } from '../comum/util.js';
 import { blocked, addCircle, setTerrain, setWater } from '../comum/collision.js';
+import { pressAt } from '../comum/chao.js';
+export { pressTerrain } from '../comum/chao.js';
 
 export const WATER_Y = 0;
 export const RIVER_HALF = 38;
@@ -81,7 +83,9 @@ export function waterLevelAt(x, z) {
   return -100;
 }
 
-setTerrain(terrainHeight);
+// altura do chão para andar: o terreno, mas logo abaixo das lajes de piso
+export function groundHeight(x, z) { return Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05); }
+setTerrain(groundHeight);
 setWater(waterLevelAt);
 
 const tmpC = new THREE.Color();

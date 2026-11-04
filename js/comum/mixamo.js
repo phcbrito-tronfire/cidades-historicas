@@ -96,10 +96,12 @@ async function loadGear(L, name, url, frac) {
   } catch (e) { /* sem o modelo: a peça feita de formas simples */ }
 }
 // coloca a peça: a faixa medida fica 'depth' abaixo do topo da cabeça, com 'gap' de folga de cada lado
-function gearOn(name, { depth = 0.1, gap = 0.012, tilt = 0, dz = 0, tint = null } = {}, headFit, attach) {
+function gearOn(name, { depth = 0.1, gap = 0.012, tilt = 0, dz = 0, tint = null, metal = null } = {}, headFit, attach) {
   const G = GEAR[name]; if (!G) return null;
   const fit = headFit(), k = (fit.rx * 2 + gap * 2) / G.w, inner = G.scene.clone(); inner.position.set(-G.cx, -G.y, -G.cz);
   if (tint) inner.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.multiply(new THREE.Color(tint)); } });
+  // metal: limite de metalicidade — metal puro sem reflexo do ambiente sai quase preto (as abas da gálea escureciam o rosto)
+  if (metal !== null) inner.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.metalness = Math.min(n.material.metalness ?? 1, metal); n.material.roughness = Math.max(n.material.roughness ?? 0, 0.32); } });
   const sc = new THREE.Group(); sc.scale.setScalar(k); sc.add(inner); const g = new THREE.Group(); g.add(sc);
   return attach('Head', g, new THREE.Vector3(fit.cx, fit.top - depth, fit.cz + dz), [tilt, 0, 0]);
 }

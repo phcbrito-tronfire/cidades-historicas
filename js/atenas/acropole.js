@@ -296,9 +296,10 @@ function scaffold(B, M, x, y, z, w, h) {
 }
 // guindaste de madeira com polia (as pedras eram içadas por cordas presas nas "orelhas" dos blocos)
 function crane(B, M, x, y, z, h) {
-  B.box(M.wood, 0.3, h, 0.3, x - 1.2, y, z, { rz: 0.08 });
-  B.box(M.wood, 0.3, h, 0.3, x + 1.2, y, z, { rz: -0.08 });
-  B.box(M.wood, 0.22, 7, 0.22, x, y + h - 1.5, z + 2.5, { rx: 1.1 });
+  B.box(M.wood, 0.3, h + 0.3, 0.3, x - 1.2, y - 0.3, z, { rz: 0.08 }); // (as pernas inclinadas entram um pouco no chão)
+  B.box(M.wood, 0.3, h + 0.3, 0.3, x + 1.2, y - 0.3, z, { rz: -0.08 });
+  B.box(M.wood, 1.7, 0.25, 0.3, x, y + h - 0.35, z); // a travessa no alto, onde a lança se apoia
+  B.box(M.wood, 0.22, 7, 0.22, x, y + h - 2.0, z + 2.5, { rx: 1.1 });
   B.box(M.darkWood, 0.03, h - 3, 0.03, x, y + 3, z + 5.6);
   B.box(M.marble, 1.6, 0.9, 1.0, x, y + 2.1, z + 5.6);
   addBox(x, z, 3, 1, y, y + h);

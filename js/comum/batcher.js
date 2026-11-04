@@ -25,6 +25,9 @@ export function worldUV(g, { s = 4, sv, y0 = 0 }) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+// ?scan=1 na URL: guarda a caixa de cada peça e a linha do código que a criou (varredura de peças flutuando)
+const SCAN = typeof location !== 'undefined' && /[?&]scan=1/.test(location.search);
+if (SCAN) globalThis.__pieces = [];
 const CELL = 100; // tamanho da quadra (m): menor = recorte mais fino, porém mais desenhos (sombra cobre 280 m)
 export class Batcher {
   constructor() { this.groups = new Map(); }
@@ -47,6 +50,7 @@ export class Batcher {
     // agrupa por material E por quadra do mapa: cada quadra vira uma malha própria, que a câmera (e as sombras e o
     // reflexo do Nilo) pode descartar quando está fora de vista — antes, a cidade inteira era desenhada sempre
     g.computeBoundingBox();
+    if (SCAN) { const fr = (new Error().stack || '').split('\n').filter((l) => /\.js/.test(l) && !/batcher\.js/.test(l)).slice(0, 2).map((l) => ((m) => (m ? m[1] + ':' + m[2] : '?'))(l.match(/(js\/[^?)]+\.js)(?:\?[^:)]*)?:(\d+)/))); globalThis.__pieces.push({ b: g.boundingBox.clone(), src: fr.join(' < ') }); }
     const c = g.boundingBox.getCenter(new THREE.Vector3());
     const key = Math.floor(c.x / CELL) + ',' + Math.floor(c.z / CELL);
     if (!this.groups.has(mat)) this.groups.set(mat, new Map());
