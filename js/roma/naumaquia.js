@@ -81,7 +81,8 @@ export function buildNaumachia(scene, M, crowdGeo, crowdMat, { fx = null, toast 
   // ---- a rodada
   let phase = 'wait', phaseT = 3, round = 0, said = {}, simT = 0; const later = []; // golpes agendados no tempo do jogo (pausa junto)
   const after = (dt, fn) => later.push({ t: simT + dt, fn });
-  const say = (k, m) => { if (!said[k] && toast) { said[k] = true; toast(m, 'quest', 4500); } };
+  let watching = false; // (avisos só para quem está nas arquibancadas ou na beira do lago)
+  const say = (k, m) => { if (!said[k] && toast && watching) { said[k] = true; toast(m, 'quest', 4500); } };
   const reset = () => {
     round++; said = {};
     ships.forEach((s, i) => {
@@ -215,6 +216,7 @@ export function buildNaumachia(scene, M, crowdGeo, crowdMat, { fx = null, toast 
     debug: () => ({ phase, phaseT, pairs: pairs.map((p) => [p.state, +(p.t || 0).toFixed(1), +p[0].pos.distanceTo(p[1].pos).toFixed(1)]), ships: ships.map((s) => [+s.pos.x.toFixed(1), +s.pos.z.toFixed(1), +s.v.toFixed(2), alive(s).length, s.ready]), javs: javs.length, deck: ships.map((s) => +s.deckY.toFixed(2)), crew: people.map((c) => c.state + "@" + c.r.root.getWorldPosition(new V3()).toArray().map((v) => v.toFixed(1)).join(",")) }),
     update(dt, t, player, active) {
       const near = Math.hypot(player.pos.x - N.x, player.pos.z - N.z) < 300, on = near && active;
+      watching = ((player.pos.x - N.x) / (N.a + 18)) ** 2 + ((player.pos.z - N.z) / (N.b + 18)) ** 2 < 1;
       im.visible = on; blood.update(dt, on); jav.visible = on;
       for (const s of ships) s.g.visible = on && !s.sunk;
       for (const c of people) c.r.root.visible = on && c.state !== 'gone';

@@ -92,7 +92,7 @@ export class Races {
     const near = Math.hypot(p.x - C.x, p.z - C.z) < 360 && night < 0.5;
     this.group.visible = near; this.crowd.visible = near;
     if (!near) return;
-    if (this.state === 'start') { this.timer -= dt; if (this.timer <= 0) { this.state = 'run'; if (Math.hypot(p.x - C.x, p.z - C.z) < 220) this.toast('Cai o pano branco: começa a corrida no Circo Máximo!'); } }
+    if (this.state === 'start') { this.timer -= dt; if (this.timer <= 0) { this.state = 'run'; if ((Math.abs(p.x - C.x) < C.hw + 25 && Math.abs(p.z - C.z) < C.hd + 25)) this.toast('Cai o pano branco: começa a corrida no Circo Máximo!'); } }
     const order = [...this.cars].sort((a, b) => b.u - a.u);
     for (const c of this.cars) {
       const P = 4 * LH + 2 * Math.PI * c.r;
@@ -122,8 +122,8 @@ export class Races {
     this.dolphins.forEach((d, i) => { d.rotation.z = lerp(d.rotation.z, i < laps ? -1.2 : 0, Math.min(1, dt * 3)); });
     if (this.state === 'run' && order[0].u >= LAPS) {
       this.state = 'end'; this.timer = 26; this.excite?.();
-      if (Math.hypot(p.x - C.x, p.z - C.z) < 260) this.onWin?.();
-      if (Math.hypot(p.x - C.x, p.z - C.z) < 260) this.toast(`Vitória dos ${order[0].team.name}! O auriga recebe a palma e a coroa.`, 'quest', 6000);
+      if ((Math.abs(p.x - C.x) < C.hw + 25 && Math.abs(p.z - C.z) < C.hd + 25)) this.onWin?.();
+      if ((Math.abs(p.x - C.x) < C.hw + 25 && Math.abs(p.z - C.z) < C.hd + 25)) this.toast(`Vitória dos ${order[0].team.name}! O auriga recebe a palma e a coroa.`, 'quest', 6000);
     } else if (this.state === 'end') { this.timer -= dt; if (this.timer <= 0) this.resetRace(); }
   }
 }
