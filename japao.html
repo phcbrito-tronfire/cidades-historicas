@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Japão, período Edo — Cidades Históricas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "./js/atenas/acropole.js": "./js/atenas/acropole.js?v=202611042031-a8a81ae",
+      "./js/atenas/agora.js": "./js/atenas/agora.js?v=202611042031-a8a81ae",
+      "./js/atenas/arquitetura.js": "./js/atenas/arquitetura.js?v=202611042031-a8a81ae",
+      "./js/atenas/artifacts-data.js": "./js/atenas/artifacts-data.js?v=202611042031-a8a81ae",
+      "./js/atenas/artifacts.js": "./js/atenas/artifacts.js?v=202611042031-a8a81ae",
+      "./js/atenas/audio.js": "./js/atenas/audio.js?v=202611042031-a8a81ae",
+      "./js/atenas/barcos.js": "./js/atenas/barcos.js?v=202611042031-a8a81ae",
+      "./js/atenas/buildings.js": "./js/atenas/buildings.js?v=202611042031-a8a81ae",
+      "./js/atenas/casas.js": "./js/atenas/casas.js?v=202611042031-a8a81ae",
+      "./js/atenas/dialogues.js": "./js/atenas/dialogues.js?v=202611042031-a8a81ae",
+      "./js/atenas/festas.js": "./js/atenas/festas.js?v=202611042031-a8a81ae",
+      "./js/atenas/ilhas.js": "./js/atenas/ilhas.js?v=202611042031-a8a81ae",
+      "./js/atenas/items.js": "./js/atenas/items.js?v=202611042031-a8a81ae",
+      "./js/atenas/luzes.js": "./js/atenas/luzes.js?v=202611042031-a8a81ae",
+      "./js/atenas/main.js": "./js/atenas/main.js?v=202611042031-a8a81ae",
+      "./js/atenas/mar.js": "./js/atenas/mar.js?v=202611042031-a8a81ae",
+      "./js/atenas/muralhas.js": "./js/atenas/muralhas.js?v=202611042031-a8a81ae",
+      "./js/atenas/npcs.js": "./js/atenas/npcs.js?v=202611042031-a8a81ae",
+      "./js/atenas/porto.js": "./js/atenas/porto.js?v=202611042031-a8a81ae",
+      "./js/atenas/quests.js": "./js/atenas/quests.js?v=202611042031-a8a81ae",
+      "./js/atenas/relevos.js": "./js/atenas/relevos.js?v=202611042031-a8a81ae",
+      "./js/atenas/ruas.js": "./js/atenas/ruas.js?v=202611042031-a8a81ae",
+      "./js/atenas/sky.js": "./js/atenas/sky.js?v=202611042031-a8a81ae",
+      "./js/atenas/terrain.js": "./js/atenas/terrain.js?v=202611042031-a8a81ae",
+      "./js/atenas/textures.js": "./js/atenas/textures.js?v=202611042031-a8a81ae",
+      "./js/atenas/ui.js": "./js/atenas/ui.js?v=202611042031-a8a81ae",
+      "./js/atenas/vegetacao.js": "./js/atenas/vegetacao.js?v=202611042031-a8a81ae",
+      "./js/comum/agua.js": "./js/comum/agua.js?v=202611042031-a8a81ae",
+      "./js/comum/animals.js": "./js/comum/animals.js?v=202611042031-a8a81ae",
+      "./js/comum/aquecer.js": "./js/comum/aquecer.js?v=202611042031-a8a81ae",
+      "./js/comum/batcher.js": "./js/comum/batcher.js?v=202611042031-a8a81ae",
+      "./js/comum/casco.js": "./js/comum/casco.js?v=202611042031-a8a81ae",
+      "./js/comum/chao.js": "./js/comum/chao.js?v=202611042031-a8a81ae",
+      "./js/comum/collision.js": "./js/comum/collision.js?v=202611042031-a8a81ae",
+      "./js/comum/desempenho.js": "./js/comum/desempenho.js?v=202611042031-a8a81ae",
+      "./js/comum/fauna.js": "./js/comum/fauna.js?v=202611042031-a8a81ae",
+      "./js/comum/merge.js": "./js/comum/merge.js?v=202611042031-a8a81ae",
+      "./js/comum/mixamo.js": "./js/comum/mixamo.js?v=202611042031-a8a81ae",
+      "./js/comum/montaria.js": "./js/comum/montaria.js?v=202611042031-a8a81ae",
+      "./js/comum/pisomodelo.js": "./js/comum/pisomodelo.js?v=202611042031-a8a81ae",
+      "./js/comum/plateia.js": "./js/comum/plateia.js?v=202611042031-a8a81ae",
+      "./js/comum/player.js": "./js/comum/player.js?v=202611042031-a8a81ae",
+      "./js/comum/post.js": "./js/comum/post.js?v=202611042031-a8a81ae",
+      "./js/comum/qualidade.js": "./js/comum/qualidade.js?v=202611042031-a8a81ae",
+      "./js/comum/roupas.js": "./js/comum/roupas.js?v=202611042031-a8a81ae",
+      "./js/comum/sculptures.js": "./js/comum/sculptures.js?v=202611042031-a8a81ae",
+      "./js/comum/submerso.js": "./js/comum/submerso.js?v=202611042031-a8a81ae",
+      "./js/comum/touch.js": "./js/comum/touch.js?v=202611042031-a8a81ae",
+      "./js/comum/util.js": "./js/comum/util.js?v=202611042031-a8a81ae",
+      "./js/comum/vestir.js": "./js/comum/vestir.js?v=202611042031-a8a81ae",
+      "./js/comum/vida.js": "./js/comum/vida.js?v=202611042031-a8a81ae",
+      "./js/comum/waterfx.js": "./js/comum/waterfx.js?v=202611042031-a8a81ae",
+      "./js/egito/artifacts-data.js": "./js/egito/artifacts-data.js?v=202611042031-a8a81ae",
+      "./js/egito/artifacts.js": "./js/egito/artifacts.js?v=202611042031-a8a81ae",
+      "./js/egito/audio.js": "./js/egito/audio.js?v=202611042031-a8a81ae",
+      "./js/egito/buildings.js": "./js/egito/buildings.js?v=202611042031-a8a81ae",
+      "./js/egito/characters.js": "./js/egito/characters.js?v=202611042031-a8a81ae",
+      "./js/egito/dialogues.js": "./js/egito/dialogues.js?v=202611042031-a8a81ae",
+      "./js/egito/festas.js": "./js/egito/festas.js?v=202611042031-a8a81ae",
+      "./js/egito/humans.js": "./js/egito/humans.js?v=202611042031-a8a81ae",
+      "./js/egito/items.js": "./js/egito/items.js?v=202611042031-a8a81ae",
+      "./js/egito/main.js": "./js/egito/main.js?v=202611042031-a8a81ae",
+      "./js/egito/nilo.js": "./js/egito/nilo.js?v=202611042031-a8a81ae",
+      "./js/egito/npcs.js": "./js/egito/npcs.js?v=202611042031-a8a81ae",
+      "./js/egito/quests.js": "./js/egito/quests.js?v=202611042031-a8a81ae",
+      "./js/egito/ruinas.js": "./js/egito/ruinas.js?v=202611042031-a8a81ae",
+      "./js/egito/sky.js": "./js/egito/sky.js?v=202611042031-a8a81ae",
+      "./js/egito/terrain.js": "./js/egito/terrain.js?v=202611042031-a8a81ae",
+      "./js/egito/textures.js": "./js/egito/textures.js?v=202611042031-a8a81ae",
+      "./js/egito/ui.js": "./js/egito/ui.js?v=202611042031-a8a81ae",
+      "./js/japao/audio.js": "./js/japao/audio.js?v=202611042031-a8a81ae",
+      "./js/japao/main.js": "./js/japao/main.js?v=202611042031-a8a81ae",
+      "./js/japao/natureza.js": "./js/japao/natureza.js?v=202611042031-a8a81ae",
+      "./js/japao/quests.js": "./js/japao/quests.js?v=202611042031-a8a81ae",
+      "./js/japao/sky.js": "./js/japao/sky.js?v=202611042031-a8a81ae",
+      "./js/japao/terrain.js": "./js/japao/terrain.js?v=202611042031-a8a81ae",
+      "./js/japao/textures.js": "./js/japao/textures.js?v=202611042031-a8a81ae",
+      "./js/japao/ui.js": "./js/japao/ui.js?v=202611042031-a8a81ae",
+      "./js/roma/anfora.js": "./js/roma/anfora.js?v=202611042031-a8a81ae",
+      "./js/roma/artifacts-data.js": "./js/roma/artifacts-data.js?v=202611042031-a8a81ae",
+      "./js/roma/artifacts.js": "./js/roma/artifacts.js?v=202611042031-a8a81ae",
+      "./js/roma/audio.js": "./js/roma/audio.js?v=202611042031-a8a81ae",
+      "./js/roma/barcos.js": "./js/roma/barcos.js?v=202611042031-a8a81ae",
+      "./js/roma/buildings.js": "./js/roma/buildings.js?v=202611042031-a8a81ae",
+      "./js/roma/caca.js": "./js/roma/caca.js?v=202611042031-a8a81ae",
+      "./js/roma/circo.js": "./js/roma/circo.js?v=202611042031-a8a81ae",
+      "./js/roma/coliseu.js": "./js/roma/coliseu.js?v=202611042031-a8a81ae",
+      "./js/roma/combate.js": "./js/roma/combate.js?v=202611042031-a8a81ae",
+      "./js/roma/cotidiano.js": "./js/roma/cotidiano.js?v=202611042031-a8a81ae",
+      "./js/roma/dialogues.js": "./js/roma/dialogues.js?v=202611042031-a8a81ae",
+      "./js/roma/domus.js": "./js/roma/domus.js?v=202611042031-a8a81ae",
+      "./js/roma/forum.js": "./js/roma/forum.js?v=202611042031-a8a81ae",
+      "./js/roma/hipogeu.js": "./js/roma/hipogeu.js?v=202611042031-a8a81ae",
+      "./js/roma/insulae.js": "./js/roma/insulae.js?v=202611042031-a8a81ae",
+      "./js/roma/items.js": "./js/roma/items.js?v=202611042031-a8a81ae",
+      "./js/roma/jogos.js": "./js/roma/jogos.js?v=202611042031-a8a81ae",
+      "./js/roma/legiao.js": "./js/roma/legiao.js?v=202611042031-a8a81ae",
+      "./js/roma/main.js": "./js/roma/main.js?v=202611042031-a8a81ae",
+      "./js/roma/mar.js": "./js/roma/mar.js?v=202611042031-a8a81ae",
+      "./js/roma/mercado.js": "./js/roma/mercado.js?v=202611042031-a8a81ae",
+      "./js/roma/monumentos.js": "./js/roma/monumentos.js?v=202611042031-a8a81ae",
+      "./js/roma/naumaquia.js": "./js/roma/naumaquia.js?v=202611042031-a8a81ae",
+      "./js/roma/npcs.js": "./js/roma/npcs.js?v=202611042031-a8a81ae",
+      "./js/roma/ostia.js": "./js/roma/ostia.js?v=202611042031-a8a81ae",
+      "./js/roma/portus.js": "./js/roma/portus.js?v=202611042031-a8a81ae",
+      "./js/roma/quests.js": "./js/roma/quests.js?v=202611042031-a8a81ae",
+      "./js/roma/sky.js": "./js/roma/sky.js?v=202611042031-a8a81ae",
+      "./js/roma/terrain.js": "./js/roma/terrain.js?v=202611042031-a8a81ae",
+      "./js/roma/textures.js": "./js/roma/textures.js?v=202611042031-a8a81ae",
+      "./js/roma/tiberina.js": "./js/roma/tiberina.js?v=202611042031-a8a81ae",
+      "./js/roma/trajano.js": "./js/roma/trajano.js?v=202611042031-a8a81ae",
+      "./js/roma/ui.js": "./js/roma/ui.js?v=202611042031-a8a81ae"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="loading">
+    <div class="load-inner">
+      <div class="eyebrow">Cidades Históricas</div>
+      <h1>Japão</h1>
+      <div class="era">Período Edo · aos pés do Monte Fuji · c. 1790</div>
+      <div class="bar"><div id="load-fill"></div></div>
+      <div id="load-step">Preparando a viagem no tempo...</div>
+      <p class="tip" id="load-tip"></p>
+    </div>
+  </div>
+
+  <div id="intro" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Era Kansei · c. 1790</div>
+      <h2>Aos pés do Monte Fuji</h2>
+      <p>O Japão vive o <b>período Edo</b>: há quase duzentos anos os xoguns Tokugawa governam sem guerras. Todo verão, milhares de peregrinos das confrarias <b>Fuji-kō</b> chegam a esta vila para subir a montanha sagrada.</p>
+      <p>Esta é a primeira etapa da cidade: a <b>paisagem</b>. Ande pelo vale, nade no <b>lago Kawaguchi</b>, ache a cachoeira na floresta e suba a <b>trilha Yoshida</b> até a cratera do Fuji. A vila, o santuário, o povo e as quatro estações estão sendo construídos.</p>
+      <p style="font-size:.95rem;opacity:.8">A região é inventada, mas inspirada em Fujiyoshida e no lago Kawaguchi. O Fuji está menor que o de verdade (cerca de 1:5), para dar para subir a pé.</p>
+      <div class="controls">
+        <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> mover (relativo à câmera)</div>
+        <div><kbd>Shift</kbd> correr / nadar forte</div>
+        <div><kbd>Ctrl</kbd> caminhar devagar</div>
+        <div><kbd>Espaço</kbd> pular · na água, mergulhar</div>
+        <div><kbd>C</kbd> passar o tempo (manhã, tarde, noite)</div>
+        <div><kbd>J</kbd> diário · <kbd>M</kbd> mapa</div>
+        <div><kbd>Mouse</kbd> arrastar gira a câmera</div>
+        <div><kbd>Roda</kbd> zoom</div>
+      </div>
+      <button id="btn-start" class="gold-btn">Começar a explorar</button>
+      <a class="back-link" href="index.html">← Escolher outra cidade</a>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <a id="btn-home" href="index.html#cidades" title="Voltar para a escolha de cidades (o progresso fica salvo)">&larr; Cidades</a>
+    <div id="loc"><div id="loc-place">Japão</div><div id="loc-time">Tarde</div></div>
+    <div id="journal">
+      <div class="j-head"><span>Diário de viagem</span><span id="j-count"></span></div>
+      <ul id="j-list"></ul>
+      <div class="j-foot">J para esconder</div>
+    </div>
+    <div id="hand" hidden></div>
+    <div id="prompt" hidden></div>
+    <div id="mini-wrap"><canvas id="minimap" width="200" height="200"></canvas><div class="mini-n">N</div></div>
+    <div id="keys">Setas mover · Shift correr · Ctrl caminhar · Espaço pular/mergulhar · C hora do dia · M mapa · Esc menu</div>
+    <div id="toasts"></div>
+  </div>
+
+  <div id="dialog" hidden>
+    <div class="d-box">
+      <div class="d-head"><span id="d-name"></span><span id="d-title"></span></div>
+      <div id="d-text"></div>
+      <div id="d-options"></div>
+    </div>
+  </div>
+
+  <div id="itemcard" hidden>
+    <div class="ic-name"></div>
+    <div class="ic-desc"></div>
+  </div>
+
+  <div id="bigmap" hidden>
+    <div class="bm-box">
+      <div class="bm-title">O pé norte do Monte Fuji</div>
+      <canvas id="bigmap-canvas" width="760" height="760"></canvas>
+      <div class="bm-foot">M para fechar</div>
+    </div>
+  </div>
+
+  <div id="pause" hidden>
+    <div class="scroll small">
+      <h2>Pausa</h2>
+      <button class="gold-btn" data-act="resume">Continuar</button>
+      <button class="ghost-btn" data-act="sound">Som: ligado</button>
+      <button class="ghost-btn" data-act="music">Música: ligada</button>
+      <button class="ghost-btn" data-act="quality">Gráficos: alto</button>
+      <button class="ghost-btn" data-act="reset">Recomeçar a jornada</button>
+      <a class="ghost-btn" href="index.html">Voltar à escolha de cidades</a>
+      <p style="font-size:.95rem;margin-top:1rem;opacity:.8" id="credits">Créditos: texturas de <a href="https://polyhaven.com" target="_blank">Poly Haven</a> (CC0) · personagens e animações do <a href="https://www.mixamo.com" target="_blank">Mixamo</a> (Adobe) · paisagem, árvores, água e música feitas em código.</p>
+    </div>
+  </div>
+
+  <div id="ending" hidden>
+    <div class="scroll">
+      <div class="eyebrow">Jornada concluída</div>
+      <h2>Aos pés do Fuji</h2>
+      <p id="end-text"></p>
+      <button class="gold-btn" id="btn-continue">Continuar explorando</button>
+      <a class="back-link" href="index.html">← Voltar às Cidades Históricas</a>
+    </div>
+  </div>
+
+  <div id="fallback" hidden>
+    <div class="scroll small"><h2>Ops!</h2><p id="fallback-text">Seu navegador não conseguiu iniciar o 3D (WebGL). Tente o Chrome ou o Edge atualizados, em um computador.</p><a class="gold-btn" href="index.html">Voltar</a></div>
+  </div>
+
+  <script type="module" src="js/japao/main.js?v=202611042031-a8a81ae"></script>
+</body>
+</html>

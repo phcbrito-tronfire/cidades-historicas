@@ -2,7 +2,8 @@
 const CITIES = [
   { id: 'egito', name: 'Mênfis', era: 'Egito Antigo · c. 1250 a.C.', desc: 'O templo de Ptah, as pirâmides de Gizé, o Nilo e a corte de Ramsés II.', open: true, href: 'egito.html', art: 'egypt' },
   { id: 'atenas', name: 'Atenas', era: 'Grécia Clássica · 432 a.C.', desc: 'O Parthenon recém-terminado, a ágora de Sócrates, o mar do Falero e as trirremes de Péricles.', open: true, href: 'atenas.html', art: 'athens' },
-  { id: 'roma', name: 'Roma', era: 'Império Romano · c. 117 d.C.', desc: 'O Coliseu inteiro para explorar, com jogos diferentes a cada dia, o Fórum, a legião em marcha e a Naumaquia de Trajano. Em construção: termas, aquedutos e o porto de Óstia.', open: true, href: 'roma.html', art: 'rome' },
+  { id: 'roma', name: 'Roma', era: 'Império Romano · c. 117 d.C.', desc: 'O Coliseu inteiro para explorar, com jogos diferentes a cada dia, o Fórum, a legião em marcha e a Naumaquia de Trajano, as termas, o aqueduto e o porto de Óstia.', open: true, href: 'roma.html', art: 'rome' },
+  { id: 'japao', name: 'Japão — aos pés do Fuji', era: 'Período Edo · c. 1790', desc: 'O lago Kawaguchi, a vila dos guias de peregrinos e a trilha até a cratera do Monte Fuji. Em construção: por enquanto, só a paisagem; a vila, o santuário, o povo e as quatro estações vêm a seguir.', open: true, href: 'japao.html', art: 'fuji' },
   { id: 'tenochtitlan', name: 'Tenochtitlan', era: 'Império Asteca · c. 1500', desc: 'A cidade sobre o lago Texcoco, com o Templo Mayor e os jardins flutuantes.', art: 'aztec' },
   { id: 'babilonia', name: 'Babilônia', era: 'Mesopotâmia · c. 570 a.C.', desc: 'A Porta de Ishtar, o zigurate Etemenanki e a corte de Nabucodonosor II.', art: 'babylon' },
   { id: 'cusco', name: 'Cusco', era: 'Império Inca · c. 1500', desc: 'O umbigo do mundo andino, o Coricancha dourado e a estrada para Machu Picchu.', art: 'inca' },
@@ -24,6 +25,11 @@ const ART = {
     <rect x="0" y="180" width="400" height="30" fill="#7a6a58"/>`,
   athens: `${sky('#2f6fb3', '#9cc8e8', '#e8f0e0')}<path d="M0 210 V160 Q120 120 200 130 T400 165 V210Z" fill="#9a8a64"/>
     <g fill="#f2ead8"><path d="M110 100 L200 75 L290 100Z"/><rect x="110" y="100" width="180" height="8"/>${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<rect x="${116 + i * 22}" y="108" width="10" height="34"/>`).join('')}<rect x="104" y="142" width="192" height="8"/></g>`,
+  fuji: `${sky('#3a5a8c', '#e8a0a0', '#f6dcc0')}<circle cx="318" cy="62" r="22" fill="#d8402e" opacity="0.85"/>
+    <path d="M40 180 Q150 150 175 88 Q190 70 200 72 Q212 70 226 88 Q252 150 360 180Z" fill="#5a6a8a"/>
+    <path d="M175 88 Q190 70 200 72 Q212 70 226 88 L236 104 Q222 96 214 108 Q205 96 196 110 Q186 98 166 106Z" fill="#f4f6fa"/>
+    <path d="M0 210 V178 Q100 168 200 176 T400 174 V210Z" fill="#3a5a3a"/><path d="M0 196 Q120 188 220 196 T400 192 V210 H0Z" fill="#5a8aa0" opacity="0.9"/>
+    <g fill="#b8382a"><rect x="60" y="150" width="5" height="30"/><rect x="95" y="150" width="5" height="30"/><rect x="52" y="146" width="56" height="6"/><rect x="57" y="156" width="46" height="4"/></g>`,
   aztec: `${sky('#1e4a6a', '#e89a5a', '#f4c88a')}<rect x="0" y="170" width="400" height="40" fill="#2f7a78"/>
     <g fill="#b89a74"><path d="M110 170 L130 140 H270 L290 170Z"/><path d="M135 140 L150 115 H250 L265 140Z"/><path d="M155 115 L168 92 H232 L245 115Z"/></g>
     <rect x="172" y="70" width="24" height="22" fill="#2c5d9c"/><rect x="204" y="70" width="24" height="22" fill="#a8392a"/>
