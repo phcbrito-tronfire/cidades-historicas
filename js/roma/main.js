@@ -154,7 +154,7 @@ async function main() {
   const games = new Games(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c), audio, quality, renderer });
   games.lastPhase = sky.current;
   const legion = new Legion(scene); // uma centúria marchando em volta do Coliseu
-  const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material);
+  const naumachia = buildNaumachia(scene, city.M, games.crowd.geometry, games.crowd.material, { fx, toast: (m, k, ms) => ui.toast(m, k, ms), quality });
   const races = new Races(scene, { crowdGeo: games.crowd.geometry, crowdMat: games.crowd.material, quality, toast: (m, k, ms) => ui.toast(m, k, ms), excite: () => { games.excite = 1; } }); // bigas no Circo Máximo
   const daily = new Daily(scene, city, { quality });
   quests.refs = { boats, mount, sea }; // objetivos que dependem do barco, da montaria e do naufrágio
@@ -294,7 +294,7 @@ async function main() {
     });
   };
 
-  window.__game = { games, legion, races, daily, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { naumachia, games, legion, races, daily, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
