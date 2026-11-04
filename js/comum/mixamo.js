@@ -149,6 +149,23 @@ function clothGeometry(key, prof, pleats = 26, depth = 0.86) {
   return g;
 }
 const GREEK = new Set(['chiton', 'himation', 'peplos', 'exomis', 'hoplite']);
+// Japão, período Edo: quimono (homem e mulher), samurai de hakama, lavrador, peregrino do Fuji, monge, sacerdote xintoísta e mercador
+const JP = new Set(['kimono', 'kimono_f', 'samurai', 'farmer', 'pilgrim', 'monk', 'kannushi', 'merchant']);
+const KTEX = new Map();
+// tecido de quimono: liso, listrado (shima), salpicado (kasuri), xadrez (kōshi) ou ondas, com a trama do algodão
+function kimonoTex(color, pattern = 'plain', accent = '#1a1a22') {
+  const key = color + pattern + accent; if (KTEX.has(key)) return KTEX.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = color; x.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 128; i += 2) { x.fillStyle = 'rgba(0,0,0,0.06)'; x.fillRect(0, i, 128, 1); x.fillRect(i, 0, 1, 128); }
+  x.fillStyle = accent; x.strokeStyle = accent;
+  if (pattern === 'shima') for (let i = 0; i < 128; i += 16) { x.globalAlpha = 0.55; x.fillRect(i, 0, 4, 128); x.fillRect(i + 8, 0, 1.5, 128); }
+  if (pattern === 'kasuri') { x.globalAlpha = 0.75; for (let i = 0; i < 128; i += 21) for (let j = 0; j < 128; j += 21) { const o = (j / 21) % 2 ? 10 : 0; x.fillRect(i + o, j, 7, 3); x.fillRect(i + o + 2, j - 2, 3, 7); } }
+  if (pattern === 'koshi') { x.globalAlpha = 0.4; for (let i = 0; i < 128; i += 32) { x.fillRect(i, 0, 5, 128); x.fillRect(0, i, 128, 5); } }
+  if (pattern === 'wave') { x.globalAlpha = 0.5; x.lineWidth = 3; for (let j = 0; j < 128; j += 22) for (let i = -16; i < 144; i += 32) { x.beginPath(); x.arc(i, j + 22, 16, Math.PI, 0); x.stroke(); } }
+  x.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.repeat.set(3, 3); KTEX.set(key, t); return t;
+}
 const CHITON = [[0.16, 0.08], [0.175, 0], [0.195, -0.12], [0.212, -0.26], [0.225, -0.4], [0.235, -0.5]];
 const LONGROBE = [[0.158, 0.07], [0.172, 0], [0.19, -0.14], [0.205, -0.34], [0.218, -0.6], [0.232, -0.82], [0.24, -0.92]];
 const PEPLOS = [[0.152, 0.1], [0.165, 0], [0.19, -0.16], [0.208, -0.36], [0.222, -0.6], [0.236, -0.84], [0.244, -0.94]];
@@ -277,10 +294,10 @@ export function makeHumanoid(o = {}) {
   if (look) o = { hair: LK.hair || 'natural', skin: 0xc48d62, collar: null, extras: LK.extras || [], ...o, outfit: 'explorer' };
   const outfit = o.outfit || 'kilt';
   const isExp = outfit === 'explorer';
-  const greek = GREEK.has(outfit);
-  const female = outfit === 'dress' || outfit === 'peplos';
+  const greek = GREEK.has(outfit), jp = JP.has(outfit);
+  const female = outfit === 'dress' || outfit === 'peplos' || outfit === 'kimono_f' || (jp && !!o.female);
   // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
-  const baseName = isExp ? (LK?.base || 'explorador') : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
+  const baseName = isExp ? (LK?.base || 'explorador') : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : jp ? (outfit === 'farmer' || outfit === 'pilgrim' ? 'brian' : pick(['bryce', 'brian'])) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group();
   // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
   root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
@@ -306,7 +323,7 @@ export function makeHumanoid(o = {}) {
   // tom médio da textura de pele do Mixamo (linear): peças repintadas de "pele" ficam iguais aos braços
   const SKIN_TINT = new THREE.Color().setRGB(0.62, 0.42, 0.36);
   const clothColor = o.cloth ?? 0xe8e0cc;
-  const hairStyle = o.hair || (isExp ? 'fedora' : greek ? (female ? 'up' : baseName === 'bryce' ? 'natural' : 'short') : 'short');
+  const hairStyle = o.hair || (isExp ? 'fedora' : jp ? (female ? 'shimada' : outfit === 'monk' ? 'bald' : 'chonmage') : greek ? (female ? 'up' : baseName === 'bryce' ? 'natural' : 'short') : 'short');
   const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
   // pele: o material do Mixamo vem como metal (metalness 1), o que embranquece o rosto sob luz pontual (tochas)
   const skinMat = (mat) => { const c = mat.clone(); c.metalness = 0; c.roughness = 0.62; return c; };
@@ -315,6 +332,15 @@ export function makeHumanoid(o = {}) {
     const mat = me.material;
     if (isExp) continue; // o traje do explorador é tingido e completado em roupas.js
     if (/Body/.test(p)) { const c = skinMat(mat); c.color.set(skin); c.side = THREE.DoubleSide; me.material = c; continue; }
+    if (jp) { // o quimono: o corpo de cima com o tecido; as pernas na cor das perneiras (os mantos cobrem)
+      if (/Hair/.test(p)) { me.visible = false; continue; }
+      if (/Eyelash/.test(p)) continue;
+      if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
+      if (/Shirt|Tops/.test(p)) { const c = fold(mat, 0xffffff); c.map = kimonoTex('#' + new THREE.Color(clothColor).getHexString(), o.pattern || 'plain', o.accent || '#1a1a22'); me.material = c; continue; }
+      if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, o.legColor ?? (outfit === 'farmer' ? 0x2a3450 : outfit === 'pilgrim' ? 0xf2efe6 : clothColor)); continue; }
+      if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; }
+      continue;
+    }
     if (greek) {
       if (/Hair/.test(p)) { // cabelo natural do modelo, escurecido (só nos homens; as mulheres usam o penteado preso)
         const keep = hairStyle === 'natural';
@@ -452,6 +478,21 @@ export function makeHumanoid(o = {}) {
       headPart(new THREE.CylinderGeometry(R * 1.05, R * 1.5, R * 2.4, 22, 1, true, Math.PI * 0.55, Math.PI * 0.9), vm, [0, -R * 0.9, -R * 0.25]);
     } break;
     case 'natural': case 'bald': break;
+    case 'chonmage': case 'ronin': { // o alto da cabeça raspado (sakayaki) com o cabelo dos lados e o topete dobrado para a frente (no rōnin, a cabeça não é raspada)
+      const hc = m(o.hairColor ?? 0x120e0c, { roughness: 0.7 });
+      if (hair === 'ronin') cap(hc, [1.05, 1, 1.06]);
+      else headPart(new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, Math.PI * 0.28, Math.PI * 0.26), hc, [0, 0.015, -0.012], [0, 0, 0], [R * 0.9, R * 1.02, R * 1.06]);
+      headPart(new THREE.CylinderGeometry(0.018, 0.022, 0.12, 8), hc, [0, R * 1.0, 0.0], [Math.PI / 2 - 0.15, 0, 0]);
+      headPart(new THREE.CylinderGeometry(0.021, 0.021, 0.015, 8), m(0xf2ede0), [0, R * 0.98, -0.045], [Math.PI / 2, 0, 0]); // a fitinha de papel (motoyui)
+    } break;
+    case 'shimada': { // o penteado shimada das moças de Edo: o cabelo puxado para cima, o coque dobrado no alto, o pente e os grampos
+      const hc = m(0x0e0a08, { roughness: 0.5 });
+      cap(hc, [1.06, 1.04, 1.08]);
+      headPart(new THREE.SphereGeometry(1, 14, 10), hc, [0, R * 1.05, -R * 0.25], [0.3, 0, 0], [R * 0.6, R * 0.32, R * 0.5]);
+      headPart(new THREE.SphereGeometry(1, 12, 8), hc, [0, R * 0.55, -R * 0.95], [0, 0, 0], [R * 0.65, R * 0.4, R * 0.35]);
+      headPart(new THREE.BoxGeometry(0.11, 0.035, 0.01), m(0x6a2a1a, { roughness: 0.4 }), [0, R * 0.95, R * 0.25], [0.5, 0, 0]); // o pente de laca (kushi)
+      for (const sd of [-1, 1]) headPart(new THREE.CylinderGeometry(0.004, 0.004, 0.16, 5), m(0xd8b84a, { metalness: 0.8, roughness: 0.3 }), [sd * 0.05, R * 1.0, -R * 0.1], [0, 0, Math.PI / 2 + sd * 0.4]); // os grampos (kanzashi)
+    } break;
     default: break; // careca (sacerdotes)
   }
 
@@ -546,6 +587,41 @@ export function makeHumanoid(o = {}) {
       hipsPart(new THREE.CylinderGeometry(0.158, 0.162, 0.045, 28, 1, true), m(o.sash ?? 0xa8402c, { roughness: 0.8, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
     } break;
   }
+  // ---- Japão: o quimono (gola cruzada, o lado esquerdo por cima), o obi e as peças de cada ofício
+  if (jp) {
+    const hx = '#' + new THREE.Color(clothColor).getHexString();
+    const kMat = m(0xffffff, { map: kimonoTex(hx, o.pattern || 'plain', o.accent || '#1a1a22'), roughness: 0.95, side: THREE.DoubleSide });
+    const long = outfit !== 'farmer' && outfit !== 'pilgrim';
+    const robe = outfit === 'samurai' || outfit === 'kannushi' ? m(0xffffff, { map: kimonoTex('#' + new THREE.Color(o.hakama ?? (outfit === 'kannushi' ? 0x8aa0c8 : 0x4a4a56)).getHexString(), outfit === 'samurai' ? 'shima' : 'plain', '#22222a'), roughness: 0.95, side: THREE.DoubleSide }) : kMat;
+    if (useCloth) skirt = cloth(clothGeometry(outfit, long ? LONGROBE : CHITON, 34), robe, -0.04, outfit === 'samurai' || outfit === 'kannushi' ? 0.9 : 0.72);
+    const ch = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0)), nk = bones.Neck ? bonePos('Neck') : ch.clone().add(new THREE.Vector3(0, 0.16, 0));
+    // o corpo do quimono: um tubo de tecido do peito à cintura, por cima da camiseta do modelo (a silhueta reta do quimono)
+    attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.178, 0.5, 30, 1, true), kMat), new THREE.Vector3(0, ch.y - 0.1, ch.z + 0.004), [0, 0, 0], [1, 1, 0.8]);
+    // as mangas largas (sode): até o punho, com o bolso pendurado embaixo (tamoto)
+    const along = (a, b) => { const d = new THREE.Vector3().subVectors(b, a), L = d.length(); const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()); const e = new THREE.Euler().setFromQuaternion(q); return { mid: a.clone().add(b).multiplyScalar(0.5), L, rot: [e.x, e.y, e.z] }; };
+    for (const sd of ['Left', 'Right']) {
+      if (!bones[sd + 'Arm'] || !bones[sd + 'ForeArm'] || !bones[sd + 'Hand']) continue;
+      const sh = bonePos(sd + 'Arm'), el = bonePos(sd + 'ForeArm'), wr = bonePos(sd + 'Hand');
+      const u = along(sh.clone().lerp(el, 0.18), el); attach(sd + 'Arm', new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, u.L + 0.04, 14, 1, true), kMat), u.mid, u.rot); // (começa depois do ombro: sem ombreira dura)
+      const v = along(el, wr.clone().lerp(el, 0.12)); const sl = new THREE.Group();
+      sl.add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, v.L, 14, 1, true), kMat));
+      const qi = new THREE.Quaternion().setFromEuler(new THREE.Euler(...v.rot)).invert(); const bag = new THREE.Mesh(new THREE.BoxGeometry(v.L * 0.95, 0.2, 0.025), kMat); bag.position.set(0, -0.11, 0).applyQuaternion(qi); bag.quaternion.copy(qi); sl.add(bag); // (o bolso cai para baixo do braço, na pose T)
+      attach(sd + 'ForeArm', sl, v.mid, v.rot);
+    }
+    // a gola (eri): duas faixas que descem dos lados do pescoço e se cruzam abaixo do peito (o lado esquerdo por cima)
+    const eriC = m(o.eri ?? 0xf2ede0, { roughness: 0.9, side: THREE.DoubleSide });
+    { const yT = nk.y - 0.01, yB = ch.y - 0.12, zF = ch.z + 0.142;
+      for (const sd of [1, -1]) { const a = new THREE.Vector3(sd * 0.065, yT, zF - 0.03), b = new THREE.Vector3(-sd * 0.03, yB, zF), g = along(a, b);
+        attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.05, g.L, 0.012), eriC), g.mid.add(new THREE.Vector3(0, 0, sd === xL ? 0.006 : 0)), g.rot); } }
+    // o obi: largo e com o laço atrás nas mulheres; estreito, de homem, nos outros
+    const obiC = m(o.obi ?? (female ? 0xb8862a : 0x3a2a22), { roughness: 0.8, side: THREE.DoubleSide });
+    if (female) { hipsPart(new THREE.CylinderGeometry(0.172, 0.178, 0.2, 30, 1, true), obiC, 0.16, [0, 0, 0], [1, 1, 0.86]); attach('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.09), obiC), new THREE.Vector3(0, hips.y + 0.17, hips.z - 0.17)); } // o laço do obi, nas costas (taiko)
+    else if (outfit !== 'monk') hipsPart(new THREE.CylinderGeometry(0.168, 0.172, 0.07, 30, 1, true), obiC, 0.06, [0, 0, 0], [1, 1, 0.86]);
+    if (outfit === 'samurai' && o.formal) for (const sd of [-1, 1]) attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.24), robe), new THREE.Vector3(sd * 0.2, nk.y - 0.05, ch.z), [0, 0, sd * 0.25]); // as asas do kamishimo (kataginu)
+    if (outfit === 'merchant' || o.haori) { const hm = m(o.haoriColor ?? 0x2a2a30, { roughness: 0.9, side: THREE.DoubleSide }); attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.178, 0.205, 0.62, 30, 1, true, 0.35, Math.PI * 2 - 0.7), hm), new THREE.Vector3(0, ch.y - 0.2, ch.z), [0, 0, 0], [1, 1, 0.84]); } // o haori aberto na frente
+    if (outfit === 'monk') { const kesa = m(o.kesa ?? 0x8a6a2a, { roughness: 0.9, side: THREE.DoubleSide }); attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.182, 0.19, 0.12, 30, 1, true), kesa), new THREE.Vector3(0, ch.y - 0.06, ch.z + 0.004), [0, 0, 0.62 * xL], [1, 1, 0.84]); attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.01), kesa), new THREE.Vector3(-xL * 0.06, ch.y - 0.14, ch.z + 0.15)); } // o kesa: a faixa do ombro esquerdo ao quadril e o painel (rakusu) no peito
+    if (outfit === 'pilgrim') hipsPart(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 30, 1, true), m(0xf6f2ea, { roughness: 0.9, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
+  }
   let tail = null; // cauda de touro cerimonial (some quando o rei está sentado)
   if (outfit === 'pharaoh') {
     // avental de ouro plissado na frente do saiote, cauda de touro cerimonial atrás e braceletes
@@ -636,6 +712,27 @@ export function makeHumanoid(o = {}) {
   for (const e of o.extras || []) {
     if (e === 'helmet') helmet(false);
     if (e === 'helmet_up') helmet(true);
+    // ---- acessórios japoneses
+    if (e === 'daisho' || e === 'katana') { // as duas espadas no obi, do lado esquerdo, com a ponta da bainha para trás (no 'katana' só a longa)
+      const saya = m(0x161214, { roughness: 0.35, metalness: 0.2 }), tsuka = m(0x2a2a3a, { roughness: 0.8 }), tsuba = m(0x3a3228, { metalness: 0.7, roughness: 0.45 });
+      const sword = (len, dz, dy) => { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.016, 0.014, len, 8), saya, 0, -len / 2 + 0.05, 0)); g.add(meshAt(new THREE.CylinderGeometry(0.035, 0.035, 0.008, 12), tsuba, 0, 0.06, 0)); g.add(meshAt(new THREE.CylinderGeometry(0.015, 0.016, len * 0.3, 8), tsuka, 0, 0.06 + len * 0.15, 0));
+        attach('Hips', g, new THREE.Vector3(hips.x + xL * 0.16, hips.y + 0.07 + dy, hips.z + 0.08 + dz), [Math.PI / 2 + 0.55, 0, 0]); };
+      sword(0.78, 0, 0); if (e === 'daisho') sword(0.52, 0.02, 0.04);
+    }
+    if (e === 'kasa' || e === 'kasa_pilgrim') { const fit = headFitOnce(), g = new THREE.Group(); // chapéu cônico de junco (sugegasa), largo
+      g.add(meshAt(new THREE.ConeGeometry(fit.rx * 3.2, 0.16, 22, 1, true), m(0xc8a868, { roughness: 1, side: THREE.DoubleSide }), 0, 0.06, 0));
+      g.add(meshAt(new THREE.TorusGeometry(fit.rx * 3.15, 0.006, 4, 24), m(0x8a6a3a), 0, -0.02, 0, [Math.PI / 2, 0, 0]));
+      if (e === 'kasa_pilgrim') g.add(meshAt(new THREE.CircleGeometry(0.05, 10), m(0x8a1a12), 0, 0.12, fit.rx * 1.2, [-1.2, 0, 0]));
+      attach('Head', g, new THREE.Vector3(fit.cx, fit.top - 0.02, fit.cz), [0.04, 0, 0]); }
+    if (e === 'eboshi') { const fit = headFitOnce(); attach('Head', meshAt(new THREE.CylinderGeometry(fit.rx * 0.72, fit.rx * 0.98, 0.2, 16), m(0x121012, { roughness: 0.6 }), 0, 0, 0, [0, 0, 0]), new THREE.Vector3(fit.cx, fit.top + 0.04, fit.cz - 0.03), [-0.35, 0, 0], [1, 1, 1.2]); } // o eboshi de laca preta, inclinado para trás
+    if (e === 'tenugui') { const fit = headFitOnce(); attach('Head', meshAt(new THREE.TorusGeometry(fit.rx + 0.012, 0.018, 6, 24), m(o.tenuguiColor ?? 0xe8ecf2, { roughness: 0.95 }), 0, 0, 0, [Math.PI / 2, 0, 0]), new THREE.Vector3(fit.cx, fit.top - 0.075, fit.cz), [0, 0, 0], [1, 1, (fit.rz + 0.012) / (fit.rx + 0.012)]); }
+    if (e === 'zue') { handR.add(meshAt(new THREE.CylinderGeometry(0.018, 0.018, 1.55, 8), m(0xf0ead8, { roughness: 0.8 }), 0, 0.3, 0)); handR.add(meshAt(new THREE.SphereGeometry(0.02, 8, 6), m(0xc8a040, { metalness: 0.8 }), 0, 1.05, 0.03)); } // o cajado de peregrino (kongō-zue) com o sino
+    if (e === 'yari') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.015, 0.017, 2.6, 6), m(0x2a1a12), 0, 0.6, 0)); g.add(meshAt(new THREE.ConeGeometry(0.022, 0.24, 4), m(0xc8ccd0, { metalness: 0.9, roughness: 0.25 }), 0, 2.0, 0)); handR.add(g); }
+    if (e === 'yumi') { const g = new THREE.Group(), bow = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.013, 4, 30, 0.75), m(0x3a2418, { roughness: 0.5 })); bow.rotation.z = Math.PI / 2 - 0.375; bow.position.set(-1.58, 0, 0); g.add(bow); g.add(meshAt(new THREE.CylinderGeometry(0.002, 0.002, 2.18, 3), m(0xf0ead8), -0.035, 0.0, 0)); attach('Spine2', g, new THREE.Vector3(0.05, chest.y + 0.15, chest.z - 0.2), [0, 0, 0.12]); } // o arco longo (yumi) nas costas
+    if (e === 'bokken') handR.add(meshAt(new THREE.CylinderGeometry(0.016, 0.02, 0.98, 8), m(0x8a6a44, { roughness: 0.7 }), 0, 0.42, 0));
+    if (e === 'hoe') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.016, 0.016, 1.3, 6), m(0x8a6a44), 0, 0.3, 0)); g.add(meshAt(new THREE.BoxGeometry(0.16, 0.22, 0.012), m(0x4a4a4c, { metalness: 0.6 }), 0, 0.94, 0.08, [0.5, 0, 0])); handR.add(g); } // a enxada (kuwa)
+    if (e === 'fan') handR.add(meshAt(new THREE.CircleGeometry(0.16, 12, 0, Math.PI * 0.6), m(0xf2e6c8, { side: THREE.DoubleSide }), 0, 0.12, 0.02, [0, Math.PI / 2, -0.5]));
+    if (e === 'basket_back') attach('Spine2', meshAt(new THREE.CylinderGeometry(0.2, 0.15, 0.45, 12, 1, true), m(0xb89a5a, { roughness: 1, side: THREE.DoubleSide }), 0, 0, 0), new THREE.Vector3(0, chest.y - 0.05, chest.z - 0.27), [0.15, 0, 0]);
     if (e === 'petasos' || e === 'pilos' || e === 'diadem') {
       const fit = headFitOnce(), hat = new THREE.Group();
       if (e === 'petasos') { // chapéu de viagem de feltro, aba larga

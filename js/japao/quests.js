@@ -15,6 +15,24 @@ export const OBJECTIVES = [
   { id: 'arvores', text: 'Suba até onde a floresta acaba e começa a pedra vulcânica' },
   { id: 'neve', text: 'Pise na neve do alto do Fuji' },
   { id: 'cume', text: 'Chegue à borda da cratera do Fuji' },
+  { id: 'oshi', text: 'Seja recebido por Tanabe, o oshi, na porta da casa dele' },
+  { id: 'sendatsu', text: 'Converse com Kihei, o líder dos peregrinos de Edo, no santuário' },
+  { id: 'kannushi', text: 'Aprenda a rezar com o sacerdote, diante do salão do santuário' },
+  { id: 'monge', text: 'Ouça o monge zen no templo da colina' },
+  { id: 'daikan', text: 'Fale com o oficial do governo na sala de audiências da residência' },
+  { id: 'sensei', text: 'Visite o mestre de esgrima no dōjō' },
+  { id: 'kyudo', text: 'Veja o mestre de arco na raia da residência' },
+  { id: 'lavradora', text: 'Converse com Ume nos arrozais' },
+  { id: 'chaya', text: 'Prove o chá e o dango de Ochiyo, na casa de chá perto do santuário' },
+  { id: 'pescador', text: 'Encontre o pescador na margem do lago' },
+  { id: 'ronin', text: 'Conheça Kanbei, o rōnin da casa de chá' },
+  { id: 'oleiro', text: 'Veja as peças do artesão numa loja da rua' },
+  { id: 'cabaneiro', text: 'Descanse na quinta estação, onde a floresta acaba' },
+  { id: 'kokan', text: 'Encontre o pintor Shiba Kōkan pintando o Fuji na beira do lago' },
+  { id: 'kyudo_tiro', text: 'Veja uma flecha acertar o alvo na raia de arco' },
+  { id: 'kagura', text: 'Assista à dança kagura no santuário (aperte C para passar os dias)' },
+  { id: 'cavalo', text: 'Monte o cavalo japonês (aperte H)' },
+  { id: 'himatsuri', text: 'Veja a festa do fogo à noite, com as tochas acesas na rua' },
 ];
 export const FINAL_REQ = 99;
 const SAVE = 'cidades-historicas:japao:v1';
@@ -33,7 +51,7 @@ export class Quests {
   isDone(id) { return !id || this.done.has(id); }
   count() { return this.done.size; }
   finalUnlocked() { return false; }
-  hintFor(o) { return this.hints[o.id] || null; }
+  hintFor(o) { const v = this.city.spots['npc_' + o.id]; return this.hints[o.id] || (v ? [v.x, v.z] : null); }
   complete(id) {
     if (this.done.has(id) || !OBJECTIVES.find((x) => x.id === id)) return false;
     this.done.add(id);
@@ -56,6 +74,7 @@ export class Quests {
     if (fujiH(p.x, p.z) > 360) this.complete('arvores');
     if (p.y > SNOW_Y + 25) this.complete('neve');
     if (fujiR(p.x, p.z) < FUJI.crater + 12 && p.y > FUJI.H - 15) this.complete('cume');
+    if (this.refs?.mount?.state === 'riding') this.complete('cavalo');
   }
   save() { try { localStorage.setItem(SAVE, JSON.stringify({ done: [...this.done] })); } catch (e) { /* sem armazenamento */ } }
   load() { try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) d.done.forEach((x) => this.done.add(x)); } catch (e) { /* */ } }

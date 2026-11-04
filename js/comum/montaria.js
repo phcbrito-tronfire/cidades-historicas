@@ -14,12 +14,14 @@ const V3 = THREE.Vector3;
 // fica o quadril do cavaleiro, na frente (+) ou atrás (−) do meio do corpo
 const KINDS = {
   cavalo: { len: 2.45, back: 1.42, seat: 0.12, belly: 0.34, shin: 0.22, walk: 2.2, run: 14.5, trot: 6.8, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
+  // cavalo japonês (raça nativa, como o kiso): baixo e robusto, ~1,3 m na cernelha — os cavalos do Japão de Edo eram pequenos
+  uma: { len: 2.25, back: 1.3, seat: 0.1, belly: 0.32, shin: 0.24, walk: 2.0, run: 12.5, trot: 6.2, wade: 0.7, r: 0.5, name: 'cavalo', model: 'cavalo', blanket: 0x2a2a3a, border: 0xb8261e },
   jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.8, run: 9.2, trot: 5.4, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
 };
 
 export class Mount {
-  constructor(scene, kind, { toast, onMount, roman = false } = {}) {
-    this.scene = scene; this.K = KINDS[kind]; this.kindName = kind; this.toast = toast || (() => {}); this.onMount = onMount; this.roman = roman;
+  constructor(scene, kind, { toast, onMount, roman = false, japanese = false } = {}) {
+    this.scene = scene; this.K = KINDS[kind]; this.kindName = KINDS[kind].model || kind; this.japanese = japanese; this.toast = toast || (() => {}); this.onMount = onMount; this.roman = roman;
     this.state = 'none'; // none · coming · waiting · riding
     this.pos = new V3(); this.h = 0; this.v = 0; this.loading = null;
   }
@@ -47,6 +49,15 @@ export class Mount {
         // peitoral: correia de couro no peito com três faleras de bronze (medalhas da cavalaria)
         const cz = L * 0.27, cy = -L * 0.12, strap = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.15, 0.035, 0.02), leather); strap.position.set(0, cy, cz); g.add(strap);
         for (const x of [-1, 0, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 16), bronze); d.rotation.x = Math.PI / 2; d.position.set(x * bw * 0.32, cy - 0.04 - (x === 0 ? 0.03 : 0), cz + 0.015); g.add(d); }
+      }
+      if (this.japanese) { // a sela japonesa (kura): de madeira laqueada, com o arção alto na frente e atrás, estribos de chinelo (abumi) e as borlas vermelhas
+        c.o.traverse((o) => { if (o.isMesh && o.material && !o.userData.jp) { o.material = o.material.clone(); o.material.color.setHex(0x9a6a46); o.userData.jp = true; } });
+        const lac = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.3, metalness: 0.1 }), red = new THREE.MeshStandardMaterial({ color: 0xb8261e, roughness: 0.9 }), gold = new THREE.MeshStandardMaterial({ color: 0xd8a84a, metalness: 0.8, roughness: 0.35 });
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.8, 0.06, bl * 0.7), lac); seat.position.y = 0.05; g.add(seat);
+        for (const sz of [-1, 1]) { const arc = new THREE.Mesh(new THREE.TorusGeometry(bw * 0.42, 0.03, 6, 14, Math.PI), lac); arc.position.set(0, 0.05, sz * bl * 0.36); arc.rotation.y = 0; g.add(arc); const rim = new THREE.Mesh(new THREE.TorusGeometry(bw * 0.42, 0.008, 4, 14, Math.PI), gold); rim.position.copy(arc.position); rim.position.z += sz * 0.02; g.add(rim); }
+        for (const sx of [-1, 1]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.24), lac); st.position.set(sx * bw * 0.62, -L * 0.2, 0.02); g.add(st); const strap = new THREE.Mesh(new THREE.BoxGeometry(0.015, L * 0.18, 0.025), red); strap.position.set(sx * bw * 0.6, -L * 0.11, 0.02); g.add(strap); }
+        for (const z of [-bl * 0.7, -bl * 0.95]) for (const sx of [-1, 1]) { const ta = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), red); ta.position.set(sx * bw * 0.45, -0.1, z); ta.rotation.x = Math.PI; g.add(ta); } // as borlas da retranca (shirigai)
+        const breast = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.15, 0.035, 0.025), red); breast.position.set(0, -L * 0.12, L * 0.27); g.add(breast);
       }
       g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       c.holder.add(g); this.blanket = g;

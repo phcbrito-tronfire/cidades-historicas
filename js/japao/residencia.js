@@ -63,7 +63,7 @@ export function buildResidence(B, M, out) {
     for (let i = 0; i < 10; i++) g.geo(new THREE.CylinderGeometry(0.025, 0.03, 1.0, 6), M.wood, -w / 2 + 2 + i * 0.4, FL + 1.3, -d / 2 + 0.2, { rz: 0.0, uv: false }); // espadas de madeira (bokken) no suporte
     for (const yy of [0.85, 1.72]) g.box(M.darkWood, 4.4, 0.08, 0.12, -w / 2 + 3.8, FL + yy, -d / 2 + 0.2); for (const xx of [-w / 2 + 1.6, -w / 2 + 6]) g.box(M.darkWood, 0.1, 1.8, 0.12, xx, FL, -d / 2 + 0.2); // o suporte
     g.box(M.wood, 2.2, 0.6, 0.06, 0, FL + 2.5, -d / 2 + 0.12); g.box(M.dark, 1.8, 0.4, 0.02, 0, FL + 2.6, -d / 2 + 0.16);
-    g.roof(M.kawara, w + 2.6, d + 2.6, (d + 2.6) * 0.36, FL + 3.6, { thick: 0.2, sori: 0.3, irimoya: true });
+    g.roof(M.kawara, w + 2.6, d + 2.6, (d + 2.6) * 0.36, FL + 3.6, { thick: 0.2, sori: 0.3, irimoya: true }); g.solid(0, 0, w + 1, d + 1, FL + 3.65, FL + 6, true); // (o teto segura a câmera)
     out.spots.dojo = new V3(...(() => { const [a, b] = g.W(0, 0); return [a, Y + FL, b]; })()); out.dojo = { f: g, w, d, FL, y: Y }; }
   // a raia de arco: o pavilhão de tiro (shajō), a areia e o montículo dos alvos (azuchi) a 28 m
   { const g = frame(B, cx - 8, Y, cz - 26, Math.PI / 2); // ao longo do muro norte, atirando para o leste

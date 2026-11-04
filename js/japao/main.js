@@ -15,6 +15,8 @@ import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { pressTerrain, buildTerrain, buildHorizon, terrainHeight, inLake, polyDist, fujiH, fujiR, WATER_Y, BOUNDS, LAKE, STREET, SHRINE, RESIDENCE, TEMPLE, FIELDS, FUJI, STREAM, TRAIL, SNOW_Y } from './terrain.js';
 import { buildNature } from './natureza.js';
 import { buildCity } from './buildings.js';
+import { Actors } from './npcs.js';
+import { Festas } from './festas.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
@@ -23,6 +25,7 @@ import { TimeOfDay } from './sky.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { Health, faint } from '../comum/vida.js';
+import { Mount } from '../comum/montaria.js';
 import { nextFrame } from '../comum/util.js';
 
 const ui = new UI();
@@ -90,7 +93,13 @@ async function main() {
     || Object.values(city.zones).some((q) => x > q[0] - m && x < q[1] + m && z > q[2] - m && z < q[3] + m);
   const nature = buildNature(scene, tex, quality, avoid);
   console.info('árvores:', nature.counts, '· casas:', city.houses.length);
+  await step(0.7, 'Chamando o povo da vila e os peregrinos...');
+  const actors = new Actors(scene, city);
+  actors.camera = camera;
+  actors.spawnKey(); actors.spawnTown();
   const fx = makeWaterFX(scene);
+  // a montaria (H): o cavalo japonês, pequeno e forte, com a sela laqueada
+  const mount = new Mount(scene, 'uma', { toast: (m) => ui.toast(m), japanese: true });
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
 
   await step(0.82, 'Preparando o explorador...');
@@ -114,6 +123,9 @@ async function main() {
   sky.horizon = horizon; sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
+  const festas = new Festas(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), glow: tex.glow, audio });
+  festas.onSeen = (id) => quests.complete(id);
+  quests.refs = { mount };
   setupWardrobe({ player, city: 'japao', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 
   await step(0.96, 'Desenhando o mapa da região...');
@@ -128,7 +140,7 @@ async function main() {
   post.grade.uniforms.uUnderCol.value.setRGB(0.16, 0.42, 0.44);
   post.grade.uniforms.uWarm.value = 0.15; post.grade.uniforms.uSat.value = 1.08; // verdes úmidos, sem o dourado do Mediterrâneo
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
-  applyQuality(quality, { renderer, sun, post, actors: null });
+  applyQuality(quality, { renderer, sun, post, actors });
   scene.traverse((o) => { if ((o.isInstancedMesh && (o.material.alphaTest > 0 || o.count > 300) && o.count !== undefined) || o === sky.clouds) o.layers.set(3); });
   scene.traverse((o) => {
     if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.metalness < 0.5 && !o.material.userData.keepEnv) o.material.envMapIntensity = 0.55;
@@ -151,14 +163,42 @@ async function main() {
     if (quests.done.size === 0) ui.toast('No fim da rua, o Fuji. A trilha dos peregrinos começa no santuário, no pé da montanha.', 'quest', 6500);
   });
 
+  // ---------------- conversas ----------------
+  const conversation = (k) => {
+    const def = k.def;
+    k.talking = true; player.locked = true; k.read = k.read || new Set();
+    ui.openDialog(def); audio.talk();
+    const close = () => { ui.closeDialog(); k.talking = false; player.locked = false; };
+    const topic = (i, page) => {
+      const tp = def.topics[i]; k.read.add(i);
+      if (def.objective) quests.complete(def.objective);
+      const last = page >= tp.a.length - 1;
+      ui.say(tp.a[page], [{ label: last ? 'Voltar às perguntas' : 'Continuar...', cb: () => (last ? menu(false) : topic(i, page + 1)) }]);
+    };
+    const menu = (first) => {
+      const opts = def.topics.map((tp, i) => ({ label: tp.q, read: k.read.has(i), cb: () => topic(i, 0) }));
+      opts.push({ label: 'Até logo.', cb: () => ui.say(def.bye, [{ label: '(Despedir-se com uma reverência)', cb: close }]) });
+      ui.say(first ? def.greet : ['O que mais quer saber?', 'Pergunte, viajante.', 'Mais alguma curiosidade?'][Math.floor(Math.random() * 3)], opts);
+    };
+    menu(true);
+  };
+  const quickLine = (o, name, text) => {
+    o.talking = true; player.locked = true; ui.openDialog({ name, title: '' }); audio.talk();
+    ui.say(text, [{ label: '(Seguir caminho)', cb: () => { ui.closeDialog(); o.talking = false; player.locked = false; } }]);
+  };
+  const NAMES = { man: 'Morador', woman: 'Moradora', merchant: 'Mercador', child: 'Criança', samurai: 'Samurai', pilgrim: 'Peregrino', farmer: 'Lavrador', monk: 'Monge', priest: 'Sacerdote' };
+  const talkTo = (target) => { if (target.type === 'npc') return conversation(target.o); const o = target.o; quickLine(o, NAMES[target.type] || 'Morador', (o.lines || ['...'])[Math.floor(Math.random() * (o.lines || ['...']).length)]); };
+
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
     if (!started || e.repeat) return;
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
-      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); break; }
+      case 'KeyE': { const tgt = actors.nearestInteractable(player.pos); if (tgt) talkTo(tgt); break; }
+      case 'KeyC': { const p = sky.next(); festas.onTime(sky.current); ui.setTime(p.label); ui.toast(p.msg); break; }
       case 'KeyJ': ui.toggleJournal(); break;
+      case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
     }
   });
@@ -171,7 +211,7 @@ async function main() {
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {
       quality = LEVELS[(LEVELS.indexOf(quality) + 1) % LEVELS.length]; saveQuality(quality);
-      applyQuality(quality, { renderer, sun, post, actors: null, cull });
+      applyQuality(quality, { renderer, sun, post, actors, cull });
       prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
@@ -207,7 +247,7 @@ async function main() {
     });
   };
 
-  window.__game = { player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -225,7 +265,7 @@ async function main() {
   };
   const slow = slowWatch(() => {
     const i = LEVELS.indexOf(quality); if (i >= LEVELS.length - 1) return;
-    quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, actors: null, cull });
+    quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, actors, cull });
     prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
     const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`;
     ui.toast(`O jogo estava pesado neste computador: gráficos no modo ${qualityLabel(quality)}. Dá para trocar no menu (Esc).`, 'quest', 7000);
@@ -244,7 +284,10 @@ async function main() {
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night, underwater.amount); return; }
     t += dt;
     player.night = sky.state.night;
-    if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt);
+    if (mount.state === 'riding') mount.update(dt, t, player);
+    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    actors.update(dt, t, player, quests, sky.state.night);
+    festas.update(dt, t, player, sky.state.night);
     if (started) health.update(dt, player);
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
@@ -254,10 +297,12 @@ async function main() {
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {
-      ui.prompt('');
+      { const tgt = !ui.dialogOpen && actors.nearestInteractable(player.pos); const parts = []; if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : (NAMES[tgt.type] || 'morador').toLowerCase()}`);
+        if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar'); else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
+        ui.prompt(parts.join(' &nbsp;·&nbsp; ')); }
       ui.setPlace(placeName());
       miniT -= dt;
-      if (miniT <= 0) { ui.drawMinimap(player, [], hints()); miniT = 0.1; }
+      if (miniT <= 0) { ui.drawMinimap(player, actors.key.map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) })), hints()); miniT = 0.1; }
       const sd = polyDist(STREAM, player.pos.x, player.pos.z).d, fall = Math.hypot(player.pos.x - 368, player.pos.z - 205);
       audio.update(dt, { nearWater: Math.max(Math.max(0, 1 - sd / 30) * 0.6, Math.max(0, 1 - fall / 70)), night: sky.state.night > 0.5, market: 0, sea: 0 });
       audio.windGain && (audio.windGain.gain.value = 0.2 + Math.min(0.5, Math.max(0, player.pos.y - 200) / 900)); // mais vento no alto da montanha
