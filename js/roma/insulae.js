@@ -6,7 +6,7 @@
 // Nas esquinas, as fontes de bairro (lacus) e os altarzinhos dos Lares das encruzilhadas (compita).
 import * as THREE from 'three';
 import { mat4 } from '../comum/batcher.js';
-import { addBox } from '../comum/collision.js';
+import { addBox, addRotBox } from '../comum/collision.js';
 import { roofHalf, pedimentGeo } from '../atenas/arquitetura.js';
 import { terrainHeight, tiberDist, TIBER_HALF, coastC, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, inPortus } from './terrain.js';
 import { COL } from './coliseu.js';
@@ -119,8 +119,7 @@ export function insula(B, M, out, o) {
   const rh = Math.min(2.4, d * 0.17);
   for (const s of [-1, 1]) geo(roofHalf(w + 0.9, d / 2 + 0.55, rh), M.tiles, 0, Ht + rh, 0, 0, s > 0 ? 0 : Math.PI, 0);
   for (const sx of [-1, 1]) geo(pedimentGeo(d, rh, 0.3), wall, sx * (w / 2 - 0.15), Ht, 0, 0, Math.PI / 2, 0);
-  const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
-  addBox(x, z, c * w + s * d, s * w + c * d, y - 1, y + Ht + rh);
+  addRotBox(x, z, w, d, ry, y - 1, y + Ht + rh); // (a caixa reta em volta do prédio girado era parede invisível na rua)
 }
 
 // fonte de bairro (lacus): tanque de pedra com a bica numa coluninha

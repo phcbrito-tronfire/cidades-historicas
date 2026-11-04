@@ -133,6 +133,8 @@ export function buildCity(scene, tex) {
   const M = createMaterials(tex);
   const B = new Batcher();
   B.yxz = true;
+  B.ground = terrainHeight; // bases apoiadas no chão descem até o terreno nos cantos (sem nada flutuando em declive)
+  const floors = []; B.onFloor = (r) => floors.push(r); // lajes de piso: o terreno fica por baixo delas
   const out = { M, spots: {}, zones: {}, torches: [], lights: [], sculptures: [], exclusions: [], stalls: [], visitHouses: [], animated: [], boats: [], flags: [], statues: [], gates: [] };
   buildColosseum(B, M, out);
   buildStreets(B, M);
@@ -150,5 +152,6 @@ export function buildCity(scene, tex) {
   B.build(scene);
   for (const o of out.extra || []) scene.add(o);
   out.trees = buildTrees(scene, M, out.exclusions, tex.quality);
+  out.floors = floors;
   return out;
 }

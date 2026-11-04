@@ -4,7 +4,7 @@
 // (O Erecteion e o templo de Atena Nike ainda não existem: serão construídos a partir de 427–421 a.C.)
 import * as THREE from 'three';
 import { doricTemple, doricShaft, doricCapital, ionicColumn, pedimentGeo, roofHalf } from './arquitetura.js';
-import { addBox, addCircle } from '../comum/collision.js';
+import { addBox, addCircle, addRotBox } from '../comum/collision.js';
 import { terrainHeight, ACRO, THEATER } from './terrain.js';
 import { distToStreets } from './ruas.js';
 import { rr, rand, fbm as fbmR } from '../comum/util.js';
@@ -31,7 +31,7 @@ export function buildAcropolis(B, M, out) {
       const y0 = top(mx, mz);
       B.box(M.poros, len, 7.6, 2.4, mx, y0 - 6, mz, { ry });
       B.box(M.wallStone, len, 0.25, 2.7, mx, y0 + 1.6, mz, { ry }); // coroamento
-      addBox(mx, mz, Math.abs(Math.cos(ry)) * len + Math.abs(Math.sin(ry)) * 2.4, Math.abs(Math.sin(ry)) * len + Math.abs(Math.cos(ry)) * 2.4, y0 - 12, y0 + 1.6);
+      addRotBox(mx, mz, len, 2.4, ry, y0 - 12, y0 + 1.6, true); // (caixa reta em volta do muro girado: parede/piso invisível)
     }
   }
 

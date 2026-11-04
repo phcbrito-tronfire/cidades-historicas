@@ -1,7 +1,7 @@
 // Muralha de Temístocles (embasamento de pedra e parte alta de adobe, com torres), as Longas Muralhas que ligam a
 // cidade ao porto e à praia do Falero, as portas (o Dípilon é a maior) e o cemitério do Cerâmico do lado de fora.
 import * as THREE from 'three';
-import { addBox } from '../comum/collision.js';
+import { addBox, addRotBox } from '../comum/collision.js';
 import { terrainHeight } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
 
@@ -34,8 +34,7 @@ export function buildWalls(B, M, out) {
       B.box(M.wallStone, len, 2.2, T + 0.3, x, y - 0.8, z, { ry });
       B.box(M.mudbrick, len, H - 1.4, T, x, y + 1.4, z, { ry });
       if (i % 2 === 0) B.box(M.mudbrick, Math.min(len, 1.6), 1.0, T * 0.35, x, y + H, z, { ry }); // ameias
-      const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
-      addBox(x, z, c * len + s * T, s * len + c * T, y - 1, y + H + 1);
+      addRotBox(x, z, len, T, ry, y - 1, y + H + 1, true);
       towerAcc += L / n;
       if (towerAcc > 55) { towerAcc = 0; B.box(M.wallStone, 8, 2.4, 8, x, y - 0.9, z, { ry }); B.box(M.mudbrick, 7.6, H + 1.2, 7.6, x, y + 1.4, z, { ry }); B.box(M.tiles, 8.4, 0.4, 8.4, x, y + H + 2.6, z, { ry }); addBox(x, z, 8, 8, y - 1, y + H + 3); }
     }

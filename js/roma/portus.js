@@ -3,11 +3,12 @@
 // armazéns (horrea) de tijolo em volta para o trigo do Egito e da África, guindastes de roda e pilhas de ânforas.
 // Aqui ficam atracadas a quadrirreme que o explorador pode comandar e a liburna da frota de Miseno.
 import * as THREE from 'three';
-import { addBox, addCircle } from '../comum/collision.js';
+import { addBox, addCircle, addRotBox } from '../comum/collision.js';
 import { roofHalf } from '../atenas/arquitetura.js';
 import { mat4 } from '../comum/batcher.js';
 import { terrainHeight, PORTUS } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
+import { amphoraPile, amphoraLean } from './anfora.js';
 
 const V3 = THREE.Vector3;
 const TX = 0.69, TZ = 0.72, NX = -0.72, NZ = 0.69;
@@ -51,10 +52,10 @@ export function buildPortus(B, M, out) {
     box(M.brick, L, H, D, 0, 0, 0); box(M.travertine, L + 0.4, 0.3, D + 0.4, 0, H, 0);
     for (let j = 0; j < 9; j++) { box(M.dark, 2.2, 3.4, 0.08, -L / 2 + 2.6 + j * 5.1, 0, D / 2 + 0.03); box(M.travertine, 2.8, 0.35, 0.2, -L / 2 + 2.6 + j * 5.1, 3.4, D / 2 + 0.08); }
     for (const s of [-1, 1]) B.geo(roofHalf(L + 0.8, D / 2 + 0.6, 2.2), M.tiles, 0, 0, 0, { frame: F.clone().multiply(mat4(0, H + 0.3 + 2.2, 0, 0, s > 0 ? 0 : Math.PI, 0)) });
-    const cs = Math.abs(Math.cos(ry)), sn = Math.abs(Math.sin(ry)); addBox(c.x, c.z, cs * D + sn * L, sn * D + cs * L, y - 1, y + H + 2);
+    addRotBox(c.x, c.z, L, D, ry - Math.PI / 2, y - 1, y + H + 2); // (a caixa reta em volta do armazém girado era parede invisível no cais)
     out.exclusions.push([c.x - 30, c.x + 30, c.z - 30, c.z + 30]);
     // ânforas empilhadas na frente
-    for (let j = 0; j < 14; j++) { const q = W(mu * (1 + 14 / Rin) + rr(-14, 14) * (v1 - v0) / R, mv * (1 + 14 / Rin) + rr(-14, 14) * (u0 - u1) / R); B.geo(new THREE.CylinderGeometry(0.17, 0.07, 0.8, 8), M.plasterRed, q.x, TOP + 0.4, q.z, { rz: rand() < 0.5 ? Math.PI / 2 : 0, ry: rand() * 6 }); }
+    for (let j = 0; j < 5; j++) { const t = (j - 2) * 6, q = W(mu * (1 + 14 / Rin) + t * (u1 - u0) / R, mv * (1 + 14 / Rin) + t * (v1 - v0) / R); if (j % 2) amphoraPile(B, M.plasterRed, q.x, TOP - 0.05, q.z, ry, 5, 3); else amphoraLean(B, M.plasterRed, q.x, TOP - 0.05, q.z, rand() * 6); } // ânforas em pilhas deitadas na frente do armazém
   }
   // dois guindastes de roda no cais
   for (const [u, v] of [[-R * 0.55, -Rin * 0.75], [R * 0.7, -Rin * 0.4]]) {

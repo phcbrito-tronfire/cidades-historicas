@@ -12,7 +12,7 @@ import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA } from './terrain.js';
+import { pressTerrain, buildTerrain, buildHorizon, terrainHeight, coastC, inRiver, WATER_Y, BOUNDS, FORUM, CIRCUS, PALATINE, CAPITOL, NAUMACHIA, ISOLA } from './terrain.js';
 import { COL, dOf } from './coliseu.js';
 import { buildCity } from './buildings.js';
 import { placeColossus } from './forum.js';
@@ -109,6 +109,7 @@ async function main() {
   await step(0.42, 'Erguendo o Anfiteatro Flávio, arco por arco...');
   tex.quality = quality; // (as copas das árvores têm mais ou menos tufos conforme os gráficos)
   const city = buildCity(scene, tex);
+  { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await placeColossus(scene, city);
   await placeLandmarks(scene, city); // as estátuas de bronze (Trajano, jardim da domus)
   const fx = makeWaterFX(scene);

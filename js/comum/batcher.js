@@ -57,8 +57,23 @@ export class Batcher {
   // y = base da peça
   box(mat, w, h, d, x, y, z, o = {}) {
     // order YXZ: primeiro gira (ry) e depois inclina no eixo da própria peça (telhados de casas giradas)
-    const m = mat4(x, y + h / 2, z, o.rx || 0, o.ry || 0, o.rz || 0, 1, 1, 1, o.order || (this.yxz && o.ry && (o.rx || o.rz) ? 'YXZ' : 'XYZ'));
-    this.add(new THREE.BoxGeometry(w, h, d), mat, o.frame ? o.frame.clone().multiply(m) : m, o.uv);
+    let m = mat4(x, y + h / 2, z, o.rx || 0, o.ry || 0, o.rz || 0, 1, 1, 1, o.order || (this.yxz && o.ry && (o.rx || o.rz) ? 'YXZ' : 'XYZ'));
+    let M = o.frame ? o.frame.clone().multiply(m) : m;
+    // (ground) peça apoiada no chão: nos quatro cantos a base não pode ficar no ar (em declive, o lado de baixo
+    // flutuava) — ela desce até o ponto mais baixo do terreno; e lajes de piso avisam (onFloor) para o terreno
+    // não atravessá-las (a briga de texturas entre o calçamento e o chão)
+    if (this.ground && !o.rx && !o.rz && !o.noGround) {
+      const e = M.elements; if (Math.abs(e[1]) < 1e-3 && Math.abs(e[9]) < 1e-3) { // só giro em y
+        const P = (lx, lz) => new V3(lx, -h / 2, lz).applyMatrix4(M), cs = [P(-w / 2, -d / 2), P(w / 2, -d / 2), P(-w / 2, d / 2), P(w / 2, d / 2), P(0, 0)];
+        const h0 = h, bot = cs[4].y, ts = cs.map((p) => this.ground(p.x, p.z)), lo = Math.min(...ts), hi = Math.max(...ts);
+        if (bot - hi < 0.6 && bot - lo > 0.05 && bot - lo < 4) { // encosta no chão em algum ponto e sobra vão em outro
+          const ext = bot - lo + 0.25; h += ext; y -= ext;
+          m = mat4(x, y + h / 2, z, 0, o.ry || 0, 0); M = o.frame ? o.frame.clone().multiply(m) : m;
+        }
+        if (this.onFloor && h0 <= 0.6 && w * d >= 3 && Math.abs(bot - ts[4]) < 0.7) this.onFloor({ x: cs[4].x, z: cs[4].z, w, d, ry: Math.atan2(-e[2], e[0]), top: bot + h0 });
+      }
+    }
+    this.add(new THREE.BoxGeometry(w, h, d), mat, M, o.uv);
   }
   // parede de adobe: levemente inclinada para dentro no topo e irregular
   adobe(mat, w, h, d, x, y, z, o = {}) {

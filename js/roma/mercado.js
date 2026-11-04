@@ -11,6 +11,7 @@ import { terrainHeight, FB, TIBER } from './terrain.js';
 import { temple, roundTemple } from './forum.js';
 import { roofHalf, pedimentGeo } from '../atenas/arquitetura.js';
 import { rr } from '../comum/util.js';
+import { amphoraPile, amphoraLean } from './anfora.js';
 
 const V3 = THREE.Vector3;
 export const MARKET = { x: (FB.x0 + FB.x1) / 2, z: (FB.z0 + FB.z1) / 2, hw: (FB.x1 - FB.x0) / 2, hd: (FB.z1 - FB.z0) / 2 };
@@ -51,7 +52,7 @@ export function buildMarket(B, M, out) {
     const lz = 1.6 + n * 0.42 + 0.9; B.box(M.travertine2, 5, 5.2, 1.8, lx, -5, lz, { frame: F });
     for (let a = -2.25; a <= 2.26; a += 0.5) for (const dz of [-0.6, 0, 0.6]) { const p = quayAt(tm + lx + a, -(lz + dz)); addBox(p.x, p.z, 0.5, 0.5, -6, 0.2); }
     // ânforas descarregadas e caixotes junto da escada
-    for (let k = 0; k < 6; k++) { const p = quayAt(tm + lx + 3.2 + (k % 3) * 0.5, 1.2 + Math.floor(k / 3) * 0.5); B.geo(new THREE.CylinderGeometry(0.2, 0.08, 0.85, 9), M.terracotta, p.x, y + 0.42, p.z); }
+    { const p = quayAt(tm + lx + 3.6, 1.6); amphoraPile(B, M.terracotta, p.x, y, p.z, QRY, 4, 3); }
     { const p = quayAt(tm + lx - 3.4, 1.6); B.box(M.wood, 1, 0.8, 1, p.x, y, p.z, { ry: QRY }); B.box(M.darkWood, 0.8, 0.6, 0.8, p.x + 0.1, y + 0.8, p.z, { ry: QRY + 0.3 }); addCircle(p.x, p.z, 0.7, y - 1, y + 1.4); }
   }
   // frades de pedra para amarrar os barcos
@@ -79,7 +80,7 @@ export function buildMarket(B, M, out) {
     if (type === 'frutas') for (let k = 0; k < 3; k++) { B.geo(new THREE.CylinderGeometry(0.32, 0.26, 0.22, 10), G.basket, cx, top + 0.11, z - 1.1 + k * 1.1); for (let f = 0; f < 6; f++) B.geo(new THREE.SphereGeometry(0.09, 7, 5), G.fruit[(k + i) % 4], cx + rr(-0.15, 0.15), top + 0.25 + rr(0, 0.06), z - 1.1 + k * 1.1 + rr(-0.15, 0.15)); }
     else if (type === 'pao') for (let k = 0; k < 7; k++) B.geo(new THREE.CylinderGeometry(0.16, 0.17, 0.08, 10), G.bread, cx + rr(-0.25, 0.25), top + 0.04, z - 1.4 + k * 0.45);
     else if (type === 'peixe') for (let k = 0; k < 8; k++) { const g = new THREE.SphereGeometry(0.06, 6, 4); g.scale(4, 1, 1.4); B.geo(g, G.fish, cx + rr(-0.2, 0.2), top + 0.05, z - 1.4 + k * 0.38, { ry: rr(-0.3, 0.3) }); }
-    else if (type === 'anforas') for (let k = 0; k < 6; k++) B.geo(new THREE.CylinderGeometry(0.17, 0.07, 0.75, 8), M.plasterRed, x + fx * (k < 3 ? -0.3 : 0.6), k < 3 ? y + 0.37 : top + 0.37, z - 1.2 + (k % 3) * 1.2);
+    else if (type === 'anforas') { amphoraLean(B, M.terracotta, x - fx * 0.5, y, z - 1.0); amphoraLean(B, M.terracotta, x - fx * 0.5, y, z + 1.0); amphoraPile(B, M.terracotta, cx, top, z, Math.PI / 2, 3, 1); }
     else if (type === 'panos') for (let k = 0; k < 5; k++) B.box(G.cloth[k % 4], 0.6, 0.12, 0.5, cx, top + k * 0.12, z - 0.8 + (k % 2) * 0.9);
     else if (type === 'ceramica') for (let k = 0; k < 6; k++) B.geo(new THREE.CylinderGeometry(0.14, 0.09, 0.28, 10), G.clay, cx + rr(-0.2, 0.2), top + 0.14, z - 1.3 + k * 0.5);
     else if (type === 'lamparinas') for (let k = 0; k < 10; k++) { const g = new THREE.SphereGeometry(0.07, 8, 5); g.scale(1, 0.45, 1.3); B.geo(g, G.clay, cx + rr(-0.25, 0.25), top + 0.03, z - 1.4 + k * 0.3); }

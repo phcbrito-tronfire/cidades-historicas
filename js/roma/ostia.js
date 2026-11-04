@@ -2,9 +2,10 @@
 // os horrea (armazéns de trigo, que vinha do Egito e da África para alimentar um milhão de pessoas), o farol, navios
 // navios atracados, a quadrirreme de patrulha passando ao largo e um barco a remo para quem quiser sair pelo mar.
 import * as THREE from 'three';
-import { addBox, addCircle } from '../comum/collision.js';
+import { addBox, addCircle, addRotBox } from '../comum/collision.js';
 import { terrainHeight, coastPoint, coastC } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
+import { amphoraPile, amphoraLean } from './anfora.js';
 import { insula } from './insulae.js';
 
 const V3 = THREE.Vector3;
@@ -17,12 +18,12 @@ export function buildOstia(B, M, out) {
   for (let a = -10; a <= 100; a += 6) {
     const p = coastPoint(a, 16), ry = tang(a), y = 0;
     B.box(M.travertine2, 6.4, 4.5, 8, p.x, -3.5, p.z, { ry }); // muralha do cais, já na água funda
-    addBox(p.x, p.z, 7, 7, -4, 1.0);
+    addRotBox(p.x, p.z, 6.4, 8, ry, -4, 1.0, true);
     if (Math.round(a) % 18 === 0) { B.geo(new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8), M.darkWood, p.x, 1.0 + 0.4, p.z); } // poste de amarração
     void y;
   }
   // três píeres de madeira ligando a praia ao cais
-  for (const a of [5, 48, 92]) for (let o = -4; o < 14; o += 3) { const p = coastPoint(a, o); B.box(M.wood, 3.2, 0.3, 3.2, p.x, 0.65, p.z, { ry: tang(a) }); B.geo(new THREE.CylinderGeometry(0.15, 0.15, 3, 6), M.darkWood, p.x, -0.8, p.z); addBox(p.x, p.z, 3.2, 3.2, -2, 0.95); }
+  for (const a of [5, 48, 92]) for (let o = -4; o < 14; o += 3) { const p = coastPoint(a, o); B.box(M.wood, 3.2, 0.3, 3.2, p.x, 0.65, p.z, { ry: tang(a) }); B.geo(new THREE.CylinderGeometry(0.15, 0.15, 3, 6), M.darkWood, p.x, -0.8, p.z); addRotBox(p.x, p.z, 3.2, 3.2, tang(a), -2, 0.95, true); }
   // horrea: os armazéns de dois andares, de tijolo, com o portal no meio e as lojas em arco (como os Horrea
   // Epagathiana, que ainda estão de pé em Óstia)
   for (let i = 0; i < 4; i++) {
@@ -31,7 +32,7 @@ export function buildOstia(B, M, out) {
     out.exclusions.push([p.x - 16, p.x + 16, p.z - 16, p.z + 16]);
   }
   // ânforas empilhadas e fardos no cais
-  for (let i = 0; i < 40; i++) { const a = rr(0, 90), p = coastPoint(a, rr(-12, -6)); B.geo(new THREE.CylinderGeometry(0.16, 0.08, 0.8, 8), M.plasterRed, p.x, terrainHeight(p.x, p.z) + 0.4, p.z, { rz: rand() < 0.4 ? Math.PI / 2 : 0, ry: rand() * 6 }); }
+  for (let i = 0; i < 12; i++) { const a = rr(0, 90), p = coastPoint(a, rr(-12, -6)); const yy = terrainHeight(p.x, p.z); if (i % 3) amphoraPile(B, M.plasterRed, p.x, yy, p.z, rand() * 6, 4, 3); else amphoraLean(B, M.plasterRed, p.x, yy, p.z, rand() * 6); } // ânforas deitadas em pilhas (e algumas encostadas)
   // farol (como o de Portus, de Cláudio): base quadrada com nichos em arco, segundo andar recuado e a lanterna
   // redonda com o braseiro. Uma escada de pedra contorna a base até o terraço, de onde se vê o porto e o mar.
   {

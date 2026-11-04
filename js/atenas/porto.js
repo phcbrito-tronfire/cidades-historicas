@@ -1,7 +1,7 @@
 // O porto (inspirado no Pireu de Hipódamo: cais de pedra, galpões das trirremes, o empório) e a praia do Falero.
 // Os barcos em si são modelos (main.js); aqui ficam o cais, os galpões, as cabanas, as redes e onde cada barco fica.
 import * as THREE from 'three';
-import { addBox } from '../comum/collision.js';
+import { addBox, addRotBox } from '../comum/collision.js';
 import { terrainHeight, coastPoint, along } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
 import { doricTemple } from './arquitetura.js';
@@ -17,8 +17,7 @@ export function buildHarbor(B, M, out) {
   for (let a = -300; a < -150; a += 6) {
     const p = coastPoint(a + 3, -7), ry = tangent(a + 3);
     B.box(M.quay, 6.2, QY + 4.6, 14.4, p.x, -4.6, p.z, { ry });
-    const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
-    addBox(p.x, p.z, c * 6.2 + s * 14.4, s * 6.2 + c * 14.4, -5, QY);
+    addRotBox(p.x, p.z, 6.2, 14.4, ry, -5, QY, true); // (a caixa reta em volta virava piso invisível sobre a água)
     // cabeços de amarração
     if (Math.round(a) % 18 === 0) { const q = coastPoint(a + 3, -1.2); B.box(M.poros, 0.5, 0.7, 0.5, q.x, QY, q.z); addBox(q.x, q.z, 0.5, 0.5, QY, QY + 0.7); }
   }

@@ -19,6 +19,18 @@ export function addBox(cx, cz, w, d, bottom, top, opts = {}) {
   boxes.push(b);
   return b;
 }
+// retângulo girado (w no eixo x local, d no z local, ry como no Batcher): a caixa reta que o envolve era bem maior que o
+// prédio e virava parede invisível nas ruas tortas; aqui as paredes são cobertas por blocos de ~1 m ao longo do contorno
+export function addRotBox(cx, cz, w, d, ry, bottom, top, fill = false) { // fill: cobre por dentro também (cais e plataformas onde se anda)
+  const c = Math.cos(ry), s = Math.sin(ry);
+  if (Math.abs(s) < 0.02 || Math.abs(c) < 0.02) { const sw = Math.abs(s) > 0.5; return addBox(cx, cz, sw ? d : w, sw ? w : d, bottom, top); }
+  const a = 0.9, nu = Math.max(1, Math.ceil(w / a)), nv = Math.max(1, Math.ceil(d / a)), du = w / nu, dv = d / nv, ring = 2;
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    if (!fill && i >= ring && i < nu - ring && j >= ring && j < nv - ring) continue; // por dentro não precisa (ninguém chega lá)
+    const u = -w / 2 + (i + 0.5) * du, v = -d / 2 + (j + 0.5) * dv, k = Math.min(du, dv) * 0.82;
+    addBox(cx + u * c + v * s, cz - u * s + v * c, k, k, bottom, top);
+  }
+}
 export function addCircle(x, z, r, bottom, top) {
   const c = { x, z, r, bottom, top, enabled: true };
   circles.push(c);
