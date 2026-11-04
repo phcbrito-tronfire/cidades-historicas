@@ -132,11 +132,13 @@ export function graftHead(model, meshes, bones, donorRoot) {
 }
 
 // ctx vem de makeHumanoid: { meshes, rootInv, bones, bonePos, hips, chest, neckY, part }
+// o explorador é moreno (pardo): o tom vai por cima da textura de pele do Mixamo, que é clara, no rosto e no corpo
+export const SKIN = 0xd6a27a;
 export function dress(ctx, lookId) {
-  if (lookId === 'explorer') return dressExplorer(ctx);
-  if (lookId === 'campo' || lookId === 'deserto') return dressDrake(ctx, lookId === 'deserto');
-  if (lookId === 'egito' || lookId === 'grecia' || lookId === 'roma') return dressAncient(ctx, lookId);
-  return [];
+  const out = lookId === 'explorer' ? dressExplorer(ctx) : lookId === 'campo' || lookId === 'deserto' ? dressDrake(ctx, lookId === 'deserto') : lookId === 'egito' || lookId === 'grecia' || lookId === 'roma' ? dressAncient(ctx, lookId) : [];
+  const tone = new THREE.Color(SKIN), done = new Set();
+  for (const me of ctx.meshes) { if (!/Body/.test(me.name) || done.has(me.material)) continue; const c = me.material.clone(); c.color.multiply(tone); me.material = c; done.add(c); }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

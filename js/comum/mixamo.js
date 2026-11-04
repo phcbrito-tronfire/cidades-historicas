@@ -568,7 +568,7 @@ export function makeHumanoid(o = {}) {
 
   // ---- pés descalços com sandália de couro (no lugar dos tênis do Mixamo, que escondem pés só esboçados)
   if (!isExp || LK?.sandals) {
-    const skinFlat = m(LK ? 0x6a4232 : new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 }); // (o explorador: no tom da pele dele)
+    const skinFlat = m(LK ? 0x5e3622 : new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 }); // (o explorador: no tom da pele dele)
     const sandal = m(outfit === 'pharaoh' ? 0xd9a23e : LK ? 0x5a3a22 : 0x8a6a42, { roughness: outfit === 'pharaoh' ? 0.35 : 0.85, metalness: outfit === 'pharaoh' ? 0.8 : 0 });
     for (const side of ['Left', 'Right']) {
       if (!bones[side + 'Foot']) continue;
