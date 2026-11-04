@@ -27,7 +27,7 @@ export function addRotBox(cx, cz, w, d, ry, bottom, top, fill = false) { // fill
   const a = 0.9, nu = Math.max(1, Math.ceil(w / a)), nv = Math.max(1, Math.ceil(d / a)), du = w / nu, dv = d / nv, ring = 2;
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
     if (!fill && i >= ring && i < nu - ring && j >= ring && j < nv - ring) continue; // por dentro não precisa (ninguém chega lá)
-    const u = -w / 2 + (i + 0.5) * du, v = -d / 2 + (j + 0.5) * dv, k = Math.min(du, dv) * 0.82;
+    const u = -w / 2 + (i + 0.5) * du, v = -d / 2 + (j + 0.5) * dv, k = fill ? Math.max(du, dv) * 1.12 : Math.min(du, dv) * 0.82; // (cheio: os blocos se sobrepõem, sem frestas onde o pé caía)
     addBox(cx + u * c + v * s, cz - u * s + v * c, k, k, bottom, top);
   }
 }

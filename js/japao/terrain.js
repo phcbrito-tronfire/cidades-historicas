@@ -36,6 +36,16 @@ export const TRAIL = (() => {
   return p;
 })();
 export const TRAIL_HW = 2.2;
+// ponto da trilha a uma fração do caminho (0 = santuário, 1 = cratera), com a direção
+export function trailAt(f) {
+  const L = []; let tot = 0; for (let i = 0; i < TRAIL.length - 1; i++) { const l = Math.hypot(TRAIL[i + 1][0] - TRAIL[i][0], TRAIL[i + 1][1] - TRAIL[i][1]); L.push(l); tot += l; }
+  let s = f * tot; for (let i = 0; i < L.length; i++) { if (s <= L[i] || i === L.length - 1) { const t = Math.min(1, s / L[i]), [ax, az] = TRAIL[i], [bx, bz] = TRAIL[i + 1]; return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, dx: (bx - ax) / L[i], dz: (bz - az) / L[i] }; } s -= L[i]; }
+  return { x: TRAIL[0][0], z: TRAIL[0][1], dx: 0, dz: 1 };
+}
+// as estações de descanso (gōme): fração da trilha, número, e o lado (as cabanas ficam a 7 m da trilha, num patamar)
+export const STATIONS = [[0.12, 1, 'Primeira estação'], [0.24, 2, 'Segunda estação'], [0.38, 3, 'Terceira estação'], [0.55, 5, 'Quinta estação'], [0.72, 7, 'Sétima estação'], [0.86, 8, 'Oitava estação']].map(([f, n, name]) => {
+  const p = trailAt(f), sd = n % 2 ? 1 : -1; return { f, n, name, x: p.x + p.dz * 7 * sd, z: p.z - p.dx * 7 * sd, ry: Math.atan2(-p.dz * sd, p.dx * sd), tx: p.x, tz: p.z };
+});
 
 // distância até uma polilinha (com o ponto mais próximo e o comprimento percorrido até ele)
 export function polyDist(L, x, z) {
@@ -88,6 +98,7 @@ LEVEL.street0 = base(STREET.x, STREET.z0); LEVEL.street1 = base(STREET.x, STREET
 LEVEL.shrine = base(SHRINE.x, SHRINE.z) - 1;
 LEVEL.residence = base(RESIDENCE.x, RESIDENCE.z) + RESIDENCE.lift;
 LEVEL.temple = base(TEMPLE.x, TEMPLE.z) + TEMPLE.lift;
+for (const st of STATIONS) st.y = base(st.x, st.z);
 
 export function terrainHeight(x, z) {
   let h = base(x, z);
@@ -101,6 +112,8 @@ export function terrainHeight(x, z) {
   { const d = Math.max(FIELDS.x0 - x, x - FIELDS.x1, FIELDS.z0 - z, z - FIELDS.z1, 0); const fl = 4.2 + Math.max(0, z + 700) * 0.007 + (x - FIELDS.x0) * 0.004; h = lerp(fl, h, ss(0, 40, d)); }
   // a trilha: um banco cortado na encosta (sem degraus bruscos de um lado para o outro)
   { const T = polyDist(TRAIL, x, z); if (T.d < 14 && z > 200) { const hc = base(T.x, T.z); h = lerp(hc, h, ss(TRAIL_HW, 12, T.d)); } }
+  // os patamares das estações (cortados na encosta, com a trilha ao lado no mesmo nível)
+  for (const st of STATIONS) { const d = Math.hypot(x - st.x, z - st.z); if (d < 26) h = lerp(st.y, h, ss(9.5, 20, d)); }
   // o lago: fundo de até 12 m, praia de seixos na borda
   { const L = LAKE, c = Math.cos(L.rot), s = Math.sin(L.rot), u = (x - L.x) * c + (z - L.z) * s, v = -(x - L.x) * s + (z - L.z) * c;
     const e = Math.hypot(u / L.a, v / L.b) + (fbm(x * 0.01, z * 0.01, 2) - 0.5) * 0.18;
@@ -203,7 +216,7 @@ float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); 
 vec4 w = vSplat / max(0.0001, vSplat.x + vSplat.y + vSplat.z + vSplat.w);
 vec2 P = vWP.xz;
 vec3 cS = tri(tSand, P / 5.0).rgb * vec3(0.86, 0.86, 0.84); // seixos cinzentos da beira do lago
-vec3 cG = tri(tGround, P / 4.5).rgb * vec3(0.92, 0.82, 0.68); // terra batida escura (cinza vulcânica no chão)
+vec3 cG = tri(tGround, P / 4.5).rgb * vec3(0.8, 0.74, 0.64); // terra batida escura (cinza vulcânica no chão)
 vec3 cGr0 = tri(tGrass, P / 5.0).rgb; float gL = dot(cGr0, vec3(0.3, 0.59, 0.11));
 vec3 cGr = mix(cGr0 * vec3(0.7, 1.05, 0.55), gL * vec3(1.05, 1.75, 0.68), 0.75); // o verde úmido do Japão
 cGr = mix(cGr, cGr * vec3(0.62, 0.68, 0.5), vForest * 0.6); // chão de floresta: musgo e sombra
@@ -256,7 +269,7 @@ export function buildTerrain(scene, tex) {
   const mat = terrainMaterial(tex);
   const X0 = -720, X1 = 720, ZA = -780, ZB = 340, ZC = 2360;
   const valley = terrainMesh(mat, X0, X1, ZA, ZB, 3.4);
-  const slope = terrainMesh(mat, X0, X1, ZB - 6.8, ZC, 6.8, (x, z) => (z < ZB ? 0.15 : 0)); // (a fileira que entra no vale fica um pouco abaixo)
+  const slope = terrainMesh(mat, X0, X1, ZB - 4.25, ZC, 4.25, (x, z) => (z < ZB ? 0.15 : 0)); // (4,25 m: fino o bastante para os patamares das estações) // (a fileira que entra no vale fica um pouco abaixo)
   const inside = (x, z) => x > X0 + 2 && x < X1 - 2 && z > ZA + 2 && z < ZC - 2;
   const far = terrainMesh(mat, -4400, 4400, -3600, 6000, 40, (x, z) => (inside(x, z) ? 6 : 0));
   far.receiveShadow = false;

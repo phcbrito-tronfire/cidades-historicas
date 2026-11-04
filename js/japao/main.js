@@ -14,6 +14,7 @@ import { makeUnderwater } from '../comum/submerso.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { pressTerrain, buildTerrain, buildHorizon, terrainHeight, inLake, polyDist, fujiH, fujiR, WATER_Y, BOUNDS, LAKE, STREET, SHRINE, RESIDENCE, TEMPLE, FIELDS, FUJI, STREAM, TRAIL, SNOW_Y } from './terrain.js';
 import { buildNature } from './natureza.js';
+import { buildCity } from './buildings.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
 import { Quests, OBJECTIVES } from './quests.js';
@@ -80,11 +81,15 @@ async function main() {
   scene.add(water);
   { const rb = water.onBeforeRender; water.onBeforeRender = function (...a) { const ev = PROFILE[quality].reflEvery; if (FRAME.n % (FRAME.far ? ev + 1 : ev)) return; rb.apply(this, a); }; }
   const horizon = buildHorizon(scene, tex);
-  await step(0.5, 'Plantando os cedros da alameda do santuário...');
-  const nature = buildNature(scene, tex, quality);
-  console.info('árvores:', nature.counts);
-  const city = { M: {}, torches: [], lights: [], floors: [], spots: { start: new THREE.Vector3(STREET.x + 2, 0, -330) }, zones: {} };
-  pressTerrain(world.terrain, city.floors);
+  await step(0.45, 'Erguendo as casas dos oshi e o santuário Sengen...');
+  const city = buildCity(scene, tex);
+  { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
+  await step(0.6, 'Plantando os cedros da alameda do santuário...');
+  // (depois dos prédios: nenhuma árvore nasce dentro de casa nem nos pátios)
+  const avoid = (x, z, m) => city.houses.some((h) => { const c = Math.cos(h.ry), s = Math.sin(h.ry), dx = x - h.x, dz = z - h.z, u = dx * c - dz * s, v = dx * s + dz * c; return Math.abs(u) < h.w / 2 + 1 + m && Math.abs(v) < h.d / 2 + 1 + m; })
+    || Object.values(city.zones).some((q) => x > q[0] - m && x < q[1] + m && z > q[2] - m && z < q[3] + m);
+  const nature = buildNature(scene, tex, quality, avoid);
+  console.info('árvores:', nature.counts, '· casas:', city.houses.length);
   const fx = makeWaterFX(scene);
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
 

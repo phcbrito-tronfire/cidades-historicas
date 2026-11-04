@@ -43,7 +43,7 @@ function layered(h, r0, n, seed) {
   const m = mergeGeometries(parts); m.computeVertexNormals(); return m;
 }
 
-export function buildNature(scene, tex, quality = 'leve') {
+export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
   const dens = quality === 'alto' ? 1 : quality === 'minimo' ? 0.4 : 0.7;
   const kinds = { sugi: [], pine: [], broad: [], fir: [], bamboo: [] };
   // grade com sorteio: 1 árvore a cada ~8 m onde a floresta é cheia
@@ -52,7 +52,7 @@ export function buildNature(scene, tex, quality = 'leve') {
     const x = gx + rr(-3.5, 3.5), z = gz + rr(-3.5, 3.5), f = forestAt(x, z);
     if (f < 0.12 || rnd() > f * dens) continue;
     const h = terrainHeight(x, z), fu = fujiH(x, z);
-    if (blocked(x, z, h, 1.0, 4)) continue;
+    if (avoid(x, z, 3) || blocked(x, z, h, 1.0, 4)) continue;
     const n = fbm(x * 0.012 + 4, z * 0.012, 2), up = fu / 330; // 0 no vale, 1 na linha das árvores
     let k;
     if (up > 0.55) k = rnd() < 0.75 ? 'fir' : 'broad';
@@ -64,7 +64,7 @@ export function buildNature(scene, tex, quality = 'leve') {
   }
   // bambuzal: nas margens do riacho perto da vila e na encosta sul do templo
   const grove = (cx, cz, R, n) => { for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * R, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-    if (polyDist(STREAM, x, z).d < STREAM_HW + 1.5) continue; const h = terrainHeight(x, z); if (blocked(x, z, h, 0.3, 3)) continue; kinds.bamboo.push([x, h, z, rr(0.8, 1.15), rnd() * 6]); } };
+    if (polyDist(STREAM, x, z).d < STREAM_HW + 1.5) continue; const h = terrainHeight(x, z); if (avoid(x, z, 1.5) || blocked(x, z, h, 0.3, 3)) continue; kinds.bamboo.push([x, h, z, rr(0.8, 1.15), rnd() * 6]); } };
   grove(240, -30, 34, Math.round(700 * dens)); grove(180, -210, 26, Math.round(420 * dens)); grove(TEMPLE.x - 20, TEMPLE.z + 70, 30, Math.round(500 * dens));
 
   const bark = new THREE.MeshStandardMaterial({ color: 0x5a4434, roughness: 0.95 });
