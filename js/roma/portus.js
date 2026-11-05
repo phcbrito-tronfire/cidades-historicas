@@ -25,7 +25,7 @@ export function buildPortus(B, M, out) {
       const t = (k + 0.5) / n, u = u0 + (u1 - u0) * t, v = v0 + (v1 - v0) * t;
       if (gap && Math.abs(u) < 13) continue;
       const p = W(u, v);
-      B.box(M.travertine, 2.6, TOP - BOT, L / n + 0.05, p.x, BOT, p.z, { ry });
+      B.box(M.travertine, 2.6, TOP - 0.3 - BOT, L / n + 0.05, p.x, BOT, p.z, { ry }); // (o topo fica debaixo da borda: no mesmo plano, as duas pedras brigavam e o cais ficava manchado)
       B.box(M.travertine2, 2.9, 0.3, L / n + 0.05, p.x, TOP - 0.3, p.z, { ry }); // borda do cais
       addCircle(p.x, p.z, 1.5, BOT - 1, TOP);
       if (k % 4 === 2) { const q = W(u * 0.97, v * 0.97); B.geo(new THREE.CylinderGeometry(0.3, 0.38, 0.9, 10), M.travertine2, q.x, TOP + 0.45, q.z); } // frade de amarração
@@ -35,7 +35,7 @@ export function buildPortus(B, M, out) {
   // o canal até o mar, com as paredes dos dois lados
   for (const s of [-1, 1]) for (let v = Rin + 2; v < 150; v += 3) {
     const p = W(s * 14.5, v); if (terrainHeight(p.x, p.z) < -4 && v > 100) break;
-    B.box(M.travertine, 2.6, TOP - BOT, 3.05, p.x, BOT, p.z, { ry: yawOf(0, 1) }); B.box(M.travertine2, 2.9, 0.3, 3.05, p.x, TOP - 0.3, p.z, { ry: yawOf(0, 1) }); addCircle(p.x, p.z, 1.5, BOT - 1, TOP);
+    B.box(M.travertine, 2.6, TOP - 0.3 - BOT, 3.05, p.x, BOT, p.z, { ry: yawOf(0, 1) }); B.box(M.travertine2, 2.9, 0.3, 3.05, p.x, TOP - 0.3, p.z, { ry: yawOf(0, 1) }); addCircle(p.x, p.z, 1.5, BOT - 1, TOP);
   }
   // o chão do cais em volta da bacia (calçamento de travertino) — uma faixa larga sobre o terreno
   for (let i = 0; i < 6; i++) {
