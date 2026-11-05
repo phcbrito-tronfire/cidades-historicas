@@ -38,7 +38,8 @@ export class Player {
 
 // tocha na mão esquerda, acesa sozinha à noite (a direita fica livre para os objetos pegos com P).
   // A luz já existe desde o início (só a intensidade muda): ligar/desligar uma luz recompila os shaders e trava.
-  makeTorch(glowTex) {
+  // style 'chochin' (Japão): no lugar da tocha, a lanterna de papel pendurada na ponta de uma vara
+  makeTorch(glowTex, style = 'torch') {
     const mount = new THREE.Group();
     const wood = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.9 });
     const cloth = new THREE.MeshStandardMaterial({ color: 0x2a1c12, roughness: 1 });
@@ -54,13 +55,26 @@ export class Player {
     glow.scale.setScalar(0.75); glow.position.y = 0.14;
     // queda suave (decay 1): ilumina o entorno sem estourar o rosto, que fica a meio metro da chama
     const light = new THREE.PointLight(0xffa050, 0, 14, 1); light.position.y = 0.3;
+    if (style === 'chochin') {
+      // a vara mais fina, sem o pano; da ponta desce o cordão e a lanterna (papel aceso por dentro, tampas laqueadas)
+      stick.scale.set(0.7, 1.25, 0.7); stick.position.y = 0.22; wrap.visible = false; flame.position.y = 0.56;
+      const paper = new THREE.MeshStandardMaterial({ color: 0xf4e4c0, emissive: 0xffa040, emissiveIntensity: 1.5, roughness: 0.9 });
+      const cap = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.5 });
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.12, 4), cap); cord.position.y = -0.06;
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), paper); body.scale.set(1, 1.35, 1); body.position.y = -0.24;
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.03, 12), cap); top.position.y = -0.11;
+      const bot = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.03, 12), cap); bot.position.y = -0.37;
+      for (let i = 1; i < 5; i++) { const rib = new THREE.Mesh(new THREE.TorusGeometry(0.1 * Math.sin((i / 5) * Math.PI), 0.003, 4, 20), cap); rib.rotation.x = Math.PI / 2; rib.position.y = -0.24 + Math.cos((i / 5) * Math.PI) * 0.135; flame.add(rib); } // as varetas de bambu do papel
+      f1.visible = false; f2.visible = false; wrap.userData.off = f1.userData.off = f2.userData.off = true; glow.position.y = -0.24; glow.scale.setScalar(0.6); light.position.y = -0.24; light.color.setHex(0xffb060);
+      flame.add(cord, body, top, bot);
+    }
     flame.add(f1, f2, glow, light);
     mount.add(stick, wrap, flame);
     mount.rotation.set(...TORCH_ROT); mount.position.set(...TORCH_GRIP);
     mount.traverse((n) => { n.layers.set(n.isSprite ? 1 : 0); if (n.isMesh) n.castShadow = n === stick || n === wrap; });
     this.rig.handL.add(mount);
-    this.torch = { mount, flame, f1, glow, light, on: 0, wq: new THREE.Quaternion() };
-    mount.visible = false;
+    this.torch = { mount, flame, f1, glow, light, on: 0, wq: new THREE.Quaternion(), style };
+    // (o suporte fica sempre visível; quem acende e apaga são as peças, em updateTorch — a luz nunca sai da cena)
   }
 
   // troca de roupa: o corpo novo entra no mesmo grupo raiz (quem guarda a posição, a câmera, o recorte por distância);
@@ -82,7 +96,7 @@ export class Player {
     T.on = want ? Math.min(1, T.on + dt * 2.5) : Math.max(0, T.on - dt * (this.swimming ? 8 : 2));
     // (a luz nunca sai da cena, só apaga: ligar e desligar uma luz faz o navegador recompilar todos os
     // materiais de uma vez — era a travada ao virar noite)
-    if (!T.parts) { T.parts = []; T.mount.traverse((n) => { if ((n.isMesh || n.isSprite) && n !== T.light) T.parts.push(n); }); }
+    if (!T.parts) { T.parts = []; T.mount.traverse((n) => { if ((n.isMesh || n.isSprite) && n !== T.light && !n.userData.off) T.parts.push(n); }); }
     const lit = T.on > 0.01; if (lit !== T.lit) { T.lit = lit; for (const n of T.parts) n.visible = lit; }
     T.light.intensity = 2.0 * T.on * (0.88 + Math.sin(t * 12.3) * 0.07 + Math.sin(t * 27.1) * 0.05);
     if (!lit) return;
@@ -91,7 +105,7 @@ export class Player {
     T.mount.getWorldQuaternion(T.wq).invert();
     T.flame.quaternion.copy(T.wq);
     const k = T.on * (0.9 + Math.sin(t * 14 + 1) * 0.08 + Math.sin(t * 31) * 0.05);
-    T.f1.scale.set(1, k, 1); T.f1.parent.scale.setScalar(Math.max(0.05, T.on));
+    if (T.style === 'chochin') { T.flame.scale.setScalar(1); } else { T.f1.scale.set(1, k, 1); T.f1.parent.scale.setScalar(Math.max(0.05, T.on)); }
     T.glow.material.opacity = 0.45 * T.on;
   }
 

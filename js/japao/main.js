@@ -108,7 +108,7 @@ async function main() {
   await step(0.82, 'Preparando o explorador...');
   const player = new Player(scene, camera);
   player.bounds = BOUNDS;
-  player.makeTorch(tex.glow);
+  player.makeTorch(tex.glow, 'chochin'); // (no Japão de Edo, à noite se andava com a lanterna de papel, não com tocha)
   const start = city.spots.start;
   player.place(start.x, start.z, 0); // de frente para o sul: o Fuji inteiro no fim da rua
   player.events.swim = (p, f, sp, dt, t) => fx.swim(p, f, sp, dt, t);
