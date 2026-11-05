@@ -6,10 +6,10 @@
 // À noite não há jogos. A plateia é uma multidão instanciada (barata), que balança e se levanta nos momentos fortes.
 import * as THREE from 'three';
 import { makeCrowd } from '../comum/plateia.js';
-import { Bout, Blood } from './combate.js';
+import { Bout, Blood, GATE } from './combate.js';
 import { Hunt } from './caca.js';
 import { COL } from './coliseu.js';
-import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
+import { makeHumanoid, animateHumanoid, playOnce, loadAnims, rigDetail } from '../comum/mixamo.js';
 import { creature } from '../comum/fauna.js';
 import { rr, rand, pick, angleLerp, lerp } from '../comum/util.js';
 
@@ -35,7 +35,8 @@ export class Games {
       for (let i = 0; i < n; i++) {
         const th = (i / n) * TAU, da = Math.abs(((th / step) % 1 + 1.5) % 1 - 0.5) * step;
         if (da * r < C.aisleW + 0.3 || rand() > fill) continue;
-        seats.push([(C.a0 + d) * Math.cos(th), y, (C.b0 + d) * Math.sin(th), th, k]);
+        const dc = C.podium + (k - 0.1) * C.row; // (o cartão fica na beirada do degrau: as pernas descem pela frente, não por dentro da pedra)
+        seats.push([(C.a0 + dc) * Math.cos(th), y, (C.b0 + dc) * Math.sin(th), th, k]);
       }
     }
     // senadores no pódio (de toga branca com a faixa púrpura)
@@ -58,6 +59,15 @@ export class Games {
     im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
     im.castShadow = false; im.receiveShadow = true; im.frustumCulled = false; im.visible = false;
     scene.add(im); this.crowd = im;
+    // perto de quem está na arquibancada, a plateia é gente de verdade: bonecos sentados no degrau (os mesmos do resto
+    // do jogo), que se levantam e gritam quando a luta esquenta. Eles vão para os lugares mais perto de quem anda pelos
+    // degraus; os cartões desses lugares somem. De longe, os cartões bastam.
+    this.seats = seats; this.cardMat = seats.map((_, i) => { const m4 = new THREE.Matrix4(); im.getMatrixAt(i, m4); return m4; });
+    this.pool = []; this.poolT = 0; this.hidden = new Set(); this.zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    { const LK = [(c) => ({ outfit: 'chiton', cloth: c, border: null, beard: rand() < 0.6 ? 'short' : null, base: 'bryce' }), (c) => ({ outfit: 'chiton', cloth: c, border: 0x8e2c22, beard: 'full', base: 'brian' }),
+        (c) => ({ outfit: 'peplos', cloth: c, border: 0xd8b45a, hair: 'veil', veilColor: pick([0xf2ecdc, 0xd8c8a8, 0x8e6a4a]) }), (c) => ({ outfit: 'peplos', cloth: c, border: null, hair: 'up' })];
+      const nP = quality === 'alto' ? 22 : quality === 'leve' ? 14 : 7;
+      for (let i = 0; i < nP; i++) { const r = makeHumanoid(LK[i % 4](pick(tunics))); if (r.skirt) r.skirt.visible = false; r.root.visible = false; scene.add(r.root); this.pool.push({ r, seat: -1, ph: rand() * 9 }); } }
     // ---- lutadores, juiz, venatores e feras (criados uma vez; aparecem conforme o programa)
     const skin = () => pick([0xc8a07e, 0xb48662, 0xa87a58, 0x8a5a3a, 0xd2aa8a]);
     const fighter = (kind) => {
@@ -69,14 +79,21 @@ export class Games {
         : kind === 'judge' ? { outfit: 'chiton', cloth: 0xf2ece0, border: 0x8e2c22, beard: 'full', extras: ['rudis'] }
         : kind === 'venator' ? { outfit: 'chiton', cloth: pick([0x8a6a3a, 0x6a7a4a, 0x9a3a28, 0xc8b89a]), border: null, skin: skin(), beard: rand() < 0.5 ? 'short' : null, extras: rand() < 0.5 ? ['spear', 'manica'] : ['spear', 'parmula'], shieldColor: 0x6a4a2a }
         : kind === 'musician' ? { outfit: 'chiton', cloth: 0xd8c8a0, border: 0x8e2c22, skin: skin() }
+        : kind === 'bearer' ? { outfit: 'worker', cloth: 0x4a3a2a, skin: skin(), beard: 'short' }
         : { outfit: 'chiton', cloth: 0xb0402c, border: 0xd8b45a, beard: 'short', extras: ['lorica', 'galea'] };
-      const r = makeHumanoid(look); r.root.visible = false; scene.add(r.root);
+      const r = makeHumanoid(look); r.root.visible = false; r.root.userData.cullFar = 200; scene.add(r.root); this.rigs.push(r); // (vistos de qualquer degrau da arquibancada)
       return { r, kind, pos: new THREE.Vector3(), h: 0, hp: 1, down: false };
     };
-    // várias lutas ao mesmo tempo, cada uma com o seu árbitro: mirmilão × trácio, reciário × secutor, hoplômaco × mirmilão
-    const nB = quality === 'alto' ? 3 : quality === 'leve' ? 2 : 1, homes = [[-13, 0], [13, 0], [0, -7]], kinds = [['murmillo', 'thraex'], ['retiarius', 'secutor'], ['hoplomachus', 'murmillo']];
+    // várias lutas ao mesmo tempo, cada uma com o seu árbitro, espalhadas pela arena: mirmilão × trácio, reciário ×
+    // secutor, hoplômaco × mirmilão, trácio × hoplômaco... (os golpes do Mixamo chegam depois; até lá, o golpe simples)
+    this.rigs = []; loadAnims(['gl_guarda', 'gl_lado', 'gl_alto', 'gl_baixo', 'gl_desce', 'gl_combo', 'gl_forte', 'gl_cabo', 'gl_chute', 'gl_bloqueio', 'gl_impacto', 'gl_cabeca', 'gl_morte_f', 'gl_morte_t', 'gl_vitoria']);
+    const nB = quality === 'alto' ? 6 : quality === 'leve' ? 5 : 3, homes = [[-14, -6], [12, 6], [-1, -8], [-14, 7], [12, -7], [0, 7]];
+    const kinds = [['murmillo', 'thraex'], ['retiarius', 'secutor'], ['hoplomachus', 'murmillo'], ['thraex', 'hoplomachus'], ['secutor', 'retiarius'], ['murmillo', 'thraex']];
     this.blood = new Blood(scene, Y);
     this.bouts = []; for (let i = 0; i < nB; i++) this.bouts.push(new Bout(this, fighter(kinds[i][0]), fighter(kinds[i][1]), fighter('judge'), homes[i]));
+    // os carregadores de Libitina: esperam na porta e, quando um gladiador morre, vão buscá-lo e o arrastam para fora
+    this.bearers = [fighter('bearer'), fighter('bearer')]; this.bodies = [];
+    this.carry = (bout, body) => this.bodies.push({ bout, body });
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
     this.venatores = []; for (let i = 0, n = quality === 'alto' ? 7 : quality === 'leve' ? 5 : 3; i < n; i++) this.venatores.push(fighter('venator'));
     this.huntSys = new Hunt(this, this.venatores);
@@ -95,7 +112,7 @@ export class Games {
       let lo = 1e9; const v = new THREE.Vector3();
       c.holder.traverse((m) => { if (!m.isSkinnedMesh) return; const p = m.geometry.attributes.position; for (let j = 0; j < p.count; j += 9) { m.getVertexPosition(j, v); m.localToWorld(v); lo = Math.min(lo, v.y); } });
       if (lo < 1e8) c.o.position.y -= lo - c.holder.position.y;
-      c.holder.visible = false; scene.add(c.holder); this.beasts.push(b);
+      c.holder.visible = false; c.holder.userData.cullFar = 200; scene.add(c.holder); this.beasts.push(b);
     });
   }
 
@@ -115,6 +132,7 @@ export class Games {
     const ev = night > 0.5 ? null : this.event;
     const show = near && ev && ev.id !== 'naumachia';
     this.crowd.visible = !!show;
+    this.updatePool(dt, t, p, !!show);
     this.uTime.value = t;
     this.excite = Math.max(0, this.excite - dt * 0.35); this.uExcite.value = this.excite;
     // cartaz ao entrar no Coliseu (uma vez por dia)
@@ -127,10 +145,63 @@ export class Games {
     vis(this.parade, show && ev.id === 'pompa');
     vis(this.venatores, show && ev.id === 'venatio');
     this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && this.huntSys.active.includes(b); });
+    vis(this.bearers, show && fightOn);
     if (!show) return;
+    { const cam = p; for (const r of this.rigs) if (r.root.visible) rigDetail(r, (r.root.position.x - cam.x) ** 2 + (r.root.position.z - cam.z) ** 2 + (r.root.position.y - cam.y) ** 2); } // (de longe, a malha simplificada)
+    if (fightOn) this.carryBodies(dt, t);
     if (fightOn) this.bouts.forEach((b, i) => { if (ev.id === 'munus' || i === 0) b.update(dt, t); });
     if (ev.id === 'pompa') this.procession(dt, t);
     if (ev.id === 'venatio') this.huntSys.update(dt, t);
+  }
+
+  // a gente de verdade nos degraus perto de quem está na arquibancada
+  updatePool(dt, t, p, show) {
+    const C = COL, im = this.crowd; let changed = false;
+    const free = (m) => { if (m.seat >= 0 && !this.hidden.has(m.seat)) { im.setMatrixAt(m.seat, this.cardMat[m.seat]); changed = true; } m.seat = -1; m.r.root.visible = false; };
+    const showCards = () => { for (const i of this.hidden) im.setMatrixAt(i, this.cardMat[i]); changed = this.hidden.size > 0 || changed; this.hidden.clear(); };
+    const inStands = show && Math.hypot(p.x / (C.a0 + C.D + 2), p.z / (C.b0 + C.D + 2)) < 1 && p.y > C.y + C.podiumH - 1;
+    if (!inStands) { if (this.pool.some((m) => m.seat >= 0) || this.hidden.size) { this.pool.forEach(free); showCards(); im.instanceMatrix.needsUpdate = true; } return; }
+    if ((this.poolT -= dt) <= 0) {
+      this.poolT = 0.5;
+      const near = [], cp = this.cam; for (let i = 0; i < this.seats.length; i++) { const s = this.seats[i], d2 = (s[0] - p.x) ** 2 + (s[2] - p.z) ** 2 + (s[1] - p.y) ** 2; if (d2 < 18 * 18 && d2 > 2.6 && (!cp || (s[0] - cp.x) ** 2 + (s[2] - cp.z) ** 2 > 2.6)) near.push([d2, i]); } // (ninguém senta onde está o explorador nem na frente da câmera)
+      near.sort((a, b) => a[0] - b[0]); const want = new Set(near.slice(0, this.pool.length).map((q) => q[1]));
+      // de perto, cartão nenhum: até onde vai a gente de verdade (e em volta do explorador e da câmera) os outros lugares
+      // ficam vazios — um cartão a dois metros parece o que é, uma foto recortada
+      { const rr2 = Math.max(36, near.length >= this.pool.length ? near[this.pool.length - 1][0] : 18 * 18), hide = new Set();
+        for (let i = 0; i < this.seats.length; i++) { const s = this.seats[i]; if ((s[0] - p.x) ** 2 + (s[2] - p.z) ** 2 + (s[1] - p.y) ** 2 <= rr2 || (cp && (s[0] - cp.x) ** 2 + (s[2] - cp.z) ** 2 + (s[1] - cp.y) ** 2 < 36)) hide.add(i); }
+        for (const i of this.hidden) if (!hide.has(i)) { im.setMatrixAt(i, this.cardMat[i]); changed = true; }
+        for (const i of hide) if (!this.hidden.has(i)) { im.setMatrixAt(i, this.zero); changed = true; }
+        this.hidden = hide; }
+      for (const m of this.pool) if (m.seat >= 0 && !want.has(m.seat)) free(m);
+      for (const m of this.pool) if (m.seat >= 0) want.delete(m.seat);
+      for (const m of this.pool) { if (m.seat >= 0) continue; const i = want.values().next().value; if (i === undefined) break; want.delete(i); m.seat = i; m.r.root.visible = true; }
+    }
+    if (changed) im.instanceMatrix.needsUpdate = true;
+    for (const m of this.pool) {
+      if (m.seat < 0) continue;
+      const [, y, , th, k] = this.seats[m.seat], podium = k < 0;
+      // sentado na beirada do degrau, os pés no degrau de baixo; no pódio, no banco de mármore. Na hora boa, de pé.
+      const stand = this.excite > 0.55 && ((m.seat * 0.618) % 1) < this.excite * 0.6;
+      const d = stand ? C.podium + (k + 0.45) * C.row : C.podium + k * C.row + 0.15;
+      if (podium) m.r.root.position.set(this.seats[m.seat][0], y - 0.45, this.seats[m.seat][2]); // (no banco do senador)
+      else m.r.root.position.set((C.a0 + d) * Math.cos(th), stand ? y : y - 0.45, (C.b0 + d) * Math.sin(th));
+      m.r.root.rotation.y = Math.atan2(-Math.cos(th) / (C.a0 + d), -Math.sin(th) / (C.b0 + d));
+      animateHumanoid(m.r, dt, 0, stand ? 'idle' : 'sit', t + m.ph);
+      rigDetail(m.r, (m.r.root.position.x - p.x) ** 2 + (m.r.root.position.z - p.z) ** 2);
+    }
+  }
+
+  // os carregadores vão até o morto, o pegam pelos pés e o arrastam até a porta; lá ele some e a luta seguinte começa
+  carryBodies(dt, t) {
+    const [m1, m2] = this.bearers, Y = COL.y, job = this.bodies[0];
+    const go = (f, x, z, sp) => { const dx = x - f.pos.x, dz = z - f.pos.z, d = Math.hypot(dx, dz), s = Math.min(d, sp * dt); if (d > 0.05) { f.pos.x += dx / d * s; f.pos.z += dz / d * s; f.h = angleLerp(f.h, Math.atan2(dx, dz), Math.min(1, dt * 6)); } f.pos.y = Y; f.r.root.position.copy(f.pos); f.r.root.rotation.set(0, f.h, 0); animateHumanoid(f.r, dt, d > 0.3 ? sp : 0, d > 0.3 ? 'walk' : 'idle', t); return d < 0.4; };
+    if (!m1.pos.lengthSq()) { m1.pos.set(GATE.x - 1, Y, -1.4); m2.pos.set(GATE.x - 1, Y, 1.4); m1.h = m2.h = Math.PI / 2; }
+    if (!job) { go(m1, GATE.x - 1, -1.4, 1.2); go(m2, GATE.x - 1, 1.4, 1.2); return; }
+    const B = job.body;
+    if (!job.got) { const a = go(m1, B.pos.x - 0.5, B.pos.z - 0.6, 1.8), b = go(m2, B.pos.x + 0.5, B.pos.z - 0.6, 1.8); if (a && b) job.got = true; return; }
+    const tx = GATE.x - 3, a = go(m1, tx, -0.5, 0.9); go(m2, tx, 0.5, 0.9);
+    B.pos.set((m1.pos.x + m2.pos.x) / 2 + Math.sin(m1.h) * -1.2, Y, (m1.pos.z + m2.pos.z) / 2 + Math.cos(m1.h) * -1.2); B.r.root.position.copy(B.pos); // (arrastado atrás deles)
+    if (a) { B.gone = true; B.r.root.visible = false; job.bout.body = null; this.bodies.shift(); }
   }
 
   // desfile: a fila dá a volta na arena pela beirada

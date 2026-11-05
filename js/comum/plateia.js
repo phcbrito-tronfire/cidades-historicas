@@ -5,13 +5,13 @@
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid } from './mixamo.js';
 
-const TW = 128, TH = 192, W = 1.1, H = 1.65, SEAT = 0.47; // tamanho do cartão (m) e a altura do assento no cartão
+const TW = 128, TH = 208, W = 1.1, H = 1.82, SEAT = 0.47; // tamanho do cartão (m) e a altura do assento no cartão
 const COLS = 8;
 
 // roupas: cada uma com três cores; para cada (roupa, cor): sentado/de pé × frente/costas = 4 fotos
 const LOOKS = [
   (c) => ({ outfit: 'chiton', cloth: c, border: null, beard: 'short', base: 'bryce' }),
-  (c) => ({ outfit: 'himation', cloth: c, border: c === 0xf4efe2 ? 0x6a1a4a : null, beard: null, base: 'brian' }),
+  (c) => ({ outfit: 'chiton', cloth: c, border: c === 0xf4efe2 ? 0x6a1a4a : 0x8e2c22, beard: null, base: 'brian' }), // (o manto himation de lado vira uma tábua na foto)
   (c) => ({ outfit: 'peplos', cloth: c, border: 0xd8b45a, hair: 'veil', veilColor: 0xf2ecdc }),
   (c) => ({ outfit: 'peplos', cloth: c, border: null, hair: 'up' }),
 ];
@@ -36,6 +36,7 @@ export function makeCrowd(renderer, { looks = LOOKS, colors = COLORS } = {}) {
       if (rig.skirt) rig.skirt.visible = pose !== 'sit'; // sentado, a saia de pano rígida viraria um disco em volta do colo
       for (const back of [0, 1]) {
         rig.root.rotation.y = back ? Math.PI : 0; rig.root.updateMatrixWorld(true);
+        rig.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton._frame = -1; }); // (o jogo só recalcula cada esqueleto uma vez por quadro, e as fotos são todas tiradas no mesmo quadro: sem liberar, o corpo ficava na primeira pose, sentado e de frente, e só o véu e a saia mudavam — o "balde" na cabeça e o disco no colo)
         const cx = tile % COLS, cy = Math.floor(tile / COLS);
         // numa textura, valem o viewport e o recorte da própria textura (e só são lidos no setRenderTarget)
         rt.viewport.set(cx * TW, cy * TH, TW, TH); rt.scissor.set(cx * TW, cy * TH, TW, TH); rt.scissorTest = true;

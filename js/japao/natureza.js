@@ -21,6 +21,30 @@ function leafTex(base, dots) {
   for (let i = 0; i < 2600; i++) { const v = Math.random(); x.fillStyle = dots[v < 0.45 ? 0 : v < 0.8 ? 1 : 2]; x.beginPath(); x.ellipse(Math.random() * S, Math.random() * S, 2 + Math.random() * 4, 1.5 + Math.random() * 3, Math.random() * 3, 0, 7); x.fill(); }
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.repeat.set(3, 3); return t;
 }
+// a casca do bambu: verde liso com veios finos; em cima de cada entrenó o nó (anel escuro e saliente) e logo abaixo
+// a faixa clara de pó branco que o bambu tem junto do nó
+function culmTex() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 64, 0); g.addColorStop(0, '#46682a'); g.addColorStop(0.35, '#5f8a36'); g.addColorStop(0.55, '#79a246'); g.addColorStop(1, '#43642a'); x.fillStyle = g; x.fillRect(0, 0, 64, 128);
+  for (let i = 0; i < 26; i++) { x.strokeStyle = `rgba(${Math.random() < 0.5 ? '60,80,30' : '190,210,140'},0.18)`; x.lineWidth = 1; const px = Math.random() * 64; x.beginPath(); x.moveTo(px, 0); x.lineTo(px + (Math.random() - 0.5) * 2, 128); x.stroke(); }
+  x.fillStyle = 'rgba(214,226,190,0.32)'; x.fillRect(0, 10, 64, 5); x.fillStyle = 'rgba(214,226,190,0.14)'; x.fillRect(0, 15, 64, 6); // (o pó branco abaixo do nó)
+  x.fillStyle = '#4e6628'; x.fillRect(0, 4, 64, 4); x.fillStyle = 'rgba(200,215,150,0.8)'; x.fillRect(0, 3, 64, 1.5); x.fillStyle = 'rgba(40,55,20,0.6)'; x.fillRect(0, 8, 64, 2); // (o nó)
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+// um raminho de bambu: o galho fino saindo da esquerda (onde prende no colmo) e as folhas compridas e pontudas
+// pendendo em leque, cada uma num verde
+function bambooLeafTex() {
+  const W = 256, H = 192, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const leaf = (lx, ly, ang, len, wid, col) => { x.save(); x.translate(lx, ly); x.rotate(ang); x.fillStyle = col; x.beginPath(); x.moveTo(0, 0); x.quadraticCurveTo(len * 0.35, -wid, len, 0); x.quadraticCurveTo(len * 0.35, wid, 0, 0); x.fill();
+    x.strokeStyle = 'rgba(30,50,15,0.35)'; x.lineWidth = 0.8; x.beginPath(); x.moveTo(1, 0); x.lineTo(len * 0.95, 0); x.stroke(); x.restore(); };
+  const cols = ['#4a7428', '#5a8430', '#6a9238', '#3e6624', '#76a044', '#55802e'];
+  // galho principal e dois secundários
+  const twig = (x0, y0, x1, y1) => { x.strokeStyle = '#7a8a3a'; x.lineWidth = 2; x.beginPath(); x.moveTo(x0, y0); x.quadraticCurveTo((x0 + x1) / 2, y0 - 6, x1, y1); x.stroke(); };
+  twig(0, 70, 230, 92); twig(80, 74, 170, 40); twig(120, 80, 210, 140);
+  const along = [[30, 72], [60, 74], [95, 78], [125, 82], [150, 84], [180, 88], [205, 90], [228, 92], [110, 62], [140, 52], [165, 42], [150, 100], [180, 118], [205, 136]];
+  for (const [lx, ly] of along) for (let k = 0; k < 3; k++) leaf(lx, ly, 0.35 + Math.random() * 1.6 - (k === 0 ? 1.2 : 0), 42 + Math.random() * 30, 5 + Math.random() * 3, cols[(Math.random() * cols.length) | 0]);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
 // tufo: esfera amassada por ruído, clara em cima e escura embaixo (cor por vértice)
 function tuft(rx, ry, rz, cx, cy, cz, seed, rough = 0.35, det = 1) {
   const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position, col = [];
@@ -81,8 +105,8 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   const firM = new THREE.MeshStandardMaterial({ color: 0x3f5a40, map: leafTex('#3c5236', ['rgba(16,30,20,0.6)', 'rgba(70,100,60,0.5)', 'rgba(120,150,90,0.4)']), roughness: 0.95, vertexColors: true, side: THREE.DoubleSide });
   const pineM = new THREE.MeshStandardMaterial({ color: 0x6a8a52, map: leafTex('#5e7a48', ['rgba(30,50,24,0.55)', 'rgba(120,150,80,0.5)', 'rgba(180,200,130,0.45)']), roughness: 0.92, vertexColors: true });
   const broadM = new THREE.MeshStandardMaterial({ color: 0x7aa05a, map: leafTex('#6e9450', ['rgba(36,60,26,0.55)', 'rgba(130,170,80,0.5)', 'rgba(190,215,130,0.45)']), roughness: 0.9, vertexColors: true });
-  const bambooM = new THREE.MeshStandardMaterial({ color: 0x8aa858, roughness: 0.6 });
-  const bambooLeaf = new THREE.MeshStandardMaterial({ color: 0x9ab860, map: leafTex('#86a454', ['rgba(50,80,30,0.5)', 'rgba(150,190,90,0.5)', 'rgba(200,225,140,0.4)']), roughness: 0.85, vertexColors: true });
+  const bambooM = new THREE.MeshStandardMaterial({ map: culmTex(), roughness: 0.45 }); // (a casca lisa e brilhante, com os nós)
+  const bambooLeaf = new THREE.MeshStandardMaterial({ map: bambooLeafTex(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8 });
   const mapleM = new THREE.MeshStandardMaterial({ color: 0x7aa05a, map: broadM.map, roughness: 0.9, vertexColors: true });
   const sakuraM = new THREE.MeshStandardMaterial({ color: 0xf2c4d4, map: leafTex('#e8b4c4', ['rgba(200,120,150,0.5)', 'rgba(255,230,238,0.6)', 'rgba(255,250,252,0.55)']), roughness: 0.85, vertexColors: true });
   const sakuraBark = new THREE.MeshStandardMaterial({ color: 0x4a3a36, roughness: 0.8 });
@@ -90,14 +114,14 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
 
   // as árvores vão em pedaços de 120 m (a câmera e a sombra descartam os pedaços fora de vista)
   const chunks = [];
-  const inst = (geo, mat, list, f, shadow = true, far = 0) => {
+  const inst = (geo, mat, list, f, shadow = true, far = 0, tint = null) => {
     const made = [];
     const cells = new Map();
     for (const p of list) { const k = Math.floor(p[0] / 120) + ',' + Math.floor(p[2] / 120); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(p); }
     const d = new THREE.Object3D();
     for (const L of cells.values()) {
       const im = new THREE.InstancedMesh(geo, mat, L.length);
-      L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
+      L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); if (tint) im.setColorAt(i, tint(p)); });
       im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); if (far) im.userData.far = far; scene.add(im); made.push(im); chunks.push(im);
     }
     return made;
@@ -122,11 +146,21 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   const sakT = new THREE.CylinderGeometry(0.16, 0.3, 4.2, 7); sakT.translate(0, 2.1, 0); sakT.rotateZ(0.15);
   const sakC = mergeGeometries([tuft(2.8, 1.5, 2.6, 0.4, 5.0, 0, 21, 0.45), tuft(1.9, 1.2, 1.8, 2.2, 4.4, 0.9, 22, 0.45), tuft(1.8, 1.1, 1.8, -1.8, 4.6, -0.8, 23, 0.45), tuft(1.6, 1.0, 1.6, 0.6, 5.6, -1.6, 24, 0.45)]);
   inst(sakT, sakuraBark, kinds.sakura, place); crowns.sakura = inst(sakC, sakuraM, kinds.sakura, place);
-  // bambu: colmo fino e alto, levemente curvado, com as folhas em cima
-  const culm = new THREE.CylinderGeometry(0.05, 0.065, 11, 5, 4); { const p = culm.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 5.5; p.setX(i, p.getX(i) + (y / 11) ** 2 * 0.7); p.setY(i, y); } culm.computeVertexNormals(); }
-  const bTop = mergeGeometries([tuft(1.2, 1.6, 1.1, 0.55, 9.6, 0, 11, 0.5), tuft(0.9, 1.0, 0.9, 0.7, 7.8, 0.4, 12, 0.5)]);
+  // bambu: o colmo alto, liso e levemente curvado, com os nós (anéis) a cada palmo e meio; as folhas finas saem em
+  // raminhos da metade de cima para fora e pendem, em leque — não uma bola verde no alto
+  const bend = (y) => (y / 11) ** 2 * 0.7;
+  const culm = new THREE.CylinderGeometry(0.045, 0.062, 11, 6, 8); { const p = culm.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 5.5; p.setX(i, p.getX(i) + bend(y)); p.setY(i, y); } culm.computeVertexNormals(); }
+  culm.attributes.uv.array.forEach((v, i, a) => { if (i % 2) a[i] = v * 26; }); // (26 entrenós ao longo do colmo)
+  const bTop = (() => { const parts = [];
+    // cada raminho: um cartão de folhas preso ao colmo, saindo para um lado e caindo um pouco
+    const spray = (y, ang, w, h, droop) => { const g = new THREE.PlaneGeometry(w, h); g.translate(w / 2, -h * 0.2, 0); g.rotateZ(-droop); g.rotateY(ang); g.translate(bend(y), y, 0); parts.push(g); };
+    const S = [[5.6, 0.3, 1.5, 1.1, 0.55], [6.5, 2.4, 1.7, 1.2, 0.5], [7.3, 4.4, 1.8, 1.3, 0.45], [8.0, 1.2, 1.9, 1.3, 0.4], [8.7, 3.3, 1.9, 1.4, 0.38], [9.3, 5.4, 1.8, 1.3, 0.35], [9.9, 0.2, 1.6, 1.2, 0.3], [10.4, 2.6, 1.5, 1.2, 0.2], [10.8, 4.6, 1.3, 1.1, 0.1]];
+    for (const [y, a, w, h, dr] of S) spray(y, a, w, h, dr);
+    { const g = new THREE.PlaneGeometry(1.4, 1.6), g2 = g.clone(); g.translate(bend(11), 11.2, 0); g2.rotateY(Math.PI / 2); g2.translate(bend(11), 11.2, 0); parts.push(g, g2); } // (a ponta)
+    return mergeGeometries(parts); })();
+  const bTint = (p) => { const k = Math.abs(Math.sin(p[0] * 12.9898 + p[2] * 78.233)) % 1; return new THREE.Color().setRGB(0.85 + k * 0.25, 0.92 + k * 0.12, 0.8 + (1 - k) * 0.15); }; // (colmos novos mais verdes, velhos mais amarelados)
   const bFar = quality === 'alto' ? 420 : quality === 'minimo' ? 170 : 240; // (o bambu é miúdo e denso: some antes das árvores; de longe a cor do chão faz o bambuzal)
-  inst(culm, bambooM, kinds.bamboo, place, false, bFar); inst(bTop, bambooLeaf, kinds.bamboo, place, true, bFar);
+  inst(culm, bambooM, kinds.bamboo, place, false, bFar, bTint); inst(bTop, bambooLeaf, kinds.bamboo, place, true, bFar, bTint);
 
   // o capim susuki das clareiras: touceiras altas com os penachos (prateados no verão, dourados no outono)
   const susukiM = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');

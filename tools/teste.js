@@ -11,6 +11,7 @@ export async function start() {
 }
 export async function shot(n) {
   const g = window.__game; g.scene.updateMatrixWorld();
+  g.scene.traverse((o) => { if (o.isSkinnedMesh) o.skeleton._frame = -1; }); // (o jogo só recalcula cada esqueleto uma vez por quadro)
   for (let i = 0; i < 2; i++) { g.renderer.info.reset(); g.renderer.shadowMap.needsUpdate = true; g.post.render(0.016, g.sky.state.night, 0); } // (info.reset: o esqueleto dos bonecos é recalculado)
   const d = g.renderer.domElement.toDataURL('image/jpeg', 0.82);
   return (await fetch('/__shot?n=' + n, { method: 'POST', body: d })).text();

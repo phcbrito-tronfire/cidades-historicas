@@ -86,18 +86,28 @@ export function distanceCull(scene, camera, renderer, skip) {
 function rigCull(scene, camera, skip) {
   const W = new THREE.Vector3(), cam = new THREE.Vector3(), fr = new THREE.Frustum(), pv = new THREE.Matrix4(), sph = new THREE.Sphere();
   let list = null, k = 0;
+  // cada boneco é escondido inteiro: a malha com esqueleto e tudo o que vai preso aos ossos (véu, capacete, escudo,
+  // espada, chapéu) — antes só a malha sumia, e o véu e o capacete ficavam boiando no ar
+  const setHid = (e, hide) => { e.hid = hide; for (const m of e.meshes) { m.userData.cullMask ??= m.layers.mask; m.layers.mask = hide ? HIDE : m.userData.cullMask; } };
   const R = {
     far: 110,
     update() {
       if (++k % 6) return;
-      if (!list || k % 600 === 0) { const old = new Map((list || []).map((e) => [e.o, e])); list = []; scene.traverse((o) => { if (!o.isSkinnedMesh) return; for (let p = o; p; p = p.parent) if (p === skip) return; list.push(old.get(o) || { o, mask: o.layers.mask, hid: false }); }); }
+      if (!list || k % 600 === 0) {
+        const old = new Map((list || []).map((e) => [e.o, e])), units = new Set(); list = [];
+        scene.traverse((o) => { if (!o.isSkinnedMesh) return; let unit = o, far = 0;
+          for (let p = o; p; p = p.parent) { if (p === skip) return; if (p.userData?.rig) unit = p; if (!far && p.userData?.cullFar) far = p.userData.cullFar; }
+          if (units.has(unit)) return; units.add(unit);
+          const meshes = []; unit.traverse((m) => { if (m.isMesh || m.isLine || m.isPoints) meshes.push(m); });
+          const e = old.get(unit) || { o: unit, hid: false }; e.meshes = meshes; e.far = far; if (e.hid) setHid(e, true); list.push(e); });
+      }
       camera.getWorldPosition(cam); pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pv);
       const f2 = R.far * R.far;
       for (const e of list) {
         if (!e.o.parent) continue;
         e.o.getWorldPosition(W); const d2 = W.distanceToSquared(cam);
-        const hide = d2 > f2 || (d2 > 400 && !fr.intersectsSphere(sph.set(W.setY(W.y + 1), 3)));
-        if (hide !== e.hid) { e.hid = hide; e.o.layers.mask = hide ? HIDE : e.mask; }
+        const hide = d2 > (e.far ? e.far * e.far : f2) || (d2 > 400 && !fr.intersectsSphere(sph.set(W.setY(W.y + 1), 3)));
+        if (hide !== e.hid) setHid(e, hide);
       }
     },
   };

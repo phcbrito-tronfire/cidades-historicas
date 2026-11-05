@@ -342,7 +342,7 @@ async function main() {
     if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }
     actors.update(dt, t, player, quests, sky.state.night);
-    games.update(dt, t, player, sky.state.night);
+    games.cam = camera.position; games.update(dt, t, player, sky.state.night);
     legion.update(dt, t, player);
     races.update(dt, t, player, sky.state.night);
     daily.update(dt, t, player);

@@ -21,6 +21,13 @@ Acrescentadas em 26/10/2026: borda (Pulling Up To A Ledge — sair da água pelo
 golpe (Hit Reaction), desmaiar (Shot To The Chest Falling Backwards) e beber (Male Drinking). O Mixamo não tem nado crawl:
 o crawl na superfície é procedural (`comum/player.js`); "Swimming" é nado de peito subaquático e fica para o mergulho.
 
+Acrescentadas em 05/11/2026 (pacote "Sword And Shield", no Josh, sem pele, 30 fps; carregadas só em Roma, para as
+lutas do Coliseu, com `loadAnims`): gl_guarda (Idle), gl_lado (Left Strafe Walk; para a direita, de trás para a frente),
+gl_alto (High Attack), gl_baixo (Low Attack), gl_desce (Downward Slash), gl_combo (Slash Combo), gl_forte (Power Slash),
+gl_cabo (Hilt Melee), gl_chute (Sparta Kick), gl_bloqueio (Blocked Impact), gl_impacto (Unblocked Impact), gl_cabeca
+(Head Impact), gl_morte_f (Falling Forward Death), gl_morte_t (Falling Back Death), gl_vitoria (Powering Up).
+Conversão no navegador: FBXLoader → posições ÷100 → GLTFExporter → gltf-transform resample + meshopt.
+
 Observação técnica: o corpo dos modelos do Mixamo é só cabeça, mãos e pés — o resto é a roupa. Por isso
 os egípcios são feitos repintando as peças (camisa = torso nu, calça/bermuda = linho) e adicionando
 saiotes, vestidos, perucas e coroas presos aos ossos (`js/egito/mixamo.js`). Alguns modelos vêm com

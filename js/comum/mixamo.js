@@ -26,6 +26,21 @@ const ANIMS = ['idle', 'andar', 'andar_f', 'trotar', 'correr', 'pular', 'caindo'
 // nomes antigos usados pelo resto do jogo → animações do Mixamo
 const ALIAS = { Jump_Land: 'aterrissar', Sword_Attack: 'espada', PickUp_Table: 'pegar' };
 
+// animações a mais, carregadas só por quem usa (os golpes de espada e escudo dos gladiadores, em Roma). O quadril
+// não sai do lugar no chão: quem move o corpo é o jogo.
+export async function loadAnims(names) {
+  const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  await Promise.all(names.filter((n) => !CLIPS[n]).map(async (n) => {
+    try {
+      const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb')); const clip = g.animations[0]; clip.name = n;
+      for (const tr of clip.tracks) { tr.name = tr.name.replace(/^mixamorigd+/, 'mixamorig'); if (/Hips.position$/.test(tr.name)) { const v = tr.values; const x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } } }
+      clip.tracks = clip.tracks.filter((tr) => !/.scale$/.test(tr.name) && !(/.position$/.test(tr.name) && !/Hips/.test(tr.name)));
+      CLIPS[n] = clip;
+    } catch (e) { console.warn('animação', n, e); }
+  }));
+}
+export const hasClip = (n) => !!CLIPS[n];
+
 export async function loadHumanModel(_unused, tex, onProgress) {
   TEX = tex;
   const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -299,7 +314,7 @@ export function makeHumanoid(o = {}) {
   const female = outfit === 'dress' || outfit === 'peplos' || outfit === 'kimono_f' || (jp && !!o.female);
   // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
   const baseName = isExp ? (LK?.base || 'explorador') : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : jp ? (outfit === 'farmer' || outfit === 'pilgrim' ? 'brian' : pick(['bryce', 'brian'])) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
-  const root = new THREE.Group();
+  const root = new THREE.Group(); root.userData.rig = true; // (o boneco inteiro: o corte por distância esconde tudo junto)
   // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
   root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
   const model = SkeletonUtils.clone(BASES[baseName]);
@@ -476,7 +491,8 @@ export function makeHumanoid(o = {}) {
       cap(hc, [1.1, 1.04, 1.1], [0, 0.015, -0.015], 0.58);
       const vm = m(o.veilColor ?? 0xf2ecdc, { roughness: 0.95, side: THREE.DoubleSide });
       cap(vm, [1.2, 1.12, 1.2], [0, 0.02, -0.03], 0.55);
-      headPart(new THREE.CylinderGeometry(R * 1.05, R * 1.5, R * 2.4, 22, 1, true, Math.PI * 0.55, Math.PI * 0.9), vm, [0, -R * 0.9, -R * 0.25]);
+      // o pano cai pela nuca até os ombros, rente à cabeça (antes era um tubo largo e reto em volta da cabeça: parecia um balde)
+      headPart(new THREE.CylinderGeometry(R * 1.08, R * 1.55, R * 2.0, 24, 1, true, Math.PI * 0.6, Math.PI * 0.8), vm, [0, -R * 0.65, -R * 0.42], [-0.3, 0, 0], [1, 1, 0.85]); // (inclinado para trás: deita sobre a nuca e os ombros)
     } break;
     case 'natural': case 'bald': break;
     case 'chonmage': case 'ronin': { // o alto da cabeça raspado (sakayaki) com o cabelo dos lados e o topete dobrado para a frente (no rōnin, a cabeça não é raspada)
@@ -567,7 +583,7 @@ export function makeHumanoid(o = {}) {
       attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.2, 0.46, 36, 1, true), clothMat), new THREE.Vector3(0, ch.y - 0.1, ch.z + 0.005), [0, 0, -0.42 * xL], [1, 1, 0.8]);
     } break;
     case 'peplos': {
-      if (useCloth) cloth(clothGeometry('peplos', PEPLOS, 36), clothMat, -0.04, 0.78);
+      if (useCloth) skirt = cloth(clothGeometry('peplos', PEPLOS, 36), clothMat, -0.04, 0.78); // (sentada, some como as outras saias: senão vira um disco duro em volta do colo)
       // dobra de cima do peplo (apoptygma), caindo até a cintura, e o cinto
       const ch = bones.Spine2 ? bonePos('Spine2') : hips.clone().add(new THREE.Vector3(0, 0.35, 0));
       attach('Spine1', new THREE.Mesh(new THREE.CylinderGeometry(0.158, 0.182, 0.17, 32, 1, true), plainCloth), new THREE.Vector3(0, hips.y + 0.17, hips.z + 0.015), [0, 0, 0], [1, 1, 0.8]);
@@ -945,6 +961,7 @@ export function animateHumanoid(r, dt, speed, mode, t) {
   if (r.once) { r.once.t -= dt; if (r.once.t <= 0) r.once = null; }
   if (r.once) { T = { [r.once.name]: 1 }; fade = 10; }
   else if (LOCO_MODES.has(mode)) T = locoTargets(mode === 'idle' ? 0 : speed, r.walkClip);
+  else if (mode[0] === '@') T = { [CLIPS[mode.slice(1)] ? mode.slice(1) : 'idle']: 1 }; // '@nome': um laço qualquer, pelo nome
   else { let mm = mode; if (mode === 'swim' && Math.abs(speed) < 0.3) mm = 'swimIdle'; T = { [MODE_CLIP[mm] || 'idle']: 1 }; fade = mode === 'air' ? 9 : 5; }
   const names = new Set([...Object.keys(r.w), ...Object.keys(T)]);
   let sum = 0;
@@ -970,6 +987,7 @@ export function animateHumanoid(r, dt, speed, mode, t) {
     a.setEffectiveWeight(r.w[n] / (sum || 1));
     const loco = LOCO.find((l) => l.name === walkAlias(n) && l.speed > 0);
     if (loco && !isOnce) { a.timeScale = 0; a.time = r.locoPhase * a.getClip().duration; }
+    else if (!isOnce && r.speeds && n in r.speeds) a.timeScale = r.speeds[n]; // (ritmo próprio, ex.: o passo de lado andado de trás para frente)
     else if (!isOnce) a.timeScale = n === 'nadar' ? Math.max(0.6, Math.min(3, Math.abs(speed) * 0.8)) : 1; // ritmo da braçada acompanha a velocidade (~1,1 m por braçada)
   }
   r.mixer.update(dt);
