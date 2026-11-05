@@ -117,7 +117,7 @@ async function main() {
   const ruins = buildNileRuins(scene, city);
   if (city.pool) { city.pool.children.forEach((m) => (m.material = world.calmWater)); scene.add(city.pool); }
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');
-  buildVegetation(scene, tex, city.exclusions);
+  buildVegetation(scene, tex, city.exclusions, city.plants);
   await placeSculptures(scene, city.sculptures);
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);

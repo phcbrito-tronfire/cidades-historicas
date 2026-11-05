@@ -150,6 +150,62 @@ export function createMaterials(tex) {
     set(M.basalt, { normalMap: rep(P.rock_boulder_dry, 1).normalMap });
     M.basalt.userData.uv = { s: 2 };
   } else M.pyramid = M.limestone;
+  // teto estrelado (estrelas de cinco pontas amarelas no azul, como nos tetos dos templos e das tumbas)
+  {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+    x.fillStyle = '#1d3f78'; x.fillRect(0, 0, 256, 256);
+    const star = (cx, cy, r) => { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr2 = i % 2 ? r * 0.42 : r; x.lineTo(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2); } x.closePath(); x.fill(); };
+    x.fillStyle = '#e8c45a'; for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) star(32 + i * 64 + (j % 2) * 32, 32 + j * 64, 13);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+    M.stars = std({ map: t, roughness: 0.8 }); M.stars.userData.uv = { s: 2.4 };
+  }
+  // disco solar alado (sobre os portões): o sol vermelho com duas serpentes e as asas de penas coloridas
+  {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 192; const x = c.getContext('2d');
+    for (const sd of [-1, 1]) for (let row = 0; row < 3; row++) {
+      const col = ['#2c5d9c', '#3d7f59', '#a8392a'][row];
+      for (let i = 0; i < 26; i++) { const x0 = 512 + sd * (70 + i * 16), len = 46 + row * 24 - i * 0.6; x.fillStyle = i % 2 ? col : '#e2b44a'; x.beginPath(); x.moveTo(x0, 60 + row * 26); x.lineTo(x0 + sd * 14, 60 + row * 26); x.lineTo(x0 + sd * 10, 60 + row * 26 + len); x.lineTo(x0 + sd * 2, 60 + row * 26 + len); x.fill(); }
+    }
+    x.fillStyle = '#a8392a'; x.beginPath(); x.arc(512, 92, 54, 0, 7); x.fill(); x.strokeStyle = '#e2b44a'; x.lineWidth = 6; x.stroke();
+    x.fillStyle = '#e2b44a'; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(512 + sd * 64, 118, 12, 40, 0, 0, 7); x.fill(); x.beginPath(); x.arc(512 + sd * 64, 80, 13, 0, 7); x.fill(); } // as serpentes (uraeus)
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    M.wingedSun = std({ map: t, transparent: true, alphaTest: 0.2, roughness: 0.6, side: THREE.DoubleSide });
+  }
+  // chão pintado do palácio: um lago com peixes, patos e lótus no meio, moitas de papiro em volta e a faixa de borda
+  // (como os pisos pintados dos palácios do Novo Império, achados em Amarna e Malkata)
+  {
+    const W = 1024, H = 1024, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    x.fillStyle = '#e9dcbf'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 6; i++) { x.fillStyle = ['#2c5d9c', '#e9dcbf', '#a8392a', '#e9dcbf', '#3d7f59', '#e9dcbf'][i]; x.fillRect(i * 8, i * 8, W - i * 16, H - i * 16); }
+    x.fillStyle = '#efe3c8'; x.fillRect(48, 48, W - 96, H - 96);
+    // moitas de papiro com aves voando
+    for (let k = 0; k < 90; k++) {
+      const px = 60 + Math.random() * (W - 120), py = 60 + Math.random() * (H - 120);
+      if (px > 300 && px < 724 && py > 300 && py < 724) continue;
+      x.strokeStyle = '#4c7a3a'; x.lineWidth = 3;
+      for (let j = 0; j < 4; j++) { const a = -Math.PI / 2 + (j - 1.5) * 0.25; x.beginPath(); x.moveTo(px, py + 30); x.lineTo(px + Math.cos(a) * 40, py + 30 + Math.sin(a) * 40); x.stroke(); x.fillStyle = '#6a9a48'; x.beginPath(); x.arc(px + Math.cos(a) * 44, py + 30 + Math.sin(a) * 44, 8, Math.PI, 0); x.fill(); }
+      if (Math.random() < 0.18) { x.strokeStyle = '#3a3a3a'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(px - 12, py - 20); x.quadraticCurveTo(px - 4, py - 30, px, py - 22); x.quadraticCurveTo(px + 4, py - 30, px + 12, py - 20); x.stroke(); }
+    }
+    // o lago, com peixes e flores de lótus
+    x.fillStyle = '#3d74a8'; x.fillRect(312, 312, 400, 400);
+    x.strokeStyle = 'rgba(255,255,255,0.35)'; x.lineWidth = 2; for (let yy = 330; yy < 700; yy += 18) { x.beginPath(); for (let xx = 320; xx < 705; xx += 12) x.lineTo(xx, yy + Math.sin(xx * 0.08) * 4); x.stroke(); }
+    for (let k = 0; k < 12; k++) { const fx = 350 + Math.random() * 320, fy = 350 + Math.random() * 320; x.fillStyle = k % 2 ? '#c9b07a' : '#9aa6a8'; x.beginPath(); x.ellipse(fx, fy, 22, 9, Math.random() * 3, 0, 7); x.fill(); }
+    for (let k = 0; k < 14; k++) { const lx = 340 + Math.random() * 340, ly = 340 + Math.random() * 340; x.fillStyle = '#3d7f59'; x.beginPath(); x.arc(lx, ly, 13, 0, 7); x.fill(); if (k % 2) { x.fillStyle = '#f0f0f6'; x.beginPath(); x.moveTo(lx - 9, ly); x.lineTo(lx, ly - 16); x.lineTo(lx + 9, ly); x.fill(); } }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    M.paintedFloor = std({ map: t, roughness: 0.7 });
+  }
+  // esteira de junco trançado: toldos do mercado e dos terraços, esteiras no chão
+  {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+    x.fillStyle = '#b59a5e'; x.fillRect(0, 0, 256, 256);
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { // tramas de 16 px, alternando o sentido
+      const v = 150 + Math.floor(Math.random() * 50), hz = (i + j) % 2 === 0;
+      for (let k = 0; k < 4; k++) { x.fillStyle = `rgb(${v + 30 - k * 6},${v + 8 - k * 6},${v - 60 - k * 4})`; if (hz) x.fillRect(i * 16, j * 16 + k * 4, 16, 3); else x.fillRect(i * 16 + k * 4, j * 16, 3, 16); }
+    }
+    x.fillStyle = 'rgba(90,60,25,0.5)'; for (let i = 0; i <= 16; i++) { x.fillRect(i * 16, 0, 1, 256); x.fillRect(0, i * 16, 256, 1); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+    M.esteira = std({ map: t, roughness: 1, side: THREE.DoubleSide }); M.esteira.userData.uv = { s: 1.6 };
+  }
   // colunas pintadas: fuste listrado, amarras em faixas e capitel com chevrons, tinta gasta
   {
     const stoneImg = P ? P.sandstone_blocks_08.map.image : null;
@@ -263,6 +319,7 @@ export function buildCity(scene, tex) {
   B.ground = terrainHeight; // bases apoiadas no chão descem até o terreno nos cantos (nada flutuando em declive)
   const floors = []; B.onFloor = (r) => floors.push(r); // lajes de piso: o terreno fica por baixo delas
   const out = { torches: [], flags: [], animated: [], exclusions: [], zones: {}, spots: {}, M, lights: [] };
+  const plants = out.plants = { sycamores: [], doums: [], shrubs: [], pots: [] }; // (desenhadas junto com a vegetação, em terrain.js)
   const G = (x, z) => terrainHeight(x, z);
   const torch = (x, y, z, stand = true) => {
     if (stand) {
@@ -315,8 +372,7 @@ export function buildCity(scene, tex) {
   };
   pyl(12.25); pyl(-12.25);
   B.box(M.relief, 6, 4, 7, 1, TY + 11, 0);
-  B.box(M.gold, 5.4, 0.8, 0.2, 4.05, TY + 13.2, 0); // disco solar alado (simplificado)
-  B.geo(new THREE.SphereGeometry(0.7, 16, 12), M.gold, 4.2, TY + 13.6, 0, { sz: 0.25 });
+  { const g = new THREE.PlaneGeometry(6.6, 1.24); g.rotateY(Math.PI / 2); B.geo(g, M.wingedSun, 4.03, TY + 13.4, 0, { uv: false }); } // disco solar alado
   addBox(1, 0, 6, 7, TY + 11, TY + 15);
   B.box(M.sandstone, 6.4, 11, 0.6, 1, TY, 3.7); B.box(M.sandstone, 6.4, 11, 0.6, 1, TY, -3.7);
   // mastros com flâmulas
@@ -383,7 +439,7 @@ export function buildCity(scene, tex) {
   cornice(-54, 20.5, 27, 1, TY + hallH + 0.6, 0.7); cornice(-54, -20.5, 27, 1, TY + hallH + 0.6, 0.7);
   cornice(-41, 0, 1, 42, TY + hallH + 0.6, 0.7);
   cornice(-75.5, 8.6, 17.5, 0.8, TY + sHtop(), 0.5); cornice(-75.5, -8.6, 17.5, 0.8, TY + sHtop(), 0.5); cornice(-83.9, 0, 0.8, 18, TY + sHtop(), 0.5);
-  B.box(M.blue, 25.6, 0.05, 40.6, -54, TY + hallH - 0.05, 0, { uv: false }); // teto azul estrelado (simplificado)
+  B.box(M.stars, 25.6, 0.05, 40.6, -54, TY + hallH - 0.05, 0); // teto azul estrelado
   addBox(-54, 0, 27, 42, TY + hallH, TY + hallH + 1);
   for (const x of [-47, -53, -59]) {
     for (const z of [-4.5, 4.5]) column(B, M, x, TY, z, 1.05, hallH - 1.6, hallH, true);
@@ -418,6 +474,9 @@ export function buildCity(scene, tex) {
     addBox(lcx, LAKE.z1 - 0.7 - i * 1.4, 8, 1.4, -5, top);
   }
   out.exclusions.push([LAKE.x0 - 4, LAKE.x1 + 4, LAKE.z0 - 4, LAKE.z1 + 4]);
+  for (let i = 0; i < 46; i++) { const lx = rr(LAKE.x0 + 1.5, LAKE.x1 - 1.5), lz = rr(LAKE.z0 + 1.5, LAKE.z1 - 9); B.geo(new THREE.CylinderGeometry(rr(0.3, 0.5), 0.3, 0.02, 12), M.green, lx, LAKE.y + 0.03, lz, { uv: false }); if (i % 3 === 0) B.geo(new THREE.ConeGeometry(0.13, 0.28, 6), i % 2 ? M.linen : M.blue, lx + 0.1, LAKE.y + 0.15, lz, { uv: false }); } // lótus branco e azul
+  for (const [x, z] of [[LAKE.x0 - 5, LAKE.z0 - 4], [LAKE.x1 + 5, LAKE.z0 - 4], [LAKE.x0 - 5, LAKE.z1 + 3]]) plants.sycamores.push([x, z]);
+  for (let x = LAKE.x0 + 2; x < LAKE.x1; x += 4.5) plants.shrubs.push([x, LAKE.z0 - 2.6, undefined, rr(0.5, 0.8)]);
 
   // ======================= PIRÂMIDES DE GIZÉ ================================
   const pyramidAt = (cx, cz, half, h, opts = {}) => {
@@ -500,10 +559,10 @@ export function buildCity(scene, tex) {
   // tendas
   for (let i = 0; i < 4; i++) {
     const x = cx - 14 + i * 7, z = cz + 14, y = G(x, z);
-    B.geo(new THREE.CylinderGeometry(1.8, 1.8, 5, 3, 1, true), M.awnings[i % 4], x, y + 0.9, z, { rz: Math.PI / 2, ry: Math.PI / 2, uv: false });
+    B.geo(new THREE.CylinderGeometry(1.8, 1.8, 5, 3, 1, true), M.esteira, x, y + 0.9, z, { rz: Math.PI / 2, ry: Math.PI / 2, uv: false });
     addBox(x, z, 3.2, 5, -5, y + 2.2);
   }
-  torch(cx + 2, cy, cz + 6);
+  torch(cx + 2, G(cx + 2, cz + 6), cz + 6); // (no chão de verdade: com a altura do canteiro, a tocha ficava 1 m no ar)
   out.spots.hori = new V3(cx + 3, cy, cz + 2);
 
   // ======================= PALÁCIO REAL =====================================
@@ -531,12 +590,18 @@ export function buildCity(scene, tex) {
   tw(TX1, (-130 + TZ1) / 2, 1, TZ1 + 130);
   tw(TX1, -132.5, 1, 5, PY + 5, TH - 5.3);
   B.box(M.white, TX1 - TX0 + 1, 0.8, TZ1 - TZ0 + 1, (TX0 + TX1) / 2, PY - 0.3 + TH, (TZ0 + TZ1) / 2);
-  B.box(M.blue, TX1 - TX0 - 1, 0.05, TZ1 - TZ0 - 1, (TX0 + TX1) / 2, PY - 0.35 + TH, (TZ0 + TZ1) / 2, { uv: false });
+  B.box(M.stars, TX1 - TX0 - 1, 0.05, TZ1 - TZ0 - 1, (TX0 + TX1) / 2, PY - 0.35 + TH, (TZ0 + TZ1) / 2);
   addBox((TX0 + TX1) / 2, (TZ0 + TZ1) / 2, TX1 - TX0 + 1, TZ1 - TZ0 + 1, PY - 0.3 + TH, PY + TH + 0.5);
   // janela das aparições (sacada dourada acima da porta)
   B.box(M.gold, 1.2, 0.3, 6, TX1 + 0.9, PY + 4.4, -132.5);
   B.box(M.blue, 0.4, 1.6, 6.4, TX1 + 0.6, PY + 5.6, -132.5);
-  for (let x = -6; x <= 18; x += 6) for (const z of [-140, -125]) column(B, M, x, PY - 0.3, z, 0.55, TH - 1.1, TH, false, M.white);
+  for (let x = -6; x <= 18; x += 6) for (const z of [-140, -125]) column(B, M, x, PY - 0.3, z, 0.55, TH - 1.6, TH, false);
+  B.box(M.paintedFloor, 22, 0.03, 13, 6, PY + 0.06, -132.5, { uv: false, noGround: true }); /* o chão pintado, entre as colunas (um dedo acima do piso: no mesmo plano, sumia) */
+  // móveis: baús, mesas de oferenda com jarros, lampadários altos e banquinhos para os conselheiros
+  for (const [bx, bz] of [[16, -146.5], [12, -146.5], [16, -118.5]]) { B.box(M.wood, 1.4, 0.75, 0.8, bx, PY - 0.3, bz); B.box(M.gold, 1.44, 0.06, 0.84, bx, PY + 0.42, bz); B.box(M.blue, 1.0, 0.3, 0.02, bx, PY + 0.05, bz + 0.41, { uv: false }); addBox(bx, bz, 1.4, 0.8, -5, PY + 0.5); }
+  for (const z of [-137.5, -127.5]) { B.box(M.wood, 0.9, 0.7, 0.6, 3, PY - 0.3, z); jar(B, M, 2.8, PY + 0.4, z, 0.5); jar(B, M, 3.2, PY + 0.4, z, 0.45); addBox(3, z, 0.9, 0.6, -5, PY + 0.6); }
+  for (const [lx, lz] of [[-2, -144], [-2, -121], [14, -144], [14, -121]]) { B.geo(new THREE.CylinderGeometry(0.05, 0.07, 2.2, 8), M.gold, lx, PY + 0.8, lz); B.geo(new THREE.CylinderGeometry(0.22, 0.08, 0.18, 10), M.gold, lx, PY + 1.95, lz); out.torches.push(new V3(lx, PY + 2.1, lz)); addCircle(lx, lz, 0.2, -5, PY + 2); }
+  for (let i = 0; i < 4; i++) for (const z of [-136, -129]) { const sx2 = 4 + i * 2.6; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B.box(M.wood, 0.05, 0.45, 0.05, sx2 + a * 0.2, PY - 0.3, z + b * 0.2); B.box(M.wood, 0.48, 0.06, 0.48, sx2, PY + 0.15, z); B.box(M.red, 0.4, 0.05, 0.4, sx2, PY + 0.21, z, { uv: false }); }
   // estrado e trono
   B.box(M.sandstone, 8, 0.4, 16, -7, PY - 0.3, -132.5); addBox(-7, -132.5, 8, 16, -5, PY + 0.1);
   B.box(M.sandstone, 4.5, 0.4, 10, -8.5, PY + 0.1, -132.5); addBox(-8.5, -132.5, 4.5, 10, -5, PY + 0.5);
@@ -570,7 +635,9 @@ export function buildCity(scene, tex) {
     B.geo(new THREE.CylinderGeometry(0.35, 0.35, 0.03, 10), M.green, x, PY + 0.44, z);
     if (i % 3 === 0) B.geo(new THREE.ConeGeometry(0.12, 0.25, 6), M.linen, x, PY + 0.5, z);
   }
-  for (let x = 27; x < 52; x += 3) for (const z of [-113, -152]) B.geo(new THREE.SphereGeometry(0.5, 7, 5), M.green, x, PY + 0.2, z, { sy: 0.7 });
+  // canteiros junto aos muros (antes uma fila de bolinhas verdes) e os sicômoros que davam sombra ao jardim
+  for (let x = 27; x < 52; x += 2.2) for (const z of [-108.5, -156.5]) plants.shrubs.push([x + rr(-0.4, 0.4), z + rr(-0.5, 0.5), PY - 0.1, rr(0.55, 0.85)]);
+  for (const [x, z] of [[33, -119], [37.5, -145.5], [51, -121], [51, -146], [28, -141]]) plants.sycamores.push([x, z, PY - 0.1]);
   // depósitos e cozinhas
   for (let i = 0; i < 4; i++) {
     const x = TX0 + 4 + i * 8;
@@ -698,19 +765,28 @@ export function buildCity(scene, tex) {
   // ======================= BAIRROS RESIDENCIAIS =============================
   out.exclusions.push([2, 22, 108, 132]); // praça de Nofret
   out.spots.nofret = new V3(12, G(12, 120), 120);
+  plants.sycamores.push([18, 126]); // a sombra da praça
+  for (let i = 0; i < 9; i++) plants.doums.push([-150 + rr(-14, 14), 70 + rr(-14, 14)]); // oásis perto da Esfinge
+  for (let i = 0; i < 26; i++) { const z = rr(-300, 300); plants.doums.push([riverX(z) + rr(60, 150), z]); } // margem leste, entre os campos
   const houseExcl = [...out.exclusions, [-200, -128, -400, 400]];
   const blockedByExcl = (x0, x1, z0, z1) => houseExcl.some((e) => x1 > e[0] - 2 && x0 < e[1] + 2 && z1 > e[2] - 2 && z0 < e[3] + 2);
   out.houses = [];
-  for (let gx = -122; gx <= 84; gx += 15) {
-    for (let gz = -255; gz <= 255; gz += 15) {
-      if (rand() < 0.16) continue;
-      const w = rr(6, 10), d = rr(6, 10);
-      const x = gx + rr(-1.5, 1.5), z = gz + rr(-1.5, 1.5);
-      if (blockedByExcl(x - w / 2, x + w / 2, z - d / 2, z + d / 2)) continue;
-      if (x + w / 2 > riverX(z) - 56) continue;
-      const y = G(x, z);
-      if (y < 0.75 || y > 1.5) continue;
-      house(B, M, x, y, z, w, d, out);
+  // Quarteirões de casas geminadas (antes eram centenas de casinhas soltas no areal, sem rua nenhuma): cada quarteirão
+  // tem duas fileiras de casas de costas uma para a outra, com a porta para a rua; ruas de 5 m a cada três quarteirões
+  // e ruelas de 3 m entre os outros. Um em cada oito vira pracinha, horta ou curral.
+  const BW = 27, BD = 18;
+  for (let bx = -118, i = 0; bx < 72; bx += BW + (i++ % 3 === 2 ? 5 : 3)) {
+    for (let bz = -214, j = 0; bz < 214; bz += BD + (j++ % 3 === 2 ? 5 : 3)) {
+      if (rand() < 0.12) { if (!blockedByExcl(bx, bx + BW, bz, bz + BD)) { plants.sycamores.push([bx + BW / 2 + rr(-4, 4), bz + BD / 2 + rr(-3, 3)]); for (let k = 0; k < 4; k++) plants.shrubs.push([bx + rr(2, BW - 2), bz + rr(2, BD - 2)]); } continue; } // pracinha com sombra
+      for (const row of [0, 1]) { // fileira sul (porta para -z) e fileira norte (porta para +z)
+        const z0 = bz + row * BD / 2, z1 = z0 + BD / 2;
+        for (let x0 = bx; x0 < bx + BW - 3.5;) {
+          let lw = rr(5.5, 8.5); if (bx + BW - (x0 + lw) < 4.5) lw = bx + BW - x0; // (sobra pequena: a última casa estica até a esquina)
+          const x1 = x0 + lw, cxx = (x0 + x1) / 2, czz = (z0 + z1) / 2;
+          if (!blockedByExcl(x0, x1, z0, z1) && x1 < riverX(czz) - 56) { const y = G(cxx, czz); if (y > 0.7 && y < 1.6) rowHouse(B, M, x0, x1, z0, z1, row ? 1 : -1, y, out, x0 <= bx + 0.01 && x1 >= bx + BW - 0.01 ? 2 : x0 <= bx + 0.01 ? -1 : x1 >= bx + BW - 0.01 ? 1 : 0); }
+          x0 = x1;
+        }
+      }
     }
   }
   B.build(scene);
@@ -944,9 +1020,11 @@ function offerings(B, M, x, y, z) {
 }
 
 function stall(B, M, x, y, z, type, seed) {
-  const aw = M.awnings[seed % M.awnings.length];
-  for (const [dx, dz] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.4], [1.6, 1.4]]) B.box(M.wood, 0.12, dz > 0 ? 2.5 : 2.9, 0.12, x + dx, y, z + dz);
-  B.box(aw, 3.6, 0.05, 3.0, x, y + 2.7, z + 0.1, { rx: 0.14, uv: false });
+  for (const [dx, dz] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.4], [1.6, 1.4]]) B.geo(new THREE.CylinderGeometry(0.07, 0.09, dz > 0 ? 2.55 : 2.95, 6), M.wood, x + dx, y + (dz > 0 ? 2.55 : 2.95) / 2, z + dz);
+  B.box(M.esteira, 3.7, 0.05, 3.1, x, y + 2.68, z + 0.1, { rx: 0.14 }); // a esteira de junco
+  for (let i = 0; i < 5; i++) B.geo(new THREE.CylinderGeometry(0.035, 0.035, 3.3, 4), M.wood, x - 1.6 + i * 0.8, y + 2.78 - 0.0, z + 0.1, { rx: Math.PI / 2 + 0.14, uv: false }); // nervuras de palmeira por cima
+  B.box(M.esteira, 2.6, 0.03, 1.6, x + (seed % 2 ? 1.2 : -1.2), y + 0.01, z - 1.6, { ry: (seed % 3) * 0.2 }); // esteira no chão, onde o vendedor senta
+  for (let i = 0; i < 2; i++) B.geo(new THREE.CylinderGeometry(0.32, 0.25, 0.32, 10), M.reed, x + (seed % 2 ? 0.6 : -0.6) + i * 0.75, y + 0.16, z - 1.9); // cestos
   B.box(M.wood, 3.1, 0.9, 1.3, x, y, z + 0.3);
   const top = y + 0.9;
   const pile = (mat, n, r = 0.12, sy = 1) => { for (let i = 0; i < n; i++) B.geo(new THREE.SphereGeometry(r, 7, 5), mat, x + rr(-1.3, 1.3), top + r * sy * 0.8, z + 0.3 + rr(-0.45, 0.45), { sy }); };
@@ -989,6 +1067,77 @@ function chariot(B, M, x, y, z, ry) {
   }
   B.box(M.wood, 0.06, 0.06, 1.9, -0.3, 0.52, 0, o);
   B.box(M.wood, 2.8, 0.08, 0.08, 1.9, 0.95, 0, { frame: F, uv: false, rz: -0.25 });
+}
+
+// Casa de fileira (encostada nas vizinhas), com a frente para a rua em z (face = -1 ou +1). Paredes sem o
+// "afunilamento" do adobe solto (geminadas, abririam frestas no alto entre uma e outra). Um quarto das casas tem um
+// pátio na frente, fechado por um muro baixo com portão: dá para entrar, e lá ficam o forno, os jarros e a escada para
+// o terraço. No terraço: mureta, vigas de palmeira saindo da parede, às vezes um toldo de junco, um apanhador de vento
+// ou um quarto em cima.
+function rowHouse(B, M, x0, x1, z0, z1, face, y, out, end = 0) {
+  const r0 = rand(), mat = r0 < 0.3 ? M.white : r0 < 0.65 ? M.mud : M.clay;
+  const w = x1 - x0, cx = (x0 + x1) / 2, front = face > 0 ? z1 : z0, back = face > 0 ? z0 : z1;
+  const court = rand() < 0.26 && w > 5.8, cd = court ? rr(2.6, 3.4) : 0; // fundo do pátio
+  const bf = front - face * cd; // a frente do corpo da casa
+  const d = Math.abs(bf - back), bz = (bf + back) / 2, h = rr(3.0, 3.9), base = y - 0.35;
+  const adobe = (m, ww, hh, dd, xx, yy, zz, o = {}) => B.adobe(m, ww, hh, dd, xx, yy, zz, { batter: 0, jitter: 0.1, ...o });
+  adobe(mat, w + 0.02, h + 0.35, d, cx, base, bz);
+  addBox(cx, bz, w, d, -5, y + h);
+  adobe(M.mud, w + 0.04, 0.45, 0.16, cx, base, bf + face * 0.06, { jitter: 0.06 }); // rodapé gasto, na frente
+  // porta (recuada, com batentes, verga de madeira e às vezes pintada), na frente do corpo
+  const dx = court ? cx - rr(0.6, w / 4) : cx + rr(-w / 4, w / 4) * 0.8, dz = bf + face * 0.02; // (com pátio, a porta fica à esquerda e a escada à direita)
+  B.box(M.dark, 1.0, 2.0, 0.12, dx, y - 0.05, dz, { uv: false });
+  B.box(rand() < 0.3 ? (rand() < 0.5 ? M.blue : M.red) : M.wood, 1.4, 0.18, 0.3, dx, y + 1.95, dz + face * 0.06);
+  for (const sd of [-0.6, 0.6]) B.box(M.wood, 0.12, 2.0, 0.26, dx + sd, y - 0.05, dz + face * 0.05);
+  // janelinhas altas com grade de madeira
+  for (let k = 0; k < (w > 7 ? 2 : 1); k++) {
+    let wx = cx + rr(-w / 2 + 0.9, w / 2 - 0.9); if (Math.abs(wx - dx) < 1.2) wx = dx + (wx < dx ? -1.4 : 1.4);
+    if (Math.abs(wx - cx) > w / 2 - 0.6) continue;
+    B.box(M.window, 0.7, 0.42, 0.1, wx, y + h - 1.05, bf + face * 0.03, { uv: false });
+    for (const sd of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.42, 0.12, wx + sd, y + h - 1.05, bf + face * 0.05, { uv: false });
+  }
+  // vigas de palmeira saindo da frente, logo abaixo do terraço
+  for (let i = 0; i < Math.floor(w / 1.3); i++) B.geo(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 6), M.wood, x0 + 0.6 + i * 1.3, y + h - 0.25, bf, { rx: Math.PI / 2 });
+  // terraço: mureta na frente e no fundo (as laterais são as das vizinhas)
+  let top = y + h;
+  const upper = rand() < 0.28;
+  if (upper) { // quarto em cima, no fundo
+    const ud = d * rr(0.45, 0.6), uw = w * rr(0.55, 0.85), ux = cx + (w - uw) / 2 * (rand() < 0.5 ? -1 : 1) * 0.95;
+    const uzc = back + face * ud / 2, h2 = rr(2.5, 3.0);
+    adobe(mat, uw, h2, ud, ux, top - 0.05, uzc); addBox(ux, uzc, uw, ud, -5, top + h2);
+    B.box(M.window, 0.6, 0.45, 0.1, ux, top + h2 - 1.1, uzc + face * (ud / 2 + 0.03), { uv: false });
+    if (rand() < 0.45) { adobe(mat, 1.2, 1.3, 0.9, ux, top + h2 - 0.05, uzc, { jitter: 0.05 }); B.box(M.dark, 0.95, 0.7, 0.12, ux, top + h2 + 0.3, uzc + face * 0.46, { uv: false }); } // apanhador de vento virado para o norte
+  }
+  const t = 0.26, ph = 0.55;
+  adobe(mat, w, ph, t, cx, top - 0.05, bf - face * t / 2, { jitter: 0.05 });
+  adobe(mat, w, ph, t, cx, top - 0.05, back + face * t / 2, { jitter: 0.05 });
+  if (!upper && rand() < 0.4) { // toldo de junco no terraço
+    const cw = Math.min(w - 0.8, 4), ccd = Math.min(d - 0.8, 3.2), tcx = cx + rr(-(w - cw) / 2, (w - cw) / 2), tcz = back + face * (ccd / 2 + 0.4);
+    for (const [ax, az] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B.box(M.wood, 0.1, 2.1, 0.1, tcx + ax * (cw / 2 - 0.2), top, tcz + az * (ccd / 2 - 0.2));
+    B.box(M.esteira, cw, 0.06, ccd, tcx, top + 2.1, tcz);
+    for (let i = 0; i < 3; i++) jar(B, M, tcx + rr(-cw / 3, cw / 3), top, tcz + rr(-0.6, 0.6), rr(0.7, 1.0));
+  }
+  if (court) { // o pátio da frente: muro baixo com portão, forno de pão, jarros e a escada para o terraço
+    const wh = 1.7, gx = cx + rr(-w / 4, w / 4) * 0.7, czc = front - face * cd / 2;
+    for (const [a, b] of [[x0, gx - 0.75], [gx + 0.75, x1]]) if (b - a > 0.2) { adobe(mat, b - a, wh, 0.35, (a + b) / 2, base, front - face * 0.175, { jitter: 0.06 }); addBox((a + b) / 2, front - face * 0.175, b - a, 0.35, -5, y + wh - 0.3); }
+    B.box(M.wood, 1.7, 0.16, 0.42, gx, y + wh - 0.4, front - face * 0.175); // verga do portão
+    B.geo(new THREE.CylinderGeometry(0.34, 0.47, 0.95, 12), M.mud, x0 + 0.8, y + 0.42, front - face * 0.8); addCircle(x0 + 0.8, front - face * 0.8, 0.45, -5, y + 0.9); // forno, no canto da frente
+    for (let i = 0; i < 3; i++) jar(B, M, x1 - 0.5 - i * 0.55, y - 0.05, front - face * 0.7, rr(0.8, 1.1));
+    // escada de adobe encostada na frente da casa, subindo para o lado
+    const sx0 = x1 - 0.5, steps = Math.ceil(h / 0.42);
+    if (w > 6.5) for (let k = 1; k <= steps; k++) { const sx = sx0 - (k - 0.5) * 0.42; if (sx < cx + 0.6) break; const hk = Math.min(h, k * 0.42); adobe(mat, 0.44, hk + 0.35, 0.9, sx, base, bf + face * 0.45, { jitter: 0.04 }); addBox(sx, bf + face * 0.45, 0.44, 0.9, -5, y + hk); }
+    out.plants?.shrubs.push([cx + rr(-1, 1), czc, y - 0.05, rr(0.4, 0.6)]);
+  } else if (rand() < 0.35) for (let i = 0; i < 2; i++) jar(B, M, dx + (i ? 0.9 : -0.9), y - 0.05, bf + face * 0.45, rr(0.8, 1.15)); // jarros na porta
+  // casa da esquina: a parede do lado da rua ganha janelas, às vezes uma porta lateral, banco de adobe e jarros (antes
+  // as ruas de norte a sul eram só paredões lisos)
+  for (const sd of end === 0 ? [] : end === 2 ? [-1, 1] : [end]) {
+    const ex = sd < 0 ? x0 : x1, ry = Math.PI / 2;
+    for (let k = 0; k < 2; k++) { const wz = bz + (k ? 1 : -1) * d * rr(0.15, 0.3); B.box(M.window, 0.7, 0.42, 0.1, ex + sd * 0.03, y + h - 1.05, wz, { ry, uv: false }); for (const o of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.42, 0.12, ex + sd * 0.05, y + h - 1.05, wz + o, { ry, uv: false }); }
+    if (rand() < 0.4) { const dz2 = bz + rr(-d / 5, d / 5); B.box(M.dark, 0.9, 1.95, 0.12, ex + sd * 0.02, y - 0.05, dz2, { ry, uv: false }); B.box(M.wood, 1.3, 0.16, 0.28, ex + sd * 0.07, y + 1.9, dz2, { ry }); }
+    else if (rand() < 0.6) { B.adobe(M.mud, 0.55, 0.75, Math.min(3, d - 1), ex + sd * 0.28, y - 0.35, bz, { batter: 0, jitter: 0.05 }); addBox(ex + sd * 0.28, bz, 0.55, Math.min(3, d - 1), -5, y + 0.4); } // banco de adobe (mastaba) junto à parede
+    if (rand() < 0.5) for (let i = 0; i < 2; i++) jar(B, M, ex + sd * 0.45, y - 0.05, bz + d * 0.38 * (i ? 1 : -1) * rr(0.6, 1), rr(0.8, 1.1));
+  }
+  out.houses.push({ x: cx, z: bz, w, d, h, top: y + h });
 }
 
 function house(B, M, x, y, z, w, d, out) {

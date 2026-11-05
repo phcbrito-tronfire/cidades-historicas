@@ -4,7 +4,7 @@ import { makeBird } from '../comum/animals.js';
 import { makeAnimal, animateAnimal } from '../comum/animals.js';
 import { makeHumanoid, animateHumanoid, rigDetail } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
-import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum/collision.js';
+import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt, blocked } from '../comum/collision.js';
 import { riverX, terrainHeight } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
@@ -113,7 +113,7 @@ export class Actors {
       norte: [-110, 70, 30, 235], sul: [-110, 70, -235, -45], avenida: [20, 100, -10, 26], mercado: [42, 90, 30, 90], patio: [-36, -8, -12, 12],
     };
     // ponto sorteado na região, sempre em chão seco (nada de gente nascendo no fundo do rio ou do porto)
-    const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z)) break; } return p; };
+    const randIn = (r) => { let p; for (let i = 0; i < 30; i++) { p = new V3(rr(r[0], r[1]), 0, rr(r[2], r[3])); if (dryAt(p.x, p.z) && !blocked(p.x, p.z, terrainAt(p.x, p.z), 0.5)) break; } return p; }; // (nem dentro de casa: os bairros agora são quarteirões cheios)
     const looks = () => {
       const r = rand();
       if (r < 0.45) return { outfit: rand() < 0.7 ? 'kilt' : 'longkilt', hair: pick(['short', 'short', 'bald', 'khat']) };
@@ -306,7 +306,7 @@ export class Actors {
         else {
           for (let i = 0; i < 8; i++) {
             const c = new V3(rr(a.region[0], a.region[1]), 0, rr(a.region[2], a.region[3]));
-            if (terrainAt(c.x, c.z) > 0.6) { a.target = c; break; }
+            if (terrainAt(c.x, c.z) > 0.6 && !blocked(c.x, c.z, terrainAt(c.x, c.z), 0.5)) { a.target = c; break; }
           }
           if (!a.target) { a.wait = 2; continue; }
         }

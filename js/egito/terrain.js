@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm, smoothstep, lerp, rand, rr, clamp } from '../comum/util.js';
 import { blocked, addCircle, setTerrain, setWater } from '../comum/collision.js';
 import { pressAt } from '../comum/chao.js';
+import { plantKit, plantInstances } from './plantas.js';
 export { pressTerrain } from '../comum/chao.js';
 
 export const WATER_Y = 0;
@@ -202,8 +203,14 @@ vec3 cM = tri(tMud, vWXZ / 3.5).rgb;
 vec3 baseC = (cS * wS.x + cG * wS.y + cM * wS.z) * 1.15;
 // rocha nas encostas íngremes, projetada nos 3 eixos (não estica nos penhascos)
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
-vec3 cR = (texture2D(tRock, vWP.zy / 9.0).rgb * bw.x + texture2D(tRock, vWP.xz / 9.0).rgb * bw.y + texture2D(tRock, vWP.xy / 9.0).rgb * bw.z) * vec3(1.35, 1.0, 0.72);
-float strata = 0.85 + 0.15 * sin(vWP.y * 1.7 + sin(vWP.x * 0.05) * 2.0);
+// (duas escalas da rocha misturadas e camadas irregulares: com uma escala só e listras certinhas a cada 3,7 m, o
+// paredão parecia papel de parede)
+vec3 cR1 = texture2D(tRock, vWP.zy / 9.0).rgb * bw.x + texture2D(tRock, vWP.xz / 9.0).rgb * bw.y + texture2D(tRock, vWP.xy / 9.0).rgb * bw.z;
+vec3 cR2 = texture2D(tRock, vWP.zy / 37.0 + 0.41).rgb * bw.x + texture2D(tRock, vWP.xz / 37.0 + 0.41).rgb * bw.y + texture2D(tRock, vWP.xy / 37.0 + 0.41).rgb * bw.z;
+vec3 cR = mix(cR1, cR2, 0.5) * vec3(1.35, 1.0, 0.72);
+float wv = sin(vWP.x * 0.031 + vWP.z * 0.027) * 3.0 + sin(vWP.z * 0.071 - vWP.x * 0.013) * 1.6;
+float strata = 0.9 + 0.06 * sin(vWP.y * 0.85 + wv) + 0.04 * sin(vWP.y * 2.6 + wv * 1.9) + 0.05 * (texture2D(tRock, vec2(vWP.x + vWP.z, vWP.y * 6.0) / 140.0).r - 0.5);
+cR *= mix(1.04, 0.84, smoothstep(8.0, 48.0, vWP.y)); // a crosta escura do alto do paredão (o "verniz do deserto")
 float rockW = smoothstep(0.22, 0.45, 1.0 - vWN.y);
 diffuseColor.rgb *= mix(baseC, cR * strata * 1.25, rockW);`)
         .replace('#include <normal_fragment_maps>', `
@@ -274,17 +281,14 @@ normal = normalize( tbn * mapN );
 // Vegetação instanciada
 // ----------------------------------------------------------------------------
 
-function palmGeometry() {
-  const H = 8;
+function palmGeometry(H = 8, bend = 0.9, N = 13) {
   const trunk = new THREE.CylinderGeometry(0.17, 0.3, H, 8, 8, true);
   trunk.translate(0, H / 2, 0);
   const tp = trunk.attributes.position;
-  const bend = 0.9;
   for (let i = 0; i < tp.count; i++) { const y = tp.getY(i); tp.setX(i, tp.getX(i) + bend * (y / H) ** 2); }
   trunk.computeVertexNormals();
   const top = new THREE.Vector3(bend, H, 0);
   const fronds = [];
-  const N = 13;
   for (let i = 0; i < N; i++) {
     const f = new THREE.PlaneGeometry(1.1, 4.2, 1, 6);
     f.translate(0, 2.1, 0);
@@ -336,7 +340,7 @@ function papyrusGeometry() {
   return mergeGeometries(parts);
 }
 
-export function buildVegetation(scene, tex, exclusions) {
+export function buildVegetation(scene, tex, exclusions, extra = {}) {
   const dummy = new THREE.Object3D();
   const isExcluded = (x, z) => exclusions.some((e) => x > e[0] && x < e[1] && z > e[2] && z < e[3]);
 
@@ -358,21 +362,29 @@ export function buildVegetation(scene, tex, exclusions) {
   // oásis perto da esfinge
   for (let i = 0; i < 8; i++) tryPalm(-150 + rr(-8, 8), 70 + rr(-8, 8));
 
-  const pg = palmGeometry();
   const trunkMat = new THREE.MeshStandardMaterial({ map: tex.bark, roughness: 0.95 });
   const frondMat = new THREE.MeshStandardMaterial({ map: tex.frond, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.75, color: 0xd8d890 });
   const datesMat = new THREE.MeshStandardMaterial({ color: 0x9a4a18, roughness: 0.7 });
-  const trunks = new THREE.InstancedMesh(pg.trunk, trunkMat, palmPts.length);
-  const crowns = new THREE.InstancedMesh(pg.crown, frondMat, palmPts.length);
-  const datesM = new THREE.InstancedMesh(pg.dates, datesMat, palmPts.length);
-  palmPts.forEach((p, i) => {
-    dummy.position.set(p.x, p.y - 0.1, p.z); dummy.rotation.set(0, rand() * Math.PI * 2, 0); dummy.scale.setScalar(p.s);
-    dummy.updateMatrix();
-    trunks.setMatrixAt(i, dummy.matrix); crowns.setMatrixAt(i, dummy.matrix); datesM.setMatrixAt(i, dummy.matrix);
-    addCircle(p.x, p.z, 0.35 * p.s, -10, p.y + 8);
+  const frondDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex.frond, alphaTest: 0.45 });
+  const kit = plantKit({ frondMat, bark: tex.bark });
+  // palmeiras: três feitios (alta e esguia, média, baixa e curvada), cada uma inclinada e girada do seu jeito, com a
+  // copa num tom próprio (antes eram todas a mesma árvore, em fila)
+  const kinds = [palmGeometry(9.5, 1.3, 15), palmGeometry(8, 0.9, 13), palmGeometry(6.2, 0.55, 11)];
+  const byKind = [[], [], []];
+  palmPts.forEach((p) => { const k = Math.floor(rand() * 3); byKind[k].push({ x: p.x, y: p.y - 0.1, z: p.z, s: p.s, ry: rand() * Math.PI * 2, rx: rr(-0.06, 0.06), rz: rr(-0.06, 0.06) }); addCircle(p.x, p.z, 0.35 * p.s, -10, p.y + 8); });
+  kinds.forEach((g, k) => { if (!byKind[k].length) return;
+    plantInstances(scene, g.trunk, trunkMat, byKind[k]);
+    plantInstances(scene, g.crown, frondMat, byKind[k], { depth: frondDepth, tint: () => [0.14 + rand() * 0.05, 0.3 + rand() * 0.25, 0.75 + rand() * 0.2] });
+    plantInstances(scene, g.dates, datesMat, byKind[k].filter(() => rand() < 0.6));
   });
-  for (const m of [trunks, crowns, datesM]) { m.castShadow = true; m.receiveShadow = true; scene.add(m); }
-  crowns.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex.frond, alphaTest: 0.45 });
+  // palmeiras-dum (o tronco que se divide), em grupos: no oásis da Esfinge, na margem leste e no jardim do palácio
+  { const pts = [];
+    for (const [x, z] of extra.doums || []) { const h = terrainHeight(x, z); if (h < 0.3 || blocked(x, z, h, 0.8)) continue; pts.push({ x, y: h - 0.1, z, s: rr(0.85, 1.15), ry: rand() * 6 }); addCircle(x, z, 0.3, -10, h + 6); }
+    if (pts.length) { plantInstances(scene, kit.doum.wood, kit.doum.woodMat, pts); plantInstances(scene, kit.doum.fans, kit.doum.fanMat, pts, { depth: frondDepth }); } }
+  // sicômoros (jardins do palácio e do templo, praças)
+  { const pts = [];
+    for (const [x, z, y0] of extra.sycamores || []) { const h = y0 ?? terrainHeight(x, z); pts.push({ x, y: h - 0.05, z, s: rr(0.9, 1.15), ry: rand() * 6 }); addCircle(x, z, 0.55, -10, h + 5); }
+    if (pts.length) { plantInstances(scene, kit.syc.wood, kit.syc.woodMat, pts); plantInstances(scene, kit.syc.leaves, kit.syc.leafMat, pts, { depth: kit.syc.leafDepth, tint: () => [0.27 + rand() * 0.04, 0.3 + rand() * 0.15, 0.75 + rand() * 0.2] }); } }
 
   // --- papiros nas margens
   const papPts = [];
@@ -441,30 +453,7 @@ export function buildVegetation(scene, tex, exclusions) {
   }
   rocks.castShadow = true; rocks.receiveShadow = true; scene.add(rocks);
 
-  // --- touceiras de folhas (beira do rio, jardins, ruas) e palmeirinhas em vasos
-  const leafTex = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    for (let i = 0; i < 140; i++) {
-      const x = 20 + Math.random() * 216, y = 30 + Math.random() * 210, a = Math.random() * Math.PI * 2, l = 14 + Math.random() * 22;
-      const g = 85 + Math.random() * 60;
-      ctx.fillStyle = `rgb(${50 + g * 0.3},${g},${32})`;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-      ctx.beginPath(); ctx.ellipse(0, 0, l, l * 0.32, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-  })();
-  const bushG = (() => {
-    const parts = [];
-    for (let i = 0; i < 6; i++) {
-      const p = new THREE.PlaneGeometry(1.6, 1.3); p.translate(0, 0.6, 0);
-      p.rotateX(-0.25 + Math.random() * 0.2); p.rotateY((i / 6) * Math.PI + Math.random() * 0.3);
-      parts.push(p);
-    }
-    const top = new THREE.PlaneGeometry(1.5, 1.5); top.rotateX(-Math.PI / 2); top.translate(0, 1.0, 0); parts.push(top);
-    return mergeGeometries(parts);
-  })();
-  const bushMat = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8 });
+  // --- moitas (beira do rio, jardins, ruas) e palmeirinhas em vasos
   const bushPts = [];
   const tryBush = (x, z, s) => {
     const h = terrainHeight(x, z);
@@ -474,15 +463,12 @@ export function buildVegetation(scene, tex, exclusions) {
   for (let i = 0; i < 800; i++) { const z = rr(-360, 360); tryBush(riverX(z) + (rand() < 0.5 ? -1 : 1) * rr(44, 70), z); }
   for (let i = 0; i < 260; i++) tryBush(rr(-140, 85), rr(-260, 260), rr(0.5, 1.0));
   for (let i = 0; i < 40; i++) tryBush(-150 + rr(-12, 12), 70 + rr(-12, 12)); // oásis
-  const bushes = new THREE.InstancedMesh(bushG, bushMat, bushPts.length);
-  const bc = new THREE.Color();
-  bushPts.forEach((p, i) => {
-    dummy.position.set(p.x, p.y - 0.1, p.z); dummy.rotation.set(0, rand() * 6, 0); dummy.scale.set(p.s, p.s * rr(0.7, 1.1), p.s);
-    dummy.updateMatrix(); bushes.setMatrixAt(i, dummy.matrix);
-    bushes.setColorAt(i, bc.setHSL(0.17 + rand() * 0.08, 0.35 + rand() * 0.2, 0.55 + rand() * 0.25));
-  });
-  bushes.castShadow = true; bushes.receiveShadow = true; scene.add(bushes);
-  bushes.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 });
+  // moitas de três espécies, de raminhos com folhas de verdade (antes um cartão de borrões com tampa chata, que de
+  // longe virava caixa verde): folhagem comum, uma florida (nos jardins) e a tamargueira de folha miúda (no deserto)
+  for (const [x, z, y0, s] of extra.shrubs || []) bushPts.push({ x, z, y: y0 ?? terrainHeight(x, z), s: s || rr(0.6, 1.0), garden: true });
+  { const sp = [[], [], []];
+    bushPts.forEach((p) => { const k = p.garden ? (rand() < 0.5 ? 1 : 0) : rand() < 0.35 ? 2 : rand() < 0.15 ? 1 : 0; sp[k].push({ x: p.x, y: p.y - 0.08, z: p.z, s: p.s, sy: p.s * rr(0.75, 1.15), ry: rand() * 6 }); });
+    sp.forEach((pts, k) => { if (pts.length) plantInstances(scene, kit.shrub.geo, kit.shrub.mats[k], pts, { depth: kit.shrub.depth[k], tint: () => [0.25, 0.1 + rand() * 0.2, 0.8 + rand() * 0.2] }); }); }
 
   // palmeirinhas em vasos de terracota (avenida, pátio do templo, jardim do palácio)
   const potPts = [];
@@ -490,17 +476,12 @@ export function buildVegetation(scene, tex, exclusions) {
   for (let x = -9.5; x >= -36; x -= 5) for (const z of [-12.6, 12.6]) potPts.push([x, z, 1.2]);
   for (let x = 28; x <= 50; x += 4.5) potPts.push([x, -126, 1.0]);
   const potPts2 = potPts.filter(([x, z, y]) => !blocked(x, z, y, 0.4));
-  const potG = (() => { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.18 + Math.sin(t * Math.PI * 0.85) * 0.22 + (t > 0.9 ? 0.05 : 0), t * 0.7)); } return new THREE.LatheGeometry(pts, 14); })();
-  const potMat = new THREE.MeshStandardMaterial({ color: 0xa4552f, roughness: 0.85 });
-  const pots = new THREE.InstancedMesh(potG, potMat, potPts2.length);
-  const sprouts = new THREE.InstancedMesh(pg.crown, frondMat, potPts2.length);
-  potPts2.forEach(([x, z, y], i) => {
-    dummy.position.set(x, y, z); dummy.rotation.set(0, rand() * 6, 0); dummy.scale.setScalar(1); dummy.updateMatrix(); pots.setMatrixAt(i, dummy.matrix);
-    dummy.scale.setScalar(rr(0.2, 0.26)); dummy.position.set(x - 0.9 * dummy.scale.x, y + 0.55 - 8 * dummy.scale.y, z); dummy.updateMatrix(); sprouts.setMatrixAt(i, dummy.matrix);
-    addCircle(x, z, 0.4, -5, y + 1.5);
-  });
-  for (const m of [pots, sprouts]) { m.castShadow = true; m.receiveShadow = true; scene.add(m); }
-  sprouts.customDepthMaterial = crowns.customDepthMaterial;
+  // palmeirinhas de vaso: as folhas novas saem da terra do vaso (antes a copa grande encolhida ficava torta e enterrada)
+  for (const p of extra.pots || []) if (!blocked(p[0], p[1], p[2], 0.4)) potPts2.push(p);
+  const potList = potPts2.map(([x, z, y]) => ({ x, y, z, s: 1, ry: rand() * 6 }));
+  plantInstances(scene, kit.pot.geo, kit.pot.mat, potList);
+  plantInstances(scene, kit.pot.plant, kit.pot.plantMat, potList.map((p) => ({ ...p, s: rr(0.85, 1.2) })), { depth: frondDepth });
+  potList.forEach((p) => addCircle(p.x, p.z, 0.4, -5, p.y + 1.5));
 
   return { palms: palmPts };
 }
