@@ -335,7 +335,7 @@ export function buildTerrain(scene, tex) {
   const valley = terrainMesh(mat, X0, X1, ZA, ZB, 3.4);
   const slope = terrainMesh(mat, X0, X1, ZB - 4.25, ZC, 4.25, (x, z) => (z < ZB ? 0.15 : 0)); // (4,25 m: fino o bastante para os patamares das estações) // (a fileira que entra no vale fica um pouco abaixo)
   const inside = (x, z) => x > X0 + 2 && x < X1 - 2 && z > ZA + 2 && z < ZC - 2;
-  const far = terrainMesh(mat, -4400, 4400, -3600, 6000, 40, (x, z) => (inside(x, z) ? 6 : 0));
+  const far = terrainMesh(mat, -4400, 4400, -3600, 6000, 40, (x, z) => (inside(x, z) ? 45 : 0)); // (bem abaixo das outras duas: no pé dos morros o triângulo de 40 m furava a malha fina e aparecia como cunha chapada)
   far.receiveShadow = false;
   scene.add(valley, slope, far);
   return { terrain: valley, slope, far, mat };

@@ -210,16 +210,16 @@ export function toro(B, M, out, x, y, z, s = 1, lit = true) {
 }
 // torii: dois pilares, a viga de cima curva (kasagi) e a de baixo (nuki); myōjin (vermelho) ou shinmei (cedro)
 export function torii(B, M, x, y, z, ry, w = 6, h = 6.4, kind = 'myojin') {
-  const f = frame(B, x, y, z, ry), mat = kind === 'shinmei' ? M.cedar : M.vermilion, r = 0.22 * w / 6;
+  const f = frame(B, x, y, z, ry), mat = kind === 'shinmei' ? M.cedar : M.vermilion, r = 0.22 * w / 6, s = w / 6; // (tudo na proporção da largura: o torii pequeno de Inari ficava com a viga e a placa do tamanho do grande)
   for (const sd of [-1, 1]) { f.geo(new THREE.CylinderGeometry(r * 0.88, r, h, 14), mat, sd * w / 2, h / 2, 0, { uv: false }); f.box(M.blackWood, r * 2.4, 0.5, r * 2.4, sd * w / 2, 0, 0); f.box(M.stone || M.blackWood, r * 2.6, 3.5, r * 2.6, sd * w / 2, -3.5, 0); f.solid(sd * w / 2, 0, r * 2.2, r * 2.2, -1, h); }
-  f.box(mat, w + 1.0, 0.32 * w / 6, 0.34 * w / 6, 0, h - 0.95, 0); // nuki
+  f.box(mat, w + 1.0 * s, 0.32 * s, 0.34 * s, 0, h - 0.95 * s, 0); // nuki
   if (kind === 'myojin') { // kasagi curvo, preto em cima, com as pontas levantadas
-    const k = roofGeo(w + 2.4, 0.5 * w / 6, -0.05, { thick: 0.42 * w / 6, sori: 0.45, sag: 1, gable: true, seg: 10 });
-    f.geo(k, M.blackWood, 0, h + 0.15, 0, { uv: false });
-    f.box(mat, w + 1.8, 0.3 * w / 6, 0.4 * w / 6, 0, h - 0.25, 0);
-    f.box(mat, 0.3, 0.6, 0.18, 0, h - 0.65, 0); // a placa do meio (gakuzuka)
-    f.box(M.blackWood, 0.9, 1.1, 0.12, 0, h - 1.55 + 0.6, 0.18); f.box(M.gold, 0.6, 0.8, 0.02, 0, h - 1.4 + 0.6, 0.25); // a placa com o nome
-  } else f.box(mat, w + 1.6, 0.36, 0.42, 0, h, 0);
+    const k = roofGeo(w + 2.4 * s, 0.5 * s, -0.05 * s, { thick: 0.42 * s, sori: 0.45 * s, sag: 1, gable: true, seg: 10 });
+    f.geo(k, M.blackWood, 0, h + 0.15 * s, 0, { uv: false });
+    f.box(mat, w + 1.8 * s, 0.3 * s, 0.4 * s, 0, h - 0.25 * s, 0);
+    f.box(mat, 0.3 * s, 0.6 * s, 0.18 * s, 0, h - 0.65 * s, 0); // a placa do meio (gakuzuka)
+    f.box(M.blackWood, 0.9 * s, 1.1 * s, 0.12 * s, 0, h - 0.95 * s, 0.18 * s); f.box(M.gold, 0.6 * s, 0.8 * s, 0.02 * s, 0, h - 0.8 * s, 0.25 * s); // a placa com o nome
+  } else f.box(mat, w + 1.6 * s, 0.36 * s, 0.42 * s, 0, h, 0);
 }
 // corda sagrada (shimenawa) com as tiras de papel (shide) em ziguezague
 export function shimenawa(B, M, x0, y, z0, x1, z1, thick = 0.18) {
