@@ -20,8 +20,9 @@ function hall(B, M, out, x, y, z, ry, w, d, fl, opts = {}) {
   f.box(M.blackWood, w + 1.6, 0.14, d + 1.6, 0, fl - 0.14, 0); f.solid(0, 0, w + 1.6, d + 1.6, fl - 1.2, fl, true); // o assoalho com a varanda (en)
   f.box(M.cedar, w - 0.2, 0.06, d - 0.2, 0, fl, 0);
   for (const [lx, lz, lw, ld] of [[0, hd + 0.75, w + 1.6, 0.08], [0, -hd - 0.75, w + 1.6, 0.08], [hw + 0.75, 0, 0.08, d + 1.6], [-hw - 0.75, 0, 0.08, d + 1.6]]) { // guarda-corpo (menos no meio da frente)
-    if (lz > 0) { for (const sd of [-1, 1]) { f.box(post, (w + 1.6) / 2 - 1.3, 0.08, 0.08, sd * ((w + 1.6) / 4 + 0.65), fl + 0.75, lz); f.solid(sd * ((w + 1.6) / 4 + 0.65), lz, (w + 1.6) / 2 - 1.3, 0.1, fl, fl + 0.8); } continue; }
-    f.box(post, lw, 0.08, ld, lx, fl + 0.75, lz); f.solid(lx, lz, lw, ld + 0.02, fl, fl + 0.8);
+    const balusters = (cx, cz, L, alongX) => { const n = Math.max(1, Math.round(L / 1.4)); for (let k = 0; k <= n; k++) { const t = -L / 2 + (L * k) / n; f.box(post, 0.08, 0.79, 0.08, alongX ? cx + t : cx, fl, alongX ? cz : cz + t); } }; // (os pilaretes que seguram a barra)
+    if (lz > 0) { for (const sd of [-1, 1]) { const L = (w + 1.6) / 2 - 1.3, cx = sd * ((w + 1.6) / 4 + 0.65); f.box(post, L, 0.08, 0.08, cx, fl + 0.75, lz); balusters(cx, lz, L, true); f.solid(cx, lz, L, 0.1, fl, fl + 0.8); } continue; }
+    f.box(post, lw, 0.08, ld, lx, fl + 0.75, lz); balusters(lx, lz, Math.max(lw, ld), lw > ld); f.solid(lx, lz, lw, ld + 0.02, fl, fl + 0.8);
   }
   // a escada da frente (largura 2,6 m) até o assoalho
   const n = Math.ceil(fl / 0.22), sh = fl / n;

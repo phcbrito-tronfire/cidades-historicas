@@ -90,7 +90,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
 
   // as árvores vão em pedaços de 120 m (a câmera e a sombra descartam os pedaços fora de vista)
   const chunks = [];
-  const inst = (geo, mat, list, f, shadow = true) => {
+  const inst = (geo, mat, list, f, shadow = true, far = 0) => {
     const made = [];
     const cells = new Map();
     for (const p of list) { const k = Math.floor(p[0] / 120) + ',' + Math.floor(p[2] / 120); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(p); }
@@ -98,7 +98,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
     for (const L of cells.values()) {
       const im = new THREE.InstancedMesh(geo, mat, L.length);
       L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
-      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); made.push(im); chunks.push(im);
+      im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); if (far) im.userData.far = far; scene.add(im); made.push(im); chunks.push(im);
     }
     return made;
   };
@@ -125,7 +125,8 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   // bambu: colmo fino e alto, levemente curvado, com as folhas em cima
   const culm = new THREE.CylinderGeometry(0.05, 0.065, 11, 5, 4); { const p = culm.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 5.5; p.setX(i, p.getX(i) + (y / 11) ** 2 * 0.7); p.setY(i, y); } culm.computeVertexNormals(); }
   const bTop = mergeGeometries([tuft(1.2, 1.6, 1.1, 0.55, 9.6, 0, 11, 0.5), tuft(0.9, 1.0, 0.9, 0.7, 7.8, 0.4, 12, 0.5)]);
-  inst(culm, bambooM, kinds.bamboo, place, false); inst(bTop, bambooLeaf, kinds.bamboo, place);
+  const bFar = quality === 'alto' ? 420 : quality === 'minimo' ? 170 : 240; // (o bambu é miúdo e denso: some antes das árvores; de longe a cor do chão faz o bambuzal)
+  inst(culm, bambooM, kinds.bamboo, place, false, bFar); inst(bTop, bambooLeaf, kinds.bamboo, place, true, bFar);
 
   // o capim susuki das clareiras: touceiras altas com os penachos (prateados no verão, dourados no outono)
   const susukiM = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
@@ -135,7 +136,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   const tuftG = (() => { const a = new THREE.PlaneGeometry(1.4, 1.6), b = a.clone(); a.translate(0, 0.8, 0); b.translate(0, 0.8, 0); b.rotateY(Math.PI / 2); return mergeGeometries([a, b]); })();
   kinds.susuki = [];
   for (let i = 0; i < Math.round(9000 * dens); i++) { const x = rr(-650, 650), z = rr(-700, 420); if (!meadowAt(x, z) || avoid(x, z, 2) || polyDist(STREAM, x, z).d < 6) continue; const h = terrainHeight(x, z); if (blocked(x, z, h, 0.5, 2)) continue; kinds.susuki.push([x, h, z, rr(0.7, 1.2), rnd() * 6]); }
-  inst(tuftG, susukiM, kinds.susuki, (d, [x, y, z, sc, ry]) => { d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.scale.set(sc, sc * rr(0.8, 1.2), sc); }, false);
+  inst(tuftG, susukiM, kinds.susuki, (d, [x, y, z, sc, ry]) => { d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.scale.set(sc, sc * rr(0.8, 1.2), sc); }, false, quality === 'alto' ? 360 : quality === 'minimo' ? 140 : 200); // (capim: some de longe)
   M.susukiM = susukiM;
   for (const k of ['sugi', 'pine', 'broad', 'maple', 'sakura', 'fir']) for (const [x, y, z, s] of kinds[k]) addCircle(x, z, 0.35 * s + 0.05, y - 1, y + 6);
   for (const [x, y, z] of kinds.bamboo) addCircle(x, z, 0.09, y - 1, y + 6);
@@ -189,7 +190,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
     firM.color.setHex(sn === 'inverno' ? 0x6a7a6a : 0x3f5a40); sugiM.color.setHex(sn === 'inverno' ? 0x6a7060 : sn === 'outono' ? 0x5a6a3e : 0x4f6a3e); }; // (no inverno os pinheiros e cedros ficam mais cinzentos, com geada)
   const sakuraLeaf = sakuraM.map;
   let cullT = 0; const cc = chunks.map((im) => im.boundingSphere ? im.boundingSphere.center.clone() : new THREE.Vector3());
-  return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; chunks[i].visible = dx * dx + dz * dz < (farR + 70) * (farR + 70) && chunks[i].userData.season !== false; } },
+  return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; const R = (chunks[i].userData.far || farR) + 70; chunks[i].visible = dx * dx + dz * dz < R * R && chunks[i].userData.season !== false; } },
     update(dt) { tFall += dt; mistUp(dt, tFall); fallTex2.offset.y += dt * 2.6; fallTex.offset.y += dt * 1.6; water.userData.tick(dt); } };
 }
 

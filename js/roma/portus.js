@@ -49,6 +49,8 @@ export function buildPortus(B, M, out) {
     const [u0, v0] = verts[i], [u1, v1] = verts[(i + 1) % 6], ry = yawOf(u1 - u0, v1 - v0);
     const mu = (u0 + u1) / 2, mv = (v0 + v1) / 2, k = 1 + 30 / Rin, c = W(mu * k, mv * k), y = Math.max(terrainHeight(c.x, c.z), TOP) - 0.3, L = 46, D = 16, H = 8;
     const F = mat4(c.x, y, c.z, 0, ry - Math.PI / 2, 0), box = (m, w, h, d, x, yy, z) => B.box(m, w, h, d, x, yy, z, { frame: F });
+    { let lo = y; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) { const p = new THREE.Vector3(a * L / 2, 0, b * D / 2).applyMatrix4(F); lo = Math.min(lo, terrainHeight(p.x, p.z)); } // o embasamento: desce até o chão do lado mais baixo
+      if (y - lo > 0.05) box(M.travertine, L + 0.3, y - lo + 0.4, D + 0.3, 0, lo - y - 0.4, 0); }
     box(M.brick, L, H, D, 0, 0, 0); box(M.travertine, L + 0.4, 0.3, D + 0.4, 0, H, 0);
     for (let j = 0; j < 9; j++) { box(M.dark, 2.2, 3.4, 0.08, -L / 2 + 2.6 + j * 5.1, 0, D / 2 + 0.03); box(M.travertine, 2.8, 0.35, 0.2, -L / 2 + 2.6 + j * 5.1, 3.4, D / 2 + 0.08); }
     for (const s of [-1, 1]) B.geo(roofHalf(L + 0.8, D / 2 + 0.6, 2.2), M.tiles, 0, 0, 0, { frame: F.clone().multiply(mat4(0, H + 0.3 + 2.2, 0, 0, s > 0 ? 0 : Math.PI, 0)) });

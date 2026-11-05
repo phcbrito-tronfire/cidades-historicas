@@ -21,6 +21,19 @@ http.createServer((req, res) => {
     });
     return;
   }
+  // (modelos) POST /__baixado?n=nome.glb com os bytes do arquivo grava _arquivos/baixados/nome — para trazer um
+  // modelo baixado no navegador (com o login do Pedro) até a pasta do projeto. Só no servidor local.
+  if (req.method === 'POST' && req.url.startsWith('/__baixado')) {
+    const n = (new URL(req.url, 'http://x').searchParams.get('n') || 'arquivo.bin').replace(/[^\w.-]/g, '');
+    const parts = []; let size = 0; req.on('data', (c) => { parts.push(c); size += c.length; if (size > 2e8) req.destroy(); });
+    req.on('end', () => {
+      const dir = path.join(ROOT, '_arquivos', 'baixados'); fs.mkdirSync(dir, { recursive: true });
+      const f = path.join(dir, n); fs.writeFileSync(f, Buffer.concat(parts));
+      res.writeHead(200, { 'Access-Control-Allow-Origin': '*' }); res.end(f + ' ' + size);
+    });
+    return;
+  }
+  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Private-Network': 'true' }); return res.end(); }
   let p = decodeURIComponent(req.url.split('?')[0]);
   if (p.endsWith('/')) p += 'index.html';
   const file = path.join(ROOT, path.normalize(p).replace(/^([/\\])+/, ''));

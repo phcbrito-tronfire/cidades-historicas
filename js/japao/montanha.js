@@ -46,7 +46,7 @@ export function buildMountain(B, M, out) {
   const toriiAt = (x, z, ry, w, h, kind) => { const c = Math.cos(ry), s = Math.sin(ry), y = Math.max(terrainHeight(x + c * w / 2, z - s * w / 2), terrainHeight(x - c * w / 2, z + s * w / 2)); torii(B, M, x, y, z, ry, w, h, kind); };
   for (const f of [0.035, 0.1, 0.2, 0.33]) { const p = trailAt(f); toriiAt(p.x, p.z, Math.atan2(p.dx, p.dz), 5.4, 5.2, f < 0.15 ? 'myojin' : 'shinmei'); }
   for (let f = 0.05; f < 0.6; f += 0.07) { const p = trailAt(f), x = p.x - p.dz * 3.4, z = p.z + p.dx * 3.4, y = terrainHeight(x, z);
-    for (let j = 0; j < 3; j++) { const jx = x + p.dx * (j - 1) * 0.55, jz = z + p.dz * (j - 1) * 0.55; B.geo(new THREE.CylinderGeometry(0.13, 0.17, 0.5, 10), M.stoneLight, jx, y + 0.25, jz, { uv: false }); B.geo(new THREE.SphereGeometry(0.12, 10, 8), M.stoneLight, jx, y + 0.6, jz, { uv: false }); B.geo(new THREE.ConeGeometry(0.2, 0.24, 10, 1, true), M.redCloth, jx, y + 0.42, jz, { rx: Math.PI, uv: false }); }
+    for (let j = 0; j < 3; j++) { const jx = x + p.dx * (j - 1) * 0.55, jz = z + p.dz * (j - 1) * 0.55; B.geo(new THREE.CylinderGeometry(0.13, 0.17, 0.8, 10), M.stoneLight, jx, y + 0.1, jz, { uv: false }); B.geo(new THREE.SphereGeometry(0.12, 10, 8), M.stoneLight, jx, y + 0.6, jz, { uv: false }); B.geo(new THREE.ConeGeometry(0.2, 0.24, 10, 1, true), M.redCloth, jx, y + 0.42, jz, { rx: Math.PI, uv: false }); }
     addCircle(x, z, 0.8, y - 1, y + 0.8); }
   // a casa de chá do pé da trilha (os peregrinos tomavam o último chá antes da subida) e os estandartes das confrarias
   { const p = trailAt(0.07), sd = -1, x = p.x + p.dz * 8 * sd, z = p.z - p.dx * 8 * sd, f = frame(B, x, terrainHeight(x, z) + 0.05, z, Math.atan2(-p.dz * sd, p.dx * sd));

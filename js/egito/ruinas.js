@@ -36,7 +36,7 @@ export function buildNileRuins(scene, city) {
   const stand = [[-3, -5, 4.6, true], [-3, 0, 2.3], [-3, 5, 0.9], [3, -5, 3.4], [3, 0, 0], [3, 5, 1.6]];
   for (const [dx, dz, h, cap] of stand) {
     const x = ix + dx, z = iz + dz;
-    B.geo(new THREE.CylinderGeometry(R * 1.2, R * 1.28, 0.32, 24), M.sandstone, x, top + 0.16, z); // base
+    B.geo(new THREE.CylinderGeometry(R * 1.2, R * 1.28, 0.62, 24), M.sandstone, x, top + 0.01, z); // base (entra 30 cm no chão)
     if (h > 0) {
       B.geo(shaft(h), M.colShaft, x, top + 0.32 + h / 2, z, { uv: false });
       if (cap) { // a única que ainda tem as amarras e o capitel fechado
@@ -51,7 +51,7 @@ export function buildNileRuins(scene, city) {
   }
   // tambores caídos: duas colunas que tombaram para leste, ainda em fila, e uma que rolou até a água
   const drum = (x, y, z, ry, len, tilt = 0) => {
-    B.geo(shaft(len), M.colShaft, x, y + R * 0.92, z, { rz: Math.PI / 2 + tilt, ry, uv: false });
+    B.geo(shaft(len), M.colShaft, x, y + R * 0.78, z, { rz: Math.PI / 2 + tilt, ry, uv: false });
     const c = Math.cos(ry), s = Math.sin(ry);
     for (let k = -1; k <= 1; k++) addCircle(x + c * k * len * 0.33, z - s * k * len * 0.33, R * 0.9, y - 0.5, y + R * 1.8);
   };
@@ -81,7 +81,7 @@ export function buildNileRuins(scene, city) {
     for (const s of [-1, 1]) { B.box(M.granite, t, h * (s > 0 ? 1 : 0.7), d, cx + s * w / 2, top, cz); addBox(cx + s * w / 2, cz, t, d, top - 1, top + h); }
     for (const s of [-1, 1]) { B.box(M.granite, (w - 1.2) / 2, h, t, cx + s * (w / 4 + 0.3), top, cz - d / 2); addBox(cx + s * (w / 4 + 0.3), cz - d / 2, (w - 1.2) / 2, t, top - 1, top + h); }
     B.box(M.granite, 1.6, 0.3, 0.5, cx + 1.4, top, cz - d / 2 - 0.9, { ry: 0.4, rz: 0.2 }); // pedaço do lintel no chão
-    B.box(M.relief, 1.2, 0.7, 0.8, cx, top, cz + 0.6); addBox(cx, cz + 0.6, 1.2, 0.8, top - 1, top + 0.7); // mesa de oferendas
+    B.box(M.relief, 1.2, 1.0, 0.8, cx, top - 0.3, cz + 0.6); // (o pé entra no chão: ficava a um palmo dele) addBox(cx, cz + 0.6, 1.2, 0.8, top - 1, top + 0.7); // mesa de oferendas
     jar(B, M, cx - 0.4, top + 0.7, cz + 0.6, 0.45); jar(B, M, cx + 0.35, top + 0.7, cz + 0.5, 0.4);
     S.hapiShrine = new V3(cx, top, cz);
   }

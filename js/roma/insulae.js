@@ -28,7 +28,7 @@ const bush = once('bush', () => new THREE.IcosahedronGeometry(0.3, 0));
 // uma ínsula. o = { x, z, w (fachada), d (fundo), ry, floors, portico, balcony }
 export function insula(B, M, out, o) {
   const { x, z, w, d, ry } = o, n = o.floors;
-  const ys = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]].map(([a, b]) => terrainHeight(x + a * Math.cos(ry) + b * Math.sin(ry), z - a * Math.sin(ry) + b * Math.cos(ry)));
+  const ys = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2], [0, -d / 2], [0, d / 2], [-w / 2, 0], [w / 2, 0]].map(([a, b]) => terrainHeight(x + a * Math.cos(ry) + b * Math.sin(ry), z - a * Math.sin(ry) + b * Math.cos(ry)));
   const y = Math.min(...ys) - 0.2, lift = Math.max(...ys) - y; // em leve declive, o térreo acompanha o lado mais baixo
   const F = mat4(x, y, z, 0, ry, 0);
   const box = (mat, bw, bh, bd, lx, ly, lz, ex = {}) => B.box(mat, bw, bh, bd, lx, ly, lz, { frame: F, ...ex });

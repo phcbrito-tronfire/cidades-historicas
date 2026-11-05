@@ -59,7 +59,7 @@ export function house(B, M, out, o) {
   f.wall(M.fusuma, xm, -hd, xm, hd, H - FL - 0.5, 0.06, [[d * 0.5, 1.8, 1.8]], { y0: FL });
   { const ix = xd + (xm - xd) / 2, iz = 0.6; // irori: caixa de cinza no chão da sala, a corrente com o gancho e a chaleira
     f.box(M.darkWood, 1.3, 0.08, 1.3, ix, FL - 0.04, iz); f.box(M.dark, 1.05, 0.06, 1.05, ix, FL - 0.03, iz); f.box(M.fire, 0.4, 0.04, 0.3, ix, FL + 0.0, iz);
-    f.box(M.iron, 0.03, H - FL - 0.9, 0.03, ix, FL + 0.7, iz); f.geo(new THREE.SphereGeometry(0.2, 10, 6), M.iron, ix, FL + 0.62, iz, { sy: 0.8, uv: false });
+    f.box(M.iron, 0.03, H - FL - 0.84, 0.03, ix, FL + 0.7, iz); f.box(M.darkWood, 0.14, 0.14, 2 * hd, ix, H - 0.14, 0); // (a corrente do gancho pende da viga que cruza a sala) f.geo(new THREE.SphereGeometry(0.2, 10, 6), M.iron, ix, FL + 0.62, iz, { sy: 0.8, uv: false });
     const [wx, wz] = f.W(ix, iz); out.torches.push(new V3(wx, y + FL + 0.1, wz)); out.hearths.push({ x: wx, y: y + FL, z: wz, ry: o.ry }); }
   { const tx = hw - 0.5; f.box(M.wood, 0.9, 0.12, 1.8, tx, FL, -hd + 1.6); f.box(M.scroll, 0.02, 1.2, 0.5, hw - 0.1, FL + 0.6, -hd + 1.6); f.geo(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), M.stoneLight, tx, FL + 0.25, -hd + 1.2, { uv: false }); } // tokonoma: pergaminho e o vaso
   f.box(M.wood, 1.6, 0.06, 0.4, xm + 0.9, H - 0.7, -hd + 0.25); f.box(M.cedar, 0.5, 0.42, 0.3, xm + 0.9, H - 0.64, -hd + 0.25); // kamidana: o altar dos deuses na parede
@@ -105,7 +105,7 @@ export function machiya(B, M, out, o) {
   // a cortina na porta e a lanterna
   const doorC = -hw + (o.doma ?? 3.4) / 2;
   f.box(M.noren[o.sign ?? 0], 1.9, 0.75, 0.02, doorC, 2.05, hd + 0.12, { noGround: true });
-  { const [lx, lz] = f.W(doorC + 1.4, hd + 0.5); chochin(B, M, out, lx, y + 2.4, lz); }
+  { const [lx, lz] = f.W(doorC + 1.4, hd + 0.5); chochin(B, M, out, lx, y + 2.4, lz); f.box(M.blackWood, 0.03, 0.32, 0.03, doorC + 1.4, 2.7, hd + 0.5, { noGround: true }); f.box(M.blackWood, 0.05, 0.05, 0.66, doorC + 1.4, 2.98, hd + 0.2, { noGround: true }); } // (o cordão e o braço até a parede)
   return { f, y };
 }
 function roofOneSide(W, D, H) { // água única (o beiral de cima da porta)

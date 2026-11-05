@@ -3,12 +3,13 @@
 // arco, os lavradores nos arrozais, os monges do templo, o sacerdote, os fregueses das casas de chá, os
 // peregrinos em volta do fogo das casas dos oshi e os donos das cabanas da montanha.
 import * as THREE from 'three';
-import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
+import { makeHumanoid, animateHumanoid, playOnce, rigDetail } from '../comum/mixamo.js';
 import { makeAnimal, animateAnimal, makeBird } from '../comum/animals.js';
 import { creature } from '../comum/fauna.js';
 import { NPCS, VILLAGER_LINES, PILGRIM_LINES, SAMURAI_LINES, FARMER_LINES, MONK_LINES, MERCHANT_LINES, CHILD_LINES, PRIEST_LINES } from './dialogues.js';
 import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collision.js';
-import { terrainHeight, STREET, FIELDS, LAKE, SHRINE, TRAIL, inLake, fujiH, forestAt } from './terrain.js';
+import { terrainHeight, STREET, FIELDS, LAKE, SHRINE, TRAIL, INARI, inLake, fujiH, forestAt, meadowAt, trailAt } from './terrain.js';
+import { blocked } from '../comum/collision.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
 import { Kyudo, Suburi } from './treino.js';
@@ -143,6 +144,55 @@ export class Actors {
     // o urso-negro: anda devagar num circuito da floresta alta, longe da trilha
     creature('urso', 1.7, { tint: [0.32, 0.3, 0.3] }).then((c) => { if (!c) return; const pts = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28; let x = 360 + Math.cos(a) * 140, z = 760 + Math.sin(a) * 120; pts.push(new V3(x, 0, z)); }
       c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(c.holder); this.bear = { c, pts, i: 0, pos: pts[0].clone() }; });
+    this.spawnWild();
+  }
+  // ---- os bichos de verdade (modelos do Sketchfab): cervos-sika nas clareiras da floresta, a raposa deitada junto
+  // ao santuário de Inari (a mensageira do deus do arroz), um bando de macacos-japoneses na mata da trilha e faisões
+  // no capim do campo. Cada um anda devagar pela sua área, para, come, descansa.
+  spawnWild() {
+    const W = (this.wild = []);
+    const free = (x, z) => !blocked(x, z, terrainAt(x, z), 0.6, 1.5) && waterAt(x, z) < terrainAt(x, z) - 0.2;
+    const spotNear = (cx, cz, r, ok = () => true) => { for (let i = 0; i < 40; i++) { const x = cx + rr(-r, r), z = cz + rr(-r, r); if (free(x, z) && ok(x, z)) return [x, z]; } return null; };
+    const put = (name, size, at, o) => { if (!at) return; creature(name, size, { still: true, tint: o.tint }).then((c) => { if (!c) return;
+      const acts = {}; for (const cl of c.clips) acts[cl.name.replace(/^.*\|/, '')] = c.mixer.clipAction(cl);
+      const [x, z] = at, pos = new V3(x, groundAt(x, z, terrainAt(x, z) + 1), z);
+      c.holder.position.copy(pos); c.holder.rotation.y = rand() * 6.28; c.holder.visible = false; this.scene.add(c.holder);
+      if (o.smooth) c.holder.traverse((m) => { const t = m.material?.map; if (t) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; } }); // (a textura de pixel do macaco, suavizada)
+      const w = { c, acts, pos, home: pos.clone(), cur: null, wait: rr(1, 6), target: null, ...o }; this.playWild(w, o.idle[0]); W.push(w); }); };
+    // cervos: dois grupos pequenos, em clareiras de capim na floresta entre a vila e a montanha
+    const deer = { radius: 22, speed: 1.0, walk: 'Walk', idle: ['Stand_Eating_01', 'Stand_Breathing_01', 'Stand_Eating_01'], tint: [1.05, 0.82, 0.66] };
+    for (const [cx, cz] of [[-330, 180], [470, 120]]) { const c = spotNear(cx, cz, 60, (x, z) => meadowAt(x, z)) || spotNear(cx, cz, 40); if (!c) continue; for (let k = 0; k < 3; k++) put('cervo', k ? 1.15 : 1.3, spotNear(c[0], c[1], 8), deer); }
+    // a raposa: deitada ao lado do caminho, no fim do túnel de torii de Inari; acorda devagar, olha e volta a deitar
+    { const [ex, ez] = INARI[INARI.length - 1], [px, pz] = INARI[INARI.length - 2], dx = ex - px, dz = ez - pz, l = Math.hypot(dx, dz) || 1;
+      const at = spotNear(ex - dz / l * 5 - dx / l * 3, ez + dx / l * 5 - dz / l * 3, 3); put('raposa', 0.95, at, { radius: 0, speed: 0, idle: ['Waking Up'], slow: 0.55 }); }
+    // macacos-japoneses: um bando na mata ao lado do começo da trilha
+    { const p = trailAt(0.07), c = spotNear(p.x + p.dz * 30, p.z - p.dx * 30, 12); const mk = { radius: 14, speed: 0.8, walk: 'Walking', idle: ['Sitting', 'Idling', 'Sitting'], tint: [0.92, 0.8, 0.68], smooth: true };
+      if (c) for (let k = 0; k < 5; k++) put('macaco', k ? rr(0.5, 0.65) : 0.75, spotNear(c[0], c[1], 6), mk); }
+    // faisões: no capim do campo a leste dos arrozais (ficam no lugar, ciscando)
+    { const fs = { radius: 0, speed: 0, idle: ['Take 001'] }; for (const [cx, cz] of [[330, -380], [420, -470], [300, -300]]) put('faisao', 1.0, spotNear(cx, cz, 25), fs); }
+  }
+  playWild(w, name) {
+    const a = w.acts[name] || Object.values(w.acts)[0]; if (!a || w.cur === a) return;
+    a.reset(); a.timeScale = name === w.walk ? 1 : w.slow || 1; a.time = Math.random() * a.getClip().duration; a.play();
+    if (w.cur) a.crossFadeFrom(w.cur, 0.4, false); w.cur = a;
+  }
+  updateWild(dt, pp) {
+    for (const w of this.wild || []) {
+      const dx0 = w.pos.x - pp.x, dz0 = w.pos.z - pp.z, d2 = dx0 * dx0 + dz0 * dz0, vis = d2 < 110 * 110;
+      w.c.holder.visible = vis; if (!vis) continue;
+      if (w.speed > 0) {
+        if (w.wait > 0) { w.wait -= dt; if (w.wait <= 0) { const a = rand() * 6.28, r = rr(4, w.radius); const x = w.home.x + Math.cos(a) * r, z = w.home.z + Math.sin(a) * r; if (!blocked(x, z, terrainAt(x, z), 0.5, 1.2) && waterAt(x, z) < terrainAt(x, z) - 0.2) { w.target = new V3(x, 0, z); this.playWild(w, w.walk); } else w.wait = 1; } }
+        else if (w.target) { const dx = w.target.x - w.pos.x, dz = w.target.z - w.pos.z, d = Math.hypot(dx, dz);
+          if (d < 0.5) { w.target = null; w.wait = rr(4, 14); this.playWild(w, pick(w.idle)); }
+          else { const sp = w.speed * dt, ox = w.pos.x, oz = w.pos.z; moveWithCollision(w.pos, dx / d * sp, dz / d * sp, 0.4, 1.2);
+            if (Math.hypot(w.pos.x - ox, w.pos.z - oz) < sp * 0.3) { w.target = null; w.wait = rr(2, 6); this.playWild(w, pick(w.idle)); }
+            w.pos.y = groundAt(w.pos.x, w.pos.z, w.pos.y + 0.4); w.c.holder.rotation.y = angleLerp(w.c.holder.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 3)); } }
+        // (fogem um pouco de quem chega correndo perto)
+        if (d2 < 7 * 7 && !w.fleeing) { const l = Math.sqrt(d2) || 1; w.target = new V3(w.pos.x + dx0 / l * 12, 0, w.pos.z + dz0 / l * 12); w.wait = 0; w.fleeing = true; this.playWild(w, w.walk); } else if (d2 > 14 * 14) w.fleeing = false;
+        w.c.holder.position.copy(w.pos);
+      }
+      if (d2 < 60 * 60 || (this.t * 10 | 0) % 3 === 0) w.c.mixer.update(d2 < 60 * 60 ? dt : dt * 3); // (longe, a animação anda em passos maiores)
+    }
   }
   updateAnimals(dt, t, pp, night) {
     const near = (p, r) => (p.x - pp.x) ** 2 + (p.z - pp.z) ** 2 < r * r;
@@ -183,7 +233,7 @@ export class Actors {
   anim(rig, dt, speed, mode, t) {
     rig._acc = (rig._acc || 0) + dt;
     const p = rig.root.position, d2 = (p.x - this.pp.x) ** 2 + (p.z - this.pp.z) ** 2;
-    castsShadow(rig.root, d2 < 40 * 40);
+    castsShadow(rig.root, d2 < (this.shadowR ?? 40) ** 2); rigDetail(rig, d2); // (sombra só de quem está perto; cílios só bem de perto)
     let every = 0;
     if (this.camera) { this._s.center.set(p.x, p.y + 0.95, p.z); this._s.radius = 1.6; const seen = this._fr.intersectsSphere(this._s); every = !seen ? 1 / 8 : d2 < 25 * 25 ? 0 : d2 < 45 * 45 ? 1 / 30 : 1 / 15; }
     if (rig._acc < every) return;
@@ -191,7 +241,7 @@ export class Actors {
   }
   update(dt, t, player, quests, nightFactor) {
     this.t = t; const pp = player.pos; this.pp = pp;
-    this.updateAnimals(dt, t, pp, nightFactor);
+    this.updateAnimals(dt, t, pp, nightFactor); this.updateWild(dt, pp);
     if (this.camera) { this._pv.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse); this._fr.setFromProjectionMatrix(this._pv); }
     const near = (o, r) => (o.pos.x - pp.x) ** 2 + (o.pos.z - pp.z) ** 2 < r * r;
     const face = (o, target, k) => { if (!target) return; const ang = Math.atan2(target.x - o.pos.x, target.z - o.pos.z); o.rig.root.rotation.y = angleLerp(o.rig.root.rotation.y, ang, Math.min(1, dt * k)); };

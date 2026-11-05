@@ -163,7 +163,8 @@ export function buildAgora(B, M, out) {
     // muro de arrimo em arco que segura o aterro da assembleia
     for (let k = 0; k < 24; k++) {
       const a = -1.2 + (k / 23) * 2.4, r = 70, px = x + Math.sin(a + 0.64) * r, pz = z - Math.cos(a + 0.64) * r, py = ty(px, pz);
-      B.box(M.wallStone, 9.6, 3.2, 1.4, px, py - 2.2, pz, { ry: -(a + 0.64) });
+      const ca = Math.cos(a + 0.64) * 4.8, sa = Math.sin(a + 0.64) * 4.8, lo = Math.min(py, ty(px + ca, pz + sa), ty(px - ca, pz - sa)) - 2.2; // (as pontas do trecho, na encosta, também chegam ao chão)
+      B.box(M.wallStone, 9.6, py + 1.0 - lo, 1.4, px, lo, pz, { ry: -(a + 0.64) });
     }
     out.zones.pnyx = [x - 30, x + 70, z - 70, z + 12];
     out.exclusions.push([x - 32, x + 72, z - 72, z + 14]);

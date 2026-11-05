@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { makeBird } from '../comum/animals.js';
 import { makeAnimal, animateAnimal } from '../comum/animals.js';
-import { makeHumanoid, animateHumanoid } from '../comum/mixamo.js';
+import { makeHumanoid, animateHumanoid, rigDetail } from '../comum/mixamo.js';
 import { NPCS, VILLAGER_LINES, SOLDIER_LINES, WORKER_LINES, FARMER_LINES, CHILD_LINES } from './dialogues.js';
 import { groundAt, moveWithCollision, terrainAt, waterAt, dryAt } from '../comum/collision.js';
 import { riverX, terrainHeight } from './terrain.js';
@@ -233,7 +233,7 @@ export class Actors {
     rig._acc = (rig._acc || 0) + dt;
     const p = rig.root.position;
     const d2 = (p.x - this.pp.x) ** 2 + (p.z - this.pp.z) ** 2;
-    castsShadow(rig.root, d2 < 40 * 40);
+    castsShadow(rig.root, d2 < (this.shadowR ?? 40) ** 2); rigDetail(rig, d2); // (sombra só de quem está perto; cílios só bem de perto)
     let every = 0;
     if (this.camera) {
       this._s.center.set(p.x, p.y + 0.95, p.z); this._s.radius = 1.6;

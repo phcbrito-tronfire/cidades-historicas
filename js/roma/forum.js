@@ -159,7 +159,8 @@ export function buildForum(B, M, out) {
     for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
       const t = (k + 0.5) / n, cx = ax + (bx - ax) * t + Math.cos(ry) * sd * 4.4, cz = az + (bz - az) * t - Math.sin(ry) * sd * 4.4, yy = clivus(cx, cz).y;
       if (Math.abs(terrainHeight(cx, cz) - yy) < 0.6 && i === CLIVUS.length - 2) continue; // no alto, livre para o platô
-      B.box(M.travertine2, 0.6, 1.1 + Math.max(0, yy - terrainHeight(cx, cz)), L / n + 0.15, cx, Math.min(yy, terrainHeight(cx, cz)) - 0.2, cz, { ry }); addCircle(cx, cz, 0.45, yy - 3, yy + 1.0);
+      const hl = (L / n + 0.15) / 2; let lo = yy; for (const t of [-1, 0, 1]) for (const q of [-0.5, 0, 0.5]) lo = Math.min(lo, terrainHeight(cx + Math.sin(ry) * hl * t + Math.cos(ry) * q, cz + Math.cos(ry) * hl * t - Math.sin(ry) * q)); lo -= 0.3; // (as duas pontas do trecho também tocam o chão)
+      B.box(M.travertine2, 0.6, yy + 1.1 - lo - 0.2, L / n + 0.15, cx, lo, cz, { ry }); addCircle(cx, cz, 0.45, yy - 3, yy + 1.0);
     }
   }
   S.clivus = new V3(CLIVUS[0][0], terrainHeight(CLIVUS[0][0], CLIVUS[0][1]), CLIVUS[0][1]);

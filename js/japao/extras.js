@@ -47,7 +47,7 @@ export function buildExtras(B, M, out) {
         const f = k / 4; let z = ez - 3.1 + 6.2 * f + (rnd() - 0.5) * 0.8;
         const nearWater = polyDist(STREAM, x, z).d;
         if (nearWater < 4.2) { if (k === 0 || k === 4) continue; z += 2.6; } // (atrás da água: o riacho passa por cima e cai na frente)
-        const r = 1.5 + rnd() * 1.0, y = hb + (ht - hb) * f - 0.4;
+        const r = 1.5 + rnd() * 1.0, y = Math.min(hb + (ht - hb) * f, terrainHeight(x, z)) - 0.35 * r; // (assentada no chão do próprio ponto: o degrau é curvo, não uma reta)
         B.geo(rock, M.lava, x + (rnd() - 0.5) * 0.8, y, z, { sx: r * (1.1 + rnd() * 0.3), sy: r * (0.8 + rnd() * 0.3), sz: r, ry: rnd() * 6, rx: rnd() * 0.6, uv: false, noGround: true });
       }
       addBox(x, ez - 0.4, 2.0, 7.4, hb - 3, ht + 0.6); // (a encosta é parede: não se sobe nem se entra nela)
@@ -89,7 +89,7 @@ export function buildExtras(B, M, out) {
     out.extra.push(wheel); out.animated.push({ g: wheel, spin: -0.7 });
     out.spots.mill = new V3(...(() => { const [a, b] = f.W(0, 5); return [a, y, b]; })()); }
   // ---- a plantação de chá: fileiras de arbustos podados redondos, acompanhando a encosta
-  for (let z = TEA.z0 + 2; z < TEA.z1; z += 3.2) for (let x = TEA.x0; x < TEA.x1; x += 4) { const y = terrainHeight(x + 2, z); B.geo(new THREE.CylinderGeometry(0.75, 0.75, 4.1, 10, 1, false, 0, Math.PI), M.moss, x + 2, y + 0.15, z, { rz: Math.PI / 2, sy: 1, uv: M.moss.userData.uv }); B.box(M.moss, 4.1, 0.2, 1.5, x + 2, y - 0.05, z); addBox(x + 2, z, 4.1, 1.5, y - 1, y + 0.9); }
+  for (let z = TEA.z0 + 2; z < TEA.z1; z += 3.2) for (let x = TEA.x0; x < TEA.x1; x += 2) { const y = Math.min(terrainHeight(x, z), terrainHeight(x + 2, z), terrainHeight(x + 1, z - 0.75), terrainHeight(x + 1, z + 0.75)); B.geo(new THREE.CylinderGeometry(0.75, 0.75, 2.1, 10, 1, false, 0, Math.PI), M.moss, x + 1, y + 0.05, z, { rz: Math.PI / 2, sy: 1, uv: M.moss.userData.uv }); B.box(M.moss, 2.1, 0.2, 1.5, x + 1, y - 0.15, z); if ((x - TEA.x0) % 4 === 0) addBox(x + 2, z, 4.1, 1.5, y - 1, y + 0.9); } // (moitas de 2 m, assentadas no ponto mais baixo: seguem a encosta sem pontas no ar)
   out.spots.tea = new V3((TEA.x0 + TEA.x1) / 2, terrainHeight((TEA.x0 + TEA.x1) / 2, TEA.z0 - 3), TEA.z0 - 3);
   // ---- o caminho de Inari: torii vermelhos um atrás do outro (doados por quem teve um pedido atendido), até o santuarinho
   { let s = 0; const L = INARI; for (let i = 0; i < L.length - 1; i++) { const [ax, az] = L[i], [bx, bz] = L[i + 1], len = Math.hypot(bx - ax, bz - az), ry = Math.atan2(bx - ax, bz - az); // (os pilares atravessados, o caminho passa por dentro)

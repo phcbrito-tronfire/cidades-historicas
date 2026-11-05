@@ -57,9 +57,9 @@ export function buildResidence(B, M, out) {
   { const dx = hw - 12, dz = -hd + 10, w = 14, d = 10, g = frame(B, ...f.W(dx, dz).flatMap((v, i) => (i === 0 ? [v, Y] : [v])), Math.PI / 2), FL = 0.5;
     g.box(M.stoneLight, w + 0.3, 0.3, d + 0.3, 0, -0.25, 0); g.box(M.cedar, w, FL, d, 0, 0, 0); g.solid(0, 0, w, d, -1, FL, true);
     for (const [sx, sz, sw, sdd] of [[w / 2 + 0.45, 0, 0.7, 2.4], [0, d / 2 + 0.45, 3, 0.7]]) { g.box(M.stone, sw, 0.26, sdd, sx, 0, sz); g.solid(sx, sz, sw, sdd, -1, 0.26, true); } // as pedras de degrau das duas entradas
-    for (const [px, pz] of [[-w / 2, -d / 2], [0, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) g.post(M.darkWood, px, pz, 3.6, 0.14); // (sem pilar no meio da entrada)
-    g.wall(M.plaster, -w / 2, -d / 2, w / 2, -d / 2, 3.0, 0.12, [], { y0: FL }); g.wall(M.plaster, -w / 2, -d / 2, -w / 2, d / 2, 3.0, 0.12, [[d / 2, 1.8, 2.2]], { y0: FL });
-    g.wall(M.koshi, w / 2, -d / 2, w / 2, d / 2, 3.0, 0.08, [[d / 2, 3.4, 2.4]], { y0: FL }); g.wall(M.koshi, -w / 2, d / 2, w / 2, d / 2, 3.0, 0.08, [[w / 2, 4.0, 2.4]], { y0: FL });
+    for (const [px, pz] of [[-w / 2, -d / 2], [0, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) g.post(M.darkWood, px, pz, FL + 3.75, 0.14); // (sem pilar no meio da entrada; o pilar sobe até dentro do telhado)
+    g.wall(M.plaster, -w / 2, -d / 2, w / 2, -d / 2, 3.7, 0.12, [], { y0: FL }); g.wall(M.plaster, -w / 2, -d / 2, -w / 2, d / 2, 3.7, 0.12, [[d / 2, 1.8, 2.2]], { y0: FL });
+    g.wall(M.koshi, w / 2, -d / 2, w / 2, d / 2, 3.7, 0.08, [[d / 2, 3.4, 2.4]], { y0: FL }); g.wall(M.koshi, -w / 2, d / 2, w / 2, d / 2, 3.7, 0.08, [[w / 2, 4.0, 2.4]], { y0: FL });
     for (let i = 0; i < 10; i++) g.geo(new THREE.CylinderGeometry(0.025, 0.03, 1.0, 6), M.wood, -w / 2 + 2 + i * 0.4, FL + 1.3, -d / 2 + 0.2, { rz: 0.0, uv: false }); // espadas de madeira (bokken) no suporte
     for (const yy of [0.85, 1.72]) g.box(M.darkWood, 4.4, 0.08, 0.12, -w / 2 + 3.8, FL + yy, -d / 2 + 0.2); for (const xx of [-w / 2 + 1.6, -w / 2 + 6]) g.box(M.darkWood, 0.1, 1.8, 0.12, xx, FL, -d / 2 + 0.2); // o suporte
     g.box(M.wood, 2.2, 0.6, 0.06, 0, FL + 2.5, -d / 2 + 0.12); g.box(M.dark, 1.8, 0.4, 0.02, 0, FL + 2.6, -d / 2 + 0.16);

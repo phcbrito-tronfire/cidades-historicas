@@ -19,7 +19,8 @@ const DEFS = {
   leao: { yaw: 0, base: true, keep: true }, urso: { yaw: 0, base: true, keep: true }, touro: { yaw: Math.PI, base: true, keep: true }, // feras da venatio (Coliseu) // animado (andar): a animação é controlada pela velocidade
   anfora_mar: { fit: 'y', base: true },
   estrela: { rot: [-Math.PI / 2, 0, 0], base: true },
-  cavalo: { base: true, keep: true }, jumento: { base: true, keep: true }, // montarias: as animações são escolhidas por nome
+  cavalo: { base: true, keep: true }, jumento: { base: true, keep: true },
+  cervo: { base: true, keep: true }, raposa: { base: true, keep: true }, macaco: { base: true, keep: true }, faisao: { base: true, keep: true }, // bichos do Japão // montarias: as animações são escolhidas por nome
 };
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = {};

@@ -1124,3 +1124,30 @@ export function rowPose(r, seat, fwd, lean, hands) {
     armIK(sh, el, wr, hands[s], new THREE.Vector3(0, -1, 0).addScaledVector(side, sg * 0.8));
   }
 }
+
+// Detalhe pelo que se vê. Cada pessoa tem ~45 mil triângulos (corpo, cabelo, roupa) — o mesmo de perto e de longe.
+// De longe (d2 = distância ao quadrado), cada malha troca por uma versão simplificada da própria geometria
+// (vértices próximos juntados numa grade fina: os mesmos ossos e pesos, só menos triângulos); cílios e sobrancelhas,
+// só bem de perto.
+const _lod = new WeakMap();
+function lodGeometry(g) {
+  if (_lod.has(g)) return _lod.get(g);
+  const p = g.attributes.position, idx = g.index;
+  if (!idx || p.count < 1500 || (g.groups && g.groups.length > 1)) { _lod.set(g, g); return g; }
+  if (!g.boundingBox) g.computeBoundingBox();
+  const b = g.boundingBox, sz = new THREE.Vector3(); b.getSize(sz); const cell = Math.max(sz.x, sz.y, sz.z) / 64;
+  const rep = new Int32Array(p.count), seen = new Map();
+  for (let i = 0; i < p.count; i++) { const k = Math.floor((p.getX(i) - b.min.x) / cell) + Math.floor((p.getY(i) - b.min.y) / cell) * 4096 + Math.floor((p.getZ(i) - b.min.z) / cell) * 16777216; const r = seen.get(k); if (r === undefined) { seen.set(k, i); rep[i] = i; } else rep[i] = r; }
+  const a = idx.array, out = [];
+  for (let t = 0; t < a.length; t += 3) { const i0 = rep[a[t]], i1 = rep[a[t + 1]], i2 = rep[a[t + 2]]; if (i0 !== i1 && i1 !== i2 && i0 !== i2) out.push(i0, i1, i2); }
+  if (out.length > a.length * 0.8) { _lod.set(g, g); return g; } // (quase nada a ganhar)
+  const ng = new THREE.BufferGeometry(); for (const k in g.attributes) ng.setAttribute(k, g.attributes[k]); ng.setIndex(out);
+  if (g.boundingSphere) ng.boundingSphere = g.boundingSphere; ng.boundingBox = g.boundingBox;
+  _lod.set(g, ng); return ng;
+}
+export function rigDetail(rig, d2) {
+  const near = d2 < 64, far = d2 > 14 * 14, ud = rig.root.userData;
+  if (!ud.parts) { ud.parts = []; ud.lashes = []; rig.root.traverse((o) => { if (!o.isSkinnedMesh) return; if (/eyelash|eyebrow/i.test(o.name)) ud.lashes.push(o); else ud.parts.push({ o, hi: o.geometry }); }); }
+  if (ud.near !== near) { ud.near = near; for (const o of ud.lashes) o.visible = near; }
+  if (ud.far !== far) { ud.far = far; for (const e of ud.parts) { if (e.o.geometry !== e.hi && e.o.geometry !== _lod.get(e.hi)) e.hi = e.o.geometry; e.o.geometry = far ? lodGeometry(e.hi) : e.hi; } } // (se a roupa trocou de malha, a nova vira a de perto)
+}

@@ -98,6 +98,9 @@ export function doricTemple(B, o) {
   const steps = o.steps ?? 3, sh = o.stepH ?? 0.5, sw = o.stepW ?? 0.7;
   for (let i = 0; i < steps; i++) box(M.marble, L + (steps - i) * 2 * sw, sh, W + (steps - i) * 2 * sw, 0, i * sh, 0);
   if (o.found) box(M.poros, L + steps * 2 * sw + 0.6, o.found, W + steps * 2 * sw + 0.6, 0, -o.found, 0);
+  else if (B.ground) { const hl = (L + steps * 2 * sw) / 2 + 0.3, hw = (W + steps * 2 * sw) / 2 + 0.3; let lo = o.y; // (em declive, o lado de baixo ficava no ar)
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) { const p = new THREE.Vector3(a * hl, 0, b * hw).applyMatrix4(F); lo = Math.min(lo, B.ground(p.x, p.z)); }
+    if (o.y - lo > 0.12) box(M.poros, hl * 2, o.y - lo + 0.3, hw * 2, 0, lo - o.y - 0.3, 0); }
   const Y = steps * sh; // topo do estilobata
   // colunas (comprimento no eixo x)
   const cols = [];

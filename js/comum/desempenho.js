@@ -41,11 +41,32 @@ export function distanceCull(scene, camera, renderer, skip) {
     const r = o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis();
     if (r < 8) list.push({ o, r, mask: o.layers.mask, hid: false });
   });
+  // peças pesadas e longe: bosques de árvores modeladas (cada uma com milhares de triângulos) e esculturas baixadas —
+  // a 400–800 m quase não aparecem, mas iam inteiras para a placa de vídeo
+  let big = [];
+  const scanBig = () => { const old = new Map(big.map((e) => [e.o, e])); big = []; scene.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || !o.geometry) return;
+    for (let p = o; p; p = p.parent) if (p === skip) return;
+    const g = o.geometry, tri = (g.index ? g.index.count : g.attributes.position.count) / 3;
+    if (o.isInstancedMesh ? tri >= 400 : tri >= 15000 && ((rr) => rr >= 8 && rr < 40)((g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius * o.matrixWorld.getMaxScaleOnAxis())) big.push(old.get(o) || { o, mask: o.layers.mask, hid: false, inst: o.isInstancedMesh });
+  }); };
+  scanBig(); // (e de novo de tempos em tempos: os modelos baixados chegam depois)
+  let bigFar = [650, 600];
   let px = 0, k = 0;
+  const rigs = rigCull(scene, camera, skip);
   return {
-    set(p) { px = p; if (!px) for (const e of list) if (e.hid) { e.o.layers.mask = e.mask; e.hid = false; } },
+    set(p) { px = p; rigs.far = p >= 18 ? 55 : p > 0 ? 75 : 110; bigFar = p >= 18 ? [230, 210] : p > 0 ? [330, 300] : [650, 600]; if (!px) for (const e of list) if (e.hid) { e.o.layers.mask = e.mask; e.hid = false; } },
     update() {
-      if (!px || ++k % 12) return;
+      rigs.update();
+      if (++k % 12) return;
+      if (k % 720 === 0) scanBig();
+      camera.getWorldPosition(cam);
+      for (const e of big) {
+        const o = e.o, bs = o.isInstancedMesh ? (o.boundingSphere || (o.computeBoundingSphere(), o.boundingSphere)) : o.geometry.boundingSphere; if (!bs) continue;
+        c.copy(bs.center).applyMatrix4(o.matrixWorld); const R = bs.radius * o.matrixWorld.getMaxScaleOnAxis(), lim = (e.inst ? bigFar[0] : bigFar[1]) + R;
+        const far = c.distanceToSquared(cam) > lim * lim; if (far !== e.hid) { e.hid = far; o.layers.mask = far ? HIDE : e.mask; }
+      }
+      if (!px) return;
       camera.getWorldPosition(cam);
       // distância em que um objeto de raio r fica com `px` pixels de altura
       const f = (renderer.domElement.height / 2) / Math.tan((camera.fov * Math.PI) / 360) * 2 / px;
@@ -56,4 +77,29 @@ export function distanceCull(scene, camera, renderer, skip) {
       }
     },
   };
+}
+
+// Gente longe ou fora da vista: os bonecos (malhas com esqueleto) não têm o tamanho animado conhecido, então são
+// desenhados mesmo fora da tela — e cada um tem ~45 mil triângulos. A plateia e os lutadores do Coliseu, o circo e a
+// gente do dia a dia de toda a cidade iam para a placa de vídeo o tempo todo. Aqui: longe (far) ou fora da vista e a
+// mais de 20 m, o boneco sai da camada da câmera (o visible fica intacto: quem controla cada um continua mandando).
+function rigCull(scene, camera, skip) {
+  const W = new THREE.Vector3(), cam = new THREE.Vector3(), fr = new THREE.Frustum(), pv = new THREE.Matrix4(), sph = new THREE.Sphere();
+  let list = null, k = 0;
+  const R = {
+    far: 110,
+    update() {
+      if (++k % 6) return;
+      if (!list || k % 600 === 0) { const old = new Map((list || []).map((e) => [e.o, e])); list = []; scene.traverse((o) => { if (!o.isSkinnedMesh) return; for (let p = o; p; p = p.parent) if (p === skip) return; list.push(old.get(o) || { o, mask: o.layers.mask, hid: false }); }); }
+      camera.getWorldPosition(cam); pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pv);
+      const f2 = R.far * R.far;
+      for (const e of list) {
+        if (!e.o.parent) continue;
+        e.o.getWorldPosition(W); const d2 = W.distanceToSquared(cam);
+        const hide = d2 > f2 || (d2 > 400 && !fr.intersectsSphere(sph.set(W.setY(W.y + 1), 3)));
+        if (hide !== e.hid) { e.hid = hide; e.o.layers.mask = hide ? HIDE : e.mask; }
+      }
+    },
+  };
+  return R;
 }

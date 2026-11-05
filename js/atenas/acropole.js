@@ -29,7 +29,8 @@ export function buildAcropolis(B, M, out) {
       if ((a.u < -92 && Math.abs(a.v) < 34) || (b.u < -92 && Math.abs(b.v) < 34)) continue; // entrada oeste (Propileus)
       const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, len = Math.hypot(b.x - a.x, b.z - a.z) + 0.4, ry = -Math.atan2(b.z - a.z, b.x - a.x);
       const y0 = top(mx, mz);
-      B.box(M.poros, len, 7.6, 2.4, mx, y0 - 6, mz, { ry });
+      let lo = y0 - 6; { const ux = (b.x - a.x) / (len - 0.4 || 1), uz = (b.z - a.z) / (len - 0.4 || 1); for (const t of [-0.5, 0, 0.5]) for (const s of [-2, 0, 2]) lo = Math.min(lo, top(mx + ux * t * len - uz * s, mz + uz * t * len + ux * s) - 0.5); } // (no penhasco o chão desce mais: o muro vai até ele)
+      B.box(M.poros, len, y0 + 1.6 - lo, 2.4, mx, lo, mz, { ry });
       B.box(M.wallStone, len, 0.25, 2.7, mx, y0 + 1.6, mz, { ry }); // coroamento
       addRotBox(mx, mz, len, 2.4, ry, y0 - 12, y0 + 1.6, true); // (caixa reta em volta do muro girado: parede/piso invisível)
     }

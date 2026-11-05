@@ -10,9 +10,9 @@ import { isTouch } from './touch.js';
 const KEY = 'ch-graficos';
 export const LEVELS = ['alto', 'leve', 'minimo'];
 export const PROFILE = {
-  alto: { pr: 1.5, aa: true, shadow: 4096, shadowR: 140, soft: true, ao: true, bloom: true, refl: 512, reflEvery: 2, npcR: 60, px: 0 },
-  leve: { pr: 1, aa: false, shadow: 2048, shadowR: 80, soft: false, ao: false, bloom: false, refl: 256, reflEvery: 4, npcR: 40, px: 10 },
-  minimo: { pr: 0.7, aa: false, shadow: 512, shadowR: 45, soft: false, ao: false, bloom: false, refl: 128, reflEvery: 6, npcR: 30, px: 18 },
+  alto: { pr: 1.5, aa: true, shadow: 4096, shadowR: 140, soft: true, ao: true, bloom: true, refl: 512, reflEvery: 2, npcR: 60, px: 0, npcShadow: 40 },
+  leve: { pr: 1, aa: false, shadow: 2048, shadowR: 80, soft: false, ao: false, bloom: false, refl: 256, reflEvery: 4, npcR: 36, px: 10, npcShadow: 18 },
+  minimo: { pr: 0.7, aa: false, shadow: 512, shadowR: 45, soft: false, ao: false, bloom: false, refl: 128, reflEvery: 6, npcR: 28, px: 18, npcShadow: 12 },
 };
 
 // nome da placa de vídeo (num contexto descartável, antes de criar o do jogo)
@@ -59,7 +59,7 @@ export function applyQuality(level, { renderer, sun, post, actors, cull }) {
   if (sun.shadow.mapSize.x !== P.shadow) { sun.shadow.mapSize.set(P.shadow, P.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   c.left = -P.shadowR; c.right = P.shadowR; c.top = P.shadowR; c.bottom = -P.shadowR; c.updateProjectionMatrix();
   if (post) { if (post.ao) post.ao.enabled = P.ao; post.bloom.enabled = P.bloom; post.resize(); }
-  if (actors) actors.viewR = P.npcR;
+  if (actors) { actors.viewR = P.npcR; actors.shadowR = P.npcShadow; } // (a sombra redesenha o boneco inteiro: nos leves, só de quem está perto)
   if (cull) cull.set(P.px); // objetos pequenos e longe deixam de ser desenhados
   return P;
 }
