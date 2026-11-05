@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addCircle, blocked } from '../comum/collision.js';
 import { fbm, mulberry32 } from '../comum/util.js';
-import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, TEMPLE, BAMBOO, BAMBOO_PATH, meadowAt } from './terrain.js';
+import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, TEMPLE, BAMBOO, BAMBOO_PATH, meadowAt, FALLS, fallEdge } from './terrain.js';
 
 const rnd = mulberry32(1790);
 const rr = (a, b) => a + rnd() * (b - a);
@@ -147,12 +147,34 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
     for (let i = 0; i < 90; i++) { x.fillStyle = `rgba(255,255,255,${0.2 + Math.random() * 0.5})`; x.fillRect(Math.random() * 64, Math.random() * S, 1 + Math.random() * 3, 10 + Math.random() * 30); }
     for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(70,110,110,${0.15 + Math.random() * 0.25})`; x.fillRect(Math.random() * 64, Math.random() * S, 1 + Math.random() * 2, 8 + Math.random() * 20); }
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.repeat.set(2, 1.5); return t; })();
-  const F = water.userData.fall, fx = F.x, top = F.top, bot = F.bot;
-  const fallMat = new THREE.MeshStandardMaterial({ map: fallTex, roughness: 0.3, transparent: true, opacity: 0.88, depthWrite: false, side: THREE.DoubleSide });
-  const sheet = new THREE.Mesh(new THREE.PlaneGeometry(4.6, top - bot + 0.6), fallMat);
-  sheet.position.set(fx, (top + bot) / 2 - 0.2, F.z); sheet.rotation.set(0, F.yaw, 0); sheet.renderOrder = 3; scene.add(sheet);
-  const foam = new THREE.Mesh(new THREE.CircleGeometry(4.2, 20), new THREE.MeshStandardMaterial({ map: fallTex, color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
-  foam.rotation.x = -Math.PI / 2; foam.position.set(F.x - F.dx * 2.5, bot + 0.04, F.z - F.dz * 2.5); foam.renderOrder = 3; scene.add(foam);
+  // o ponto da queda: onde o riacho cruza a borda do paredão (o lábio fica em cima, o poço embaixo)
+  const F = (() => { let best = null; for (let i = 0; i < STREAM.length - 1; i++) { const [ax, az] = STREAM[i], [bx, bz] = STREAM[i + 1], L = Math.hypot(bx - ax, bz - az);
+      for (let s = 0; s < L; s += 0.25) { const x = ax + (bx - ax) * s / L, z = az + (bz - az) * s / L, e = z - fallEdge(x); if (Math.abs(x - FALLS.x) < 40 && (!best || Math.abs(e) < Math.abs(best.e))) best = { x, z, e, dx: (bx - ax) / L, dz: (bz - az) / L }; } }
+    const lipX = best.x - best.dx * 5, lipZ = best.z - best.dz * 5, potX = best.x + best.dx * 6, potZ = best.z + best.dz * 6;
+    return { x: best.x, z: best.z, dx: best.dx, dz: best.dz, top: terrainHeight(lipX, lipZ) + 0.55, bot: terrainHeight(potX, potZ) + 0.5 }; })(), fx = F.x, top = F.top, bot = F.bot;
+  water.userData.fall = { ...water.userData.fall, ...F };
+  void fx;
+  const fallMat = new THREE.MeshStandardMaterial({ map: fallTex, roughness: 0.3, transparent: true, opacity: 0.86, depthWrite: false, side: THREE.DoubleSide });
+  const fallTex2 = fallTex.clone(); fallTex2.repeat.set(3, 1); fallTex2.needsUpdate = true;
+  const fallMat2 = new THREE.MeshStandardMaterial({ map: fallTex2, color: 0xffffff, roughness: 0.4, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+  const H = top - bot, sx = -F.dz, sz = F.dx, lx = F.x - F.dx * 4.2, lz = F.z - F.dz * 4.2; // (a borda de cima: o lábio da queda)
+  const curtain = (w0, w1, out, push, mat, rep) => { const R = 18, C = 10, pos = [], uv = [], idx = [];
+    for (let i = 0; i <= R; i++) { const t = i / R, w = w0 + (w1 - w0) * t, o = out * Math.sqrt(t) + push, y = top + 0.12 - (H + 0.25) * t;
+      for (let j = 0; j <= C; j++) { const u = j / C - 0.5, s = u * w, bow = Math.cos(u * Math.PI) * 0.45 * (0.4 + t); // (no meio a água é mais grossa e sai mais para fora)
+        pos.push(lx + F.dx * (o + bow) + sx * s, y, lz + F.dz * (o + bow) + sz * s); uv.push((j / C) * rep, 1 - t * 1.4); } }
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) { const a = i * (C + 1) + j, b = a + C + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); m.renderOrder = 3; scene.add(m); return m; };
+  curtain(3.6, 5.4, 7.6, 0, fallMat, 1); curtain(3.0, 6.0, 8.0, 0.25, fallMat2, 1); // duas camadas: a de trás mais cheia, a da frente rala e mais rápida
+  const base = new THREE.Vector3(lx + F.dx * 8, bot, lz + F.dz * 8);
+  // o poço: espuma que gira devagar e a névoa que sobe da queda
+  const foamTex = fallTex.clone(); foamTex.needsUpdate = true; foamTex.repeat.set(3, 3);
+  const foam = new THREE.Mesh(new THREE.CircleGeometry(3.4, 24), new THREE.MeshStandardMaterial({ map: foamTex, color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
+  foam.rotation.x = -Math.PI / 2; foam.position.set(base.x, bot + 0.06, base.z); foam.renderOrder = 3; scene.add(foam);
+  const mistTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const mist = []; for (let i = 0; i < 10; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, transparent: true, depthWrite: false, opacity: 0.5 })); s.userData.ph = i / 10; scene.add(s); mist.push(s); }
+  const mistUp = (dt, t) => { foam.rotation.z += dt * 0.15; for (const s of mist) { const k = (t * 0.25 + s.userData.ph) % 1, a = s.userData.ph * 6.28; s.position.set(base.x + Math.sin(a) * (1 + k * 2.5), bot + 0.4 + k * 5, base.z + Math.cos(a) * (1 + k * 2.5)); s.scale.setScalar(2.5 + k * 5); s.material.opacity = 0.45 * (1 - k); } };
+  let tFall = 0;
   const counts = Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, v.length]));
   // as estações: a cor das copas (e as folhosas sem folhas no inverno)
   const SEASON = {
@@ -167,7 +189,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   const sakuraLeaf = sakuraM.map;
   let cullT = 0; const cc = chunks.map((im) => im.boundingSphere ? im.boundingSphere.center.clone() : new THREE.Vector3());
   return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; chunks[i].visible = dx * dx + dz * dz < (farR + 70) * (farR + 70) && chunks[i].userData.season !== false; } },
-    update(dt) { fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
+    update(dt) { tFall += dt; mistUp(dt, tFall); fallTex2.offset.y += dt * 2.6; fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
 }
 
 function streamMesh(tex) {

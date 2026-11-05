@@ -11,6 +11,7 @@ import { groundAt, moveWithCollision, terrainAt, waterAt } from '../comum/collis
 import { terrainHeight, STREET, FIELDS, LAKE, SHRINE, TRAIL, inLake, fujiH, forestAt } from './terrain.js';
 import { labelTexture, markerTexture } from './textures.js';
 import { rr, rand, pick, angleLerp } from '../comum/util.js';
+import { Kyudo, Suburi } from './treino.js';
 
 const V3 = THREE.Vector3;
 const SKINS = [0xd2aa86, 0xc8a07e, 0xbf9470, 0xd8b496, 0xb48662, 0xc49a78];
@@ -40,8 +41,8 @@ export class Actors {
       case 'merchant': return { outfit: 'merchant', cloth: c, pattern: p, haoriColor: pick([0x2a2a30, 0x3a2a22, 0x2a3040]) };
       case 'samurai': return { outfit: 'samurai', cloth: pick([0x2a2a36, 0x3a3428, 0x2a3a4a]), hakama: pick([0x4a4a56, 0x3a3440, 0x5a524a]), extras: ['daisho'] };
       case 'guard': return { outfit: 'samurai', cloth: 0x2a2a36, hakama: 0x3a3a44, extras: ['daisho', 'yari'] };
-      case 'trainee': return { outfit: 'samurai', cloth: 0xe8e2d4, hakama: 0x22283a, extras: ['bokken'] };
-      case 'archer': return { outfit: 'samurai', cloth: 0xf2efe6, hakama: 0x1a1a22, extras: ['yumi'] };
+      case 'trainee': return { outfit: 'samurai', cloth: 0xe8e2d4, hakama: 0x22283a, extras: [] }; // (o bokken vem do treino, nas duas mãos)
+      case 'archer': return { outfit: 'samurai', cloth: 0xf2efe6, hakama: 0x1a1a22, extras: [] }; // (o arco vem do treino, na mão esquerda)
       case 'farmer': return { outfit: 'farmer', cloth: pick([0x2a3a5a, 0x3a4a5a, 0x4a4a3a]), pattern: pick(['kasuri', 'plain']), accent: '#e8e4da', extras: rand() < 0.6 ? ['kasa'] : ['tenugui'], female: rand() < 0.4 };
       case 'pilgrim': return { outfit: 'pilgrim', cloth: 0xf2efe6, extras: ['kasa_pilgrim', 'zue'] };
       case 'monk': return { outfit: 'monk', cloth: 0x1a1a1e, kesa: pick([0x7a5a2a, 0x5a4a3a]) };
@@ -62,7 +63,7 @@ export class Actors {
       kannushi: [S.haiden.x - 2.5, S.haiden.z + 1, Math.PI], monge: [S.hondo.x, S.hondo.z, Math.PI / 2], daikan: [S.audience.x, S.audience.z, Math.PI / 2],
       sensei: [S.dojo.x, S.dojo.z + 2, Math.PI], kyudo: [S.range.x, S.range.z, Math.PI / 2], lavradora: [FIELDS.x0 + 10, (FIELDS.z0 + FIELDS.z1) / 2, -Math.PI / 2],
       chaya: [...W(tea[1], -tea[1].w * 0.1, tea[1].d / 2 + 1.8), tea[1].ry], pescador: [shore[0], shore[1], -Math.PI / 2], ronin: [...W(tea[3] || tea[0], tea[0].w * 0.2 - 0.4, tea[0].d / 2 + 1.0), (tea[3] || tea[0]).ry + Math.PI],
-      eremita: S.hermit ? [S.hermit.x, S.hermit.z, Math.PI] : [undefined], oleiro: [...W(shops[4], -shops[4].w / 2 + 1.7, shops[4].d / 2 + 0.8), shops[4].ry], cabaneiro: [C.stations[3].door[0], C.stations[3].door[1], C.stations[3].ry], kokan: [north[0], north[1], Math.atan2(0, 1) + Math.PI],
+      eremita: S.hermit ? [S.hermit.x, S.hermit.z, Math.atan2(4.8, 2.2)] : [undefined], oleiro: [...W(shops[4], -shops[4].w / 2 + 1.7, shops[4].d / 2 + 0.8), shops[4].ry], cabaneiro: [C.stations[3].door[0], C.stations[3].door[1], C.stations[3].ry], kokan: [north[0], north[1], Math.atan2(0, 1) + Math.PI],
     };
     for (const def of NPCS) {
       const [x, z, ry] = P[def.id]; if (x === undefined) continue;
@@ -100,7 +101,7 @@ export class Actors {
     if (C.pier) for (let i = 0; i < 2; i++) add('farmer', C.pier.x + 3 + i * 3, C.pier.z + (i ? 0.6 : -0.6), Math.PI / 2, { mode: i ? 'work' : 'idle', lines: ['O lago dá carpa e enguia. E de manhã, com névoa, dá até medo de tão bonito.', 'A rede tem de secar todo dia, senão apodrece.'], as: 'farmer', y: C.pier.y, extra: { static: true } });
     if (C.spots.tea) for (let i = 0; i < 4; i++) { const lk = this.look('farmer'); lk.female = true; lk.extras = ['kasa', 'basket_back']; add('farmer', C.spots.tea.x - 20 + i * 12, C.spots.tea.z + 10 + (i % 2) * 6.4, rand() * 6, { look: lk, mode: 'work', lines: ['Só as folhas novas, as três de cima. As outras ficam para a planta crescer.', 'O chá daqui vai para a residência e para as casas de chá da rua.'], as: 'farmer', extra: { static: true, field: true } }); }
     if (C.spots.mill) add('farmer', C.spots.mill.x, C.spots.mill.z, 0, { mode: 'idle', lines: ['A roda gira dia e noite, e a mó lá dentro mói o arroz e o trigo-sarraceno do soba.'], as: 'farmer', extra: { static: true } });
-    if (C.spots.hermit) { const H = C.spots.hermit; add('woman', H.x + 6, H.z + 4.5, -Math.PI / 2, { mode: 'work', lines: ['Sou Oyuki. Cuido da cerejeira e do laguinho com o vovô Genzō. A água vem da neve derretida da borda.', 'Aqui no fundo da cratera o vento não entra. É o jardim mais alto do Japão... pelo menos neste jogo!'], extra: { static: true } }); }
+    if (C.spots.oyuki) { const H = C.spots.oyuki; add('woman', H.x, H.z, Math.atan2(3.1, -3.6), { mode: 'work', lines: ['Sou Oyuki. Cuido da cerejeira e do laguinho com o vovô Genzō. A água vem da neve derretida da borda.', 'Aqui no fundo da cratera o vento não entra. É o jardim mais alto do Japão... pelo menos neste jogo!'], extra: { static: true } }); }
     if (C.spots.inari) add('woman', C.spots.inari.x, C.spots.inari.z, 0, { mode: 'talk', lines: ['Inari cuida do arroz e dos negócios. Quem tem um pedido atendido doa um torii novo — por isso o caminho não para de crescer.'], extra: { static: true } });
     walker('man', [-190, -110, -40, 10], 2, { speed: 0.8 }); // gente passeando no bambuzal
     // em Umagaeshi: o cavalariço e os cavalos amarrados, esperando os peregrinos descerem
@@ -108,21 +109,21 @@ export class Actors {
       for (let k = 0; k < 2; k++) creature('cavalo', 2.2, { tint: [0.8, 0.6, 0.45] }).then((c) => { if (!c) return; const x = U.x + Math.sin(U.ry) * (2 + k * 3) + Math.cos(U.ry) * 2, z = U.z + Math.cos(U.ry) * (2 + k * 3) - Math.sin(U.ry) * 2; c.holder.position.set(x, terrainHeight(x, z), z); c.holder.rotation.y = U.ry + Math.PI / 2; c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(c.holder); }); }
     // os guardas no portão da residência, os samurais da raia e do dōjō
     for (const g of C.guards) add('guard', g.x, g.z, g.ry, { lines: SAMURAI_LINES, mode: 'guard', as: 'samurai', extra: { static: true } });
-    if (C.dojo) { const d = C.dojo.f; for (const [lx, lz] of [[-3, -1.5], [-1, -1.5], [1, -1.5], [3, -1.5], [-2, 1.2], [2, 1.2]]) { const [x, z] = d.W(lx, lz); add('trainee', x, z, d.ry + (lz < 0 ? 0 : Math.PI), { lines: ['Hai!', 'Mais um golpe e eu caio...', 'O mestre vê tudo, até o que a gente pensa.'], mode: 'guard', as: 'samurai', y: C.dojo.y + C.dojo.FL, extra: { static: true, drill: rr(0, 3) } }); } }
-    if (C.range) { const [fx, fz] = C.range.from; for (let i = 0; i < 2; i++) add('archer', fx + (i ? 2.2 : -2.2) * Math.cos(C.range.f.ry), fz - (i ? 2.2 : -2.2) * Math.sin(C.range.f.ry), C.range.f.ry, { lines: ['Shh. Respire antes de atirar.', 'O alvo é pequeno, a distância é grande, e o vento não ajuda.'], mode: 'guard', as: 'samurai', y: C.range.y, extra: { static: true, archer: true, shootT: rr(2, 8) } }); }
+    if (C.dojo) { const d = C.dojo.f; for (const [lx, lz] of [[-3, -1.5], [-1, -1.5], [1, -1.5], [3, -1.5], [-2, 1.2], [2, 1.2]]) { const [x, z] = d.W(lx, lz); const a = add('trainee', x, z, d.ry + (lz < 0 ? 0 : Math.PI), { lines: ['Hai!', 'Mais um golpe e eu caio...', 'O mestre vê tudo, até o que a gente pensa.'], mode: 'guard', as: 'samurai', y: C.dojo.y + C.dojo.FL, extra: { static: true } }); const tr = new Suburi(a.rig, rr(0, 2.5)); a.trainer = tr; a.rig.post = () => tr.apply(); } }
+    if (C.range) { const [fx, fz] = C.range.from; for (let i = 0; i < 2; i++) { const a = add('archer', fx + (i ? 2.2 : -2.2) * Math.cos(C.range.f.ry), fz - (i ? 2.2 : -2.2) * Math.sin(C.range.f.ry), C.range.f.ry - Math.PI / 2, { lines: ['Shh. Respire antes de atirar.', 'O alvo é pequeno, a distância é grande, e o vento não ajuda.'], mode: 'idle', as: 'samurai', y: C.range.y, extra: { static: true, archer: true } }); const tr = new Kyudo(a.rig, i ? 0 : 6); tr.onRelease = (from, dir) => this.onArrow?.(from, dir); a.trainer = tr; a.rig.post = () => tr.apply(); } }
     // os lavradores nos arrozais: abaixados no barro, cada um no seu tabuleiro
-    for (let i = 0; i < 12; i++) { const x = rr(FIELDS.x0 + 15, FIELDS.x1 - 15), z = rr(FIELDS.z0 + 15, FIELDS.z1 - 15); add('farmer', x, z, rand() * 6, { lines: FARMER_LINES, mode: rand() < 0.75 ? 'work' : 'idle', as: 'farmer', extra: { static: true, field: true } }); }
-    walker('farmer', [FIELDS.x0, FIELDS.x1, FIELDS.z0, FIELDS.z1], 3, { lines: FARMER_LINES, as: 'farmer', speed: 0.9 });
+    { const P = (C.paddies?.plots || []).slice().sort(() => rand() - 0.5); for (let i = 0; i < 20 && P.length; i++) { const p = P[i % P.length], x = p.cx + rr(-14, 14), z = p.cz + rr(-9, 9); const lk = this.look('farmer'); if (i % 3 === 0) { lk.female = true; lk.extras = ['kasa']; } add('farmer', x, z, rand() * 6, { look: lk, lines: FARMER_LINES, mode: rand() < 0.8 ? 'work' : 'idle', as: 'farmer', y: p.y + 0.03, extra: { static: true, field: true } }); } } // (dentro da água, cada um no seu tabuleiro)
+    walker('farmer', [FIELDS.x0, FIELDS.x1, FIELDS.z0, FIELDS.z1], 4, { lines: FARMER_LINES, as: 'farmer', speed: 0.9 });
     // o templo, o santuário
     if (C.spots.hondo) { add('monk', C.spots.incense.x - 3, C.spots.incense.z + 6, 1.2, { lines: MONK_LINES, mode: 'work', as: 'monk', extra: { static: true } }); walker('monk', [C.spots.incense.x - 12, C.spots.incense.x + 4, C.spots.incense.z - 10, C.spots.incense.z + 10], 1, { lines: MONK_LINES, as: 'monk', speed: 0.7 }); }
     if (C.spots.temizuya) add('priest', C.spots.temizuya.x, C.spots.temizuya.z + 1.5, Math.PI, { lines: PRIEST_LINES, as: 'priest', extra: { static: true } });
     walker('woman', [SHRINE.x - 5, SHRINE.x + 5, SHRINE.z - 50, SHRINE.z + 20], 3); walker('man', [SHRINE.x - 5, SHRINE.x + 5, SHRINE.z - 50, SHRINE.z + 20], 2);
     // fregueses sentados nas casas de chá; peregrinos em volta do fogo dentro das casas dos oshi; mercadores nas portas
-    for (const s of C.seats) add(rand() < 0.5 ? 'pilgrim' : rand() < 0.5 ? 'woman' : 'man', s.x, s.z, s.ry, { mode: 'sit', lines: rand() < 0.5 ? PILGRIM_LINES : VILLAGER_LINES, y: s.y - 0.05, extra: { static: true } });
-    for (const h of C.hearths.filter((q, i) => i % 2 === 0).slice(0, 12)) { for (const k of [0, 1]) { const a = (k ? 1 : -1) * 1.0 + h.ry, x = h.x + Math.sin(a) * 1.15, z = h.z + Math.cos(a) * 1.15; add('pilgrim', x, z, a + Math.PI, { mode: 'sit', lines: PILGRIM_LINES, as: 'pilgrim', y: h.y, extra: { static: true } }); } }
+    for (const s of C.seats) add(rand() < 0.5 ? 'pilgrim' : rand() < 0.5 ? 'woman' : 'man', s.x, s.z, s.ry, { mode: 'sit', lines: rand() < 0.5 ? PILGRIM_LINES : VILLAGER_LINES, y: s.y - 0.46, extra: { static: true } }); // (a pose sentada já traz o quadril a ~0,5 m: o boneco fica no chão e o quadril pousa no banco)
+    for (const h of C.hearths.filter((q, i) => i % 2 === 0).slice(0, 12)) { for (const k of [0, 1]) { const a = (k ? 1 : -1) * 1.0 + h.ry, x = h.x + Math.sin(a) * 1.15, z = h.z + Math.cos(a) * 1.15; add('pilgrim', x, z, a + Math.PI, { mode: 'work', lines: PILGRIM_LINES, as: 'pilgrim', y: h.y, extra: { static: true } }); } }
     for (const h of C.houses.filter((q) => q.kind === 'shop').slice(0, 10)) { const [x, z] = h.door; add('merchant', x, z, h.ry, { mode: rand() < 0.5 ? 'talk' : 'idle', lines: MERCHANT_LINES, extra: { static: true } }); }
     // os donos das cabanas da montanha
-    for (const st of C.stations) { if (st.n === 5) continue; add('farmer', st.bench[0], st.bench[1], st.ry, { mode: 'sit', lines: ['Água quente, chá, sandália nova! E o carimbo no cajado.', 'Daqui para cima o vento muda de humor a cada hora.'], as: 'farmer', y: st.y + 0.45, extra: { static: true } }); }
+    for (const st of C.stations) { if (st.n === 5) continue; add('farmer', st.bench[0], st.bench[1], st.ry, { mode: 'sit', lines: ['Água quente, chá, sandália nova! E o carimbo no cajado.', 'Daqui para cima o vento muda de humor a cada hora.'], as: 'farmer', y: st.y, extra: { static: true } }); }
   }
 
   // ---- os bichos: cães e gatos na vila, bois de tração nos arrozais, patos no lago, bandos de corvos e de
@@ -186,7 +187,7 @@ export class Actors {
     let every = 0;
     if (this.camera) { this._s.center.set(p.x, p.y + 0.95, p.z); this._s.radius = 1.6; const seen = this._fr.intersectsSphere(this._s); every = !seen ? 1 / 8 : d2 < 25 * 25 ? 0 : d2 < 45 * 45 ? 1 / 30 : 1 / 15; }
     if (rig._acc < every) return;
-    animateHumanoid(rig, rig._acc, speed, mode, t); rig._acc = 0;
+    animateHumanoid(rig, rig._acc, speed, mode, t); rig._acc = 0; rig.post?.();
   }
   update(dt, t, player, quests, nightFactor) {
     this.t = t; const pp = player.pos; this.pp = pp;
@@ -204,10 +205,10 @@ export class Actors {
     }
     for (const a of this.agents) {
       const vis = near(a, this.viewR) && !a.rig.root.userData.off; a.rig.root.visible = vis; if (!vis) continue;
-      if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
+      if (a.talking) { a.trainer?.step(dt, false); face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
       if (a.static) {
         if (a.ry !== undefined && a.mode !== 'work') a.rig.root.rotation.y = angleLerp(a.rig.root.rotation.y, a.ry, dt * 2);
-        if (a.drill !== undefined && nightFactor < 0.5) { a.drill -= dt; if (a.drill < 0) { playOnce(a.rig, rand() < 0.5 ? 'espada' : 'golpe', 0.9); a.drill = rr(1.4, 3.2); } } // os golpes do treino, cada aluno no seu ritmo
+        a.trainer?.step(dt, nightFactor < 0.5); // o treino (kyūdō e suburi), cada um no seu ritmo
         this.anim(a.rig, dt, 0, a.mode, t); continue;
       }
       if (a.wait > 0) { a.wait -= dt; this.anim(a.rig, dt, 0, 'idle', t); continue; }

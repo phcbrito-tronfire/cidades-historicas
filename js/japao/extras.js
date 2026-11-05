@@ -13,7 +13,8 @@ import { addBox, addCircle } from '../comum/collision.js';
 import { mulberry32 } from '../comum/util.js';
 import { frame, toro, torii, nobori, roofGeo } from './kit.js';
 import { house, kura } from './vila.js';
-import { terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM } from './terrain.js';
+import { rippleNormals } from './arrozal.js';
+import { terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM, FALLS, fallEdge } from './terrain.js';
 
 const V3 = THREE.Vector3;
 const rnd = mulberry32(1795);
@@ -38,6 +39,20 @@ function hamlet(B, M, out, H) {
 }
 
 export function buildExtras(B, M, out) {
+  { // o paredão da cachoeira: blocos de lava empilhados na encosta, recuados atrás da cortina d'água
+    const rnd = mulberry32(205), rock = new THREE.DodecahedronGeometry(1, 0);
+    for (let x = FALLS.x - 36; x <= FALLS.x + 36; x += 1.9) {
+      const ez = fallEdge(x), hb = terrainHeight(x, ez - 5), ht = terrainHeight(x, ez + 5);
+      for (let k = 0; k <= 4; k++) {
+        const f = k / 4; let z = ez - 3.1 + 6.2 * f + (rnd() - 0.5) * 0.8;
+        const nearWater = polyDist(STREAM, x, z).d;
+        if (nearWater < 4.2) { if (k === 0 || k === 4) continue; z += 2.6; } // (atrás da água: o riacho passa por cima e cai na frente)
+        const r = 1.5 + rnd() * 1.0, y = hb + (ht - hb) * f - 0.4;
+        B.geo(rock, M.lava, x + (rnd() - 0.5) * 0.8, y, z, { sx: r * (1.1 + rnd() * 0.3), sy: r * (0.8 + rnd() * 0.3), sz: r, ry: rnd() * 6, rx: rnd() * 0.6, uv: false, noGround: true });
+      }
+      addBox(x, ez - 0.4, 2.0, 7.4, hb - 3, ht + 0.6); // (a encosta é parede: não se sobe nem se entra nela)
+    }
+  }
   out.hamlets = []; out.animated = out.animated || [];
   for (const H of HAMLETS) hamlet(B, M, out, H);
   // ---- a aldeia dos pescadores: o píer de tábuas entrando no lago, os barcos e os varais de rede
@@ -68,7 +83,9 @@ export function buildExtras(B, M, out) {
     const wheel = new THREE.Group(), wood = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.9 });
     for (const sd of [-0.45, 0.45]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.08, 6, 28), wood); rim.position.z = sd; wheel.add(rim); }
     for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, pad = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 1.0), wood); pad.position.set(Math.cos(a) * 2.4, Math.sin(a) * 2.4, 0); pad.rotation.z = a; wheel.add(pad); const sp = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.07, 0.07), wood); sp.position.set(Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0); sp.rotation.z = a; wheel.add(sp); }
-    const wx = S.x + px * 3.4, wz = S.z + pz * 3.4; wheel.position.set(wx, terrainHeight(S.x, S.z) + 1.75, wz); wheel.rotation.y = Math.atan2(px, pz); wheel.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const bed = terrainHeight(S.x, S.z), wx = S.x + px * 1.6, wz = S.z + pz * 1.6; wheel.position.set(wx, bed + 2.5, wz); // (a roda fica dentro do riacho: as pás de baixo entram na água, que corre ~0,55 m acima do leito)
+    { const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.4, 8), wood); ax.rotation.x = Math.PI / 2; ax.position.set(0, 0, -2.2); wheel.add(ax); } // o eixo, até a casa
+    for (const d of [2.7, 4.3]) { const x = S.x + px * d, z = S.z + pz * d, gy = terrainHeight(x, z); B.box(M.darkWood, 0.25, bed + 2.4 - gy + 0.3, 0.25, x, gy - 0.3, z); } // os pilares que seguram o eixo wheel.rotation.y = Math.atan2(px, pz); wheel.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     out.extra.push(wheel); out.animated.push({ g: wheel, spin: -0.7 });
     out.spots.mill = new V3(...(() => { const [a, b] = f.W(0, 5); return [a, y, b]; })()); }
   // ---- a plantação de chá: fileiras de arbustos podados redondos, acompanhando a encosta
@@ -101,11 +118,27 @@ export function buildExtras(B, M, out) {
     out.spots.pagoda = new V3(cx - 6, y, cz); }
   // ---- o cume: a casinha do eremita, a cerejeira e o laguinho no fundo da cratera
   { const cx = FUJI.x, cz = FUJI.z, y = terrainHeight(cx, cz);
-    B.geo(new THREE.CylinderGeometry(4.2, 4.2, 0.4, 28), M.stone, cx + 6, y - 0.2, cz + 4, { uv: false }); B.geo(new THREE.CylinderGeometry(3.8, 3.8, 0.05, 28), M.water, cx + 6, y + 0.02, cz + 4, { uv: false }); addCircle(cx + 6, cz + 4, 3.9, y - 1, y + 0.1);
-    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; B.geo(new THREE.DodecahedronGeometry(0.4 + (i % 3) * 0.12, 0), M.lava, cx + 6 + Math.cos(a) * 4.3, y + 0.1, cz + 4 + Math.sin(a) * 4.3, { uv: false }); }
+    // o laguinho: contorno redondo e irregular (de jardim), margem de pedras de vários tamanhos, água com ondinhas que
+    // refletem o céu, folhas de lótus e duas carpas (koi) nadando devagar
+    { const px = cx + 6, pz = cz + 4, rad = (a) => 3.5 + Math.sin(a * 2 + 1) * 0.35 + Math.sin(a * 3 + 0.4) * 0.22, sh = new THREE.Shape();
+      for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2, r = rad(a); if (i) sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); else sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+      const flat = (g) => { g.rotateX(-Math.PI / 2); return g; };
+      const bed = new THREE.Mesh(flat(new THREE.ShapeGeometry(sh, 6)), new THREE.MeshStandardMaterial({ color: 0x2a3a30, roughness: 1 })); bed.position.set(px, y + 0.02, pz); out.extra.push(bed); // o fundo escuro (dá profundidade à água)
+      const nrm = rippleNormals(); nrm.repeat.set(0.45, 0.45);
+      const wg = flat(new THREE.ShapeGeometry(sh, 6)); { const p = wg.attributes.position, uv = wg.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i)); }
+      const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x24504e, roughness: 0.08, metalness: 0.4, envMapIntensity: 0.9, transparent: true, opacity: 0.84, normalMap: nrm, normalScale: new THREE.Vector2(0.25, 0.25), depthWrite: false }));
+      water.position.set(px, y + 0.14, pz); water.renderOrder = 2; out.extra.push(water);
+      for (let i = 0; i < 30; i++) { const a = (i / 30) * Math.PI * 2 + Math.sin(i * 7.3) * 0.05, r = rad(a) + 0.25 + (i % 2) * 0.15, s = 0.28 + ((i * 37) % 10) / 22; B.geo(new THREE.DodecahedronGeometry(1, 0), M.lava, px + Math.cos(a) * r, y + 0.05, pz + Math.sin(a) * r, { sx: s * 1.3, sy: s * 0.55, sz: s, ry: i * 1.7, uv: false }); } // a margem de pedras
+      for (let i = 0; i < 24; i++) { const a = i * 2.39, r = rad(a) + 0.7 + (i % 3) * 0.2; B.geo(new THREE.DodecahedronGeometry(0.1, 0), M.stone, px + Math.cos(a) * r, y + 0.03, pz + Math.sin(a) * r, { sy: 0.5, uv: false }); } // seixos
+      const padM = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.7, side: THREE.DoubleSide });
+      for (const [a, r, s] of [[0.6, 2.2, 0.32], [0.9, 2.6, 0.24], [2.8, 1.9, 0.3], [4.4, 2.4, 0.26], [4.7, 1.7, 0.2]]) { const pad = new THREE.Mesh(flat(new THREE.CircleGeometry(s, 14, 0.4, Math.PI * 2 - 0.4)), padM); pad.position.set(px + Math.cos(a) * r, y + 0.155, pz + Math.sin(a) * r); pad.rotation.y = a * 3; out.extra.push(pad); } // folhas de lótus
+      const koiM = [new THREE.MeshStandardMaterial({ color: 0xe8642a, roughness: 0.5 }), new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.5 })];
+      const kois = [0, 1].map((k) => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), koiM[k]); b.scale.set(0.8, 0.55, 2.4); g.add(b); const tl = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 5), koiM[k]); tl.rotation.x = -Math.PI / 2; tl.position.z = -0.3; g.add(tl); if (k) { const sp = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), koiM[0]); sp.position.set(0, 0.03, 0.08); g.add(sp); } out.extra.push(g); return g; });
+      let tt = 0; out.animated.push({ fn: (dt) => { tt += dt; nrm.offset.x += dt * 0.01; nrm.offset.y += dt * 0.006; kois.forEach((g, k) => { const a = tt * (0.25 + k * 0.08) + k * 3, r = 1.6 + Math.sin(tt * 0.3 + k) * 0.6; g.position.set(px + Math.cos(a) * r, y + 0.07, pz + Math.sin(a) * r); g.rotation.y = -a + (k ? 0 : 0); g.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)); }); } });
+      addCircle(px, pz, 3.3, y - 1, y + 0.1); }
     house(B, M, out, { x: cx - 7, z: cz - 1, ry: Math.PI * 0.85, w: 9, d: 7, roof: 'thatch', front: 'shoji', engawa: true, kind: 'hermit', doma: 3 });
     toro(B, M, out, cx - 1, y, cz + 6, 0.9);
     out.summitTree = { x: cx + 1.5, y, z: cz - 6 }; addCircle(cx + 1.5, cz - 6, 0.5, y - 1, y + 4);
-    out.spots.hermit = new V3(cx - 3, y, cz + 3); }
+    out.spots.hermit = new V3(cx + 1.2, y, cz + 1.8); out.spots.oyuki = new V3(cx + 2.9, y, cz + 7.6); } // (o eremita fica do lado de fora, entre a casa e o laguinho: dentro, a placa do nome batia no teto)
   void nobori; void roofGeo;
 }

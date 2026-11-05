@@ -42,7 +42,9 @@ export function buildMountain(B, M, out) {
   for (let f = 0.64; f < 0.97; f += 0.03) { const p = trailAt(f), x = p.x + p.dz * 3, z = p.z - p.dx * 3, y = terrainHeight(x, z);
     B.box(M.darkWood, 0.12, 2.4, 0.12, x, y, z); B.box(M.darkWood, 0.6, 0.08, 0.08, x + 0.25, y + 2.3, z); B.geo(new THREE.SphereGeometry(0.2, 10, 8), M.lantern, x + 0.5, y + 2.0, z, { sy: 1.3, uv: false }); out.torches.push(new V3(x + 0.5, y + 1.95, z)); addCircle(x, z, 0.12, y - 1, y + 2.4); }
   // os torii de madeira atravessando a trilha embaixo, e os Jizō de babador vermelho nas curvas
-  for (const f of [0.035, 0.1, 0.2, 0.33]) { const p = trailAt(f); torii(B, M, p.x, terrainHeight(p.x, p.z), p.z, Math.atan2(p.dx, p.dz), 5.4, 5.2, f < 0.15 ? 'myojin' : 'shinmei'); }
+  // torii no chão: a altura vem do pé mais alto dos dois pilares (o outro desce até a terra pela base de pedra)
+  const toriiAt = (x, z, ry, w, h, kind) => { const c = Math.cos(ry), s = Math.sin(ry), y = Math.max(terrainHeight(x + c * w / 2, z - s * w / 2), terrainHeight(x - c * w / 2, z + s * w / 2)); torii(B, M, x, y, z, ry, w, h, kind); };
+  for (const f of [0.035, 0.1, 0.2, 0.33]) { const p = trailAt(f); toriiAt(p.x, p.z, Math.atan2(p.dx, p.dz), 5.4, 5.2, f < 0.15 ? 'myojin' : 'shinmei'); }
   for (let f = 0.05; f < 0.6; f += 0.07) { const p = trailAt(f), x = p.x - p.dz * 3.4, z = p.z + p.dx * 3.4, y = terrainHeight(x, z);
     for (let j = 0; j < 3; j++) { const jx = x + p.dx * (j - 1) * 0.55, jz = z + p.dz * (j - 1) * 0.55; B.geo(new THREE.CylinderGeometry(0.13, 0.17, 0.5, 10), M.stoneLight, jx, y + 0.25, jz, { uv: false }); B.geo(new THREE.SphereGeometry(0.12, 10, 8), M.stoneLight, jx, y + 0.6, jz, { uv: false }); B.geo(new THREE.ConeGeometry(0.2, 0.24, 10, 1, true), M.redCloth, jx, y + 0.42, jz, { rx: Math.PI, uv: false }); }
     addCircle(x, z, 0.8, y - 1, y + 0.8); }
@@ -65,8 +67,9 @@ export function buildMountain(B, M, out) {
     out.spots.nyonin = new V3(x + p.dz, y, z - p.dx); }
   // o cume: o santuário de cima (okumiya) na borda norte da cratera, o torii de pedra e os montes de pedra (cairns)
   { const x = FUJI.x, z = FUJI.z - FUJI.crater - 10, y = terrainHeight(x, z);
-    torii(B, M, x, y, z - 6, 0, 4, 4.4, 'shinmei');
-    const f = frame(B, x + 7, terrainHeight(x + 7, z), z, Math.PI);
+    toriiAt(x, z - 6, 0, 4, 4.4, 'shinmei');
+    const sy = Math.max(...[[-3.6, -3], [3.6, -3], [-3.6, 3], [3.6, 3], [0, 0]].map(([a, b]) => terrainHeight(x + 7 + a, z + b))) + 0.05; // (o santuário fica num terraço de pedra: nada enterrado na encosta)
+    const f = frame(B, x + 7, sy, z, Math.PI); f.box(M.lava, 7.6, 5, 6.6, 0, -5, 0); f.solid(0, 0, 7.6, 6.6, -6, 0);
     f.wall(M.lava, -2.5, -2, 2.5, -2, 1.8, 0.7); f.wall(M.lava, -2.5, -2, -2.5, 2, 1.8, 0.7); f.wall(M.lava, 2.5, -2, 2.5, 2, 1.8, 0.7);
     f.box(M.cedar, 2, 1.4, 1.4, 0, 0.3, -0.6); f.roof(M.bark, 2.6, 2.2, 0.7, 1.7, { thick: 0.15, sori: 0.3, gable: true }, 0, -0.6); f.box(M.gold, 0.4, 0.4, 0.04, 0, 1.0, 0.12);
     f.box(M.wood, 6, 0.3, 5, 0, 1.8, 0, { rx: 0.05 }); for (let i = 0; i < 6; i++) f.geo(new THREE.DodecahedronGeometry(0.32, 0), M.lava, -2 + (i % 3) * 2, 2.2, i < 3 ? -1.2 : 1.2, { uv: false });

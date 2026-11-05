@@ -21,7 +21,8 @@ export const STREET = { x: 40, z0: -440, z1: 20, hw: 5.5 }; // a rua dos oshi (n
 export const SHRINE = { x: 40, z: 75, w: 90, d: 110 }; // o recinto do santuário Sengen, na floresta
 export const RESIDENCE = { x: -275, z: -255, w: 86, d: 72, lift: 4 }; // a residência do senhor (jin'ya)
 export const TEMPLE = { x: 330, z: -110, r: 62, lift: 16 }; // templo budista no alto da colina
-export const FIELDS = { x0: 95, x1: 480, z0: -660, z1: -300 }; // arrozais
+export const FIELDS = { x0: 95, x1: 247, z0: -660, z1: -478 }; // arrozais (4 × 7 tabuleiros, a oeste do riacho)
+export const FARMLAND = { x0: 95, x1: 480, z0: -660, z1: -300 }; // o campo aberto em volta (sem floresta)
 export const SNOW_Y = 600;
 // lugares para descobrir entre a vila e a montanha (a floresta abre espaço para eles)
 export const BAMBOO = { x: -150, z: -15, r: 62 }; // o bambuzal grande, com o caminho por dentro
@@ -39,6 +40,9 @@ export const MILL = { x: 196, z: -74 }; // o moinho d'água, na beira do riacho 
 // o riacho (Katsura): nasce na floresta, desce a cachoeira, corta a vila a leste da rua e sai pelo nordeste
 export const STREAM = [[395, 330], [380, 240], [355, 170], [300, 60], [215, -40], [150, -150], [180, -300], [260, -430], [330, -560], [380, -800]];
 export const STREAM_HW = 3.2;
+// a cachoeira: a borda do paredão de lava (de leste a oeste) e o ponto onde o riacho despenca
+export const FALLS = { x: 368, z: 205 };
+export function fallEdge(x) { return FALLS.z + Math.sin(x * 0.03) * 4 + (fbm(x * 0.02, 4, 2) - 0.5) * 8 * ss(10, 40, Math.abs(x - FALLS.x)); }
 // a trilha Yoshida: do portão de trás do santuário até a borda da cratera; reta e larga embaixo, em zigue-zague no alto
 export const TRAIL = (() => {
   const p = [[40, 130], [45, 300], [30, 520], [58, 760], [42, 980], [72, 1180], [55, 1350]];
@@ -131,12 +135,12 @@ export function terrainHeight(x, z) {
     const e = Math.hypot(u / L.a, v / L.b) + (fbm(x * 0.01, z * 0.01, 2) - 0.5) * 0.18;
     if (e < 1.3) { const bed = -1.2 - 11 * Math.pow(Math.max(0, 1 - e * e), 0.6); h = e < 1 ? Math.min(h, bed) : lerp(Math.min(h, lerp(-1.2, 0.9, (e - 1) / 0.12)), h, ss(1.0, 1.3, e)); } }
   // o riacho: leito 1,6 m abaixo do chão, com barrancos
-  { const S = polyDist(STREAM, x, z); if (S.d < 14) { const bed = base(S.x, S.z) - 1.7; h = lerp(bed, Math.min(h, base(S.x, S.z) + 0.2), ss(STREAM_HW * 0.75, 8, S.d)); } } // (barranco firme: a água fica dentro do leito)
+  { const S = polyDist(STREAM, x, z); if (S.d < 14) { const bed = base(S.x, S.z) - 1.7; h = lerp(bed, Math.min(h, base(S.x, S.z) + 0.2), ss(STREAM_HW + 0.6, 11.5, S.d)); } } // (leito largo e barranco suave: a malha do chão, de 3,4 m, consegue desenhar o leito onde ele está — senão quem anda no riacho afunda na terra desenhada)
   // a cachoeira: o riacho cai de um degrau de rocha na floresta
   // (a borda de uma camada de lava antiga: um paredão de 11 m que atravessa a floresta de leste a oeste, mais alto
   //  no meio, onde o riacho despenca — como as cachoeiras do pé do Fuji, que caem da beira das camadas de lava)
-  { const fx = 368, fz = 205, edgeZ = fz + Math.sin(x * 0.03) * 4 + (fbm(x * 0.02, 4, 2) - 0.5) * 8 * ss(10, 40, Math.abs(x - fx)), w = 1 - ss(70, 150, Math.abs(x - fx));
-    if (w > 0) h += 11 * w * ss(0, 1, (z - edgeZ) / 3 + 0.5); }
+  { const edgeZ = fallEdge(x), w = 1 - ss(70, 150, Math.abs(x - FALLS.x));
+    if (w > 0) h += 11 * w * ss(0, 1, (z - edgeZ) / 7 + 0.5); }
   return h;
 }
 
@@ -178,7 +182,7 @@ function surface(x, z, h, slope) {
 }
 
 // floresta: onde ficam as árvores (o shader escurece o chão debaixo delas)
-export function meadowAt(x, z) { return fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25); }
+export function meadowAt(x, z) { return fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25) && !(x > FIELDS.x0 - 3 && x < FIELDS.x1 + 3 && z > FIELDS.z0 - 3 && z < FIELDS.z1 + 3); } // (o capim não nasce dentro dos tabuleiros)
 export function forestAt(x, z) {
   const fuji = fujiH(x, z);
   if (fuji > 330) return 0;
@@ -201,7 +205,7 @@ export function forestAt(x, z) {
   if (Math.abs(x - RESIDENCE.x) < RESIDENCE.w / 2 + 14 && Math.abs(z - RESIDENCE.z) < RESIDENCE.d / 2 + 14) f = 0;
   if (Math.hypot(x - TEMPLE.x, z - TEMPLE.z) < TEMPLE.r * 0.55) f = 0;
   if (inLake(x, z, 30)) f = 0;
-  if (x > FIELDS.x0 - 8 && x < FIELDS.x1 + 8 && z > FIELDS.z0 - 8 && z < FIELDS.z1 + 8) f = 0;
+  if (x > FARMLAND.x0 - 8 && x < FARMLAND.x1 + 8 && z > FARMLAND.z0 - 8 && z < FARMLAND.z1 + 8) f = 0;
   if (polyDist(TRAIL, x, z).d < TRAIL_HW + 2.5) f = 0;
   if (polyDist(STREAM, x, z).d < STREAM_HW + 2) f = 0;
   return f;

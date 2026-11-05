@@ -137,7 +137,7 @@ function chaya(B, M, out, o) {
   const { f, y } = house(B, M, out, { ...o, roof: 'thatch', front: 'open', w: o.w, d: o.d, kind: 'tea', doma: o.w * 0.55 });
   const hd = o.d / 2;
   for (const dx of [-o.w * 0.25, o.w * 0.2]) { f.box(M.redCloth, 1.8, 0.06, 0.7, dx, 0.45, hd + 1.0); f.box(M.wood, 1.8, 0.4, 0.6, dx, 0.05, hd + 1.0); f.solid(dx, hd + 1.0, 1.8, 0.7, -1, 0.5); // bancos vermelhos
-    out.seats.push({ ...(([a, b]) => ({ x: a, z: b }))(f.W(dx - 0.4, hd + 1.0)), y: y + 0.5, ry: o.ry + Math.PI }); }
+    out.seats.push({ ...(([a, b]) => ({ x: a, z: b }))(f.W(dx - 0.4, hd + 1.05)), y: y + 0.5, ry: o.ry }); } // (de frente para a rua)
   { const [ux, uz] = f.W(o.w * 0.48, hd + 1.4); B.geo(new THREE.CylinderGeometry(0.03, 0.03, 2.6, 5), M.darkWood, ux, y + 1.3, uz, { uv: false }); B.geo(new THREE.ConeGeometry(1.4, 0.5, 18, 1, true), M.redCloth, ux, y + 2.55, uz, { uv: false }); addCircle(ux, uz, 0.05, y - 1, y + 2.4); } // o guarda-sol (nodate-gasa)
   f.box(M.noren[1], 1.8, 0.7, 0.02, -o.w / 2 + o.w * 0.27, 2.0, hd + 0.1, { noGround: true });
 }
@@ -198,7 +198,7 @@ export function buildVillage(B, M, out) {
   // lanternas de pedra ao longo da rua, nas duas beiras
   for (let z = S.z0 + 20; z < S.z1; z += 34) for (const sd of [-1, 1]) { const x = S.x + sd * (ex + (sd > 0 ? 1.9 : 0.5)); toro(B, M, out, x, terrainHeight(x, z), z, 0.85); }
   // casas de fazenda espalhadas pelos campos, cada uma com seu armazém
-  const farms = [[FIELDS.x0 - 28, -380, 0.3], [120, -272, Math.PI], [FIELDS.x1 + 30, -470, -1.2], [FIELDS.x0 + 210, FIELDS.z1 + 34, 0.1], [-110, -420, 0.6], [-140, -130, 1.8], [-60, -560, 2.6], [200, -250, -0.4]];
+  const farms = [[FIELDS.x0 - 28, -380, 0.3], [120, -272, Math.PI], [510, -470, -1.2], [305, -266, 0.1], [-110, -420, 0.6], [-140, -130, 1.8], [-60, -560, 2.6], [200, -250, -0.4]];
   for (const [x, z, ry] of farms) {
     if (polyDist(STREAM, x, z).d < 16) continue;
     { const hs = [[-8, -6], [8, -6], [-8, 6], [8, 6]].map(([a, b]) => terrainHeight(x + a, z + b)); if (Math.max(...hs) - Math.min(...hs) > 1.6) continue; } // (nada de casa em barranco)

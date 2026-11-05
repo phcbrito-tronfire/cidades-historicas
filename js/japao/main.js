@@ -130,6 +130,7 @@ async function main() {
   quests.artifactCount = artifacts.count;
   const festas = new Festas(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), glow: tex.glow, audio });
   festas.onSeen = (id) => quests.complete(id);
+  actors.onArrow = (from) => festas.fire(from);
   quests.refs = { mount };
   actors.onBear = () => { quests.complete('urso'); ui.toast('Um urso-negro! No Japão ele vive nas florestas das montanhas. Fique longe e não corra: ele costuma fugir de gente.', 'quest', 8000); };
   setupWardrobe({ player, city: 'japao', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
@@ -307,11 +308,13 @@ async function main() {
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
     nature.update(dt); nature.cull(camera, dt);
-    for (const a of city.animated) { if (a.spin) a.g.rotation.z += a.spin * dt; if (a.bob) a.g.position.y = 0.12 + Math.sin(t * 1.1 + a.g.position.x) * 0.05; } // o moinho girando e os barcos balançando
+    for (const a of city.animated) { if (a.fn) { a.fn(dt, t); continue; } if (a.spin) a.g.rotation.z += a.spin * dt; if (a.bob) a.g.position.y = 0.12 + Math.sin(t * 1.1 + a.g.position.x) * 0.05; } // o moinho girando e os barcos balançando
     water.material.uniforms.time.value += dt * 0.4;
     { const u = water.material.uniforms.uSwim.value; u.set(player.pos.x, 0, player.pos.z, player.swimming ? Math.min(1, u.w + dt * 2) : Math.max(0, u.w - dt * 2)); }
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
+    { const riding = mount.state === 'riding', p = riding ? mount.pos : player.pos, sp = riding ? Math.abs(mount.v || 0) : player.speed || 0, w = city.paddies?.wade(p, sp, dt, riding); // pisando no arrozal alagado
+      if (w) { fx.ripple(w.at, w.s); if (w.splash) { fx.splash(w.at, w.s * 0.18); audio.burst(0.16, 900 + Math.random() * 500, 0.06 * w.s); } } }
     if (started) {
       { const tgt = !ui.dialogOpen && actors.nearestInteractable(player.pos); const parts = []; if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : (NAMES[tgt.type] || 'morador').toLowerCase()}`);
         if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar'); else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
@@ -321,7 +324,7 @@ async function main() {
       if (miniT <= 0) { ui.drawMinimap(player, actors.key.map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) })), hints()); miniT = 0.1; }
       const sd = polyDist(STREAM, player.pos.x, player.pos.z).d, fall = Math.hypot(player.pos.x - 368, player.pos.z - 205);
       audio.update(dt, { nearWater: Math.max(Math.max(0, 1 - sd / 30) * 0.6, Math.max(0, 1 - fall / 70)), night: sky.state.night > 0.5, market: 0, sea: 0 });
-      audio.windGain && (audio.windGain.gain.value = 0.2 + Math.min(0.5, Math.max(0, player.pos.y - 200) / 900)); // mais vento no alto da montanha
+      audio.windGain && (audio.windGain.gain.value = 0.05 + Math.min(0.16, Math.max(0, player.pos.y - 200) / 2500)); // vento baixinho no vale, um pouco mais no alto da montanha (a música fica na frente)
     }
     const under = underwater.update(dt, camera, player);
     scene.updateMatrixWorld();

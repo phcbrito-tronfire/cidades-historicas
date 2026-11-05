@@ -3,6 +3,7 @@
 // as peças modernas são "repintadas" (camisa vira torso nu, bermuda/calça vira saiote de linho,
 // tênis vira sandália) e recebem por cima saiotes, vestidos, perucas e coroas presos aos ossos.
 import * as THREE from 'three';
+import { makeYumi, YUMI } from './yumi.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -337,7 +338,7 @@ export function makeHumanoid(o = {}) {
       if (/Eyelash/.test(p)) continue;
       if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
       if (/Shirt|Tops/.test(p)) { const c = fold(mat, 0xffffff); c.map = kimonoTex('#' + new THREE.Color(clothColor).getHexString(), o.pattern || 'plain', o.accent || '#1a1a22'); me.material = c; continue; }
-      if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, o.legColor ?? (outfit === 'farmer' ? 0x2a3450 : outfit === 'pilgrim' ? 0xf2efe6 : clothColor)); continue; }
+      if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, o.legColor ?? (outfit === 'farmer' ? 0x2a3450 : outfit === 'pilgrim' ? 0xf2efe6 : outfit === 'samurai' ? (o.hakama ?? 0x4a4a56) : outfit === 'kannushi' ? (o.hakama ?? 0x8aa0c8) : clothColor)); continue; } // (debaixo da hakama, a calça na cor dela: nada de mancha clara vazando)
       if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; }
       continue;
     }
@@ -728,9 +729,9 @@ export function makeHumanoid(o = {}) {
     if (e === 'tenugui') { const fit = headFitOnce(); attach('Head', meshAt(new THREE.TorusGeometry(fit.rx + 0.012, 0.018, 6, 24), m(o.tenuguiColor ?? 0xe8ecf2, { roughness: 0.95 }), 0, 0, 0, [Math.PI / 2, 0, 0]), new THREE.Vector3(fit.cx, fit.top - 0.075, fit.cz), [0, 0, 0], [1, 1, (fit.rz + 0.012) / (fit.rx + 0.012)]); }
     if (e === 'zue') { handR.add(meshAt(new THREE.CylinderGeometry(0.018, 0.018, 1.55, 8), m(0xf0ead8, { roughness: 0.8 }), 0, 0.3, 0)); handR.add(meshAt(new THREE.SphereGeometry(0.02, 8, 6), m(0xc8a040, { metalness: 0.8 }), 0, 1.05, 0.03)); } // o cajado de peregrino (kongō-zue) com o sino
     if (e === 'yari') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.015, 0.017, 2.6, 6), m(0x2a1a12), 0, 0.6, 0)); g.add(meshAt(new THREE.ConeGeometry(0.022, 0.24, 4), m(0xc8ccd0, { metalness: 0.9, roughness: 0.25 }), 0, 2.0, 0)); handR.add(g); }
-    if (e === 'yumi') { const g = new THREE.Group(), bow = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.013, 4, 30, 0.75), m(0x3a2418, { roughness: 0.5 })); bow.rotation.z = Math.PI / 2 - 0.375; bow.position.set(-1.58, 0, 0); g.add(bow); g.add(meshAt(new THREE.CylinderGeometry(0.002, 0.002, 2.18, 3), m(0xf0ead8), -0.035, 0.0, 0)); attach('Spine2', g, new THREE.Vector3(0.05, chest.y + 0.15, chest.z - 0.2), [0, 0, 0.12]); } // o arco longo (yumi) nas costas
+    if (e === 'yumi') { const g = new THREE.Group(), bow = makeYumi(); bow.rotation.y = -Math.PI / 2; bow.position.y = -YUMI.mid; g.add(bow); attach('Spine2', g, new THREE.Vector3(0, chest.y + 0.05, chest.z - 0.17), [0, 0, 0.32]); } // o arco longo (yumi) nas costas, em diagonal, colado ao corpo
     if (e === 'chochin') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 5), m(0x3a2a1a), 0, 0.15, 0)); g.add(meshAt(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshStandardMaterial({ color: 0xf6e8c8, emissive: 0xffa040, emissiveIntensity: 1.6, roughness: 0.9 }), 0, -0.18, 0.04, [0, 0, 0])); handL.add(g); } // a lanterna de papel na mão (subida de madrugada)
-    if (e === 'bokken') handR.add(meshAt(new THREE.CylinderGeometry(0.016, 0.02, 0.98, 8), m(0x8a6a44, { roughness: 0.7 }), 0, 0.42, 0));
+    if (e === 'bokken') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.014, 0.019, 1.0, 8), m(0x9a7448, { roughness: 0.65 }), 0, 0.36, 0)); g.add(meshAt(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 12), m(0x1a1612), 0, 0.12, 0)); g.rotation.x = Math.PI * 0.78; handR.add(g); } // o bokken na mão: sai do punho para a frente e para baixo (como se leva a espada em repouso)
     if (e === 'hoe') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.016, 0.016, 1.3, 6), m(0x8a6a44), 0, 0.3, 0)); g.add(meshAt(new THREE.BoxGeometry(0.16, 0.22, 0.012), m(0x4a4a4c, { metalness: 0.6 }), 0, 0.94, 0.08, [0.5, 0, 0])); handR.add(g); } // a enxada (kuwa)
     if (e === 'fan') handR.add(meshAt(new THREE.CircleGeometry(0.16, 12, 0, Math.PI * 0.6), m(0xf2e6c8, { side: THREE.DoubleSide }), 0, 0.12, 0.02, [0, Math.PI / 2, -0.5]));
     if (e === 'basket_back') attach('Spine2', meshAt(new THREE.CylinderGeometry(0.2, 0.15, 0.45, 12, 1, true), m(0xb89a5a, { roughness: 1, side: THREE.DoubleSide }), 0, 0, 0), new THREE.Vector3(0, chest.y - 0.05, chest.z - 0.27), [0.15, 0, 0]);
@@ -1079,12 +1080,12 @@ export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22) {
 // seat = ponto do banco (mundo); fwd = para onde o remador olha; lean = inclinação do tronco (rad, + = para a
 // frente); hands = { Left, Right } = pontos (mundo) onde cada mão segura
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
-function bendSpine(bone, axis, ang) {
+export function bendSpine(bone, axis, ang) {
   bone.getWorldQuaternion(_qw); _qw.premultiply(_q.setFromAxisAngle(axis, ang));
   bone.parent.getWorldQuaternion(_qp); bone.quaternion.copy(_qp.invert().multiply(_qw));
   bone.updateMatrixWorld(true);
 }
-function armIK(sh, el, wr, target, pole) {
+export function armIK(sh, el, wr, target, pole) {
   const S = sh.getWorldPosition(_v1), E = el.getWorldPosition(_v2), W = wr.getWorldPosition(_v3);
   const l1 = S.distanceTo(E), l2 = E.distanceTo(W);
   const to = _v4.copy(target).sub(S); const d = Math.min(l1 + l2 - 0.002, Math.max(0.05, to.length())); to.normalize();

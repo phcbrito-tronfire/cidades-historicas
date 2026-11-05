@@ -39,9 +39,15 @@ export class Festas {
       const s2 = new THREE.Sprite(sprite.clone()); s2.material.color.set(0xffd080); s2.scale.setScalar(2.2); s2.position.set(x, y + 3.4, z); this.fireGroup.add(s2);
       this.fires.push({ s, s2, ph: rand() * 6 });
     }
-    this.fireLights = [0, 1, 2, 3].map((i) => { const l = new THREE.PointLight(0xff9040, 0, 60, 2); l.position.set(STREET.x, terrainHeight(STREET.x, -380 + i * 120) + 5, -380 + i * 120); this.fireGroup.add(l); return l; });
+    this.fireLights = [0, 1, 2, 3].map((i) => { const l = new THREE.PointLight(0xff9040, 0, 60, 2); l.position.set(STREET.x, terrainHeight(STREET.x, -380 + i * 120) + 5, -380 + i * 120); scene.add(l); return l; }); // (fora do grupo: a luz fica sempre na cena, só apaga)
     // a fila da partida: aparece no pátio do santuário
     this.procession = [];
+  }
+  // uma flecha sai do arco de um arqueiro (a soltura do kyūdō): vai para o alvo da frente dele
+  fire(from) {
+    const R = this.city.range, a = this.arrows.find((q) => q.t < 0); if (!R || !a) return;
+    let k = 0, best = 1e9; R.targets.forEach(([tx, tz], i) => { const d = Math.abs((tx - from.x) * Math.cos(R.f.ry) - (tz - from.z) * Math.sin(R.f.ry)); if (d < best) { best = d; k = i; } });
+    const [tx, tz] = R.targets[k]; a.from = from.clone(); a.to = new V3(tx + rr(-0.25, 0.25), R.y + 1.0 + rr(-0.2, 0.2), tz); a.t = 0; a.g.visible = true; a.hit = rand() < 0.55; a.stuck = false;
   }
   get event() { return DAYS[this.day]; }
   onTime(phase) { if (phase === 'manha') { this.day = (this.day + 1) % DAYS.length; this.announced = false; } }
@@ -51,8 +57,6 @@ export class Festas {
     // ---- kyūdō: todos os dias de manhã e de tarde; no dia comum com mais arqueiros
     const R = C.range;
     if (R && night < 0.5) {
-      this.shootT = (this.shootT ?? 2) - dt;
-      if (this.shootT < 0) { this.shootT = rr(3, 6); const a = this.arrows.find((q) => q.t < 0); if (a) { const k = Math.floor(rand() * R.targets.length); a.from = new V3(R.from[0] + rr(-2, 2), R.y + 1.45, R.from[1]); const [tx, tz] = R.targets[k]; a.to = new V3(tx + rr(-0.25, 0.25), R.y + 1.0 + rr(-0.2, 0.2), tz); a.t = 0; a.g.visible = true; a.hit = rand() < 0.55; } }
       for (const a of this.arrows) { if (a.t < 0) continue; a.t += dt / 0.7; const k = Math.min(1, a.t); a.g.position.lerpVectors(a.from, a.to, k); a.g.position.y += Math.sin(k * Math.PI) * 0.9; a.g.lookAt(a.to.x, a.to.y + (1 - k) * 0.8, a.to.z);
         if (a.t >= 1 && !a.stuck) { a.stuck = true; if (Math.hypot(p.x - a.to.x, p.z - a.to.z) < 45) { this.hits++; this.audio?.burst?.(0.08, 1400, 0.06); if (a.hit && this.onSeen) this.onSeen('kyudo_tiro'); } }
         if (a.t > 4) { a.t = -1; a.stuck = false; a.g.visible = false; } }
@@ -63,7 +67,7 @@ export class Festas {
         if (Math.hypot(p.x - C.spots.kagura.x, p.z - C.spots.kagura.z) < 22) { if (!this.seen.has('kagura')) { this.seen.add('kagura'); this.toast('A miko dança a kagura: o leque e os sininhos chamam os kami. As danças contam histórias dos mitos — como a deusa do sol, escondida numa caverna, saiu para ver a dança.', 'quest', 9000); this.onSeen?.('kagura'); } } } }
     // ---- a festa do fogo
     const fire = ev === 'himatsuri' && night > 0.5;
-    this.fireGroup.visible = fire;
+    this.fireGroup.visible = fire; if (!fire && this.fireLights[0].intensity) for (const l of this.fireLights) l.intensity = 0;
     if (fire) { for (const f of this.fires) { const k = 0.85 + Math.sin(t * 9 + f.ph) * 0.1 + Math.sin(t * 23 + f.ph * 2) * 0.05; f.s.scale.setScalar(4.5 * k); f.s2.scale.setScalar(2.2 * (2 - k)); } for (const l of this.fireLights) l.intensity = 60 + Math.sin(t * 7) * 8;
       if (Math.abs(p.x - STREET.x) < 30 && p.z > STREET.z0 && p.z < STREET.z1 + 40 && !this.seen.has('himatsuri')) { this.seen.add('himatsuri'); this.toast('A festa do fogo de Yoshida: as tochas de pinho ardem a noite toda ao longo da rua. Assim a vila agradece à montanha e fecha a temporada de subida.', 'quest', 9000); this.onSeen?.('himatsuri'); } }
     // ---- o aviso do dia, só para quem está no lugar

@@ -15,7 +15,7 @@ export class Player {
   constructor(scene, camera) {
     this.scene = scene; this.camera = camera;
     this.look = wornLook(); // a roupa escolhida no guarda-roupa (roupas.js)
-    this.rig = makeHumanoid({ look: this.look, height: 1.8 });
+    this.rig = makeHumanoid({ look: this.look, height: 1.8 }); this.rig.model.traverse((n) => { if (n.isSkinnedMesh) n.frustumCulled = false; }); // (o explorador está sempre na tela: não passa pelo recorte por visão, que às vezes o escondia dentro da água)
     this.rig.root.traverse((n) => n.layers.set(0)); // o explorador aparece no reflexo do Nilo
     scene.add(this.rig.root);
     this.pos = this.rig.root.position;
@@ -72,6 +72,7 @@ export class Player {
     for (const [a, b] of [[old.handL, r.handL], [old.handR, r.handR]]) for (const c of [...a.children]) b.add(c);
     Object.assign(old, { model: r.model, mixer: r.mixer, act: r.act, handR: r.handR, handL: r.handL, armR: r.armR, bones: r.bones, tail: r.tail, skirt: r.skirt, walkClip: r.walkClip, once: null, w: {} });
     this.wetMats = null; this.limbs = null; this._layerWet = false; this.look = id;
+    r.model.traverse((n) => { if (n.isSkinnedMesh) n.frustumCulled = false; });
   }
 
   updateTorch(dt, t) {
@@ -79,9 +80,12 @@ export class Player {
     // acende quando escurece; apaga na água (e reacende ao sair)
     const want = this.night > 0.5 && !this.swimming ? 1 : 0;
     T.on = want ? Math.min(1, T.on + dt * 2.5) : Math.max(0, T.on - dt * (this.swimming ? 8 : 2));
-    T.mount.visible = T.on > 0.01;
+    // (a luz nunca sai da cena, só apaga: ligar e desligar uma luz faz o navegador recompilar todos os
+    // materiais de uma vez — era a travada ao virar noite)
+    if (!T.parts) { T.parts = []; T.mount.traverse((n) => { if ((n.isMesh || n.isSprite) && n !== T.light) T.parts.push(n); }); }
+    const lit = T.on > 0.01; if (lit !== T.lit) { T.lit = lit; for (const n of T.parts) n.visible = lit; }
     T.light.intensity = 2.0 * T.on * (0.88 + Math.sin(t * 12.3) * 0.07 + Math.sin(t * 27.1) * 0.05);
-    if (!T.mount.visible) return;
+    if (!lit) return;
     // a chama fica sempre de pé, mesmo com o braço balançando
     T.mount.parent.updateWorldMatrix(true, false);
     T.mount.getWorldQuaternion(T.wq).invert();
@@ -393,11 +397,13 @@ export class Player {
     this.updateTorch(dt, t);
 
     // câmera acompanha por trás com atraso, se o mouse estiver parado
-    const idleMouse = t - this.lastMouse > 1.5;
+    // (andando, a câmera volta sozinha para trás de quem anda: não é preciso ficar corrigindo com o mouse;
+    //  andando de frente para a câmera ela não dá a volta, e mexer o mouse suspende o ajuste por um instante)
+    const idleMouse = t - this.lastMouse > 0.8;
     if (realSpeed > 0.5 && idleMouse && !this.dragging) {
       const behind = this.facing + Math.PI;
       const diff = Math.abs(((behind - this.camYawW + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
-      if (diff < 2.4) this.camYawW = angleLerp(this.camYawW, behind, Math.min(1, dt * 1.4 * Math.min(1.5, realSpeed / 3.5)));
+      if (diff < 2.5) this.camYawW = angleLerp(this.camYawW, behind, Math.min(1, dt * 2.4 * Math.min(1.4, Math.max(0.6, realSpeed / 3))));
     }
     this.updateCamera(dt);
   }
@@ -425,8 +431,8 @@ export class Player {
     this.updateTorch(dt, t);
     this.updateWet(dt, false, 0, -100);
     this.updateBreathBar();
-    const idleMouse = t - this.lastMouse > 1.5;
-    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, camFacing + Math.PI, Math.min(1, dt * 0.8));
+    const idleMouse = t - this.lastMouse > 0.8;
+    if (idleMouse && !this.dragging && Math.abs(speed) > 0.3) this.camYawW = angleLerp(this.camYawW, camFacing + Math.PI, Math.min(1, dt * 2.2)); // (a cavalo também: a câmera se ajeita atrás do animal)
     this.updateCamera(dt);
   }
 

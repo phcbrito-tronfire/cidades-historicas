@@ -198,13 +198,16 @@ export const NPCS = [
     bye: 'Devagar e sempre. A oitava estação é a mais difícil.',
   },
   {
-    id: 'eremita', name: 'Velho Genzō', title: 'Eremita do cume (personagem de fantasia do jogo)', objective: 'eremita',
+    id: 'eremita', name: 'Velho Genzō', title: 'Eremita do cume', objective: 'eremita',
     look: { outfit: 'monk', cloth: 0x8a7a6a, kesa: 0x4a3a2a, beard: 'full', hairColor: 0xd8d4cc },
     greet: 'Ah, alguém subiu até aqui embaixo, no fundo da cratera! Sente-se perto do laguinho. Daqui de dentro não se vê o mundo, só o céu.',
     topics: [
-      { q: 'Alguém morava mesmo no cume do Fuji?', a: [
-        'Não. Isto aqui é um sonho do jogo: no período Edo ninguém vivia no cume. Lá em cima havia a borda da cratera, os santuários de pedra e as cabanas onde os peregrinos esperavam o sol nascer — e o frio, mesmo no verão.',
-        'Os peregrinos davam a volta inteira na borda da cratera, o ohachi-meguri, "a volta da tigela". A cratera parece mesmo uma tigela de arroz virada para o céu.'] },
+      { q: 'O senhor mora aqui em cima?', a: [
+        'Moro, e sou o único. Lá embaixo dizem que ninguém aguenta viver no cume — e quase sempre têm razão. No inverno a neve fecha a borda e eu passo meses sem ver ninguém. Só aqui no fundo da cratera o vento não entra.',
+        'Os peregrinos não descem até aqui: sobem de noite, esperam o sol nascer na borda e dão a volta inteira da cratera, o ohachi-meguri, "a volta da tigela". A cratera parece mesmo uma tigela de arroz virada para o céu.'] },
+      { q: 'Por que o senhor veio para cá?', a: [
+        'Fui asceta da montanha. Kakugyō, que começou a devoção ao Fuji, rezou anos numa caverna ao pé do monte. Eu quis rezar mais perto do céu.',
+        'A Oyuki, minha neta, sobe no verão e me ajuda com o jardim. Sem ela a cerejeira já tinha secado.'] },
       { q: 'Por que a cerejeira?', a: [
         'A deusa do Fuji é Konohana-sakuya-hime, a princesa da flor de cerejeira. Diz a lenda que ela vive no cume e que a cerejeira floresce e cai tão depressa quanto a vida. Aqui ela tem a sua árvore.'] },
     ],

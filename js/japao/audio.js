@@ -20,9 +20,9 @@ export class AudioFX {
     };
     // vento
     const wind = noise('brown'), wf = ctx.createBiquadFilter(); wf.type = 'lowpass'; wf.frequency.value = 500;
-    this.windGain = ctx.createGain(); this.windGain.gain.value = 0.25;
+    this.windGain = ctx.createGain(); this.windGain.gain.value = 0.07;
     wind.connect(wf).connect(this.windGain).connect(this.master);
-    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 0.12; lfo.connect(lg).connect(this.windGain.gain); lfo.start();
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 0.035; lfo.connect(lg).connect(this.windGain.gain); lfo.start();
     // água
     const water = noise('white'), bf = ctx.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = 900; bf.Q.value = 0.6;
     this.waterGain = ctx.createGain(); this.waterGain.gain.value = 0;
@@ -47,12 +47,12 @@ export class AudioFX {
     const ci = noise('white'), cbf = ctx.createBiquadFilter(); cbf.type = 'bandpass'; cbf.frequency.value = 5200; cbf.Q.value = 8;
     const cam = ctx.createGain(); cam.gain.value = 0.5; const cl = ctx.createOscillator(); cl.type = 'square'; cl.frequency.value = 38; const clg = ctx.createGain(); clg.gain.value = 0.5; cl.connect(clg).connect(cam.gain); cl.start();
     ci.connect(cbf).connect(cam).connect(this.cicadaGain);
-    this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.11; this.musicGain.connect(this.master);
+    this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.2; this.musicGain.connect(this.master);
     this.nextNote = ctx.currentTime + 2; this.nextBird = ctx.currentTime + 3;
   }
 
   setEnabled(on) { this.enabled = on; if (this.master) this.master.gain.value = on ? 0.8 : 0; }
-  setMusic(on) { this.musicOn = on; if (this.musicGain) this.musicGain.gain.value = on ? 0.11 : 0; }
+  setMusic(on) { this.musicOn = on; if (this.musicGain) this.musicGain.gain.value = on ? 0.2 : 0; }
 
   // koto: ataque seco de unha (dente de serra filtrado que fecha rápido), corpo de madeira e, às vezes, a nota
   // "puxada" depois de tocada (o tocador aperta a corda do outro lado da ponte e o som sobe meio tom)
@@ -61,7 +61,7 @@ export class AudioFX {
     const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
     o.type = 'sawtooth'; o.frequency.value = freq; o2.type = 'triangle'; o2.frequency.value = freq * 1.002;
     if (bend) { o.frequency.setValueAtTime(freq, time + 0.35); o.frequency.linearRampToValueAtTime(freq * 1.0595, time + 0.6); o2.frequency.setValueAtTime(freq, time + 0.35); o2.frequency.linearRampToValueAtTime(freq * 1.0595, time + 0.6); }
-    lp.type = 'lowpass'; lp.frequency.setValueAtTime(freq * 7, time); lp.frequency.exponentialRampToValueAtTime(freq * 1.6, time + 0.5); lp.Q.value = 2;
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(freq * 7, time); lp.frequency.exponentialRampToValueAtTime(freq * 3.2, time + 0.6); lp.Q.value = 1.2;
     g.gain.setValueAtTime(0, time); g.gain.linearRampToValueAtTime(vol, time + 0.006); g.gain.exponentialRampToValueAtTime(vol * 0.3, time + 0.25); g.gain.exponentialRampToValueAtTime(0.001, time + 2.2);
     const g2 = ctx.createGain(); g2.gain.value = 0.5;
     o.connect(lp); o2.connect(g2).connect(lp); lp.connect(g); g.connect(this.musicGain);
@@ -78,14 +78,14 @@ export class AudioFX {
     this.crowdGain.gain.value += ((market ? 0.09 * market : 0) - this.crowdGain.gain.value) * k;
     this.surfGain.gain.value += (0.22 * sea - this.surfGain.gain.value) * k;
     this.cicadaGain.gain.value += ((night ? 0 : 0.018 * (1 - sea) * SI[0]) - this.cicadaGain.gain.value) * k; // (as cigarras do verão japonês)
-    this.windGain.gain.value = Math.max(0.05, this.windGain.gain.value);
+    this.windGain.gain.value = Math.max(0.02, this.windGain.gain.value);
     if (this.musicOn && now > this.nextNote) {
-      const scale = [146.8, 155.6, 196, 220, 233.1, 293.7, 311.1, 392, 440, 466.2]; // miyako-bushi em ré (ré, mi♭, sol, lá, si♭)
+      const scale = [220, 233.1, 293.7, 311.1, 392, 440, 466.2, 587.3, 622.3, 784]; // (um pouco mais agudo que antes: o koto aparece sem precisar de volume) // miyako-bushi em ré (ré, mi♭, sol, lá, si♭)
       // uma frase curta (1 a 3 notas vizinhas, descendo de leve), depois silêncio
-      let k = 3 + Math.floor(Math.random() * 6); const n = Math.random() < 0.45 ? 1 : Math.random() < 0.7 ? 2 : 3;
+      let k = 2 + Math.floor(Math.random() * 6); const n = Math.random() < 0.25 ? 2 : Math.random() < 0.6 ? 3 : 4;
       for (let i = 0; i < n; i++) { this.pluck(scale[Math.max(0, Math.min(scale.length - 1, k))], now + i * (0.32 + Math.random() * 0.2), 0.3, i === n - 1 && Math.random() < 0.25); k -= Math.random() < 0.7 ? 1 : -1; }
-      this.nextNote = now + 2.5 + Math.random() * 3.5;
-      if (Math.random() < 0.25) this.nextNote += 6 + Math.random() * 6; // as pausas longas são metade da música
+      this.nextNote = now + 2.2 + Math.random() * 2.8;
+      if (Math.random() < 0.15) this.nextNote += 3 + Math.random() * 3; // as pausas longas são metade da música
     }
     if (!night && now > this.nextBird && sea > 0.3 && Math.random() < 0.5) { // gaivota: grito que desce
       const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth';

@@ -210,7 +210,7 @@ export function toro(B, M, out, x, y, z, s = 1, lit = true) {
 // torii: dois pilares, a viga de cima curva (kasagi) e a de baixo (nuki); myōjin (vermelho) ou shinmei (cedro)
 export function torii(B, M, x, y, z, ry, w = 6, h = 6.4, kind = 'myojin') {
   const f = frame(B, x, y, z, ry), mat = kind === 'shinmei' ? M.cedar : M.vermilion, r = 0.22 * w / 6;
-  for (const sd of [-1, 1]) { f.geo(new THREE.CylinderGeometry(r * 0.88, r, h, 14), mat, sd * w / 2, h / 2, 0, { uv: false }); f.box(M.blackWood, r * 2.4, 0.5, r * 2.4, sd * w / 2, 0, 0); f.solid(sd * w / 2, 0, r * 2.2, r * 2.2, -1, h); }
+  for (const sd of [-1, 1]) { f.geo(new THREE.CylinderGeometry(r * 0.88, r, h, 14), mat, sd * w / 2, h / 2, 0, { uv: false }); f.box(M.blackWood, r * 2.4, 0.5, r * 2.4, sd * w / 2, 0, 0); f.box(M.stone || M.blackWood, r * 2.6, 3.5, r * 2.6, sd * w / 2, -3.5, 0); f.solid(sd * w / 2, 0, r * 2.2, r * 2.2, -1, h); }
   f.box(mat, w + 1.0, 0.32 * w / 6, 0.34 * w / 6, 0, h - 0.95, 0); // nuki
   if (kind === 'myojin') { // kasagi curvo, preto em cima, com as pontas levantadas
     const k = roofGeo(w + 2.4, 0.5 * w / 6, -0.05, { thick: 0.42 * w / 6, sori: 0.45, sag: 1, gable: true, seg: 10 });
