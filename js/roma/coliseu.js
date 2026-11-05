@@ -32,6 +32,11 @@ const thetaOf = (x, z, d) => Math.atan2((z - COL.z) / (COL.b0 + d), (x - COL.x) 
 const rowY = (k) => COL.y + COL.podiumH + COL.rise * (k + 1);
 // rampa dos túneis norte e sul: do chão (no ambulacro) até o pódio
 const rampY = (d) => COL.y + COL.podiumH * Math.min(1, Math.max(0, (COL.D - d) / (COL.D - 8)));
+// teto dos túneis norte e sul (os 14 trechos da rampa) e as fileiras que ele corta: nelas a fileira para na parede do
+// túnel em vez de atravessá-lo (e a plateia não senta ali)
+const NT = 14, SEGL = (COL.D - COL.podium) / NT;
+const ceilB = (d) => { const j = Math.min(NT - 1, Math.max(0, Math.floor((d - COL.podium) / SEGL))); return Math.max(rampY(COL.podium + j * SEGL), rampY(COL.podium + (j + 1) * SEGL)) + 3.2; };
+export function rowCutNS(k) { const d0 = COL.podium + k * COL.row, d1 = d0 + COL.row + 0.02; return Math.min(ceilB(d0), ceilB(d1 - 0.03)) + 0.4 > rowY(k) - (COL.rise + 0.6); }
 const inEW = (x, z) => Math.abs(z - COL.z) < COL.gate; // túnel leste-oeste (eixo maior)
 const inNS = (x, z) => Math.abs(x - COL.x) < COL.gate; // túnel norte-sul (eixo menor)
 
@@ -64,7 +69,7 @@ export function colGround(x, z) {
 // geometria
 // bloco em forma de setor de anel elíptico: topo em y, descendo h; ângulos th0..th1 (as pontas podem afinar com a
 // distância: a0/a1 são deslocamentos em metros de arco, para a largura das escadas ficar constante)
-function ringSlab(d0, d1, th0, th1, y, h, cut0 = 0, cut1 = 0) {
+function ringSlab(d0, d1, th0, th1, y, h, cut0 = 0, cut1 = 0, bottom = true) {
   const n = Math.max(2, Math.ceil(Math.abs(th1 - th0) * ((COL.a0 + COL.b0) / 2 + d1) / 1.8));
   const pos = [], idx = [];
   const quad = (a, b, c, e) => { const i = pos.length / 3; pos.push(...a, ...b, ...c, ...e); idx.push(i, i + 1, i + 2, i, i + 2, i + 3); };
@@ -74,6 +79,7 @@ function ringSlab(d0, d1, th0, th1, y, h, cut0 = 0, cut1 = 0) {
     quad(at(t0, d0, y), at(t1, d0, y), at(t1, d1, y), at(t0, d1, y));
     quad(at(t0, d0, y - h), at(t1, d0, y - h), at(t1, d0, y), at(t0, d0, y));
     quad(at(t1, d1, y - h), at(t0, d1, y - h), at(t0, d1, y), at(t1, d1, y));
+    if (bottom) quad(at(t1, d0, y - h), at(t0, d0, y - h), at(t0, d1, y - h), at(t1, d1, y - h)); // (a face de baixo: sem ela, quem olhava o teto do corredor de baixo via o céu através dele)
   }
   quad(at(0, d1, y - h), at(0, d0, y - h), at(0, d0, y), at(0, d1, y));
   quad(at(1, d0, y - h), at(1, d1, y - h), at(1, d1, y), at(1, d0, y));
@@ -90,6 +96,11 @@ function ringWall(d, t, th0, th1, y0, y1) {
     quad(at(k0, d - t / 2, y0), at(k1, d - t / 2, y0), at(k1, d - t / 2, y1), at(k0, d - t / 2, y1));
     quad(at(k1, d + t / 2, y0), at(k0, d + t / 2, y0), at(k0, d + t / 2, y1), at(k1, d + t / 2, y1));
     quad(at(k0, d - t / 2, y1), at(k1, d - t / 2, y1), at(k1, d + t / 2, y1), at(k0, d + t / 2, y1));
+    quad(at(k1, d - t / 2, y0), at(k0, d - t / 2, y0), at(k0, d + t / 2, y0), at(k1, d + t / 2, y0)); // face de baixo
+  }
+  if (Math.abs(th1 - th0) < Math.PI * 2 - 1e-6) { // as pontas do muro (nos portões e túneis ficava oco, dava para ver dentro e através)
+    quad(at(0, d + t / 2, y0), at(0, d - t / 2, y0), at(0, d - t / 2, y1), at(0, d + t / 2, y1));
+    quad(at(1, d - t / 2, y0), at(1, d + t / 2, y0), at(1, d + t / 2, y1), at(1, d - t / 2, y1));
   }
   return finish(pos, idx);
 }
@@ -197,21 +208,29 @@ export function buildColosseum(B, M, out) {
   }
   // ---- terraço do pódio e as fileiras, com as escadas radiais; os túneis norte e sul se abrem na cávea
   {
-    const step = TAU / C.aisles;
+    const step = TAU / C.aisles, nsI = [C.aisles / 4, (3 * C.aisles) / 4];
+    // o teto dos túneis norte e sul (o mesmo cálculo dos 14 trechos da rampa, lá embaixo): onde ele passa acima do
+    // fundo de uma fileira, a fileira e a escada eram desenhadas por dentro do túnel — blocos pendurados que se
+    // atravessava andando. Ali a fileira para na parede do túnel e, se o teto fica abaixo do degrau, uma pedra completa
     B.geo(ringSlab(0, C.podium, 0, TAU, Y + C.podiumH, 1.2), M.marble, 0, 0, 0);
     for (let k = 0; k < C.rows; k++) {
-      const d0 = C.podium + k * C.row, d1 = d0 + C.row + 0.02, y = rowY(k);
+      const d0 = C.podium + k * C.row, d1 = d0 + C.row + 0.02, y = rowY(k), dm = (d0 + d1) / 2, rr = (C.a0 + C.b0) / 2 + dm;
+      const cbHi = Math.max(ceilB(d0), ceilB(d1 - 0.03)), cTop = Math.min(ceilB(d0), ceilB(d1 - 0.03)) + 0.4;
+      const intrude = rowCutNS(k), cutT = (C.gate + 0.45) * rr / (C.a0 + dm), xe = C.aisleW * (C.a0 + dm) / rr;
       for (let i = 0; i < C.aisles; i++) {
         const a = i * step, b = a + step;
-        B.geo(ringSlab(d0, d1, a, b, y, C.rise + 0.6, C.aisleW, C.aisleW), k % 2 ? M.travertine : M.travertine2, 0, 0, 0);
+        const c0 = intrude && nsI.includes(i) ? cutT : C.aisleW, c1 = intrude && nsI.includes(i + 1) ? cutT : C.aisleW;
+        B.geo(ringSlab(d0, d1, a, b, y, C.rise + 0.6, c0, c1, false), k % 2 ? M.travertine : M.travertine2, 0, 0, 0);
         // escada: dois meios degraus, onde não é a boca de um túnel
-        const nsOpen = (i === C.aisles / 4 || i === (3 * C.aisles) / 4) && rampY(d0) + 3.2 > y;
+        const nsOpen = nsI.includes(i) && rampY(d0) + 3.2 > y;
         if (nsOpen) continue;
         for (const half of [0, 1]) {
-          const e0 = d0 + half * (C.row / 2), e1 = e0 + C.row / 2 + 0.02;
-          B.geo(ringSlab(e0, e1, a - C.aisleW / ((C.a0 + C.b0) / 2 + e0), a + C.aisleW / ((C.a0 + C.b0) / 2 + e0), y - (half ? 0 : C.rise / 2), C.rise + 0.4), M.marble, 0, 0, 0);
+          const e0 = d0 + half * (C.row / 2), e1 = e0 + C.row / 2 + 0.02, top = y - (half ? 0 : C.rise / 2);
+          let h = C.rise + 0.4; if (intrude && nsI.includes(i)) { h = Math.min(h, top - cTop); if (h < 0.03) continue; } // (por cima do teto do túnel, não através dele)
+          B.geo(ringSlab(e0, e1, a - C.aisleW / ((C.a0 + C.b0) / 2 + e0), a + C.aisleW / ((C.a0 + C.b0) / 2 + e0), top, h, 0, 0, false), M.marble, 0, 0, 0);
         }
       }
+      if (intrude && y > cTop + 0.02) for (const s of [-1, 1]) for (const sx of [-1, 1]) { const w = C.gate + 0.45 - xe; B.box(k % 2 ? M.travertine : M.travertine2, w, y - cbHi, C.row + 0.02, sx * (xe + w / 2), cbHi, s * (C.b0 + dm), { noGround: true }); }
       // teto dos túneis: em cima, os degraus continuam (caixas que servem de piso para quem anda na arquibancada)
       for (const s of [-1, 1]) {
         addBox(s * (C.a0 + (d0 + d1) / 2), 0, C.row, C.gate * 2, Y + 3.2, y); // leste/oeste
@@ -232,7 +251,7 @@ export function buildColosseum(B, M, out) {
         const dA = C.podium + (j / n) * (C.D - C.podium), dB = C.podium + ((j + 1) / n) * (C.D - C.podium), yA = rampY(dA), yB = rampY(dB), zc = s * (C.b0 + (dA + dB) / 2), len = dB - dA; // desde o pódio: sem vão entre a fila da frente e o túnel
         const slope = Math.atan2(yA - yB, len) * s;
         B.box(M.travertine, C.gate * 2, 0.3, len + 0.05, 0, (yA + yB) / 2 - 0.3, zc, { rx: slope });
-        for (const sx of [-1, 1]) { B.box(M.brick, 0.4, 3.4, len + 0.05, sx * (C.gate + 0.2), Math.min(yA, yB), zc); addBox(sx * (C.gate + 0.2), zc, 0.4, len, Math.min(yA, yB) - 1, Math.max(yA, yB) + 3.2); }
+        for (const sx of [-1, 1]) { B.box(M.brick, 0.4, 3.4 + Math.abs(yA - yB) + 0.2, len + 0.05, sx * (C.gate + 0.2), Math.min(yA, yB), zc); /* (até dentro do teto: na rampa sobrava uma fresta entre a parede e o teto) */ addBox(sx * (C.gate + 0.2), zc, 0.4, len, Math.min(yA, yB) - 1, Math.max(yA, yB) + 3.2); }
         // teto do túnel; onde as fileiras ficam mais baixas que ele, o teto vira o camarote elevado (o pulvinar), com mureta
         { const top = Math.max(yA, yB) + 3.2, rowH = rowY(Math.min(C.rows - 1, Math.floor((dA - C.podium) / C.row)));
           B.box(M.travertine, C.gate * 2 + 0.8, 0.4, len + 0.05, 0, top, zc); addBox(0, zc, C.gate * 2 + 0.8, len, top - 0.2, top + 0.4);

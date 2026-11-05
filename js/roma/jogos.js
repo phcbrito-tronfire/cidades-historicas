@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { makeCrowd } from '../comum/plateia.js';
 import { Bout, Blood, GATE } from './combate.js';
 import { Hunt } from './caca.js';
-import { COL } from './coliseu.js';
+import { COL, rowCutNS } from './coliseu.js';
 import { makeHumanoid, animateHumanoid, playOnce, loadAnims, rigDetail } from '../comum/mixamo.js';
 import { creature } from '../comum/fauna.js';
 import { rr, rand, pick, angleLerp, lerp } from '../comum/util.js';
@@ -31,10 +31,11 @@ export class Games {
     const fill = quality === 'alto' ? 0.62 : quality === 'leve' ? 0.4 : 0.22;
     for (let k = 0; k < C.rows; k++) {
       const d = C.podium + (k + 0.45) * C.row, r = (C.a0 + C.b0) / 2 + d, y = Y + C.podiumH + C.rise * (k + 1);
-      const n = Math.floor((TAU * r) / 0.62);
+      const n = Math.floor((TAU * r) / 0.62), cutNS = rowCutNS(k);
       for (let i = 0; i < n; i++) {
         const th = (i / n) * TAU, da = Math.abs(((th / step) % 1 + 1.5) % 1 - 0.5) * step;
         if (da * r < C.aisleW + 0.3 || rand() > fill) continue;
+        if (cutNS && Math.abs((C.a0 + d) * Math.cos(th)) < C.gate + 0.9) continue; // (ali a fileira para na parede do túnel norte/sul)
         const dc = C.podium + (k - 0.1) * C.row; // (o cartão fica na beirada do degrau: as pernas descem pela frente, não por dentro da pedra)
         seats.push([(C.a0 + dc) * Math.cos(th), y, (C.b0 + dc) * Math.sin(th), th, k]);
       }
@@ -195,11 +196,17 @@ export class Games {
   carryBodies(dt, t) {
     const [m1, m2] = this.bearers, Y = COL.y, job = this.bodies[0];
     const go = (f, x, z, sp) => { const dx = x - f.pos.x, dz = z - f.pos.z, d = Math.hypot(dx, dz), s = Math.min(d, sp * dt); if (d > 0.05) { f.pos.x += dx / d * s; f.pos.z += dz / d * s; f.h = angleLerp(f.h, Math.atan2(dx, dz), Math.min(1, dt * 6)); } f.pos.y = Y; f.r.root.position.copy(f.pos); f.r.root.rotation.set(0, f.h, 0); animateHumanoid(f.r, dt, d > 0.3 ? sp : 0, d > 0.3 ? 'walk' : 'idle', t); return d < 0.4; };
-    if (!m1.pos.lengthSq()) { m1.pos.set(GATE.x - 1, Y, -1.4); m2.pos.set(GATE.x - 1, Y, 1.4); m1.h = m2.h = Math.PI / 2; }
-    if (!job) { go(m1, GATE.x - 1, -1.4, 1.2); go(m2, GATE.x - 1, 1.4, 1.2); return; }
+    // (esperam dentro do túnel, encostados mas longe das ombreiras do portão: antes ficavam enfiados na parede)
+    const wx = GATE.x - 4, wz = 0.95;
+    if (!m1.pos.lengthSq()) { m1.pos.set(wx, Y, -wz); m2.pos.set(wx, Y, wz); m1.h = m2.h = Math.PI / 2; }
+    if (!job) { for (const [f, z] of [[m1, -wz], [m2, wz]]) if (go(f, wx, z, 1.2)) f.h = angleLerp(f.h, Math.PI / 2, Math.min(1, dt * 3)); return; } // (parados, olham para a arena)
     const B = job.body;
-    if (!job.got) { const a = go(m1, B.pos.x - 0.5, B.pos.z - 0.6, 1.8), b = go(m2, B.pos.x + 0.5, B.pos.z - 0.6, 1.8); if (a && b) job.got = true; return; }
-    const tx = GATE.x - 3, a = go(m1, tx, -0.5, 0.9); go(m2, tx, 0.5, 0.9);
+    // (passam sempre pelo meio da porta, na ida e na volta: em linha reta até o morto, cortavam a quina do portão)
+    if (!job.got) { if (!job.out) { const a = go(m1, GATE.x + 0.8, -0.6, 2.2), b = go(m2, GATE.x + 0.8, 0.6, 2.2); if (a && b) job.out = true; return; }
+      const a = go(m1, B.pos.x - 0.5, B.pos.z - 0.6, 2.2), b = go(m2, B.pos.x + 0.5, B.pos.z - 0.6, 2.2); if (a && b) job.got = true; return; }
+    let a;
+    if (!job.door) { a = go(m1, GATE.x + 1.2, -0.5, 1.1); const b = go(m2, GATE.x + 1.2, 0.5, 1.1); if (a && b) job.door = true; a = false; }
+    else { const tx = GATE.x - 3; a = go(m1, tx, -0.5, 1.1); go(m2, tx, 0.5, 1.1); }
     B.pos.set((m1.pos.x + m2.pos.x) / 2 + Math.sin(m1.h) * -1.2, Y, (m1.pos.z + m2.pos.z) / 2 + Math.cos(m1.h) * -1.2); B.r.root.position.copy(B.pos); // (arrastado atrás deles)
     if (a) { B.gone = true; B.r.root.visible = false; job.bout.body = null; this.bodies.shift(); }
   }

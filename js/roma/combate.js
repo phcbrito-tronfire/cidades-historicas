@@ -63,8 +63,15 @@ const ATTACKS = [
 const pickAttack = () => { let s = 0; for (const a of ATTACKS) s += hasClip(a.clip) ? a.w : 0; let r = rand() * s; for (const a of ATTACKS) { if (!hasClip(a.clip)) continue; r -= a.w; if (r <= 0) return a; } return ATTACKS[3]; };
 const clipLen = (r, n) => r.act(n)?.getClip().duration || 1.2;
 export const GATE = { x: -COL.a0 + 1.5, z: 0 }; // a porta oeste da arena (Libitinensis: por ela saem os mortos)
-// cada dupla entra e sai pela porta mais perto (a leste, ao lado do alçapão do hipogeu, pelo lado)
-const gateOf = (x) => (x < 0 ? GATE : { x: COL.a0 - 1.5, z: 3.2 });
+// cada dupla entra e sai pela porta mais perto. O caminho é uma lista de pontos, da arena até dentro do túnel: a
+// porta leste fica bem atrás do alçapão do hipogeu, então ali se contorna o guarda-corpo pelo lado (antes o ponto de
+// saída era z = 3,2, já dentro do muro do pódio, e quem saía por ali ficava enfiado na parede)
+const exitPath = (home, i) => {
+  const lane = (i - 1) * 0.7, A = COL.a0;
+  if (home[0] < 0) return [[GATE.x, lane], [GATE.x - 2, lane]];
+  const s = home[1] < 0 ? -1 : 1;
+  return [[A - 6.2, s * 3.4 + lane * 0.5], [A - 2.4, lane], [A + 2, lane]];
+};
 
 export class Bout {
   constructor(games, a, b, judge, home) { this.g = games; this.f = [a, b]; this.judge = judge; this.home = home; this.first = true; this.reset(); }
@@ -74,7 +81,7 @@ export class Bout {
     this.phase = 'guard'; this.phaseT = rr(1, 2); this.combo = 0; this.endT = 0; this.wait = rr(0, 6); this.body = null;
     if (!this.first) { // depois da primeira luta, a dupla nova entra pela porta da arena e anda até o seu lugar
       this.phase = 'enter';
-      const gt = gateOf(this.home[0]), sx = Math.sign(gt.x); [...this.f, this.judge].forEach((f, i) => f.pos.set(gt.x + sx * i * 0.9, COL.y, gt.z + (i - 1) * 1.1));
+      [...this.f, this.judge].forEach((f, i) => { const p = exitPath(this.home, i), [x, z] = p[p.length - 1]; f.pos.set(x + Math.sign(x) * i * 0.6, COL.y, z); f.leg = 0; f.h = x < 0 ? Math.PI / 2 : -Math.PI / 2; });
     }
     this.first = false;
   }
@@ -92,10 +99,15 @@ export class Bout {
     if (this.phase === 'enter' || this.phase === 'exit' || this.phase === 'gone') {
       if (this.phase === 'gone') { if (this.wait <= 0 && !this.body) this.reset(); else for (const f of [...this.f, J]) f.r.root.visible = this.vis && f === this.body; return; } // (o morto continua ali até ser levado)
       const dx = Math.cos(this.ax), dz = Math.sin(this.ax); let all = true;
+      if (this.legFor !== this.phase) { this.legFor = this.phase; for (const f of [a, b, J]) f.leg = 0; }
       [a, b, J].forEach((f, i) => {
         if (f.dead) return;
-        const gt = gateOf(this.home[0]), tx = this.phase === 'exit' ? gt.x + Math.sign(gt.x) * 2 : this.cx + (i === 2 ? -dz * 3.6 : dx * (i ? 1 : -1) * 1.2), tz = this.phase === 'exit' ? gt.z + (i - 1) * 0.8 : this.cz + (i === 2 ? dx * 3.6 : dz * (i ? 1 : -1) * 1.2);
-        const ox = f.pos.x, oz = f.pos.z, there = this.walkTo(f, tx, tz, dt, this.phase === 'enter' ? 2.8 : 2.0); // (entram correndo, saem andando depressa) all = all && there;
+        // entrando: o caminho da porta ao contrário e, no fim, o seu lugar na luta; saindo: da arena até dentro do túnel
+        const path = exitPath(this.home, i), spot = [this.cx + (i === 2 ? -dz * 3.6 : dx * (i ? 1 : -1) * 1.2), this.cz + (i === 2 ? dx * 3.6 : dz * (i ? 1 : -1) * 1.2)];
+        const pts = this.phase === 'exit' ? path : [...path.slice(0, -1).reverse(), spot], [tx, tz] = pts[Math.min(f.leg, pts.length - 1)];
+        const ox = f.pos.x, oz = f.pos.z; let there = this.walkTo(f, tx, tz, dt, this.phase === 'enter' ? 2.8 : 2.0); // (entram correndo, saem andando depressa)
+        if (there && f.leg < pts.length - 1) { f.leg++; there = false; }
+        all = all && there; // (antes esta conta estava presa dentro do comentário: a entrada e a saída acabavam no primeiro quadro)
         f.gone = this.phase === 'exit' && there; f.r.root.visible = this.vis && !f.gone;
         f.pos.y = Y; f.r.root.position.copy(f.pos); f.r.root.rotation.set(0, f.h, 0);
         const sp = Math.hypot(f.pos.x - ox, f.pos.z - oz) / Math.max(dt, 1e-4); animateHumanoid(f.r, dt, sp, sp > 0.3 ? 'walk' : 'idle', t);
