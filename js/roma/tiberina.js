@@ -25,26 +25,37 @@ export function buildTiberina(B, M, out) {
     if (v0 > I.b * 0.25) { const t = (v0 - I.b * 0.25) / (I.b * 0.75); u = u0 * (1 - t * 0.85); v = v0 + t * 9; }
     outline.push([u * 1.02, v * 1.02]);
   }
+  const heads = [[-(I.a + 0.5), -4], [I.a + 0.5, 6]]; // onde as pontes encostam na ilha
   for (let i = 0; i < outline.length - 1; i++) {
     const [u0, v0] = outline[i], [u1, v1] = outline[i + 1], p = W((u0 + u1) / 2, (v0 + v1) / 2), q0 = W(u0, v0), q1 = W(u1, v1);
     const L = Math.hypot(q1.x - q0.x, q1.z - q0.z), ry = Math.atan2(q1.x - q0.x, q1.z - q0.z);
     B.box(M.travertine, 1.4, top - bot, L + 0.1, p.x, bot, p.z, { ry });
-    addCircle(p.x, p.z, 0.8, bot - 1, top);
+    if (!heads.some(([hu, hv]) => Math.hypot((u0 + u1) / 2 - hu, (v0 + v1) / 2 - hv) < 3.6)) addCircle(p.x, p.z, 0.8, bot - 1, top);
   }
   // a proa: a quilha de pedra na ponta e o bastão de Esculápio (com a serpente) esculpido no costado
   { const p = W(0, I.b + 8.5); B.geo(new THREE.ConeGeometry(1.2, 3.2, 4), M.travertine, p.x, top + 0.2, p.z, { rx: Math.PI / 2, ry: ryV + Math.PI }); }
   for (const sd of [-1, 1]) { const p = W(sd * (I.a * 0.55 + 0.75), I.b * 0.72); B.box(M.marble, 0.15, 2.0, 0.35, p.x, 0.2, p.z, { ry: ryV }); B.geo(new THREE.TorusGeometry(0.3, 0.06, 5, 12), M.marble, p.x + sd * 0.1, 1.4, p.z, { ry: ryV + Math.PI / 2 }); }
   // o piso: lajes de travertino em cima da ilha
-  B.box(M.travertine2, I.a * 1.8, 0.3, I.b * 1.8, I.x, top - 0.3, I.z, { ry: ryV });
+  { const sh = new THREE.Shape(outline.map(([u, v]) => { const p = W(u, v); return new THREE.Vector2(p.x - I.x, -(p.z - I.z)); }));
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+    B.geo(g, M.travertine2, I.x, top - 0.3, I.z);
+    // o chão andável: caixas de 2 m em toda a ilha, na altura do piso (o relevo por baixo é só um morro, e quem
+    // andava para a beira afundava debaixo das lajes)
+    const inside = (u, v) => { let c = false; for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) { const [ui, vi] = outline[i], [uj, vj] = outline[j]; if ((vi > v) !== (vj > v) && u < ((uj - ui) * (v - vi)) / (vj - vi) + ui) c = !c; } return c; };
+    for (let u = -I.a - 1; u <= I.a + 1; u += 2) for (let v = -I.b - 1; v <= I.b + 10; v += 2) if (inside(u, v)) { const p = W(u, v); addBox(p.x, p.z, 3, 3, top - 3, top); } /* (3 m: com a ilha girada, caixas menores deixavam frestas entre si) */ }
   // o obelisco (o mastro do navio) no meio
   { const p = W(0, 4); B.box(M.marbleWall, 2.6, 1.6, 2.6, p.x, top, p.z, { ry: ryV }); B.geo(new THREE.CylinderGeometry(0.42, 0.7, 12, 4), M.granite, p.x, top + 1.6 + 6, p.z, { ry: Math.PI / 4 + ryV }); B.geo(new THREE.ConeGeometry(0.42, 0.9, 4), M.gold, p.x, top + 1.6 + 12.45, p.z, { ry: Math.PI / 4 + ryV }); addCircle(p.x, p.z, 1.5, top - 1, top + 14); }
   // o templo de Esculápio, rio acima
   { const p = W(0, -18); temple(B, M, out, { id: 'esculapio', x: p.x, z: p.z, face: '-z', w: 10, d: 14, h: 6.5, podium: 1.4, cols: 4, deep: 1 }); }
   // as duas pontes: de cada lado, um tabuleiro de pedra com dois arcos, subindo um pouco no meio
   for (const sd of [-1, 1]) {
-    const v = sd < 0 ? -4 : 6, u0 = sd * (I.a + 0.5), u1 = sd * 46, n = 14;
+    // a ponte vai até o alto da margem (antes parava a 46 m do centro da ilha: uma ponta caía na água e a outra no
+    // meio do barranco, e não dava para atravessar). A ponta fica onde o chão chega à altura da margem
+    const v = sd < 0 ? -4 : 6, u0 = sd * (I.a + 0.5);
+    let u1 = 46; { const hAt = (u) => { const q = W(sd * u, v); return terrainHeight(q.x, q.z); }; let hi = -99; for (let u = I.a + 2; u < 140; u++) hi = Math.max(hi, hAt(u)); for (let u = I.a + 2; u < 140; u++) if (hAt(u) >= hi - 0.4) { u1 = u + 1.5; break; } }
+    u1 *= sd;
     const p0 = W(u0, v), p1 = W(u1, v), h0 = top, h1 = Math.max(terrainHeight(p1.x, p1.z), 1.5);
-    const ry = Math.atan2(p1.x - p0.x, p1.z - p0.z), L = Math.hypot(p1.x - p0.x, p1.z - p0.z);
+    const ry = Math.atan2(p1.x - p0.x, p1.z - p0.z), L = Math.hypot(p1.x - p0.x, p1.z - p0.z), n = Math.ceil(L / 2.4);
     for (let k = 0; k < n; k++) {
       const t = (k + 0.5) / n, x = lerp(p0.x, p1.x, t), z = lerp(p0.z, p1.z, t), y = lerp(h0, h1, t) + Math.sin(t * Math.PI) * 1.2;
       B.box(M.travertine2, 6, 0.5, L / n + 0.08, x, y - 0.5, z, { ry });

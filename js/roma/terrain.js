@@ -114,7 +114,7 @@ export function terrainHeight(x, z) {
       h = lerp(h, bed, ss(half + 26, half - 2, d) * (1 - ss(-60, 10, coastC(x, z)))); // no mar o leito some (a foz abre na praia)
     }
     const c = Math.cos(ISOLA.rot), s = Math.sin(ISOLA.rot), u = ((x - ISOLA.x) * c + (z - ISOLA.z) * s) / ISOLA.a, v = (-(x - ISOLA.x) * s + (z - ISOLA.z) * c) / ISOLA.b;
-    const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.75, ss(1.4, 0.7, r)));
+    const r = Math.hypot(u, v); if (r < 1.5) h = Math.max(h, lerp(-2, 2.5, ss(1.25, 1.0, r))); // (plano sob o piso da ilha, 20 cm abaixo das lajes; antes um morro que descia por baixo delas)
   }
   // ---- o aterro do Fórum Boário: plano na altura da praça, do lado leste até o cais (lá o rio continua fundo)
   if (x > FB.x0 - 60 && x < FB.x1 + 30 && z > FB.z0 - 30 && z < FB.z1 + 30) { const { d } = tiberDist(x, z);
