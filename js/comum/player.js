@@ -377,9 +377,13 @@ export class Player {
     this.wasSwimming = this.swimming && !this.diving;
     this.updateBreathBar();
     // passos
-    if (this.onGround && !this.wading && realSpeed > 1) {
+    if (this.onGround && !this.swimming && realSpeed > 1) {
       this.stepT -= dt * realSpeed;
-      if (this.stepT <= 0) { this.events.step(false, run); this.stepT = realSpeed > 5 ? 1.9 : 1.4; }
+      if (this.stepT <= 0) {
+        this.stepT = realSpeed > 5 ? 1.9 : 1.4;
+        if (this.wading) this.events.wadeStep?.(new THREE.Vector3(p.x, wl + 0.02, p.z), run);
+        else this.events.step(false, run, p.y > terrainAt(p.x, p.z) + 0.04); // (em cima de um piso: assoalho, ponte, laje)
+      }
     }
 
     // animação

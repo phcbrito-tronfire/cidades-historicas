@@ -13,8 +13,8 @@ import { addBox, addCircle } from '../comum/collision.js';
 import { mulberry32 } from '../comum/util.js';
 import { frame, toro, torii, nobori, roofGeo } from './kit.js';
 import { house, kura } from './vila.js';
-import { rippleNormals } from './arrozal.js';
-import { terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM, FALLS, fallEdge } from './terrain.js';
+import { rippleNormals, stillWater } from '../comum/aguaparada.js';
+import { terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM, FALLS, fallEdge, TAMEIKE, inTameike, tameikeLevel } from './terrain.js';
 
 const V3 = THREE.Vector3;
 const rnd = mulberry32(1795);
@@ -116,17 +116,31 @@ export function buildExtras(B, M, out) {
     for (let i = 0; i < 9; i++) f.geo(new THREE.TorusGeometry(0.32 - i * 0.015, 0.05, 6, 14), M.bronze, 0, h + 0.4 + i * 0.42, 0, { rx: Math.PI / 2, uv: false });
     f.solid(0, 0, 5.8, 5.8, 0.6, h);
     out.spots.pagoda = new V3(cx - 6, y, cz); }
+  { // o tameike (o tanque de irrigação onde o riacho acaba)
+    const W = tameikeLevel(), sh = new THREE.Shape(), R = (a) => { let lo = 0, hi = 3; const c = Math.cos(a), s = Math.sin(a); for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (inTameike(TAMEIKE.x + c * TAMEIKE.a * m, TAMEIKE.z + s * TAMEIKE.b * m) < 1.1) lo = m; else hi = m; } return lo; };
+    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2, r = R(a), px = Math.cos(a) * TAMEIKE.a * r, pz = Math.sin(a) * TAMEIKE.b * r; if (i) sh.lineTo(px, pz); else sh.moveTo(px, pz); }
+    const g = new THREE.ShapeGeometry(sh, 8); g.rotateX(Math.PI / 2); { const p = g.attributes.position, uv = g.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i)); }
+    const nrm = rippleNormals(); nrm.repeat.set(0.12, 0.12);
+    const water = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3e6264, roughness: 0.14, metalness: 0.3, transparent: true, opacity: 0.88, normalMap: nrm, normalScale: new THREE.Vector2(0.35, 0.35), depthWrite: false, side: THREE.DoubleSide }));
+    water.position.set(TAMEIKE.x, W, TAMEIKE.z); water.renderOrder = 2; out.extra.push(water);
+    out.animated.push({ fn: (dt) => { nrm.offset.x += dt * 0.004; nrm.offset.y += dt * 0.0025; } });
+    const rk = mulberry32(662), rock = new THREE.DodecahedronGeometry(1, 0);
+    for (let i = 0; i < 26; i++) { const a = rk() * 6.28, r = R(a) * (1.02 + rk() * 0.06), x = TAMEIKE.x + Math.cos(a) * TAMEIKE.a * r, z = TAMEIKE.z + Math.sin(a) * TAMEIKE.b * r, s = 0.3 + rk() * 0.4; B.geo(rock, M.stone, x, terrainHeight(x, z) - 0.05, z, { sx: s * 1.3, sy: s * 0.6, sz: s, ry: rk() * 6, uv: false }); }
+    const reed = new THREE.MeshStandardMaterial({ color: 0x6f7f3a, roughness: 0.9, side: THREE.DoubleSide });
+    for (let i = 0; i < 70; i++) { const a = rk() * 6.28, r = R(a) * (0.9 + rk() * 0.08), x = TAMEIKE.x + Math.cos(a) * TAMEIKE.a * r, z = TAMEIKE.z + Math.sin(a) * TAMEIKE.b * r; B.geo(new THREE.ConeGeometry(0.03, 1 + rk() * 0.7, 3), reed, x, W - 0.1 + 0.5, z, { rx: (rk() - 0.5) * 0.3, rz: (rk() - 0.5) * 0.3, uv: false }); } // juncos na beira
+  }
   // ---- o cume: a casinha do eremita, a cerejeira e o laguinho no fundo da cratera
   { const cx = FUJI.x, cz = FUJI.z, y = terrainHeight(cx, cz);
     // o laguinho: contorno redondo e irregular (de jardim), margem de pedras de vários tamanhos, água com ondinhas que
     // refletem o céu, folhas de lótus e duas carpas (koi) nadando devagar
-    { const px = cx + 6, pz = cz + 4, rad = (a) => 3.5 + Math.sin(a * 2 + 1) * 0.35 + Math.sin(a * 3 + 0.4) * 0.22, sh = new THREE.Shape();
+    { const px = cx + 6, pz = cz + 4, y = terrainHeight(cx + 6, cz + 4), rad = (a) => 3.5 + Math.sin(a * 2 + 1) * 0.35 + Math.sin(a * 3 + 0.4) * 0.22, sh = new THREE.Shape();
       for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2, r = rad(a); if (i) sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); else sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
       const flat = (g) => { g.rotateX(-Math.PI / 2); return g; };
       const bed = new THREE.Mesh(flat(new THREE.ShapeGeometry(sh, 6)), new THREE.MeshStandardMaterial({ color: 0x2a3a30, roughness: 1 })); bed.position.set(px, y + 0.02, pz); out.extra.push(bed); // o fundo escuro (dá profundidade à água)
       const nrm = rippleNormals(); nrm.repeat.set(0.45, 0.45);
       const wg = flat(new THREE.ShapeGeometry(sh, 6)); { const p = wg.attributes.position, uv = wg.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i)); }
-      const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x24504e, roughness: 0.08, metalness: 0.4, envMapIntensity: 0.9, transparent: true, opacity: 0.84, normalMap: nrm, normalScale: new THREE.Vector2(0.25, 0.25), depthWrite: false }));
+      const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x24504e, roughness: 0.08, metalness: 0.4, envMapIntensity: 0.9, transparent: true, opacity: 0.84, normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3), depthWrite: false }));
+      stillWater(water.material, { scale: 0.9, strength: 0.5 });
       water.position.set(px, y + 0.14, pz); water.renderOrder = 2; out.extra.push(water);
       for (let i = 0; i < 30; i++) { const a = (i / 30) * Math.PI * 2 + Math.sin(i * 7.3) * 0.05, r = rad(a) + 0.25 + (i % 2) * 0.15, s = 0.28 + ((i * 37) % 10) / 22; B.geo(new THREE.DodecahedronGeometry(1, 0), M.lava, px + Math.cos(a) * r, y + 0.05, pz + Math.sin(a) * r, { sx: s * 1.3, sy: s * 0.55, sz: s, ry: i * 1.7, uv: false }); } // a margem de pedras
       for (let i = 0; i < 24; i++) { const a = i * 2.39, r = rad(a) + 0.7 + (i % 3) * 0.2; B.geo(new THREE.DodecahedronGeometry(0.1, 0), M.stone, px + Math.cos(a) * r, y + 0.03, pz + Math.sin(a) * r, { sy: 0.5, uv: false }); } // seixos

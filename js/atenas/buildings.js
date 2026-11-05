@@ -1,6 +1,7 @@
 // Atenas, 432 a.C. (ano em que o Parthenon fica pronto): monta a cidade a partir das partes — Acrópole,
 // encosta sul (teatro e Odeon), ágora e Hefesteion, Pnyx, bairros de casas, muralhas, Cerâmico e o porto.
 import * as THREE from 'three';
+import { stillWater } from '../comum/aguaparada.js';
 import { Batcher } from '../comum/batcher.js';
 import { pbrSet, getTextures } from './textures.js';
 import { templeTextures } from './relevos.js';
@@ -60,7 +61,7 @@ export function createMaterials(tex) {
   M.awning = [M.cloth('#efe6d2', '#a8392a'), M.cloth('#e9dcc0', '#2c4f8c'), M.cloth('#d8b45a', '#3d5f39')];
   M.earth = std({ ...pbrSet(P.dry_ground_rocks, 1), color: 0xfff0d8 }); M.earth.userData.uv = { s: 4 };
   M.road = std({ ...pbrSet(P.rocky_trail, 1), color: 0xe0d2b8, polygonOffset: true, polygonOffsetFactor: -2 }); M.road.userData.uv = { s: 5 };
-  M.water = std({ color: 0x3a7f8a, roughness: 0.08, metalness: 0.2 });
+  M.water = stillWater(std({ color: 0x2f7884, roughness: 0.07, metalness: 0.2 }), { scale: 0.35, strength: 0.75 });
   M.fire = new THREE.MeshBasicMaterial({ color: 0xffa040 });
   M.window = std({ color: 0x2a1a10, emissive: 0xffa040, emissiveIntensity: 0 }); // janelinhas acesas à noite
   M.flame = new THREE.MeshBasicMaterial({ color: 0xffb050 });

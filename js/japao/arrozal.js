@@ -5,6 +5,7 @@
 // - outono: o arroz maduro, dourado e curvado, e os varais (hazakake) com os feixes secando;
 // - inverno: o restolho seco, sem água (a terra descansa), e às vezes neve.
 import * as THREE from 'three';
+import { rippleNormals } from '../comum/aguaparada.js';
 import { addBox } from '../comum/collision.js';
 import { mulberry32 } from '../comum/util.js';
 import { terrainHeight, FIELDS } from './terrain.js';
@@ -88,12 +89,7 @@ export function buildPaddies(scene, M, B, out) {
     setSeason(s) { const S = STAGE[s]; wetNow = S.water > 0.05; setRows(S.h); riceM.color.setHex(S.color); water.visible = S.water > 0.05; water.material.opacity = 0.5 + S.water * 0.4; racks.visible = S.racks; },
   };
 }
-export function rippleNormals() { // ondinhas pequenas e irregulares (normais em canvas)
-  const N = 128, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'), img = x.createImageData(N, N);
-  const w = (2 * Math.PI) / N, h = (i, j) => Math.sin(i * w * 5 + Math.sin(j * w * 3) * 2) * 0.5 + Math.sin(j * w * 6 + Math.sin(i * w * 2) * 2.4) * 0.5 + Math.sin((i + j) * w * 16) * 0.18; // (frequências inteiras: a textura emenda sem costura)
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const dx = h(i + 1, j) - h(i - 1, j), dy = h(i, j + 1) - h(i, j - 1), k = (j * N + i) * 4; img.data[k] = 128 + dx * 60; img.data[k + 1] = 128 + dy * 60; img.data[k + 2] = 255; img.data[k + 3] = 255; }
-  x.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
-}
+export { rippleNormals };
 function worldUV(g) { const p = g.attributes.position, uv = g.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i)); return g; }
 function mergeAll(gs) { // (BufferGeometryUtils sem importar: só posições/normais/uv de planos)
   const n = gs.reduce((s, g) => s + g.attributes.position.count, 0), pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = []; let o = 0;

@@ -1053,7 +1053,7 @@ function aimBone(bone, child, dir) {
   bone.quaternion.copy(_qp.invert().multiply(_qw));
   bone.updateMatrixWorld(true);
 }
-export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22) {
+export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22, { freeRight = false } = {}) {
   const B = r.bones; if (!B.Hips || !B.LeftUpLeg) return;
   r.root.updateMatrixWorld(true);
   // quadril em cima do lombo
@@ -1061,17 +1061,28 @@ export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22) {
   r.root.position.x += seat.x - hp.x; r.root.position.z += seat.z - hp.z; r.root.position.y += seat.y + 0.1 - hp.y;
   r.root.updateMatrixWorld(true);
   const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3().crossVectors(up, fwd).normalize(); // esquerda do animal
+  const hips = B.Hips.getWorldPosition(new THREE.Vector3());
   for (const s of ['Left', 'Right']) {
     const th = B[s + 'UpLeg'], kn = B[s + 'Leg'], ft = B[s + 'Foot']; if (!th || !kn || !ft) continue;
-    const sg = Math.sign(th.getWorldPosition(new THREE.Vector3()).sub(B.Hips.getWorldPosition(new THREE.Vector3())).dot(side)) || (s === 'Left' ? 1 : -1);
-    const out = side.clone().multiplyScalar(sg);
-    // coxa: para fora e um pouco para a frente, descendo pela curva do lombo
-    aimBone(th, kn, out.clone().multiplyScalar(0.62 + width).add(fwd.clone().multiplyScalar(0.42)).addScaledVector(up, -0.62).normalize());
-    // canela: pendurada junto à barriga, o pé um pouco para trás (no jumento, baixo, o joelho dobra mais)
-    aimBone(kn, ft, out.clone().multiplyScalar(0.08).add(fwd.clone().multiplyScalar(-shinBack)).addScaledVector(up, -1).normalize());
-    // pé quase horizontal, ponta para a frente
+    const H = th.getWorldPosition(new THREE.Vector3()), sg = Math.sign(H.clone().sub(hips).dot(side)) || (s === 'Left' ? 1 : -1);
+    const out = side.clone().multiplyScalar(sg), L = H.distanceTo(kn.getWorldPosition(new THREE.Vector3()));
+    // coxa: desce para a frente encostada no flanco (o joelho logo para fora da barriga, não espetado para o lado),
+    // como se monta de verdade — o peso no assento, as pernas abraçando o animal
+    const lat = Math.min(0.22, Math.max(0.1, width * 0.55)), fw = 0.2, dn = Math.sqrt(Math.max(0.02, L * L - lat * lat - fw * fw));
+    aimBone(th, kn, out.clone().multiplyScalar(lat).addScaledVector(fwd, fw).addScaledVector(up, -dn).normalize());
+    // canela: desce junto à barriga, um pouco para trás (no jumento, baixo, o joelho dobra mais) e encostada nele
+    aimBone(kn, ft, out.clone().multiplyScalar(-0.04).addScaledVector(fwd, -shinBack).addScaledVector(up, -1).normalize());
+    // pé: calcanhar para baixo, a ponta para a frente e um pouco para fora
     const toe = B[s + 'ToeBase'];
-    if (toe) aimBone(ft, toe, fwd.clone().multiplyScalar(0.9).addScaledVector(up, -0.45).addScaledVector(out, 0.1).normalize());
+    if (toe) aimBone(ft, toe, fwd.clone().multiplyScalar(0.92).addScaledVector(up, 0.1).addScaledVector(out, 0.22).normalize());
+  }
+  // as mãos nas rédeas: na frente do lombo, um palmo acima, cotovelos junto ao corpo (a direita fica livre quando
+  // segura a tocha/lanterna ou alguma coisa)
+  for (const s of freeRight ? ['Left'] : ['Left', 'Right']) {
+    const sh = B[s + 'Arm'], el = B[s + 'ForeArm'], wr = B[s + 'Hand']; if (!sh || !el || !wr) continue;
+    const sg = Math.sign(sh.getWorldPosition(new THREE.Vector3()).sub(hips).dot(side)) || (s === 'Left' ? 1 : -1);
+    const tgt = hips.clone().addScaledVector(fwd, 0.36).addScaledVector(up, 0.3).addScaledVector(side, sg * 0.09);
+    armIK(sh, el, wr, tgt, up.clone().multiplyScalar(-1).addScaledVector(fwd, -0.7).addScaledVector(side, sg * 0.35).normalize());
   }
 }
 

@@ -8,6 +8,10 @@ import { creature } from './fauna.js';
 import { groundAt, waterAt, terrainAt, moveWithCollision, dryAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
 import { ridePose } from './mixamo.js';
+// onde cai cada casco no ciclo da animação: o passo tem quatro batidas iguais, o trote duas (os pares em diagonal) e o
+// galope quatro juntas e uma pausa (o "pocotó, pocotó")
+const BEATS = { walk: [0, 0.25, 0.5, 0.75], trot: [0, 0.5], gallop: [0, 0.11, 0.27, 0.37] };
+const crossed = (a, b, x) => (a <= b ? x > a && x <= b : x > a || x <= b);
 
 const V3 = THREE.Vector3;
 // medidas e passos de cada animal (m/s); len = comprimento do focinho à cauda; back = altura do lombo; seat = onde
@@ -112,6 +116,17 @@ export class Mount {
       A[k].timeScale = k === 'walk' ? clamp(s / K.walk, 0.6, 1.6) : k === 'trot' ? clamp(s / K.trot, 0.7, 1.5) : k === 'gallop' ? clamp(s / (K.run * 0.85), 0.7, 1.3) : 1;
     }
     this.obj.mixer.update(dt);
+    const g = T.walk ? 'walk' : T.trot ? 'trot' : T.gallop ? 'gallop' : null;
+    if (g && A[g] && this.onHoof) {
+      const ph = (A[g].time / A[g].getClip().duration) % 1;
+      if (this.gaitNow === g) for (const b of BEATS[g]) if (crossed(this.gaitPh, ph, b)) {
+        const P = this.player?.pos, far = P && this.state !== 'riding' ? Math.hypot(P.x - this.pos.x, P.z - this.pos.z) : 0;
+        const gr = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.5), wl = waterAt(this.pos.x, this.pos.z), wet = wl - gr > 0.08;
+        this.onHoof({ vol: (g === 'walk' ? 0.6 : g === 'trot' ? 0.85 : 1) * clamp(1 - far / 35, 0, 1), wet, surface: gr > terrainAt(this.pos.x, this.pos.z) + 0.04 ? 'hard' : 'earth', at: this.pos, wl });
+      }
+      this.gaitPh = ph;
+    }
+    this.gaitNow = g;
   }
   // anda com colisão; a água funda o animal recusa (só a beira)
   step(dt, dir) {
@@ -127,6 +142,7 @@ export class Mount {
   }
   update(dt, t, player) {
     if (!this.obj || this.state === 'none') return;
+    this.player = player;
     this.refuseT = (this.refuseT || 0) - dt;
     const K = this.K;
     if (this.state === 'coming') { // trota até o explorador e para do lado dele
@@ -167,7 +183,7 @@ export class Mount {
       const seatRoot = seat.clone().add(new V3(0, -0.5, 0));
       const pos = this.mountT < 1 ? this.from.clone().lerp(seatRoot, this.mountT).add(new V3(0, Math.sin(this.mountT * Math.PI) * 0.6, 0)) : seatRoot;
       player.ride(dt, t, pos, this.h, 'sit', this.v, null);
-      if (this.mountT >= 1) ridePose(player.rig, seat.clone().add(new V3(0, 0.04, 0)), new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.belly, K.shin); // montado de verdade, pernas abertas
+      if (this.mountT >= 1) ridePose(player.rig, seat.clone().add(new V3(0, 0.04, 0)), new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.belly, K.shin, { freeRight: (player.torch?.on || 0) > 0.01 || !!player.holding }); // montado de verdade: pernas abraçando o animal, mãos nas rédeas
       player.riding = true;
     } else {
       if (this.blanket && this.back) { H.updateMatrixWorld(true); const b = new V3(); this.back.getWorldPosition(b); this.blanket.position.set(0, b.y - this.pos.y + 0.04, K.seat); }

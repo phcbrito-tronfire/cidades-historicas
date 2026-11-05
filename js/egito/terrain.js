@@ -1,5 +1,6 @@
 // Terreno, rio Nilo, lago sagrado, canais e vegetação
 import * as THREE from 'three';
+import { stillWater } from '../comum/aguaparada.js';
 import { makeWater } from '../comum/agua.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm, smoothstep, lerp, rand, rr, clamp } from '../comum/util.js';
@@ -231,7 +232,7 @@ normal = normalize( tbn * mapN );
   // Lago sagrado e canais: água simples refletindo o céu
   const calmWater = new THREE.MeshStandardMaterial({ color: 0x1f6f72, roughness: 0.06, metalness: 0.25, normalMap: tex.waterNormals, normalScale: new THREE.Vector2(0.25, 0.25) });
   calmWater.normalMap = tex.waterNormals.clone();
-  calmWater.normalMap.repeat.set(4, 4);
+  calmWater.normalMap.repeat.set(4, 4); stillWater(calmWater, { scale: 0.35, strength: 0.3 }); // (as ondinhas se mexendo por cima)
   const lake = new THREE.Mesh(new THREE.PlaneGeometry(LAKE.x1 - LAKE.x0, LAKE.z1 - LAKE.z0), calmWater);
   lake.rotation.x = -Math.PI / 2;
   lake.position.set((LAKE.x0 + LAKE.x1) / 2, LAKE.y, (LAKE.z0 + LAKE.z1) / 2);

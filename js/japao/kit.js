@@ -9,6 +9,7 @@ import { mat4 } from '../comum/batcher.js';
 import { addRotBox, addCircle } from '../comum/collision.js';
 import { pbrSet, toTexture } from './textures.js';
 import { fbm, mulberry32 } from '../comum/util.js';
+import { stillWater } from '../comum/aguaparada.js';
 
 const V3 = THREE.Vector3;
 const cv = (w, h, fn) => { const c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d'), w, h); return c; };
@@ -103,7 +104,7 @@ export function createMaterials(tex) {
   M.iron = std({ color: 0x2a2a2c, metalness: 0.6, roughness: 0.5 });
   M.bronze = std({ color: 0x6a5a3a, metalness: 0.8, roughness: 0.45 }); // sino e incensário (bronze escuro)
   M.gold = std({ color: 0xe8b84a, metalness: 1, roughness: 0.3 });
-  M.water = std({ color: 0x4a7a7a, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.85 });
+  M.water = stillWater(std({ color: 0x3f6e6e, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.88 }), { scale: 0.35, strength: 0.75 });
   M.moss = std({ map: toTexture(cv(128, 128, (x, W, H) => { x.fillStyle = '#3e5a30'; x.fillRect(0, 0, W, H); for (let i = 0; i < 1400; i++) { const v = R(); x.fillStyle = v < 0.45 ? 'rgba(20,34,16,0.6)' : v < 0.8 ? 'rgba(90,120,60,0.55)' : 'rgba(140,165,90,0.45)'; x.beginPath(); x.ellipse(R() * W, R() * H, 1.5 + R() * 3, 1 + R() * 2, R() * 3, 0, 7); x.fill(); } })), roughness: 1 }); M.moss.userData.uv = { s: 1.5 }; // folhagem (cercas vivas, copas podadas)
   M.cedarLeaf = std({ color: 0x8aa07a, map: M.moss.map, roughness: 1 }); // as copas dos cedros gigantes, verde-escuro
   M.gravel = std({ ...pbrSet(P.rocky_trail, 1), color: 0xc8c2b4, roughness: 1 }); M.gravel.userData.uv = { s: 2.5 }; // cascalho claro dos pátios de santuário e templo

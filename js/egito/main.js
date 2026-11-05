@@ -153,7 +153,9 @@ async function main() {
   player.events.drip = (p) => fx.drip(p);
   player.events.ripple = (p, s) => fx.ripple(p, s);
   player.events.splash = (p, s = 1) => { fx.splash(p, s); audio.splash(); };
-  player.events.step = (jump, run) => audio.step(jump, run);
+  player.events.step = (jump, run, built) => audio.step(jump, run, built);
+  player.events.wadeStep = (p, run) => { fx.ripple(p, run ? 1.1 : 0.8); fx.splash(p, run ? 0.22 : 0.14); audio.wade(run); }; // (andando com água pelas canelas)
+  mount.onHoof = (o) => { audio.hoof(o); if (o.wet) fx.ripple(new THREE.Vector3(o.at.x, o.wl + 0.02, o.at.z), 1.2); };
 
   await step(0.88, 'Acendendo as tochas e afinando as harpas...');
   const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: world.water, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: city.lights });

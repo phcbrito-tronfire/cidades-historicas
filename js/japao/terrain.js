@@ -38,7 +38,10 @@ export const HAMLETS = [ // as aldeias espalhadas: pescadores no lago, lavradore
 export const MILL = { x: 196, z: -74 }; // o moinho d'água, na beira do riacho // neve acima disto (primavera); as estações mudam isto depois
 
 // o riacho (Katsura): nasce na floresta, desce a cachoeira, corta a vila a leste da rua e sai pelo nordeste
-export const STREAM = [[395, 330], [380, 240], [355, 170], [300, 60], [215, -40], [150, -150], [180, -300], [260, -430], [330, -560], [380, -800]];
+export const STREAM = [[395, 330], [380, 240], [355, 170], [300, 60], [215, -40], [150, -150], [180, -300], [260, -430], [330, -560], [354, -652]];
+// o tameike: o tanque de terra onde o riacho acaba, guardando água para os arrozais (comum nas várzeas do Japão)
+export const TAMEIKE = { x: 358, z: -662, a: 22, b: 14 };
+export function inTameike(x, z, m = 0) { return Math.hypot((x - TAMEIKE.x) / (TAMEIKE.a + m), (z - TAMEIKE.z) / (TAMEIKE.b + m)) + (fbm(x * 0.05, z * 0.05, 2) - 0.5) * 0.12; }
 export const STREAM_HW = 3.2;
 // a cachoeira: a borda do paredão de lava (de leste a oeste) e o ponto onde o riacho despenca
 export const FALLS = { x: 368, z: 205 };
@@ -116,7 +119,13 @@ LEVEL.residence = base(RESIDENCE.x, RESIDENCE.z) + RESIDENCE.lift;
 LEVEL.temple = base(TEMPLE.x, TEMPLE.z) + TEMPLE.lift;
 for (const st of STATIONS) st.y = base(st.x, st.z);
 
-export function terrainHeight(x, z) {
+const SPOND = { x: FUJI.x + 6, z: FUJI.z + 4, y: null };
+function landHeight(x, z) {
+  let h = landRaw(x, z);
+  { const d = Math.hypot(x - SPOND.x, z - SPOND.z); if (d < 16) { if (SPOND.y === null) { let m = Infinity; for (let a = 0; a < 6.28; a += 0.5) for (const r of [0, 3, 6]) m = Math.min(m, landRaw(SPOND.x + Math.cos(a) * r, SPOND.z + Math.sin(a) * r)); SPOND.y = m; } h = lerp(SPOND.y, h, ss(9, 15, d)); } }
+  return h;
+}
+function landRaw(x, z) {
   let h = base(x, z);
   // a colina do templo (com o alto aplainado)
   { const d = Math.hypot(x - TEMPLE.x, z - TEMPLE.z); h += TEMPLE.lift * (1 - ss(TEMPLE.r * 0.55, TEMPLE.r * 1.9, d)) + 6 * (1 - ss(TEMPLE.r, TEMPLE.r * 3, d)) * fbm(x * 0.02, z * 0.02, 2); h = lerp(LEVEL.temple, h, ss(TEMPLE.r * 0.45, TEMPLE.r * 0.6, d)); }
@@ -134,20 +143,48 @@ export function terrainHeight(x, z) {
   { const L = LAKE, c = Math.cos(L.rot), s = Math.sin(L.rot), u = (x - L.x) * c + (z - L.z) * s, v = -(x - L.x) * s + (z - L.z) * c;
     const e = Math.hypot(u / L.a, v / L.b) + (fbm(x * 0.01, z * 0.01, 2) - 0.5) * 0.18;
     if (e < 1.3) { const bed = -1.2 - 11 * Math.pow(Math.max(0, 1 - e * e), 0.6); h = e < 1 ? Math.min(h, bed) : lerp(Math.min(h, lerp(-1.2, 0.9, (e - 1) / 0.12)), h, ss(1.0, 1.3, e)); } }
-  // o riacho: leito 1,6 m abaixo do chão, com barrancos
-  { const S = polyDist(STREAM, x, z); if (S.d < 14) { const bed = base(S.x, S.z) - 1.7; h = lerp(bed, Math.min(h, base(S.x, S.z) + 0.2), ss(STREAM_HW + 0.6, 11.5, S.d)); } } // (leito largo e barranco suave: a malha do chão, de 3,4 m, consegue desenhar o leito onde ele está — senão quem anda no riacho afunda na terra desenhada)
+  return h;
+}
+let PROF = null; const PSTEP = 2;
+function streamProfile() {
+  if (PROF) return PROF;
+  const pts = []; let tot = 0;
+  for (let i = 0; i < STREAM.length - 1; i++) { const [ax, az] = STREAM[i], [bx, bz] = STREAM[i + 1], L = Math.hypot(bx - ax, bz - az); pts.push([ax, az, bx, bz, L, tot]); tot += L; }
+  const n = Math.ceil(tot / PSTEP) + 1, bed = new Float32Array(n);
+  for (let k = 0; k < n; k++) { const s = Math.min(tot, k * PSTEP), g = pts.find((q) => s <= q[5] + q[4]) || pts[pts.length - 1], t = (s - g[5]) / g[4], x = g[0] + (g[2] - g[0]) * t, z = g[1] + (g[3] - g[1]) * t;
+    bed[k] = landHeight(x, z) - 1.7; if (k) bed[k] = Math.min(bed[k], bed[k - 1] - 0.004); }
+  return (PROF = bed);
+}
+function bedAt(s) { const P = streamProfile(), f = Math.max(0, s / PSTEP), i = Math.min(P.length - 2, Math.floor(f)), t = Math.min(1, f - i); return P[i] + (P[i + 1] - P[i]) * t; }
+function fallsAdd(x, z) { const w = 1 - ss(70, 150, Math.abs(x - FALLS.x)); return w > 0 ? 11 * w * ss(0, 1, (z - fallEdge(x)) / 7 + 0.5) : 0; }
+// o nível da água do riacho no ponto mais próximo do leito, e o do tameike
+export function streamLevel(S) { return bedAt(S.s) + 0.55 + fallsAdd(S.x, S.z); }
+let TAME_Y = null; export function tameikeLevel() { return (TAME_Y ??= streamProfile()[streamProfile().length - 1] + 0.55); }
+
+export function terrainHeight(x, z) {
+  let h = landHeight(x, z);
+  // o riacho: o leito plano, um barranco curto que passa logo da altura da água (a fita d'água entra nele: nada de
+  // água flutuando sobre a margem) e depois a encosta suave;
+  // onde o chão de um lado é mais baixo que a água, um dique baixo de terra segura o riacho
+  { const S = polyDist(STREAM, x, z); if (S.d < 14) { const bed = bedAt(S.s), bank = S.d < 5 ? bed + 0.85 * ss(3.0, 5.0, S.d) : lerp(bed + 0.85, Math.max(h, bed + 1.0), ss(5.0, 11.5, S.d)); h = lerp(bank, h, ss(11.5, 14, S.d)); } }
+  // o tameike: fundo de até 1,6 m, margem de terra
+  { const e = inTameike(x, z); if (e < 1.8) { const W = tameikeLevel(), bed = W - 0.35 - 1.25 * Math.pow(Math.max(0, 1 - e * e), 0.6); h = e < 1 ? Math.min(h, bed) : lerp(Math.min(h, lerp(W - 0.35, W + 0.45, (e - 1) / 0.14)), h, ss(1.0, 1.8, e)); } }
   // a cachoeira: o riacho cai de um degrau de rocha na floresta
   // (a borda de uma camada de lava antiga: um paredão de 11 m que atravessa a floresta de leste a oeste, mais alto
   //  no meio, onde o riacho despenca — como as cachoeiras do pé do Fuji, que caem da beira das camadas de lava)
-  { const edgeZ = fallEdge(x), w = 1 - ss(70, 150, Math.abs(x - FALLS.x));
-    if (w > 0) h += 11 * w * ss(0, 1, (z - edgeZ) / 7 + 0.5); }
+  h += fallsAdd(x, z);
   return h;
 }
 
 // altura do chão para andar: o terreno, mas logo abaixo das lajes de piso
 export function groundHeight(x, z) { return Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05); }
 export function inLake(x, z, m = 0) { const L = LAKE, c = Math.cos(L.rot), s = Math.sin(L.rot), u = (x - L.x) * c + (z - L.z) * s, v = -(x - L.x) * s + (z - L.z) * c; return Math.hypot(u / (L.a + m), v / (L.b + m)) < 1; }
-export function waterLevelAt(x, z) { return inLake(x, z, 40) ? WATER_Y : -100; }
+export function waterLevelAt(x, z) {
+  if (inLake(x, z, 40)) return WATER_Y;
+  if (Math.abs(x - TAMEIKE.x) < 40 && Math.abs(z - TAMEIKE.z) < 30 && inTameike(x, z) < 1.12) return tameikeLevel();
+  if (x > 140 && x < 410 && z > -670 && z < 340) { const S = polyDist(STREAM, x, z); if (S.d < 5.2) return streamLevel(S); }
+  return -100;
+}
 setTerrain(groundHeight);
 setWater(waterLevelAt);
 
@@ -158,7 +195,7 @@ setWater(waterLevelAt);
 function surface(x, z, h, slope) {
   const n = fbm(x * 0.02 + 11, z * 0.02, 3), n2 = fbm(x * 0.09, z * 0.09, 2);
   let shore = 0; if (inLake(x, z, 26)) shore = 1 - ss(0.4, 2.6, h);
-  const S = polyDist(STREAM, x, z); shore = Math.max(shore, 1 - ss(STREAM_HW, STREAM_HW + 3, S.d));
+  const S = polyDist(STREAM, x, z); shore = Math.max(shore, 1 - ss(STREAM_HW, STREAM_HW + 3, S.d), 1 - ss(1.0, 1.3, inTameike(x, z)));
   const st = Math.max(Math.abs(x - STREET.x) - STREET.hw, z < STREET.z0 ? STREET.z0 - z : z > STREET.z1 + 60 ? z - STREET.z1 - 60 : 0, 0);
   let road = 1 - ss(0, 1.5, st);
   const T = polyDist(TRAIL, x, z); const trail = z > 120 ? 1 - ss(TRAIL_HW - 0.4, TRAIL_HW + 1.2, T.d) : 0;
@@ -182,7 +219,7 @@ function surface(x, z, h, slope) {
 }
 
 // floresta: onde ficam as árvores (o shader escurece o chão debaixo delas)
-export function meadowAt(x, z) { return fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25) && !(x > FIELDS.x0 - 3 && x < FIELDS.x1 + 3 && z > FIELDS.z0 - 3 && z < FIELDS.z1 + 3); } // (o capim não nasce dentro dos tabuleiros)
+export function meadowAt(x, z) { return inTameike(x, z) > 1.3 && fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25) && !(x > FIELDS.x0 - 3 && x < FIELDS.x1 + 3 && z > FIELDS.z0 - 3 && z < FIELDS.z1 + 3); } // (o capim não nasce dentro dos tabuleiros)
 export function forestAt(x, z) {
   const fuji = fujiH(x, z);
   if (fuji > 330) return 0;
@@ -207,7 +244,7 @@ export function forestAt(x, z) {
   if (inLake(x, z, 30)) f = 0;
   if (x > FARMLAND.x0 - 8 && x < FARMLAND.x1 + 8 && z > FARMLAND.z0 - 8 && z < FARMLAND.z1 + 8) f = 0;
   if (polyDist(TRAIL, x, z).d < TRAIL_HW + 2.5) f = 0;
-  if (polyDist(STREAM, x, z).d < STREAM_HW + 2) f = 0;
+  if (polyDist(STREAM, x, z).d < STREAM_HW + 2.6 || inTameike(x, z) < 1.9) f = 0;
   return f;
 }
 

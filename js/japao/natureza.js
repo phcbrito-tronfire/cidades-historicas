@@ -8,8 +8,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addCircle, blocked } from '../comum/collision.js';
+import { rippleNormals } from '../comum/aguaparada.js';
 import { fbm, mulberry32 } from '../comum/util.js';
-import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, TEMPLE, BAMBOO, BAMBOO_PATH, meadowAt, FALLS, fallEdge } from './terrain.js';
+import { terrainHeight, forestAt, fujiH, polyDist, STREAM, STREAM_HW, streamLevel, inTameike, TEMPLE, BAMBOO, BAMBOO_PATH, meadowAt, FALLS, fallEdge } from './terrain.js';
 
 const rnd = mulberry32(1790);
 const rr = (a, b) => a + rnd() * (b - a);
@@ -67,7 +68,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   }
   // bambuzal: nas margens do riacho perto da vila e na encosta sul do templo
   const grove = (cx, cz, R, n) => { for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * R, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
-    if (polyDist(STREAM, x, z).d < STREAM_HW + 1.5) continue; const h = terrainHeight(x, z); if (avoid(x, z, 1.5) || blocked(x, z, h, 0.3, 3)) continue; kinds.bamboo.push([x, h, z, rr(0.8, 1.15), rnd() * 6]); } };
+    if (polyDist(STREAM, x, z).d < STREAM_HW + 2.8) continue; const h = terrainHeight(x, z); if (avoid(x, z, 1.5) || blocked(x, z, h, 0.3, 3)) continue; kinds.bamboo.push([x, h, z, rr(0.8, 1.15), rnd() * 6]); } };
   for (const [k, list] of Object.entries(extraTrees)) for (const p of list) kinds[k].push(p); // (a cerejeira do cume e outras plantadas à mão)
   // o bambuzal grande: um mar de colmos verdes, com o caminho estreito por dentro (a luz passando entre as folhas)
   { const n = Math.round(4200 * dens); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * BAMBOO.r, x = BAMBOO.x + Math.cos(a) * d, z = BAMBOO.z + Math.sin(a) * d;
@@ -189,40 +190,57 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
   const sakuraLeaf = sakuraM.map;
   let cullT = 0; const cc = chunks.map((im) => im.boundingSphere ? im.boundingSphere.center.clone() : new THREE.Vector3());
   return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; chunks[i].visible = dx * dx + dz * dz < (farR + 70) * (farR + 70) && chunks[i].userData.season !== false; } },
-    update(dt) { tFall += dt; mistUp(dt, tFall); fallTex2.offset.y += dt * 2.6; fallTex.offset.y += dt * 1.6; water.material.map.offset.y -= dt * 0.6; if (water.material.normalMap) water.material.normalMap.offset.y -= dt * 0.35; } };
+    update(dt) { tFall += dt; mistUp(dt, tFall); fallTex2.offset.y += dt * 2.6; fallTex.offset.y += dt * 1.6; water.userData.tick(dt); } };
 }
 
 function streamMesh(tex) {
+  // a água do riacho: uma faixa larga (passa da beira do leito e entra no barranco — a borda nunca fica no ar) que
+  // reflete o céu, com duas camadas de ondinhas descendo a correnteza, a beira rasa e clara sumindo na margem, e
+  // espuma onde a água despenca
   const pts = []; // amostra o leito a cada 2,5 m
   for (let i = 0; i < STREAM.length - 1; i++) {
     const [ax, az] = STREAM[i], [bx, bz] = STREAM[i + 1], L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 2.5);
     for (let k = 0; k < n; k++) pts.push([ax + (bx - ax) * k / n, az + (bz - az) * k / n]);
   }
   pts.push(STREAM[STREAM.length - 1]);
-  const pos = [], uv = [], col = [], idx = []; let s = 0;
-  const lvl = pts.map(([x, z]) => terrainHeight(x, z) + 0.55);
-  for (let i = 1; i < lvl.length; i++) lvl[i] = Math.min(lvl[i], lvl[i - 1] + 0.02); // a água só desce (correnteza abaixo)
+  while (pts.length > 3 && inTameike(...pts[pts.length - 2]) < 0.85) pts.pop(); // (acaba logo depois de entrar no tameike)
+  const lvl = pts.map(([x, z]) => streamLevel(polyDist(STREAM, x, z)));
+  for (let i = 1; i < lvl.length; i++) lvl[i] = Math.min(lvl[i], lvl[i - 1]); // a água só desce
+  const XS = [-1, -0.7, -0.4, 0, 0.4, 0.7, 1], C = XS.length, HW = 5.6;
+  const pos = [], uv = [], across = [], foamA = [], idx = []; let s = 0;
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)], [px, pz] = pts[Math.max(0, i - 1)];
     let dx = nx - px, dz = nz - pz; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
-    const w = STREAM_HW * 0.8, y = lvl[i], drop = i > 0 ? Math.max(0, lvl[i - 1] - y) / 2.5 : 0, foam = Math.min(1, drop * 2.2);
-    for (const sd of [-1, 1]) { pos.push(x - dz * w * sd, y, z + dx * w * sd); uv.push(sd < 0 ? 0 : 1, s / 6); col.push(0.42 + foam * 0.9, 0.5 + foam * 0.8, 0.5 + foam * 0.75); }
-    if (i > 0) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    const y = lvl[i], drop = Math.max(i > 0 ? lvl[i - 1] - y : 0, i < pts.length - 1 ? y - lvl[i + 1] : 0) / 2.5, foam = Math.min(1, drop * 2.2);
+    const endFade = i === pts.length - 1 ? 0 : 1;
+    for (const xs of XS) { pos.push(x - dz * HW * xs, y, z + dx * HW * xs); uv.push((xs * HW) / 8, s / 8); across.push((xs + 1) / 2, endFade); foamA.push(foam); }
+    if (i > 0) for (let j = 0; j < C - 1; j++) { const a0 = (i - 1) * C + j, b0 = a0 + C; idx.push(a0, b0, a0 + 1, a0 + 1, b0, b0 + 1); }
     if (i < pts.length - 1) s += Math.hypot(nx - x, nz - z);
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('across', new THREE.Float32BufferAttribute(across, 2)); g.setAttribute('foam', new THREE.Float32BufferAttribute(foamA, 1));
   g.setIndex(idx); g.computeVertexNormals();
-  const ripple = (() => { const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d'); x.fillStyle = '#4a7a78'; x.fillRect(0, 0, S, S);
-    for (let i = 0; i < 260; i++) { x.strokeStyle = `rgba(220,240,240,${0.08 + Math.random() * 0.22})`; x.lineWidth = 1 + Math.random() * 2; x.beginPath(); const yy = Math.random() * S, xx = Math.random() * S; x.moveTo(xx, yy); x.quadraticCurveTo(xx + 6, yy + 8, xx + rr(-6, 6), yy + 16); x.stroke(); }
-    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const nm = tex.waterNormals ? tex.waterNormals.clone() : null; if (nm) { nm.wrapS = nm.wrapT = THREE.RepeatWrapping; nm.repeat.set(1, 0.2); nm.needsUpdate = true; }
-  const mat = new THREE.MeshStandardMaterial({ map: ripple, normalMap: nm, vertexColors: true, roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.78, depthWrite: false, side: THREE.DoubleSide });
+  const nm = rippleNormals(); nm.repeat.set(1.3, 1.3);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x24504c, normalMap: nm, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.1, metalness: 0.18, envMapIntensity: 0.9, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
+  const U = { uT: { value: 0 } };
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 across; attribute float foam; varying vec2 vAcross; varying float vFoam; varying vec2 vFlow;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvAcross = across; vFoam = foam; vFlow = uv;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uT; varying vec2 vAcross; varying float vFoam; varying vec2 vFlow;')
+      // a beira rasa: mais clara (vê-se o fundo de seixos) e cada vez mais transparente até sumir na margem
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float ex = vAcross.x, mid = smoothstep(0.0, 0.32, ex) * smoothstep(1.0, 0.68, ex);
+        diffuseColor.rgb = mix(vec3(0.27, 0.32, 0.25), diffuseColor.rgb, mid);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 0.95), vFoam * (0.55 + 0.45 * sin(vFlow.y * 9.0 + uT * 6.0 + vFlow.x * 4.0)));
+        diffuseColor.a *= smoothstep(0.0, 0.14, ex) * smoothstep(1.0, 0.86, ex) * (0.55 + 0.45 * mid) * vAcross.y;`)
+      // duas camadas de ondinhas, em velocidades diferentes, descendo a correnteza
+      .replace('#include <normal_fragment_maps>', `vec3 mapN = (texture2D(normalMap, vNormalMapUv).xyz * 2.0 - 1.0) + (texture2D(normalMap, vFlow * vec2(1.3, 0.9) + vec2(0.31, -uT * 0.55)).xyz * 2.0 - 1.0);
+        mapN.xy *= normalScale * (1.0 + vFoam); normal = normalize(tbn * mapN);`);
+  };
   const m = new THREE.Mesh(g, mat); m.renderOrder = 2; m.receiveShadow = true;
-  // onde a água mais despenca (a cachoeira): posição, alturas e direção da correnteza
-  let bi = 1; for (let i = 1; i < lvl.length; i++) if (lvl[i - 1] - lvl[i] > lvl[bi - 1] - lvl[bi]) bi = i;
-  { let j0 = bi, j1 = bi; while (j0 > 1 && lvl[j0 - 2] - lvl[j0 - 1] > 0.6) j0--; while (j1 < lvl.length - 1 && lvl[j1] - lvl[j1 + 1] > 0.6) j1++;
-    const [ax, az] = pts[j0 - 1], [bx, bz] = pts[j1], L = Math.hypot(bx - ax, bz - az) || 1;
-    m.userData.fall = { x: (ax + bx) / 2, z: (az + bz) / 2, top: lvl[j0 - 1], bot: lvl[j1], dx: (bx - ax) / L, dz: (bz - az) / L, yaw: Math.atan2(bx - ax, bz - az) }; }
+  m.userData.tick = (dt) => { U.uT.value += dt; nm.offset.y -= dt * 0.12; };
+  m.userData.fall = {};
   return m;
 }

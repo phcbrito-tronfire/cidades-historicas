@@ -1,4 +1,5 @@
 // Som ambiente gerado na hora (Web Audio): vento, ondas do mar, gaivotas, cigarras, grilos, lira e efeitos
+import { footstep, wadeStep, hoof } from '../comum/passos.js';
 export class AudioFX {
   constructor() { this.ctx = null; this.enabled = true; this.musicOn = true; }
 
@@ -120,7 +121,9 @@ export class AudioFX {
   sistrum() { if (!this.ctx) return; for (let i = 0; i < 10; i++) setTimeout(() => this.tone([3000 + Math.random() * 2500], 0.08, 'square', 0.025), i * 45); }
   swoosh() { this.burst(0.25, 1800, 0.18); }
   splash() { this.burst(0.7, 700, 0.35); }
-  step(jump, run) { this.burst(jump ? 0.12 : 0.06, jump ? 400 : 260 + Math.random() * 80, run ? 0.05 : 0.03); }
+  step(jump, run, built) { footstep(this.ctx, this.master, { jump, run, surface: built ? 'stone' : 'earth' }); }
+  wade(run) { wadeStep(this.ctx, this.master, { run }); }
+  hoof(o) { hoof(this.ctx, this.master, { ...o, surface: o.surface === 'hard' ? 'stone' : 'earth' }); }
   burst(dur, freq, vol) {
     if (!this.ctx) return;
     const ctx = this.ctx, now = ctx.currentTime;

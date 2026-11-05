@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Batcher } from '../comum/batcher.js';
 import { addBox, addCircle, blocked } from '../comum/collision.js';
 import { rr, rand, fbm } from '../comum/util.js';
+import { stillWater } from '../comum/aguaparada.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { pbrSet, getTextures } from './textures.js';
 import { buildColosseum, COL } from './coliseu.js';
@@ -30,7 +31,7 @@ export function createMaterials(tex) {
   M.marbleWall = std({ ...pbrSet(P.marble_01, 1), color: 0xf6ecdc, roughness: 0.55 }); M.marbleWall.userData.uv = { s: 2.2 };
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
   M.granite = std({ color: 0x8a5a4c, roughness: 0.45 });
-  M.water = std({ color: 0x3aa8c0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85 });
+  M.water = stillWater(std({ color: 0x2a7f96, roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.88 }), { scale: 0.35, strength: 0.75 });
   M.brick = std({ ...pbrSet(P.medieval_red_brick, 1), color: 0xf0b090 }); M.brick.userData.uv = { s: 1.6 }; // tijolo romano (opus latericium): fino, alaranjado, argamassa grossa
   M.brickY = std({ ...pbrSet(P.brown_brick_02, 1), color: 0xf4d0a8 }); M.brickY.userData.uv = { s: 1.6 }; // tijolo amarelado (outra olaria)
   M.brickPl = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brickPl.userData.uv = { s: 2.2 }; // reboco gasto sobre tijolo

@@ -1,6 +1,6 @@
 // Interface: carregamento, HUD, diário, diálogos, cartão de item, minimapa e mapa grande
 import { OBJECTIVES, FINAL_REQ } from './quests.js';
-import { terrainHeight, WATER_Y, forestAt, fujiH, inLake, polyDist, TRAIL, STREAM, STREET, FIELDS, SNOW_Y } from './terrain.js';
+import { terrainHeight, WATER_Y, forestAt, fujiH, inLake, polyDist, TRAIL, STREAM, STREET, FIELDS, SNOW_Y, inTameike } from './terrain.js';
 import { boxes } from '../comum/collision.js';
 
 // mapa: 3,62 m por pixel, cobrindo x de -1556 a 1556 e z de -762 a 2350 (do lago até a cratera do Fuji)
@@ -146,7 +146,7 @@ export class UI {
       else if (h > SNOW_Y + 10) { r = 236; g = 238; b = 242; }
       else if (fu > 320) { const k = Math.min(1, (fu - 320) / 250); r = 128 - k * 30; g = 98 - k * 22; b = 86 - k * 16; }
       else if (polyDist(TRAIL, x, z).d < 3 && z > 120) { r = 150; g = 110; b = 90; }
-      else if (polyDist(STREAM, x, z).d < 4) { r = 80; g = 140; b = 160; }
+      else if (polyDist(STREAM, x, z).d < 4 || inTameike(x, z) < 1) { r = 80; g = 140; b = 160; }
       else if (Math.abs(x - STREET.x) < STREET.hw && z > STREET.z0 && z < STREET.z1 + 60) { r = 196; g = 170; b = 128; }
       else if (x > FIELDS.x0 && x < FIELDS.x1 && z > FIELDS.z0 && z < FIELDS.z1) { r = 150; g = 176; b = 104; }
       else { const fo = forestAt(x, z), k = Math.min(1, Math.max(0, (h - 10) / 300)); r = 150 - fo * 70 - k * 30; g = 176 - fo * 66 - k * 30; b = 118 - fo * 50 - k * 20; }
