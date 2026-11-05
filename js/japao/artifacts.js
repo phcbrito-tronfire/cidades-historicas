@@ -93,7 +93,7 @@ export class Artifacts {
       dojo: S.dojo ? [S.dojo.x + 3, S.dojo.z - 2, S.dojo.y + 0.5] : [0, 0, 50], audience: S.audience ? [S.audience.x + 1, S.audience.z + 2, S.audience.y + 0.5] : [0, 0, 50],
       printshop: inside(house('shop', 6)), potter: at(S.npc_oleiro, 1.2, 0.8), omamori: at(S.omamori, 0, 0.5), hondo: S.hondo ? [S.hondo.x, S.hondo.z, S.hondo.y + 0.5] : [0, 0, 50],
       station5: city.stations[3] ? [city.stations[3].bench[0] + 1, city.stations[3].bench[1], 50] : [0, 0, 50], oshiroom: inside(house('oshi', 4)),
-      fields: [FIELDS.x0 + 3, (FIELDS.z0 + FIELDS.z1) / 2 + 12, 50], teahouse: at(S.npc_chaya, 1.5, 1.2), street: [STREET.x + 2, -205, 50], inn: inside(house('inn', 2)),
+      fields: [FIELDS.x0 - 2.5, (FIELDS.z0 + FIELDS.z1) / 2 + 12, 50], teahouse: at(S.npc_chaya, 1.5, 1.2), street: [STREET.x + 2, -205, 50], inn: inside(house('inn', 2)),
       emarack: at(S.omamori, -22, 0), summit: S.okumiya ? [S.okumiya.x - 4, S.okumiya.z - 2, 50] : [0, 0, 50], office: inside(house('lord', 0)),
       kura: S.garden ? [S.garden.x - 10, S.garden.z + 6, 50] : [0, 0, 50],
     };

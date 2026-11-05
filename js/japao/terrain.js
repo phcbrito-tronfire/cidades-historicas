@@ -21,7 +21,7 @@ export const STREET = { x: 40, z0: -440, z1: 20, hw: 5.5 }; // a rua dos oshi (n
 export const SHRINE = { x: 40, z: 75, w: 90, d: 110 }; // o recinto do santuário Sengen, na floresta
 export const RESIDENCE = { x: -275, z: -255, w: 86, d: 72, lift: 4 }; // a residência do senhor (jin'ya)
 export const TEMPLE = { x: 330, z: -110, r: 62, lift: 16 }; // templo budista no alto da colina
-export const FIELDS = { x0: 95, x1: 247, z0: -660, z1: -478 }; // arrozais (4 × 7 tabuleiros, a oeste do riacho)
+export const FIELDS = { x0: 95, x1: 247, z0: -660, z1: -478, y: 5.2 }; // arrozais (4 × 7 tabuleiros, a oeste do riacho)
 export const FARMLAND = { x0: 95, x1: 480, z0: -660, z1: -300 }; // o campo aberto em volta (sem floresta)
 export const SNOW_Y = 600;
 // lugares para descobrir entre a vila e a montanha (a floresta abre espaço para eles)
@@ -125,7 +125,7 @@ export function terrainHeight(x, z) {
   h = flat(x, z, SHRINE.x, SHRINE.z, SHRINE.w / 2, SHRINE.d / 2, 22, LEVEL.shrine, h);
   h = flat(x, z, RESIDENCE.x, RESIDENCE.z, RESIDENCE.w / 2, RESIDENCE.d / 2, 14, LEVEL.residence, h);
   // arrozais: o chão quase plano, em leve degrau (os tabuleiros vêm depois)
-  { const d = Math.max(FIELDS.x0 - x, x - FIELDS.x1, FIELDS.z0 - z, z - FIELDS.z1, 0); const fl = 4.2 + Math.max(0, z + 700) * 0.007 + (x - FIELDS.x0) * 0.004; h = lerp(fl, h, ss(0, 40, d)); }
+  { const d = Math.max(FIELDS.x0 - 4 - x, x - FIELDS.x1 - 4, FIELDS.z0 - 4 - z, z - FIELDS.z1 - 4, 0); h = lerp(FIELDS.y, h, ss(0, 40, d)); } // (o campo inteiro num nível só: nada de degrau nem de terreno afundado)
   // a trilha: um banco cortado na encosta (sem degraus bruscos de um lado para o outro)
   { const T = polyDist(TRAIL, x, z); if (T.d < 14 && z > 200) { const hc = base(T.x, T.z); h = lerp(hc, h, ss(TRAIL_HW, 12, T.d)); } }
   // os patamares das estações (cortados na encosta, com a trilha ao lado no mesmo nível)

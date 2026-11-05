@@ -26,7 +26,7 @@ export function buildPaddies(scene, M, B, out) {
     const cx = FIELDS.x0 + (i + 0.5) * PW, cz = FIELDS.z0 + (j + 0.5) * PD, ys = [];
     for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) ys.push(terrainHeight(cx + a * PW * 0.24, cz + b * PD * 0.24));
     const lo = Math.min(...ys), hi = Math.max(...ys);
-    grid[i][j] = hi - lo > 0.7 ? null : { cx, cz, y: lo - 0.05, i, j };
+    void lo; void hi; grid[i][j] = { cx, cz, y: FIELDS.y, i, j }; // (o chão do campo é plano: todos os tabuleiros no mesmo nível)
   } }
   const at = (i, j) => (grid[i] && grid[i][j]) || null;
   // a taipa (aze) entre dois tabuleiros: baixa, com capim por cima — sobe-se andando (no máximo uns 40 cm)
@@ -38,8 +38,7 @@ export function buildPaddies(scene, M, B, out) {
     const S = at(i, j - 1), Wn = at(i - 1, j), Nn = at(i, j + 1), En = at(i + 1, j);
     bund(cx, cz - PD / 2, PW + 0.9, 0.9, y, S ? S.y : y); bund(cx - PW / 2, cz, 0.9, PD, y, Wn ? Wn.y : y);
     if (!Nn) bund(cx, cz + PD / 2, PW + 0.9, 0.9, y, y); if (!En) bund(cx + PW / 2, cz, 0.9, PD, y, y);
-    B.box(M.earthFloor, PW - 0.9, 0.6, PD - 0.9, cx, y - 0.62, cz, { noGround: true }); // o fundo de barro (grosso: não deixa fresta com o terreno)
-    out.floors.push({ x: cx, z: cz, w: PW + 0.8, d: PD + 0.8, ry: 0, top: y - 0.02 });
+    B.box(M.earthFloor, PW - 0.9, 0.03, PD - 0.9, cx, y, cz, { noGround: true }); // o fundo de barro, rente ao chão plano (o terreno não é mais afundado: era isso que abria as valas)
     waters.push([cx, y + 0.12, cz, PW - 0.9, PD - 0.9]); // (a água cobre os pés: uns 10 cm)
     for (let r = 0; r < Math.floor((PD - 1.6) / 0.62); r++) rowsPos.push([cx, y, cz - PD / 2 + 1.1 + r * 0.62, PW - 1.6]);
     if (j === 0 && i % 2 === 0) { const gx = cx - PW / 2, gz = cz - PD / 2; B.box(M.darkWood, 0.15, 0.7, 1.0, gx, y, gz + 3); B.box(M.wood, 0.1, 0.45, 0.9, gx, y + 0.1, gz + 3); } // a comporta de tábua
