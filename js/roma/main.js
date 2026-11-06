@@ -63,7 +63,7 @@ async function main() {
   }
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = quality !== 'minimo'; // (no mínimo, sem sombra do sol: a sombra redesenha a cena inteira a cada quadro, e é o que mais pesa num computador fraco)
   renderer.shadowMap.type = PROFILE[quality].soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   document.getElementById('game').appendChild(renderer.domElement);

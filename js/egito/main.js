@@ -66,7 +66,7 @@ async function main() {
   if (isTouch) document.getElementById('load-tip').textContent = 'No celular, prefira o Wi-Fi: o primeiro acesso baixa cerca de 45 MB. Jogue com o celular deitado.';
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = quality !== 'minimo'; // (no mínimo, sem sombra do sol: a sombra redesenha a cena inteira a cada quadro, e é o que mais pesa num computador fraco)
   renderer.shadowMap.type = PROFILE[quality].soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   // a sombra do sol é calculada uma vez por quadro (antes, o reflexo do Nilo e a oclusão refaziam o mapa a cada render)
   renderer.shadowMap.autoUpdate = false;
@@ -393,6 +393,7 @@ async function main() {
     if (inR(city.zones.cais)) return 'Cais do Nilo';
     if (dR > 40) return 'Margem Leste — Campos de Tiy';
     if (Math.abs(dR) < 46) return 'Margem do Nilo';
+    for (const l of city.landmarks || []) if (inR(l.rect)) return l.name;
     if (Math.hypot(x + 155, z - 22) < 30) return 'A Grande Esfinge';
     if (x < -175) return 'Planalto de Gizé';
     if (Math.hypot(x - city.spots.nofret.x, z - city.spots.nofret.z) < 14) return 'Praça de Nofret';
@@ -466,6 +467,7 @@ async function main() {
         }
       }
     }
+    if (started) for (const l of city.landmarks || []) { const r = l.rect, pp = player.pos; if (!seenHouses.has(l.name) && pp.x > r[0] && pp.x < r[1] && pp.z > r[2] && pp.z < r[3]) { seenHouses.add(l.name); artifacts.showInfo({ tag: l.tag, name: l.name, era: 'Gizé — visto em c. 1250 a.C.', story: l.text, foot: l.foot }); } } // (os lugares de Gizé: nome e história ao entrar)
     if (started) { ruins.update(player, (c) => artifacts.showInfo(c)); artifacts.update(dt, t, player); if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); } }
     actors.update(dt, t, player, quests, sky.state.night);
     festas.update(dt, t, player, sky.state.night);

@@ -519,19 +519,20 @@ export function buildCity(scene, tex) {
   for (const z of [-104, -86, -68]) pyramidAt(-196, z, 7, 9);
   out.pyramids = { khufu, khafre, menk, khufuBase: kb };
   // templos funerários e calçada até o vale
-  const causeway = (x0, z0, x1, z1) => {
-    const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 5);
-    const ang = Math.atan2(z1 - z0, x1 - x0);
+  const causeway = (x0, z0, x1, z1, y0, y1) => {
+    const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.ceil(Math.max(L / 2.5, Math.abs(y1 - y0) / 0.3))); // (degraus de no máximo 30 cm)
+    const ang = Math.atan2(z1 - z0, x1 - x0), seg = L / n;
     for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
-      const ca = Math.cos(ang) * 2.7, sa = Math.sin(ang) * 2.7, hs = [G(x, z), G(x + ca, z + sa), G(x - ca, z - sa)], hi = Math.max(...hs), lo = Math.min(...hs);
-      B.box(M.limestone, 5.4, hi - lo + 1.0, 4.5, x, lo - 0.6, z, { ry: -ang, noGround: true }); addBox(x, z, 4.5, 4.5, -5, hi + 0.4);
+      const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, top = y0 + (y1 - y0) * t;
+      const ca = Math.cos(ang) * seg / 2, sa = Math.sin(ang) * seg / 2, lo = Math.min(G(x, z), G(x + ca, z + sa), G(x - ca, z - sa), top) - 0.6;
+      B.box(M.limestone, seg + 0.04, top - lo, 4.2, x, lo, z, { ry: -ang, noGround: true }); addBox(x, z, Math.max(seg, 1.2), 4.2, -5, top);
+      for (const sd of [-1, 1]) { const px = x - Math.sin(ang) * sd * 2.25, pz = z + Math.cos(ang) * sd * 2.25; B.box(M.limestone, seg + 0.04, 0.9, 0.35, px, top, pz, { ry: -ang, noGround: true }); addBox(px, pz, Math.max(seg, 0.6), 0.4, top, top + 0.9); } // mureta dos dois lados
     }
   };
   // Templos do Império Antigo (já com 1.300 anos em 1250 a.C.): paredes grossas de calcário revestidas de granito rosa
   // na parte de baixo, duas portas na fachada leste, a sala de pilares de granito por dentro (com as vigas e o teto
   // de lajes, algumas já caídas) e o piso de alabastro. Antes eram caixas lisas de pedra, que pareciam concreto.
-  const oldTemple = (cx, cz, w, d, h) => {
+  const oldTemple = (cx, cz, w, d, h, backDoor = null) => {
     let y = -Infinity, lo = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) { const g = G(cx + a * w / 2, cz + b * d / 2); y = Math.max(y, g); lo = Math.min(lo, g); } y -= 0.15;
     if (y - lo > 0.3) { B.box(M.limestone, w + 1.2, y - lo + 0.6, d + 1.2, cx, lo - 0.6, cz, { noGround: true }); addBox(cx, cz, w + 1.2, d + 1.2, -5, y); } // o terraço de pedra embaixo, do lado que desce
     const t = 2.2, hw = w / 2, hd = d / 2, dw = 2.2;
@@ -539,7 +540,8 @@ export function buildCity(scene, tex) {
     const wall = (x0, x1, z0, z1) => { const ww = x1 - x0, dd = z1 - z0, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
       B.box(M.limestone, ww, h, dd, mx, y, mz); addBox(mx, mz, ww, dd, -5, y + h);
       B.box(M.granite, ww + 0.14, h * 0.55, dd + 0.14, mx, y, mz); }; // o revestimento de granito, mais saliente
-    wall(cx - hw, cx - hw + t, cz - hd, cz + hd); // fundo
+    if (backDoor === null) wall(cx - hw, cx - hw + t, cz - hd, cz + hd); // fundo
+    else { const bz = cz + backDoor; wall(cx - hw, cx - hw + t, cz - hd, bz - dw / 2); wall(cx - hw, cx - hw + t, bz + dw / 2, cz + hd); B.box(M.limestone, t, h - 3.2, dw + 0.2, cx - hw + t / 2, y + 3.2, bz); addBox(cx - hw + t / 2, bz, t, dw, y + 3.2, y + h); } // fundo, com a porta da calçada
     wall(cx - hw + t, cx + hw, cz + hd - t, cz + hd); wall(cx - hw + t, cx + hw, cz - hd, cz - hd + t); // laterais
     const d0 = cz - d / 4, d1 = cz + d / 4; // as duas portas da fachada
     for (const [a, b] of [[cz - hd + t, d0 - dw / 2], [d0 + dw / 2, d1 - dw / 2], [d1 + dw / 2, cz + hd - t]]) wall(cx + hw - t, cx + hw, a, b);
@@ -559,9 +561,9 @@ export function buildCity(scene, tex) {
     for (let i = 0; i < 5; i++) { const sd = rand() < 0.5 ? -1 : 1, bx = cx + rr(-hw, hw), bz = cz + sd * (hd + rr(1.2, 2.6)); const by2 = Math.max(G(bx - 1, bz - 1), G(bx + 1, bz - 1), G(bx - 1, bz + 1), G(bx + 1, bz + 1)) - 0.15; B.box(M.limestone, rr(1.4, 2.2), rr(0.9, 1.3), rr(1.2, 1.8), bx, by2, bz, { ry: rr(0, 3) }); addBox(bx, bz, 1.8, 1.6, -5, by2 + 1.1); }
     return y;
   };
-  oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5); // templo funerário de Quéfren
-  causeway(khafre.x + khafre.half + 17, khafre.z, -172, 44); // a calçada até o Templo do Vale
-  oldTemple(-164, 48, 14, 22, 6); // Templo do Vale de Quéfren, ao lado da Esfinge
+  const ky = oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5); // templo funerário de Quéfren
+  const vy = oldTemple(-164, 48, 14, 22, 6, 5.5); // Templo do Vale de Quéfren, ao lado da Esfinge (porta no fundo para a calçada)
+  causeway(khafre.x + khafre.half + 17.6, khafre.z + 7.5, -172, 53.5, ky, vy); // a calçada: do Templo do Vale sobe até a porta do templo funerário
   oldTemple(khufu.x + khufu.half + 8, khufu.z, 14, 24, 5.5); // templo funerário de Quéops
 
   // Esfinge
@@ -585,6 +587,23 @@ export function buildCity(scene, tex) {
     for (const sd of [-1, 1]) addBox(SX + 0.36 * L, SZ + sd * 0.14 * L, 0.3 * L, 0.12 * L, -5, gy + 0.1 * L);
   }
   out.zones.piramides = [-320, -150, -130, 190];
+  out.landmarks = [
+    { name: 'Templo do Vale de Quéfren', tag: 'Templo do Império Antigo', rect: [-171, -157, 37, 59],
+      text: 'Construído para o faraó Quéfren por volta de 2550 a.C., já tinha mais de 1.300 anos quando Ramsés II reinava. Era a porta de entrada do complexo da pirâmide: aqui, à beira do vale, chegava o corpo do rei, e começavam os rituais do funeral. Os blocos de calcário pesam dezenas de toneladas e as paredes eram revestidas de granito rosa trazido de Assuã, a quase mil quilômetros. Por dentro, os pilares de granito e o piso de alabastro. Pela porta do fundo sai a calçada que sobe até a pirâmide.',
+      foot: 'Siga a calçada de pedra: ela sobe o planalto até o templo funerário, ao pé da pirâmide.' },
+    { name: 'Calçada de Quéfren', tag: 'Caminho processional', rect: [-186, -170, 42, 62],
+      text: 'Uma rampa de pedra ligava o Templo do Vale ao templo funerário, no alto do planalto. Por ela subia o cortejo do funeral do rei. Nas calçadas das pirâmides, as paredes tinham cenas em relevo e um teto que deixava o caminho na sombra.',
+      foot: 'No alto da calçada fica o templo funerário de Quéfren.' },
+    { name: 'Templo funerário de Quéfren', tag: 'Templo do Império Antigo', rect: [-201.6, -184.4, 36, 68],
+      text: 'Encostado na face leste da pirâmide, era o templo onde os sacerdotes faziam todos os dias as oferendas ao rei morto, para que seu espírito (o ka) se alimentasse para sempre. Tinha salas de pilares, um pátio com estátuas do rei e capelas. Na época de Ramsés II ele estava em ruínas, com o teto caído em vários pontos e a areia invadindo as salas.',
+      foot: 'A pirâmide de Quéfren ainda guarda no alto um pedaço do revestimento liso de calcário.' },
+    { name: 'Templo funerário de Quéops', tag: 'Templo do Império Antigo', rect: [-209, -195, -82, -58],
+      text: 'O templo das oferendas da Grande Pirâmide, do faraó Quéops (por volta de 2580 a.C.). Tinha um pátio com o piso de basalto negro e colunas de granito. Mil anos depois de construído, já era visitado como monumento antigo, e os viajantes deixavam inscrições nas paredes.',
+      foot: 'A Grande Pirâmide, ao lado, foi a construção mais alta do mundo por quase 4 mil anos.' },
+    { name: 'Capela da Esfinge e Estela do Sonho', tag: 'Monumento', rect: [-160, -148, 16, 28],
+      text: 'Entre as patas da Esfinge fica a estela de granito de Tutmés IV (c. 1401 a.C.). Ela conta que o príncipe, caçando, dormiu à sombra da Esfinge, então coberta de areia até o pescoço. Em sonho, a Esfinge prometeu fazê-lo rei se ele a desenterrasse. Ele mandou tirar a areia, virou faraó e fez aqui esta capelinha a céu aberto. Ramsés II também deixou suas estelas nas laterais.',
+      foot: 'No alto da estela: o rei oferecendo à Esfinge, duas vezes, de um lado e do outro.' },
+  ];
 
   // canteiro da restauração do príncipe Khaemwaset
   const cx = -184, cz = -10, cy = G(cx, cz);
@@ -676,7 +695,7 @@ export function buildCity(scene, tex) {
 
   // jardim com piscina em T
   // (antes a "água" era um plano 2 cm acima de uma laje de pedra: uma plataforma azul, sem fundo nem borda)
-  const POOL_Y = PY + 0.36;
+  const POOL_Y = PY + 0.42; // (39 cm de água: a partir de 35 cm o jogo trata como água de andar, com ondinhas e respingos a cada passo)
   for (const [x0, x1, z0, z1] of [[30, 46, -137, -128], [42, 46, -150, -115]]) B.box(M.poolTiles, x1 - x0, 0.06, z1 - z0, (x0 + x1) / 2, PY + 0.02, (z0 + z1) / 2, { noGround: true }); // fundo de azulejos
   const rim = [[30, -137, 42, -137], [42, -137, 42, -150], [42, -150, 46, -150], [46, -150, 46, -115], [46, -115, 42, -115], [42, -115, 42, -128], [42, -128, 30, -128], [30, -128, 30, -137]];
   let area = 0; for (const [ax, az, bx2, bz2] of rim) area += ax * bz2 - bx2 * az; // (o lado de fora de cada trecho, pelo sentido do contorno)
