@@ -516,7 +516,7 @@ export function buildCity(scene, tex) {
   const kb = pyramidAt(khufu.x, khufu.z, khufu.half, khufu.h);
   pyramidAt(khafre.x, khafre.z, khafre.half, khafre.h);
   pyramidAt(menk.x, menk.z, menk.half, menk.h, { granite: true });
-  for (const z of [-104, -86, -68]) pyramidAt(-196, z, 7, 9);
+  for (const z of [-96, -114, -132]) pyramidAt(-195, z, 7, 9); // as três pirâmides das rainhas, ao sul do templo funerário (antes duas ficavam dentro dele)
   out.pyramids = { khufu, khafre, menk, khufuBase: kb };
   // templos funerários e calçada até o vale
   const causeway = (x0, z0, x1, z1, y0, y1) => {
@@ -532,28 +532,36 @@ export function buildCity(scene, tex) {
   // Templos do Império Antigo (já com 1.300 anos em 1250 a.C.): paredes grossas de calcário revestidas de granito rosa
   // na parte de baixo, duas portas na fachada leste, a sala de pilares de granito por dentro (com as vigas e o teto
   // de lajes, algumas já caídas) e o piso de alabastro. Antes eram caixas lisas de pedra, que pareciam concreto.
-  const oldTemple = (cx, cz, w, d, h, backDoor = null) => {
+  const oldTemple = (cx, cz, w, d, h, backDoor = null, causewayDz = null) => {
     let y = -Infinity, lo = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) { const g = G(cx + a * w / 2, cz + b * d / 2); y = Math.max(y, g); lo = Math.min(lo, g); } y -= 0.15;
     if (y - lo > 0.3) { B.box(M.limestone, w + 1.2, y - lo + 0.6, d + 1.2, cx, lo - 0.6, cz, { noGround: true }); addBox(cx, cz, w + 1.2, d + 1.2, -5, y); } // o terraço de pedra embaixo, do lado que desce
     const t = 2.2, hw = w / 2, hd = d / 2, dw = 2.2;
-    B.box(M.white, w - 0.4, 0.32, d - 0.4, cx, y, cz); // piso de alabastro
+    B.box(M.white, w - 0.4, 0.32, d - 0.4, cx, y, cz); addBox(cx, cz, w - 0.4, d - 0.4, -5, y + 0.32); // piso de alabastro (com chão de verdade: antes o pé afundava 32 cm nele)
+    const FY = y + 0.32;
     const wall = (x0, x1, z0, z1) => { const ww = x1 - x0, dd = z1 - z0, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
       B.box(M.limestone, ww, h, dd, mx, y, mz); addBox(mx, mz, ww, dd, -5, y + h);
       B.box(M.granite, ww + 0.14, h * 0.55, dd + 0.14, mx, y, mz); }; // o revestimento de granito, mais saliente
     if (backDoor === null) wall(cx - hw, cx - hw + t, cz - hd, cz + hd); // fundo
     else { const bz = cz + backDoor; wall(cx - hw, cx - hw + t, cz - hd, bz - dw / 2); wall(cx - hw, cx - hw + t, bz + dw / 2, cz + hd); B.box(M.limestone, t, h - 3.2, dw + 0.2, cx - hw + t / 2, y + 3.2, bz); addBox(cx - hw + t / 2, bz, t, dw, y + 3.2, y + h); } // fundo, com a porta da calçada
     wall(cx - hw + t, cx + hw, cz + hd - t, cz + hd); wall(cx - hw + t, cx + hw, cz - hd, cz - hd + t); // laterais
-    const d0 = cz - d / 4, d1 = cz + d / 4; // as duas portas da fachada
-    for (const [a, b] of [[cz - hd + t, d0 - dw / 2], [d0 + dw / 2, d1 - dw / 2], [d1 + dw / 2, cz + hd - t]]) wall(cx + hw - t, cx + hw, a, b);
-    for (const dz of [d0, d1]) { B.box(M.limestone, t, h - 3.2, dw + 0.2, cx + hw - t / 2, y + 3.2, dz); addBox(cx + hw - t / 2, dz, t, dw, y + 3.2, y + h); } // vergas das portas
+    const one = causewayDz !== null, d0 = cz - d / 4, d1 = cz + d / 4; // as portas da fachada (uma só, a da calçada, no templo que fica no alto)
+    for (const [a, b] of one ? [[cz - hd + t, causewayDz - dw / 2], [causewayDz + dw / 2, cz + hd - t]] : [[cz - hd + t, d0 - dw / 2], [d0 + dw / 2, d1 - dw / 2], [d1 + dw / 2, cz + hd - t]]) wall(cx + hw - t, cx + hw, a, b);
+    // escadas na frente das portas que ficam acima do chão (o templo apoiado no alto ficava com um degrau de 1,7 m)
+    for (const dz of one ? [] : [d0, d1]) {
+      const x0s = cx + hw + (y - lo > 0.3 ? 0.6 : 0);
+      for (let k = 1; k < 40; k++) { const top = FY - k * 0.28, sx = x0s + (k - 0.5) * 0.55, gy = Math.min(G(sx, dz - dw / 2), G(sx, dz + dw / 2), G(sx, dz)); if (top < gy + 0.05) break;
+        B.box(M.limestone, 0.57, top - gy + 0.4, dw + 1.2, sx, gy - 0.4, dz, { noGround: true }); addBox(sx, dz, 0.55, dw + 1.2, -5, top);
+        for (const sd of [-1, 1]) { B.box(M.limestone, 0.57, top - gy + 1.2, 0.35, sx, gy - 0.4, dz + sd * (dw / 2 + 0.78), { noGround: true }); addBox(sx, dz + sd * (dw / 2 + 0.78), 0.55, 0.4, top, top + 0.8); } } } // (com a mureta dos lados)
+    for (const dz of one ? [causewayDz] : [d0, d1]) { B.box(M.limestone, t, h - 3.2, dw + 0.2, cx + hw - t / 2, y + 3.2, dz); addBox(cx + hw - t / 2, dz, t, dw, y + 3.2, y + h); } // vergas das portas
     // a sala de pilares: pilares quadrados de granito, vigas por cima e o teto de lajes (umas faltando)
     const ix0 = cx - hw + t + 2, ix1 = cx + hw - t - 2.4, iz0 = cz - hd + t + 1.8, iz1 = cz + hd - t - 1.8;
     const nx = Math.max(1, Math.round((ix1 - ix0) / 3.4)), nz = Math.max(1, Math.round((iz1 - iz0) / 3.4));
-    for (let j = 0; j <= nz; j++) { const pz = iz0 + (iz1 - iz0) * j / nz;
+    const doorZ = [...(one ? [causewayDz] : [d0, d1]), ...(backDoor === null ? [] : [cz + backDoor])];
+    for (let j = 0; j <= nz; j++) { const pz = iz0 + (iz1 - iz0) * j / nz; if (doorZ.some((dz) => Math.abs(pz - dz) < dw / 2 + 0.6)) continue; // (corredor livre na linha de cada porta)
       for (let i = 0; i <= nx; i++) { const px = ix0 + (ix1 - ix0) * i / nx; B.box(M.granite, 0.95, h - 1.6, 0.95, px, y + 0.3, pz); addBox(px, pz, 0.95, 0.95, -5, y + h - 1.3); }
       B.box(M.granite, ix1 - ix0 + 1.2, 0.7, 1.0, (ix0 + ix1) / 2, y + h - 1.3, pz); } // (a viga embaixo das lajes do teto: no mesmo plano, piscava)
     for (let x0 = cx - hw + t; x0 < cx + hw - t - 0.1; x0 += 2.4) for (let z0 = cz - hd + t; z0 < cz + hd - t - 0.1; z0 += 2.4) {
-      if (rand() < 0.22) { B.box(M.limestone, 2.2, 1.1, 2.4, x0 + 1.2 + rr(-0.3, 0.3), y + 0.3, z0 + 1.2, { ry: rr(-0.4, 0.4) }); continue; } // a laje caída no chão (o teto aberto em cima)
+      if (rand() < 0.22) { const fx2 = x0 + 1.2 + rr(-0.3, 0.3), fz2 = z0 + 1.2; B.box(M.limestone, 2.2, 0.38, 2.4, fx2, FY - 0.02, fz2, { ry: rr(-0.4, 0.4) }); addBox(fx2, fz2, 2.2, 2.2, -5, FY + 0.36); continue; } // a laje caída no chão, baixa, dá para pisar por cima (o teto aberto em cima)
       const ww = Math.min(2.4, cx + hw - t - x0), dd = Math.min(2.4, cz + hd - t - z0);
       B.box(M.limestone, ww + 0.02, 0.6, dd + 0.02, x0 + ww / 2, y + h - 0.6, z0 + dd / 2); addBox(x0 + ww / 2, z0 + dd / 2, ww, dd, y + h - 0.6, y + h);
     }
@@ -561,7 +569,7 @@ export function buildCity(scene, tex) {
     for (let i = 0; i < 5; i++) { const sd = rand() < 0.5 ? -1 : 1, bx = cx + rr(-hw, hw), bz = cz + sd * (hd + rr(1.2, 2.6)); const by2 = Math.max(G(bx - 1, bz - 1), G(bx + 1, bz - 1), G(bx - 1, bz + 1), G(bx + 1, bz + 1)) - 0.15; B.box(M.limestone, rr(1.4, 2.2), rr(0.9, 1.3), rr(1.2, 1.8), bx, by2, bz, { ry: rr(0, 3) }); addBox(bx, bz, 1.8, 1.6, -5, by2 + 1.1); }
     return y;
   };
-  const ky = oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5); // templo funerário de Quéfren
+  const ky = oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5, null, khafre.z + 7.5); // templo funerário de Quéfren (a porta norte recebe a calçada)
   const vy = oldTemple(-164, 48, 14, 22, 6, 5.5); // Templo do Vale de Quéfren, ao lado da Esfinge (porta no fundo para a calçada)
   causeway(khafre.x + khafre.half + 17.6, khafre.z + 7.5, -172, 53.5, ky, vy); // a calçada: do Templo do Vale sobe até a porta do templo funerário
   oldTemple(khufu.x + khufu.half + 8, khufu.z, 14, 24, 5.5); // templo funerário de Quéops

@@ -15,7 +15,7 @@ export const WORLD = 370; // limite que o jogador pode andar
 export const LAKE = { x0: -50, x1: -14, z0: -62, z1: -40, y: 0.55 };
 // x, z, meia-largura do pátio, altura do pátio (Quéops, Quéfren, Miquerinos e pirâmides das rainhas)
 export const PYRAMID_PADS = [
-  { x: -258, z: -70, r: 56, y: 7.0 }, { x: -246, z: 52, r: 52, y: 7.4 }, { x: -228, z: 152, r: 28, y: 6.6 }, { x: -196, z: -86, r: 30, y: 6.2 },
+  { x: -258, z: -70, r: 56, y: 7.0 }, { x: -246, z: 52, r: 52, y: 7.4 }, { x: -228, z: 152, r: 28, y: 6.6 }, { x: -195, z: -114, r: 30, y: 6.2 }, /* (as pirâmides das rainhas, ao sul do templo funerário de Quéops) */
 ];
 
 // ilhota de areia no meio do Nilo, com as ruínas do antigo santuário de Hapi (ver ruinas.js)
