@@ -38,12 +38,12 @@ export function buildHouses(B, M, out) {
     if (STREETS.some((s) => distToPolyline(x, z, s) < 15)) continue; // (centro da casa a 15 m: as paredes não invadem a rua)
     // vielas: algumas células ficam vazias (ruas tortas e pracinhas)
     const lane = fbm(x * 0.03 + 4, z * 0.03 + 8, 2);
-    if (lane > 0.62 || rand() < 0.1) continue;
+    if (lane > 0.68 || rand() < 0.06) continue;
     const y = terrainHeight(x, z);
     const sl = Math.max(Math.abs(terrainHeight(x + 6, z) - terrainHeight(x - 6, z)), Math.abs(terrainHeight(x, z + 6) - terrainHeight(x, z - 6))) / 12;
     if (sl > 0.2 || y > 40) continue;
     const w = rr(11, 14.5), d = rr(10.5, 14), ry = (fbm(x * 0.004, z * 0.004, 2) - 0.5) * 0.3 + Math.floor(rand() * 4) * Math.PI / 2; // quarteirões quase alinhados, portas para os quatro lados
-    courtyardHouse(B, M, x, y, z, w, d, ry, { rich: rand() < 0.15, two: rand() < 0.2 });
+    courtyardHouse(B, M, x, y, z, w, d, ry, { rich: rand() < 0.15, two: rand() < (Math.hypot(x + 230, z + 120) < 220 ? 0.4 : 0.2), vine: rand() < 0.45 }); // perto da ágora, mais sobrados
     placed.push([x, z, Math.max(w, d) / 2]);
     n++;
   }
@@ -60,7 +60,7 @@ function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   const c = Math.cos(ry), s = Math.sin(ry);
   const P = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
   const H = 3.2, HX = H + 0.8, T = 0.45; // HX: parede externa, mais alta (o telhado cai para dentro)
-  const wallMat = o.rich || o.visit ? M.plaster : rand() < 0.5 ? M.plasterOchre : M.plaster;
+  const wallMat = o.rich || o.visit ? M.plaster : [M.plaster, M.plaster, M.plasterCream, M.plasterOchre, M.plasterRose][Math.floor(rand() * 5)];
   const big = o.rich || o.visit || w * d > 150;
   const nd = d * 0.36, sd = 2.4, ww = w * 0.27, ew = big ? w * 0.24 : 0;
   const cx0 = -w / 2 + ww, cx1 = w / 2 - ew, cz0 = -d / 2 + sd, cz1 = d / 2 - nd; // o pátio
@@ -125,6 +125,17 @@ function courtyardHouse(B, M, x, y, z, w, d, ry, o = {}) {
   roofX(cz0 - 0.05, cz1, -w / 2 - 0.35, cx0 + 0.4, HX + 0.1, H - 0.1);
   if (ew) roofX(cz0 - 0.05, cz1, w / 2 + 0.35, cx1 - 0.4, HX + 0.1, H - 0.1);
   roofZ(-w / 2 - 0.3, w / 2 + 0.3, -d / 2 - 0.35, cz0 + 0.4, HX + 0.1, H - 0.1);
+  // ---- pérgola com parreira sobre a metade sul do pátio (sombra no verão; a videira dá uva e passa)
+  if (o.vine || o.visit) {
+    const zA = cz0 + 0.25, zB = cz0 + Math.max(1.6, (cz1 - pastas - cz0) * 0.5), xA = cx0 + 0.6, xB = cx1 - 0.6, PH = 2.55;
+    if (xB - xA > 1.5) {
+      for (const lx of [xA, xB]) { const [px, pz] = P(lx, zB); B.geo(new THREE.CylinderGeometry(0.07, 0.09, PH, 6), M.wood, px, y + PH / 2, pz, { uv: false }); addCircle(px, pz, 0.12, y - 1, y + PH); }
+      { const [px, pz] = P((xA + xB) / 2, zB); B.box(M.wood, xB - xA + 0.3, 0.12, 0.12, px, y + PH, pz, { ry }); } // viga sobre os esteios
+      for (let lx = xA; lx <= xB + 0.01; lx += (xB - xA) / Math.max(2, Math.round((xB - xA) / 0.9))) { const [px, pz] = P(lx, (zA + zB) / 2 - 0.1); B.box(M.wood, 0.06, 0.07, zB - zA + 0.4, px, y + PH + 0.12, pz, { ry }); } // caibros até a parede
+      { const pg = new THREE.PlaneGeometry(xB - xA + 0.6, zB - zA + 0.5); pg.rotateX(-Math.PI / 2); const [px, pz] = P((xA + xB) / 2, (zA + zB) / 2); B.geo(pg, M.vine, px, y + PH + 0.21, pz, { ry }); }
+      { const [px, pz] = P(xA + 0.12, zB - 0.05); B.geo(new THREE.CylinderGeometry(0.035, 0.06, PH + 0.2, 5), M.darkWood, px, y + (PH + 0.2) / 2 - 0.05, pz, { uv: false, rz: 0.03 }); } // o tronco da videira subindo pelo esteio
+    }
+  }
   // ---- pátio: chão de terra batida com seixos, altar de Zeus Herkeios e a boca da cisterna
   { const [px, pz] = P((cx0 + cx1) / 2, (cz0 + cz1 - pastas) / 2); B.box(M.marble, 0.75, 0.8, 0.6, px, y, pz, { ry }); addBox(px, pz, 0.8, 0.8, y, y + 0.8); }
   if (big) { const [px, pz] = P(cx1 - 1.2, cz0 + 1.2); const g0 = Math.min(y, terrainHeight(px, pz)) - 0.15; B.geo(new THREE.CylinderGeometry(0.45, 0.5, y + 0.65 - g0, 14), M.poros, px, (y + 0.65 + g0) / 2, pz); addBox(px, pz, 1, 1, y, y + 0.65); } // a boca da cisterna desce até o chão

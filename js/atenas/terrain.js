@@ -165,10 +165,23 @@ export function theaterStep(x, z) {
   return { y, k, aisle };
 }
 
-// altura do chão para andar (colisão): igual ao terreno, mas com os degraus do teatro
+// rampas dos galpões das trirremes (porto.js registra): o piso inclinado de pedra e as muretas dos lados
+export const SLIPS = [];
+const _sv = new THREE.Vector3();
+function slipFloor(x, z) {
+  for (const S of SLIPS) {
+    _sv.set(x, 0, z).applyMatrix4(S.m); // no sistema do galpão (y medido na vertical do ponto até a rampa)
+    if (Math.abs(_sv.x) > S.hw || Math.abs(_sv.z) > S.half) continue;
+    return ((Math.abs(_sv.x) > S.side ? S.hSide : S.hRamp) - _sv.y) / Math.cos(S.th); // (a vertical do ponto no sistema inclinado)
+  }
+  return null;
+}
+// altura do chão para andar (colisão): igual ao terreno, mas com os degraus do teatro e as rampas do porto
 export function groundHeight(x, z) {
   const t = theaterStep(x, z);
-  return t ? t.y : Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05);
+  if (t) return t.y;
+  const sf = SLIPS.length ? slipFloor(x, z) : null;
+  return sf !== null ? sf : Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05);
 }
 
 export function waterLevelAt(x, z) { return coastC(x, z) > -30 ? WATER_Y : -100; }
@@ -198,13 +211,17 @@ function surface(x, z, h, slope) {
   // cidade e ruas de terra batida; nos morros e fora dos muros, grama seca e pedras
   const hillness = (d < 0 ? ss(3, 10, h) : ss(14, 26, h)) + ss(0.12, 0.35, slope) * 0.6;
   const rural = ss(330, 420, Math.hypot(x + 140, z + 60));
-  grass = inland * clamp(hillness * 0.8 + rural * 0.85 + ss(0.5, 0.68, n) * 0.55, 0, 1);
+  const yard = (1 - rural) * (ss(0.36, 0.6, fbm(x * 0.012 + 40, z * 0.012, 2)) * 0.7 + 0.28); // quintais e pracinhas com capim (as mesmas manchas das árvores)
+  grass = inland * clamp(hillness * 0.9 + rural * 0.85 + ss(0.5, 0.68, n) * 0.55 + yard, 0, 1);
   trail = inland * hillness * ss(0.4, 0.6, n2) * 0.7;
+  // o alto da Acrópole: rocha cinza aflorando e cascalho de mármore das obras, não terra marrom
+  const acroTop = ss(46, 52, h) * (1 - ss(0.98, 1.08, Math.hypot(x / 124, z / 57)));
+  if (acroTop > 0) { trail = lerp(trail, 0.8, acroTop); grass *= 1 - acroTop * 0.85; }
   ground = inland * Math.max(0, 1 - grass - trail);
   let r = 1, g = 1, b = 1;
   // nos morros, manchas de terra vermelha (terra rossa) e de mato mais verde (maquis) quebram o tom único
   const n3 = fbm(x * 0.008 + 70, z * 0.008, 3) - 0.5, hillK = inland * clamp(hillness, 0, 1);
-  if (n3 > 0) { r += n3 * 0.5 * hillK; g -= n3 * 0.1 * hillK; b -= n3 * 0.25 * hillK; } else { r += n3 * 0.35 * hillK; b += n3 * 0.2 * hillK; }
+  if (n3 > 0) { r += n3 * 0.3 * hillK; g -= n3 * 0.06 * hillK; b -= n3 * 0.18 * hillK; } else { r += n3 * 0.55 * hillK; g -= n3 * 0.1 * hillK; b += n3 * 0.25 * hillK; } // (o lado negativo: maquis verde-escuro)
   // fora dos muros, no plano: lotes de cevada madura, olivais em terra arada, pasto e restolho, com cercas de mato
   const farm = inland * rural * (1 - ss(0.07, 0.15, slope)) * ss(50, 110, d) * (1 - clamp(hillness, 0, 1));
   if (farm > 0.02) {
@@ -219,6 +236,7 @@ function surface(x, z, h, slope) {
   }
   // na cidade, a terra batida muda de bairro para bairro (mais clara, mais ocre)
   { const pv = (fbm(x * 0.014 + 30, z * 0.014, 2) - 0.5) * inland * (1 - rural); r *= 1 + pv * 0.3; g *= 1 + pv * 0.2; }
+  if (acroTop > 0) { r *= 1 + 0.06 * acroTop; g *= 1 + 0.07 * acroTop; b *= 1 + 0.12 * acroTop; }
   const v = 0.92 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.2;
   const s = sand + ground + grass + trail || 1;
   return [r * v, g * v, b * v, sand / s, ground / s, grass / s, trail / s];
@@ -273,13 +291,18 @@ vec3 cS = tri(tSand, P / 12.0).rgb * vec3(1.05, 1.0, 0.92);
 vec3 cWet = tri(tWet, P / 5.0).rgb * vec3(0.95, 0.92, 0.86);
 float wet = 1.0 - smoothstep(0.08, 0.5, vWP.y + (tri(tSand, P / 7.0).r - 0.5) * 0.3);
 cS = mix(cS, cWet, wet * 0.85);
-vec3 cG = tri(tGround, P / 4.5).rgb * vec3(1.14, 1.06, 0.94); // terra batida clara, de cascalho calcário
-vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(0.9, 1.04, 0.66); // mato verde-oliva
+vec3 cG = tri(tGround, P / 4.5).rgb; cG = mix(cG, vec3(dot(cG, vec3(0.333))), 0.35) * vec3(1.12, 1.09, 1.02); // terra batida clara, de cascalho calcário (menos ocre)
+vec3 cGr = tri(tGrass, P / 5.0).rgb * vec3(0.84, 1.04, 0.62); // mato verde-oliva
 vec3 cT = tri(tTrail, P / 5.0).rgb;
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.12;
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
-vec3 cR = (texture2D(tRock, vWP.zy / 16.0).rgb * bw.x + texture2D(tRock, vWP.xz / 16.0).rgb * bw.y + texture2D(tRock, vWP.xy / 16.0).rgb * bw.z) * vec3(1.25, 1.14, 1.0);
-float strata = 0.88 + 0.12 * sin(vWP.y * 1.3 + sin(vWP.x * 0.07) * 2.0);
+vec3 cR = texture2D(tRock, vWP.zy / 16.0).rgb * bw.x + texture2D(tRock, vWP.xz / 16.0).rgb * bw.y + texture2D(tRock, vWP.xy / 16.0).rgb * bw.z;
+// calcário cinza-azulado da Acrópole e das colinas, com manchas ferrugem (óxido de ferro) escorrendo
+float stain = smoothstep(0.55, 0.85, texture2D(tRock, vec2(vWP.x + vWP.z, vWP.y * 0.25) / 41.0).g);
+cR = mix(cR, vec3(dot(cR, vec3(0.333))), 0.7) * vec3(1.16, 1.15, 1.13);
+cR *= mix(vec3(1.0), vec3(1.1, 0.94, 0.8), stain * 0.7);
+// camadas irregulares (não um listrado de régua): a altura das camadas ondula ao longo da rocha
+float strata = 0.9 + 0.1 * sin(vWP.y * 0.9 + sin(vWP.x * 0.05) * 3.0 + sin(vWP.z * 0.071 + 1.3) * 2.2) * (0.5 + 0.5 * sin(vWP.x * 0.021 + vWP.z * 0.017));
 float rockW = smoothstep(0.28, 0.5, 1.0 - vWN.y);
 diffuseColor.rgb *= mix(baseC, cR * strata * 1.2, rockW);
 // debaixo d'água: areia mais escura e azulada com a profundidade, e as cáusticas

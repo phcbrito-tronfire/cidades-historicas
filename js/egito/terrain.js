@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fbm, smoothstep, lerp, rand, rr, clamp } from '../comum/util.js';
 import { blocked, addCircle, setTerrain, setWater } from '../comum/collision.js';
 import { pressAt } from '../comum/chao.js';
-import { plantKit, plantInstances } from './plantas.js';
+import { plantKit, plantInstances } from '../comum/plantas.js';
 export { pressTerrain } from '../comum/chao.js';
 
 export const WATER_Y = 0;

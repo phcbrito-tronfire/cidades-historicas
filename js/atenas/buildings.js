@@ -50,6 +50,16 @@ export function createMaterials(tex) {
   M.plaster = std({ ...pbrSet(P.cal_branca, 1), color: 0xffffff, roughness: 0.9 }); // cal (foto clareada) M.plaster.userData.uv = { s: 3 };
   M.plasterOchre = std({ ...pbrSet(P.barro_ocre, 1), color: 0xffffff }); M.plasterOchre.userData.uv = { s: 3 };
   M.mudbrick = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xf8e2c0 }); M.mudbrick.userData.uv = { s: 2.5 };
+  // mais tons de reboco nas casas: cal recém-passada, creme e um rosado de barro (antes só branco e ocre)
+  M.plasterCream = std({ ...pbrSet(P.cal_branca, 1), color: 0xf2e4c8, roughness: 0.9 }); M.plasterCream.userData.uv = { s: 3 };
+  M.plasterRose = std({ ...pbrSet(P.barro_ocre, 1), color: 0xf6d6c4 }); M.plasterRose.userData.uv = { s: 3 };
+  // parreira das pérgolas dos pátios: folhas recortadas (alpha), dos dois lados
+  M.vine = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+    for (let i = 0; i < 340; i++) { const px = Math.random() * 256, py = Math.random() * 256, r = 6 + Math.random() * 9; x.fillStyle = ['#3f6a2a', '#5b8a3a', '#2f5a24', '#7a9a48'][i % 4];
+      x.beginPath(); for (let k = 0; k < 5; k++) { const a = (k / 5) * 6.283 + i, rr = r * (k % 2 ? 0.7 : 1); x.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr); } x.fill(); }
+    for (let i = 0; i < 18; i++) { x.fillStyle = '#3a2a4a'; const px = Math.random() * 256, py = Math.random() * 256; for (let k = 0; k < 7; k++) { x.beginPath(); x.arc(px + (k % 3) * 3, py + Math.floor(k / 3) * 3, 1.8, 0, 7); x.fill(); } } // cachos de uva
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return std({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.8 }); })();
   M.socle = std({ ...pbrSet(P.pedra_clara, 1), color: 0xffffff }); M.socle.userData.uv = { s: 2.5 };
   M.wallStone = std({ ...pbrSet(P.pedra_clara, 1), color: 0xfff6e4 }); M.wallStone.userData.uv = { s: 4 };
   M.rock = std({ ...pbrSet(P.rock_face_03, 1), color: 0xf2e6d4, roughness: 0.95 }); M.rock.userData.uv = { s: 3 };
@@ -95,6 +105,7 @@ export function buildCity(scene, tex, available = new Set()) {
     S.owl5 = V(-150, terrainHeight(-150, -98), -98); // no alto do Areópago
   }
   B.build(scene);
+  { const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: M.vine.map, alphaTest: 0.5 }); scene.traverse((o) => { if (o.isMesh && o.material === M.vine) o.customDepthMaterial = depth; }); } // sombra rendada da parreira
   out.floors = floors;
   for (const o of out.extra || []) scene.add(o);
   return out;

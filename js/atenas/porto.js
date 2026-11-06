@@ -2,7 +2,7 @@
 // Os barcos em si são modelos (main.js); aqui ficam o cais, os galpões, as cabanas, as redes e onde cada barco fica.
 import * as THREE from 'three';
 import { addBox, addRotBox } from '../comum/collision.js';
-import { terrainHeight, coastPoint, along } from './terrain.js';
+import { terrainHeight, coastPoint, along, SLIPS } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
 import { doricTemple } from './arquitetura.js';
 
@@ -26,24 +26,55 @@ export function buildHarbor(B, M, out) {
   // escada de pedra para descer à água
   { const p = coastPoint(-212, -1), ry = tangent(-212); for (let i = 0; i < 5; i++) { const q = coastPoint(-212, -1 + i * 0.9); B.box(M.quay, 3, QY - i * 0.35, 0.9, q.x, 0, q.z, { ry }); addBox(q.x, q.z, 3, 1, -1, QY - i * 0.35); } void p; }
 
-  // ---------------- galpões das trirremes (neosoikoi): rampas cobertas que descem até a água
-  for (let k = 0; k < 6; k++) {
-    const a = -342 + k * 7.5, t = tangent(a);
-    const p0 = coastPoint(a, -26), p1 = coastPoint(a, 4);
-    const mx = (p0.x + p1.x) / 2, mz = (p0.z + p1.z) / 2, y0 = Math.max(0.2, terrainHeight(p0.x, p0.z));
-    const tx = Math.cos(t), tz = -Math.sin(t); // ao longo da costa
-    // duas fileiras de pilares de pedra e o telhado de telhas
-    for (let i = 0; i < 6; i++) for (const sd of [-1, 1]) {
-      const u = i / 5, cx = p0.x + (p1.x - p0.x) * u + tx * sd * 3.4, cz = p0.z + (p1.z - p0.z) * u + tz * sd * 3.4;
-      const cy = Math.max(-0.5, terrainHeight(cx, cz));
-      B.box(M.poros, 0.6, y0 + 6 - cy, 0.6, cx, cy, cz);
-      addBox(cx, cz, 0.6, 0.6, cy - 1, y0 + 6);
+  // ---------------- galpões das trirremes (neosoikoi, como os escavados em Zea e Muníquia, no Pireu): cada um é uma
+  // rampa de pedra inclinada que entra no mar, com um trilho de madeira no meio por onde o casco deslizava, duas
+  // fileiras de colunas sobre muretas e um telhado de duas águas, fechado no fundo. A trirreme ficava inteira lá dentro,
+  // de popa para a terra, sem mastro, vela e remos (guardados nos armazéns de apetrechos): fora d'água o casco leve de
+  // pinho não encharcava nem pegava o verme do mar. (Antes: navio de vela armada atravessando um telhado chato e com o
+  // casco enterrado na areia.)
+  const SL = 0.06, rampY = (off) => 0.96 + (-14 - off) * SL; // a rampa acompanha o declive da praia e entra no mar
+  const OB = -44, OF = 3, LEN = OF - OB, MID = (OB + OF) / 2, HW = 4.5, EAVE = 8.1, RISE = 2.6, th = Math.atan(SL);
+  const kR = RISE / HW, hw2 = HW + 0.5, al = Math.atan(kR), rm = new THREE.Matrix4();
+  const gable = (() => { const sh = new THREE.Shape(); sh.moveTo(-hw2, -1.2); sh.lineTo(hw2, -1.2); sh.lineTo(hw2, EAVE - kR * 0.5); sh.lineTo(0, EAVE + RISE); sh.lineTo(-hw2, EAVE - kR * 0.5); sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.6, bevelEnabled: false }); })();
+  const shedBox = [1e9, -1e9, 1e9, -1e9];
+  for (let k = 0; k < 5; k++) {
+    const a = -348 + k * 10, c0 = coastPoint(a, MID), c1 = coastPoint(a, MID + 1), phi = Math.atan2(c1.x - c0.x, c1.z - c0.z);
+    const Fr = new THREE.Matrix4().makeTranslation(c0.x, rampY(MID), c0.z).multiply(rm.makeRotationY(phi)).multiply(rm.makeRotationX(th)); // +z local = para o mar, descendo
+    const at = (u, v, w) => new V3(u, v, w).applyMatrix4(Fr);
+    const fb = (mat, w, h, d, x, y, z, o = {}) => B.box(mat, w, h, d, x, y, z, { frame: Fr, ...o });
+    for (const [u, w] of [[-7, -LEN / 2 - 2], [7, -LEN / 2 - 2], [-7, LEN / 2], [7, LEN / 2]]) { const p = at(u, 0, w); shedBox[0] = Math.min(shedBox[0], p.x); shedBox[1] = Math.max(shedBox[1], p.x); shedBox[2] = Math.min(shedBox[2], p.z); shedBox[3] = Math.max(shedBox[3], p.z); }
+    // a rampa (o bloco desce até o fundo do mar na boca), o trilho do casco e os dormentes engraxados
+    fb(M.quay, 7.9, 5, LEN, 0, -5, 0);
+    fb(M.darkWood, 0.7, 0.12, LEN - 1, 0, 0, 0);
+    for (let w = -LEN / 2 + 1.5; w < LEN / 2 - 1; w += 2.5) fb(M.wood, 3.2, 0.2, 0.3, 0, 0, w);
+    // muretas das colunas, colunas, vigas e o telhado (entre o casco e as colunas fica uma faixa da rampa para andar)
+    for (const sd of [-1, 1]) {
+      fb(M.poros, 1.0, 5.35, LEN, sd * HW, -5, 0);
+      for (let w = -LEN / 2 + 1.5; w <= LEN / 2 - 1; w += 4) {
+        const b = at(sd * HW, 0.35, w), t = at(sd * HW, EAVE - 0.5, w);
+        B.box(M.poros, 0.62, t.y - b.y, 0.62, b.x, b.y, b.z, { ry: phi, noGround: true });
+        addBox(b.x, b.z, 0.62, 0.62, b.y - 1, t.y);
+      }
+      fb(M.darkWood, 0.7, 0.5, LEN + 0.4, sd * HW, EAVE - 0.5, 0.2); // viga sobre as colunas
+      const vLine = EAVE + RISE - kR * hw2 / 2; // meio da água do telhado (a face de baixo apoiada na viga)
+      fb(M.tiles, hw2 / Math.cos(al) + 0.06, 0.22, LEN + 1, sd * hw2 / 2, vLine + 0.11 / Math.cos(al) - 0.11, 0.3, { rz: -sd * al });
     }
-    B.box(M.tiles, 7.6, 0.3, 32, mx, y0 + 6, mz, { ry: t });
-    // rampa de madeira por onde o casco desliza para a água
-    B.box(M.wood, 3, 0.3, 31, mx, Math.min(y0, 0.4) - 0.9, mz, { ry: t, rx: -0.06 });
-    if (k % 2 === 0) out.boats.push({ model: 'trirreme', x: mx, z: mz, y: 0.4, ry: t - Math.PI / 2, len: 34, docked: true, shed: true });
+    fb(M.tiles, 0.55, 0.22, LEN + 1, 0, EAVE + RISE + 0.06, 0.3); // cumeeira
+    fb(M.darkWood, 2 * HW, 0.4, 0.4, 0, EAVE - 0.4, LEN / 2 + 0.2); // linha (tirante) na boca do galpão
+    B.geo(gable, M.poros, 0, 0, -LEN / 2 - 0.6, { frame: Fr }); // parede do fundo, com a empena
+    // piso para andar (rampa e muretas) e o chão de terra rebaixado por baixo
+    SLIPS.push({ m: Fr.clone().invert(), hw: HW + 0.5, half: LEN / 2, hRamp: 0.12, hSide: 0.35, side: HW - 0.5, th });
+    for (let w = -LEN / 2; w < LEN / 2; w += 2) { const p = at(0, 0, w + 1), lo = at(0, 0, w + 2); if (B.onFloor) B.onFloor({ x: p.x, z: p.z, w: 2 * hw2, d: 2, ry: phi, top: lo.y }); }
+    addRotBox(at(0, 0, -LEN / 2 - 0.3).x, at(0, 0, -LEN / 2 - 0.3).z, 2 * hw2, 0.6, phi, rampY(OB) - 1.2, rampY(OB) + EAVE); // parede do fundo
+    // a trirreme: casco apoiado no trilho, a proa para o mar (num galpão a rampa fica vazia, para se ver como era)
+    if (k !== 2) {
+      const c = at(0, 0.26, -LEN / 2 + 23); // centro do casco (32 m: da popa, a 7 m do fundo, à proa, sobre a água)
+      out.boats.push({ model: 'trirreme', x: c.x, z: c.z, y: c.y, ry: phi - Math.PI / 2, tilt: -th, len: 32, docked: true, shed: true });
+      addRotBox(c.x, c.z, 4.6, 28, phi, c.y - 1, c.y + 3.2); // o casco (ninguém atravessa o navio)
+    }
   }
+  out.exclusions.push(shedBox); // (nada de mato e árvore nascendo nas rampas)
   // empório: armazém comprido atrás do cais (grãos do mar Negro, vinho, azeite, madeira)
   {
     const p = coastPoint(-255, -40), ry = tangent(-255);

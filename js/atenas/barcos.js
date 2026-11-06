@@ -102,6 +102,7 @@ export class Boats {
     else g.position.set(d.x, d.y ?? WATER_Y, d.z);
     g.rotation.y = b.yaw;
     if (d.beached) { g.rotation.z = rr(-0.12, 0.12); g.rotation.x = rr(-0.05, 0.05); }
+    if (d.tilt) g.rotation.z = d.tilt; // no galpão: a proa para baixo, como a rampa
     this.scene.add(g);
     // calado de cada modelo: quanto o casco afunda (o pivô é a linha d'água)
     const sink = { trirreme: -0.9, mercante: -0.7, barco_remo: -0.02, barco_pesca: -0.3 }[d.model] ?? -0.3; // bote: o piso de dentro fica acima da água (senão o mar "entra" no barco)
@@ -111,6 +112,12 @@ export class Boats {
       m.position.y = d.beached || d.shed ? 0 : sink;
       if (!empty && !d.beached && !d.shed && (d.model === 'barco_remo' || d.model === 'barco_pesca')) holder.add(hullMask(m, 0.12)); // tampa invisível nos barcos abertos: a água não aparece dentro do casco (nas galeras os remos alargariam a tampa e furariam o mar)
       holder.add(m);
+      if (d.shed && !empty) { // no galpão: sem mastro, verga, vela, cordame e remos (as peças que passam da largura do casco)
+        g.updateMatrixWorld(true); const inv = g.matrixWorld.clone().invert(), v = new V3();
+        m.traverse((o) => { if (!o.isMesh) return; const Mo = o.matrixWorld.clone().premultiply(inv), p = o.geometry.attributes.position; let z0 = 1e9, z1 = -1e9, y1 = -1e9;
+          for (let i = 0; i < p.count; i += 3) { v.fromBufferAttribute(p, i).applyMatrix4(Mo); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); y1 = Math.max(y1, v.y); }
+          if (z1 - z0 > d.len * 0.22 || y1 > d.len * 0.36) o.visible = false; });
+      }
       // altura do convés: um raio de cima para baixo no ponto onde o explorador fica
       g.updateMatrixWorld(true);
       // altura do piso num ponto do barco: o primeiro chão (normal para cima, no mundo) abaixo da altura do convés

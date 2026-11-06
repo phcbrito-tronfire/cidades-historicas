@@ -51,6 +51,8 @@ const SPECIES = {
 export async function buildVegetation(scene, tex, city) {
   const ex = city.exclusions;
   const isEx = (x, z) => distToWall(x, z) < 7 || distToStreets(x, z) < 6 || ex.some((e) => x > e[0] && x < e[1] && z > e[2] && z < e[3]) || (city.houses || []).some(([hx, hz, r]) => (hx - x) ** 2 + (hz - z) ** 2 < (r + 2) ** 2);
+  // encosta da Acrópole (entre o pé da rocha e a muralha de cima): mato e arbustos verdes, sem árvores grandes
+  const acroSlope = (x, z) => { const r = Math.hypot(x / 124, z / 57); return r > 1.06 && r < 1.65 && slope(x, z) < 0.9 && distToStreets(x, z) > 5 && !ex.some((e) => e[0] !== -135 && x > e[0] && x < e[1] && z > e[2] && z < e[3]); }; // (fora do teatro, do Odeon e dos caminhos)
   const slope = (x, z) => Math.max(Math.abs(terrainHeight(x + 3, z) - terrainHeight(x - 3, z)), Math.abs(terrainHeight(x, z + 3) - terrainHeight(x, z - 3))) / 6;
   const lists = { oliveira: [], cipreste: [], platano: [], pinheiro: [] };
   // olivais: fileiras orientadas por talhão, fora da cidade e longe da praia
@@ -64,17 +66,22 @@ export async function buildVegetation(scene, tex, city) {
   }
   // no máximo ~800 oliveiras, sorteadas por todos os olivais (desempenho)
   if (lists.oliveira.length > 800) { const keep = 800 / lists.oliveira.length; lists.oliveira = lists.oliveira.filter(() => rand() < keep); }
-  // dentro dos muros: árvores isoladas nos quintais e nas pracinhas
-  for (let i = 0; i < 160; i++) {
-    const x = rr(-560, 330), z = rr(-410, 260);
-    if (!insideCity(x, z) || isEx(x, z) || slope(x, z) > 0.2) continue;
-    const y = terrainHeight(x, z), k = rand();
-    lists[k < 0.5 ? 'oliveira' : k < 0.8 ? 'cipreste' : 'pinheiro'].push({ x, y, z, ry: rand() * 6, s: rr(0.75, 1.1) });
-  }
-  // pinheiros nas colinas (Mouseion, Pnyx, Ninfas) e nos morros de fora
-  for (let i = 0; i < 400 && lists.pinheiro.length < 140; i++) {
+  // dentro dos muros: árvores nos quintais, nas pracinhas, nos santuários de bairro e em volta das fontes. A Atenas
+  // de Péricles era apertada, mas não careca: oliveira, figueira, videira e cipreste nos pátios, plátano onde havia
+  // água (antes 160 tentativas, umas 60 árvores para a cidade inteira, e o chão parecia todo de terra)
+  { let n = 0;
+    for (let i = 0; i < 5000 && n < 950; i++) {
+      const x = rr(-560, 330), z = rr(-410, 260);
+      if (!insideCity(x, z) || isEx(x, z) || slope(x, z) > 0.25) continue;
+      if (fbm(x * 0.012 + 40, z * 0.012, 2) < 0.38) continue; // em manchas (bairros com mais quintais), não em grade
+      const y = terrainHeight(x, z), k = rand();
+      lists[k < 0.5 ? 'oliveira' : k < 0.78 ? 'cipreste' : k < 0.9 ? 'platano' : 'pinheiro'].push({ x, y, z, ry: rand() * 6, s: rr(0.75, 1.1) }); n++;
+    } }
+  // pinheiros-de-alepo nas colinas (Mouseion, Pnyx, Ninfas, Areópago) e nos morros de fora, em bosques
+  for (let i = 0; i < 3000 && lists.pinheiro.length < 520; i++) {
     const x = rr(-790, 470), z = rr(-470, 600), y = terrainHeight(x, z);
-    if (y < 18 || isEx(x, z) || slope(x, z) > 0.35 || coastC(x, z) > -40) continue;
+    if (y < 9 || isEx(x, z) || slope(x, z) > 0.4 || coastC(x, z) > -40) continue;
+    if (fbm(x * 0.01 + 7, z * 0.01 + 3, 2) < 0.45) continue;
     if (Math.abs(x) < 140 && Math.abs(z) < 80) continue; // a rocha da Acrópole não tem árvores
     lists.pinheiro.push({ x, y, z, ry: rand() * 6, s: rr(0.8, 1.2) });
   }
@@ -115,18 +122,20 @@ export async function buildVegetation(scene, tex, city) {
   const grassTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d'); for (let i = 0; i < 30; i++) { const px = 4 + Math.random() * 56; x.strokeStyle = `hsl(${40 + Math.random() * 20},${35 + Math.random() * 25}%,${45 + Math.random() * 20}%)`; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px, 128); x.quadraticCurveTo(px + (Math.random() - 0.5) * 12, 70, px + (Math.random() - 0.5) * 14, 20 + Math.random() * 40); x.stroke(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const grassG = (() => { const a = new THREE.PlaneGeometry(0.9, 0.7); a.translate(0, 0.35, 0); const b = a.clone(); b.rotateY(Math.PI / 2); return mergeGeometries([a, b]); })();
   const bushes = [], grass = [];
-  for (let i = 0; i < 9000 && (bushes.length < 1400 || grass.length < 6000); i++) {
+  for (let i = 0; i < 16000 && (bushes.length < 3200 || grass.length < 6000); i++) {
     const x = rr(-790, 470), z = rr(-470, 760);
     const c = coastC(x, z); if (c > -6) continue;
     const y = terrainHeight(x, z); if (y < 0.5) continue;
-    if (isEx(x, z) || (Math.abs(x) < 132 && Math.abs(z) < 64)) continue;
-    const city = insideCity(x, z);
-    if (!city && bushes.length < 1400 && (y > 16 || rand() < 0.3)) bushes.push({ x, y, z });
+    if (isEx(x, z) && !acroSlope(x, z)) continue;
+    if (Math.abs(x) < 124 && Math.abs(z) < 54) continue; // (o alto da rocha da Acrópole, sem mato)
+    const city = insideCity(x, z), sl = slope(x, z);
+    // maquis (lentisco, carvalho-quermes, murta, tomilho): nas encostas, inclusive dentro dos muros, e nos morros de fora
+    if (bushes.length < 3200 && (acroSlope(x, z) ? rand() < 0.9 : !city ? (y > 12 || rand() < 0.35) : (sl > 0.12 || y > 14) ? rand() < 0.7 : rand() < 0.14)) bushes.push({ x, y, z });
     else if (grass.length < 6000 && (!city || rand() < 0.15)) grass.push({ x, y, z, beach: c > -60 });
   }
   const dummy = new THREE.Object3D(), col = new THREE.Color();
   const B = new THREE.InstancedMesh(bushG, new THREE.MeshStandardMaterial({ map: bushTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.85 }), bushes.length);
-  bushes.forEach((p, i) => { const s = rr(0.6, 1.4); dummy.position.set(p.x, p.y - 0.05, p.z); dummy.rotation.set(0, rand() * 6, 0); dummy.scale.set(s, s * rr(0.7, 1.1), s); dummy.updateMatrix(); B.setMatrixAt(i, dummy.matrix); B.setColorAt(i, col.setHSL(0.16 + rand() * 0.06, 0.25 + rand() * 0.15, 0.6 + rand() * 0.2)); });
+  bushes.forEach((p, i) => { const s = rr(0.6, 1.4); dummy.position.set(p.x, p.y - 0.05, p.z); dummy.rotation.set(0, rand() * 6, 0); dummy.scale.set(s, s * rr(0.7, 1.1), s); dummy.updateMatrix(); B.setMatrixAt(i, dummy.matrix); B.setColorAt(i, col.setHSL(0.18 + rand() * 0.09, 0.28 + rand() * 0.2, 0.55 + rand() * 0.22)); });
   const G = new THREE.InstancedMesh(grassG, new THREE.MeshStandardMaterial({ map: grassTex, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.95 }), grass.length);
   grass.forEach((p, i) => { const s = rr(0.6, 1.3); dummy.position.set(p.x, p.y - 0.05, p.z); dummy.rotation.set(0, rand() * 3, 0); dummy.scale.set(s, s * rr(0.7, 1.2), s); dummy.updateMatrix(); G.setMatrixAt(i, dummy.matrix); G.setColorAt(i, p.beach ? col.setHSL(0.14, 0.3, 0.7) : col.setHSL(0.11 + rand() * 0.04, 0.4, 0.75 + rand() * 0.15)); });
   for (const m of [B, G]) { m.receiveShadow = true; m.computeBoundingSphere(); scene.add(m); }
