@@ -524,15 +524,16 @@ export function buildCity(scene, tex) {
     const ang = Math.atan2(z1 - z0, x1 - x0);
     for (let i = 0; i < n; i++) {
       const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
-      const y = G(x, z);
-      B.box(M.limestone, 5.4, 1.2, 4.5, x, y - 0.4, z, { ry: -ang });
+      const ca = Math.cos(ang) * 2.7, sa = Math.sin(ang) * 2.7, hs = [G(x, z), G(x + ca, z + sa), G(x - ca, z - sa)], hi = Math.max(...hs), lo = Math.min(...hs);
+      B.box(M.limestone, 5.4, hi - lo + 1.0, 4.5, x, lo - 0.6, z, { ry: -ang, noGround: true }); addBox(x, z, 4.5, 4.5, -5, hi + 0.4);
     }
   };
   // Templos do Império Antigo (já com 1.300 anos em 1250 a.C.): paredes grossas de calcário revestidas de granito rosa
   // na parte de baixo, duas portas na fachada leste, a sala de pilares de granito por dentro (com as vigas e o teto
   // de lajes, algumas já caídas) e o piso de alabastro. Antes eram caixas lisas de pedra, que pareciam concreto.
   const oldTemple = (cx, cz, w, d, h) => {
-    let y = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) y = Math.min(y, G(cx + a * w / 2, cz + b * d / 2)); y -= 0.3;
+    let y = -Infinity, lo = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) { const g = G(cx + a * w / 2, cz + b * d / 2); y = Math.max(y, g); lo = Math.min(lo, g); } y -= 0.15;
+    if (y - lo > 0.3) { B.box(M.limestone, w + 1.2, y - lo + 0.6, d + 1.2, cx, lo - 0.6, cz, { noGround: true }); addBox(cx, cz, w + 1.2, d + 1.2, -5, y); } // o terraço de pedra embaixo, do lado que desce
     const t = 2.2, hw = w / 2, hd = d / 2, dw = 2.2;
     B.box(M.white, w - 0.4, 0.32, d - 0.4, cx, y, cz); // piso de alabastro
     const wall = (x0, x1, z0, z1) => { const ww = x1 - x0, dd = z1 - z0, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
@@ -555,7 +556,7 @@ export function buildCity(scene, tex) {
       B.box(M.limestone, ww + 0.02, 0.6, dd + 0.02, x0 + ww / 2, y + h - 0.6, z0 + dd / 2); addBox(x0 + ww / 2, z0 + dd / 2, ww, dd, y + h - 0.6, y + h);
     }
     // blocos caídos do alto, encostados nas paredes por fora
-    for (let i = 0; i < 5; i++) { const sd = rand() < 0.5 ? -1 : 1, bx = cx + rr(-hw, hw), bz = cz + sd * (hd + rr(1.2, 2.6)); B.box(M.limestone, rr(1.4, 2.2), rr(0.9, 1.3), rr(1.2, 1.8), bx, G(bx, bz) - 0.15, bz, { ry: rr(0, 3) }); addBox(bx, bz, 1.8, 1.6, -5, G(bx, bz) + 1.0); }
+    for (let i = 0; i < 5; i++) { const sd = rand() < 0.5 ? -1 : 1, bx = cx + rr(-hw, hw), bz = cz + sd * (hd + rr(1.2, 2.6)); const by2 = Math.max(G(bx - 1, bz - 1), G(bx + 1, bz - 1), G(bx - 1, bz + 1), G(bx + 1, bz + 1)) - 0.15; B.box(M.limestone, rr(1.4, 2.2), rr(0.9, 1.3), rr(1.2, 1.8), bx, by2, bz, { ry: rr(0, 3) }); addBox(bx, bz, 1.8, 1.6, -5, by2 + 1.1); }
     return y;
   };
   oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5); // templo funerário de Quéfren
@@ -588,7 +589,7 @@ export function buildCity(scene, tex) {
   // canteiro da restauração do príncipe Khaemwaset
   const cx = -184, cz = -10, cy = G(cx, cz);
   for (let i = 0; i < 14; i++) {
-    const w = rr(1.4, 2.2), x = cx + rr(-10, 4), z = cz + rr(-10, 8), y = G(x, z);
+    const w = rr(1.4, 2.2), x = cx + rr(-10, 4), z = cz + rr(-10, 8), y = Math.max(G(x, z), G(x - w / 2, z - w / 2), G(x + w / 2, z - w / 2), G(x - w / 2, z + w / 2), G(x + w / 2, z + w / 2)); // (no lado alto da encosta: antes afundavam até 1,9 m)
     B.box(M.limestone, w, rr(0.9, 1.3), w * rr(0.9, 1.4), x, y - 0.1, z, { ry: rand() });
     addBox(x, z, w, w, -5, y + 1.1);
   }
@@ -602,7 +603,7 @@ export function buildCity(scene, tex) {
     addBox(sx, sz, 4, 2, -5, sy + 2.1); }
   // tendas
   for (let i = 0; i < 4; i++) { // barraca dos trabalhadores: duas águas de esteira sobre uma cumeeira e duas forquilhas
-    const x = cx - 14 + i * 7, z = cz + 14, y = Math.min(G(x, z - 2.4), G(x, z + 2.4), G(x - 1.6, z), G(x + 1.6, z)) - 0.05, H = 2.2, hw = 1.7;
+    const x = [-170, -164, -170, -164][i], z = [-22, -22, -14, -14][i], y = Math.min(G(x, z - 2.4), G(x, z + 2.4), G(x - 1.6, z), G(x + 1.6, z)) - 0.05, H = 2.2, hw = 1.7; // (o acampamento no chão plano ao pé do canteiro: duas ficavam na encosta da borda do planalto, meio enterradas)
     const sl = Math.hypot(H, hw), ang = Math.atan2(H, hw);
     for (const sd of [-1, 1]) B.box(M.esteira, 0.05, sl, 4.6, x + sd * hw / 2, y + H / 2 - sl / 2, z, { rz: sd * (Math.PI / 2 - ang) });
     B.geo(new THREE.CylinderGeometry(0.06, 0.06, 5.0, 6), M.wood, x, y + H + 0.02, z, { rx: Math.PI / 2 }); // a cumeeira

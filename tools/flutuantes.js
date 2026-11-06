@@ -105,3 +105,16 @@ export function coplanar({ tol = 0.004, minArea = 0.02 } = {}) {
   }
   return [...hits.entries()].sort((x, y) => y[1].n - x[1].n).map(([k, e]) => `${e.n}x ${k} ${e.ex}`);
 }
+
+// Peças enterradas: o chão passa por cima da base de um lado (peça pequena na encosta, meio enfiada na terra). Não
+// conta fundações, muros de arrimo e peças grandes (h > 3,5 m), que descem de propósito. buried()
+export function buried({ depth = 0.35, maxH = 3.5 } = {}) {
+  const P = globalThis.__pieces; if (!P) return 'abra a página com ?scan=1';
+  const by = new Map();
+  for (const p of P) { const b = p.b, h = b.max.y - b.min.y; if (h > maxH || h < 0.15) continue;
+    const sx = (b.max.x - b.min.x) / 2, sz = (b.max.z - b.min.z) / 2; if (sx < 0.3 && sz < 0.3) continue; const cx = b.min.x + sx, cz = b.min.z + sz;
+    let hi = -Infinity, lo = Infinity; for (const [dx, dz] of [[-sx, -sz], [sx, -sz], [-sx, sz], [sx, sz], [0, 0]]) { const t = terrainAt(cx + dx, cz + dz); hi = Math.max(hi, t); lo = Math.min(lo, t); }
+    if (waterAt(cx, cz) > b.min.y) continue;
+    const sunk = hi - b.min.y; if (sunk > depth && hi - lo > 0.3 && b.max.y - hi < h * 0.8) { const k = p.src.split(' < ')[0]; const e = by.get(k) || { n: 0, max: 0, ex: '' }; e.n++; if (sunk > e.max) { e.max = sunk; e.ex = `(${cx.toFixed(1)}, ${cz.toFixed(1)})`; } by.set(k, e); } }
+  return [...by.entries()].sort((a, b) => b[1].max - a[1].max).map(([k, e]) => `${e.n}x até ${e.max.toFixed(2)} m ${e.ex} ${k}`);
+}
