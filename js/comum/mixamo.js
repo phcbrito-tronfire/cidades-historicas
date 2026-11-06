@@ -33,7 +33,7 @@ export async function loadAnims(names) {
   await Promise.all(names.filter((n) => !CLIPS[n]).map(async (n) => {
     try {
       const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb')); const clip = g.animations[0]; clip.name = n;
-      for (const tr of clip.tracks) { tr.name = tr.name.replace(/^mixamorigd+/, 'mixamorig'); if (/Hips.position$/.test(tr.name)) { const v = tr.values; const x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } } }
+      for (const tr of clip.tracks) { tr.name = tr.name.replace(/^mixamorig\d+/, 'mixamorig'); if (/Hips.position$/.test(tr.name)) { const v = tr.values; const x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } } }
       clip.tracks = clip.tracks.filter((tr) => !/.scale$/.test(tr.name) && !(/.position$/.test(tr.name) && !/Hips/.test(tr.name)));
       CLIPS[n] = clip;
     } catch (e) { console.warn('animação', n, e); }
@@ -51,6 +51,8 @@ export async function loadHumanModel(_unused, tex, onProgress) {
     loadHat(L).then(tick),
     loadHelmet(L),
     loadGear(L, 'galea', 'assets/models/estatuas/galea.glb', [0.3, 0.45]),
+    loadGear(L, 'kabuto', 'assets/models/japao/kabuto.glb', [0.6, 0.72], { back: true }), // (só a cúpula: abaixo dela a aba de nuca, acima a crista)
+    L.loadAsync(ver('assets/models/japao/katana.glb')).then((g) => { KATANA = g.scene; KATANA.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.envMapIntensity = 1.2; } }); }).catch(() => {}), // a katana, a bainha e a wakizashi (Sketchfab, CC BY)
     ...names.map(async (n) => { const g = await L.loadAsync(ver(DIR + n + '.glb')); BASES[n] = g.scene; tick(); }),
     ...ANIMS.map(async (n) => {
       const g = await L.loadAsync(ver(DIR + 'anim/' + n + '.glb'));
@@ -102,19 +104,21 @@ async function loadHat(L) {
 
 // peças de cabeça modeladas (Sketchfab, CC BY): mede a abertura numa faixa de altura (frac) para caber na cabeça
 const GEAR = {};
-async function loadGear(L, name, url, frac) {
+let KATANA = null;
+async function loadGear(L, name, url, frac, { back = false } = {}) { // back: mede só a metade de trás (sem a crista e a máscara da frente)
   try {
     const g = await L.loadAsync(ver(url)), sc = g.scene; sc.updateMatrixWorld(true);
     const v = new THREE.Vector3(), pts = []; sc.traverse((o) => { if (o.isMesh) { o.castShadow = true; const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone()); } });
     const b = new THREE.Box3().setFromPoints(pts), h = b.max.y - b.min.y; let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= frac[0] && f < frac[1]) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
-    GEAR[name] = { scene: sc, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, y: b.min.y + h * (frac[0] + frac[1]) / 2, w: x1 - x0 };
+    const zMid = (b.min.z + b.max.z) / 2;
+    for (const q of pts) { const f = (q.y - b.min.y) / h; if (f >= frac[0] && f < frac[1] && (!back || q.z < zMid)) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); } }
+    GEAR[name] = { scene: sc, cx: (x0 + x1) / 2, cz: back ? z0 + (x1 - x0) / 2 : (z0 + z1) / 2, y: b.min.y + h * (frac[0] + frac[1]) / 2, w: x1 - x0 };
   } catch (e) { /* sem o modelo: a peça feita de formas simples */ }
 }
 // coloca a peça: a faixa medida fica 'depth' abaixo do topo da cabeça, com 'gap' de folga de cada lado
-function gearOn(name, { depth = 0.1, gap = 0.012, tilt = 0, dz = 0, tint = null, metal = null } = {}, headFit, attach) {
+function gearOn(name, { depth = 0.1, gap = 0.012, tilt = 0, dz = 0, tint = null, metal = null, scale = 1 } = {}, headFit, attach) {
   const G = GEAR[name]; if (!G) return null;
-  const fit = headFit(), k = (fit.rx * 2 + gap * 2) / G.w, inner = G.scene.clone(); inner.position.set(-G.cx, -G.y, -G.cz);
+  const fit = headFit(), k = ((fit.rx * 2 + gap * 2) / G.w) * scale, inner = G.scene.clone(); inner.position.set(-G.cx, -G.y, -G.cz);
   if (tint) inner.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.color.multiply(new THREE.Color(tint)); } });
   // metal: limite de metalicidade — metal puro sem reflexo do ambiente sai quase preto (as abas da gálea escureciam o rosto)
   if (metal !== null) inner.traverse((n) => { if (n.isMesh) { n.material = n.material.clone(); n.material.metalness = Math.min(n.material.metalness ?? 1, metal); n.material.roughness = Math.max(n.material.roughness ?? 0, 0.32); } });
@@ -898,7 +902,7 @@ export function makeHumanoid(o = {}) {
   }
 
   // o traje do explorador (e as outras roupas dele): moldado sobre o corpo, em roupas.js
-  if (look) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
+  if (look) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, katana: KATANA, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
 
   const h = o.height || (female ? rr(1.58, 1.7) : rr(1.66, 1.8));
   const natural = headTop;
@@ -981,7 +985,8 @@ export function animateHumanoid(r, dt, speed, mode, t) {
   let T; let fade = 6;
   if (r.once) { r.once.t -= dt; if (r.once.t <= 0) r.once = null; }
   if (r.once) { T = { [r.once.name]: 1 }; fade = 10; }
-  else if (LOCO_MODES.has(mode)) T = locoTargets(mode === 'idle' ? 0 : speed, r.walkClip);
+  else if (LOCO_MODES.has(mode)) { T = locoTargets(mode === 'idle' ? 0 : speed, r.walkClip);
+    if (r.locoSet) { const T2 = {}; for (const [k, v] of Object.entries(T)) { const n = r.locoSet[k] && CLIPS[r.locoSet[k]] ? r.locoSet[k] : k; T2[n] = (T2[n] || 0) + v; } T = T2; } } // (outra postura de andar: com a katana em guarda)
   else if (mode[0] === '@') T = { [CLIPS[mode.slice(1)] ? mode.slice(1) : 'idle']: 1 }; // '@nome': um laço qualquer, pelo nome
   else { let mm = mode; if (mode === 'swim' && Math.abs(speed) < 0.3) mm = 'swimIdle'; T = { [MODE_CLIP[mm] || 'idle']: 1 }; fade = mode === 'air' ? 9 : 5; }
   const names = new Set([...Object.keys(r.w), ...Object.keys(T)]);

@@ -1,11 +1,23 @@
 // O explorador: movimento (setas), pulo (espaço), nado no Nilo e câmera em terceira pessoa
 import * as THREE from 'three';
-import { makeHumanoid, animateHumanoid, playOnce } from './mixamo.js';
+import { makeHumanoid, animateHumanoid, playOnce, loadAnims } from './mixamo.js';
+import { makeTrail } from './katana.js';
 import { groundAt, waterAt, moveWithCollision, solidAt, terrainAt, blocked } from './collision.js';
 import { clamp, lerp, angleLerp } from './util.js';
 import { wornLook } from './roupas.js';
 
 const BREATH = 60; // fôlego do mergulho, em segundos
+
+// ---- a katana (armadura de samurai, ganha ao concluir o Japão): F saca e golpeia; apertando F de novo durante o
+// golpe, o próximo emenda (corte descendente → corte forte → corte baixo → giro); correndo, o ataque saltando.
+// Golpes do pacote "Great Sword" do Mixamo (espada de duas mãos, como a katana). Com a espada na mão o explorador anda
+// e corre em guarda; parado um tempo (ou ao nadar, falar, montar), embainha. O saque é da cintura, num movimento só
+// com o primeiro corte (como no iaijutsu) — o saque do Mixamo é o das costas, que não serve para katana.
+const KT_CLIPS = ['kt_guarda', 'kt_andar', 'kt_correr', 'kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro', 'kt_salto', 'kt_combo'];
+const KT_CHAIN = ['kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro'];
+// por golpe: quanto do clipe usar (o fim é a volta para a guarda), quando o próximo pode emendar, e a janela do rastro
+const KT_INFO = { kt_desce: { end: 0.85, next: 0.5, cut: [0.18, 0.5] }, kt_forte: { end: 0.82, next: 0.5, cut: [0.25, 0.55] }, kt_baixo: { end: 0.8, next: 0.5, cut: [0.3, 0.55] }, kt_giro: { end: 0.85, next: 0.6, cut: [0.25, 0.65] }, kt_salto: { end: 0.8, next: 0.6, cut: [0.35, 0.65] } };
+const KT_LOCO = { idle: 'kt_guarda', andar: 'kt_andar', andar_f: 'kt_andar', trotar: 'kt_correr', correr: 'kt_correr' };
 
 // tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
 // inclinado para a frente e para cima (~50°), sem atravessar o braço
@@ -33,6 +45,8 @@ export class Player {
     this.bounds = [-370, 370, -370, 370]; // limite do mundo andável (x0, x1, z0, z1), definido pela cidade
     this.events = { splash: () => {}, ripple: () => {}, step: () => {} };
     this.rippleT = 0; this.stepT = 0; this.swingT = 0;
+    this.kat = { drawn: false, clip: null, t: 0, dur: 0, combo: 0, queued: false, idle: 0, model: null, parts: null, swooshed: false }; this.trail = makeTrail(scene);
+    if (this.look === 'japao') loadAnims(KT_CLIPS);
     this.bindInput();
   }
 
@@ -86,7 +100,52 @@ export class Player {
     for (const [a, b] of [[old.handL, r.handL], [old.handR, r.handR]]) for (const c of [...a.children]) b.add(c);
     Object.assign(old, { model: r.model, mixer: r.mixer, act: r.act, handR: r.handR, handL: r.handL, armR: r.armR, bones: r.bones, tail: r.tail, skirt: r.skirt, walkClip: r.walkClip, once: null, w: {} });
     this.wetMats = null; this.limbs = null; this._layerWet = false; this.look = id;
+    this.kat.drawn = false; this.kat.clip = null; this.rig.locoSet = null; if (id === 'japao') loadAnims(KT_CLIPS);
     r.model.traverse((n) => { if (n.isSkinnedMesh) n.frustumCulled = false; });
+  }
+
+  // as peças da katana no corpo atual (o corpo muda ao trocar de roupa)
+  katParts() {
+    const K = this.kat, m = this.rig.model;
+    if (K.model !== m) { K.model = m; const g = (n) => m.getObjectByName(n); K.parts = g('kt_mao') ? { hand: g('kt_mao'), sheathed: g('kt_embainhada'), tip: g('kt_ponta'), mid: g('kt_meio') } : null; }
+    return K.parts;
+  }
+  sheathe() { const K = this.kat, P = this.katParts(); K.drawn = false; K.clip = null; K.queued = false; this.rig.locoSet = null; this.rig.speeds = null; if (P) { P.hand.visible = false; P.sheathed.visible = true; } }
+  strike(name) {
+    const K = this.kat, info = KT_INFO[name], a = this.rig.act(name); if (!a) return false;
+    K.clip = name; K.t = 0; K.dur = a.getClip().duration * info.end; K.swooshed = false; K.idle = 0;
+    playOnce(this.rig, name, K.dur);
+    return true;
+  }
+  updateKatana(dt, speed) {
+    const K = this.kat, P = this.katParts();
+    // a dica da tecla, só com a armadura
+    const keys = document.getElementById('keys'); if (keys) { const has = / · F katana/.test(keys.textContent); if (this.look === 'japao' && !has) keys.textContent = keys.textContent.replace(' · V roupas', ' · F katana · V roupas'); else if (this.look !== 'japao' && has) keys.textContent = keys.textContent.replace(' · F katana', ''); }
+    if (this.look !== 'japao' || !P) { this.katReq = false; this.trail.update(null, null, false); return; }
+    const can = !this.swimming && !this.climb && !this.locked && !this.riding && !this.holding;
+    if (!can && (K.drawn || K.clip)) this.sheathe();
+    if (this.katReq) { this.katReq = false; if (can) K.queued = true; }
+    if (K.clip) { // golpeando
+      K.t += dt;
+      const info = KT_INFO[K.clip], f = K.t / (K.dur / info.end), cutting = f > info.cut[0] && f < info.cut[1];
+      if (cutting && !K.swooshed) { K.swooshed = true; this.events.swoosh?.(); }
+      this.trail.update(P.tip, P.mid, cutting);
+      if (K.queued && f > info.next) { K.queued = false; K.combo = (K.combo + 1) % KT_CHAIN.length; this.strike(KT_CHAIN[K.combo]); } // emenda o próximo, sem voltar à guarda
+      else if (K.t >= K.dur) { K.clip = null; this.rig.once = null; }
+      return;
+    }
+    this.trail.update(P.tip, P.mid, false);
+    if (K.queued) { // começa um golpe (se a espada está na bainha, sai já cortando)
+      K.queued = false;
+      if (!K.drawn) { K.drawn = true; P.hand.visible = true; P.sheathed.visible = false; this.rig.locoSet = KT_LOCO; }
+      if (speed > 5.5 && this.onGround && this.strike('kt_salto')) { K.combo = -1; return; }
+      K.combo = 0; this.strike(KT_CHAIN[0]); return;
+    }
+    if (K.drawn) { // em guarda, andando ou correndo com a espada; parado um tempo, embainha
+      this.rig.speeds = { kt_andar: clamp(speed / 1.5, 0.6, 1.6), kt_correr: clamp(speed / 5.2, 0.7, 1.5) };
+      K.idle = speed < 0.2 ? K.idle + dt : 0;
+      if (K.idle > 7) this.sheathe();
+    }
   }
 
   updateTorch(dt, t) {
@@ -188,6 +247,7 @@ export class Player {
     addEventListener('keydown', (e) => {
       if (gameKeys.includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
+      if (e.code === 'KeyF' && !e.repeat) this.katReq = true; // golpe de katana (só com a armadura de samurai)
       if (e.code === 'Space' && !e.repeat) this.spaceTap = true; // (um toque rápido entre dois quadros não se perde)
       syncMods(e);
     });
@@ -284,6 +344,7 @@ export class Player {
     if (has) target = (this.swimming ? (run ? 4.6 : 2.9) : walk ? 1.6 : run ? 8.6 : 4.8) * (analog < 0.5 ? 0.45 : analog);
     if (this.wading) target *= 0.55;
     if (has && turnDiff > 1.2 && this.onGround) target *= 0.35; // meia-volta: desacelera e gira
+    if (this.kat.clip) target *= this.kat.clip === 'kt_salto' ? 0.7 : 0.18; // golpeando: o passo é o do golpe
     // curva suave (arranque progressivo, sem degrau) com um piso linear para não ficar eterna no fim
     const grounded = this.onGround || this.swimming;
     const k = target > this.speed ? (grounded ? (this.swimming ? 1.6 : 3.2) : 0.6) : (grounded ? (this.swimming ? 2.2 : 4) : 0.3);
@@ -403,6 +464,7 @@ export class Player {
     this.rig.holding = !!this.holding && !this.swimming;
     if (this.swingT > 0) { this.swingT = 0; playOnce(this.rig, 'Sword_Attack', 0.9); }
     if (this.pickT > 0) { this.pickT = 0; playOnce(this.rig, 'PickUp_Table', 0.8); }
+    this.updateKatana(dt, realSpeed);
     animateHumanoid(this.rig, dt, realSpeed, mode, t);
     this.rig.root.rotation.y = this.facing;
     // inclina o corpo nas curvas e ao acelerar

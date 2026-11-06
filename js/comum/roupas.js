@@ -1,8 +1,9 @@
 // As roupas do explorador: o traje de sempre (jaqueta de couro, chapéu, bolsa a tiracolo, coldre e chicote), duas
 // variações de campo e de deserto, e as três roupas conquistadas ao terminar uma cidade (nobre egípcio, hoplita
-// grego, legionário romano). Tudo o que encosta no corpo é moldado sobre ele (vestir.js) e se dobra com ele.
+// grego, legionário romano, samurai). Tudo o que encosta no corpo é moldado sobre ele (vestir.js) e se dobra com ele.
 import * as THREE from 'three';
 import { makeFitter, leatherTex, clothTex, metalTex } from './vestir.js';
+import { swordParts } from './katana.js';
 
 export const LOOKS = {
   explorer: { name: 'Explorador', desc: 'Jaqueta de couro, chapéu de feltro, bolsa de lona a tiracolo, coldre e chicote.', base: 'explorador', hair: 'fedora' },
@@ -10,9 +11,10 @@ export const LOOKS = {
   deserto: { name: 'Explorador do deserto', desc: 'Camisa henley creme, coldre de ombro, munhequeira de couro e calça de lona.', base: 'brian' },
   egito: { name: 'Nobre egípcio', desc: 'Peruca de tranças, túnica de linho fino, saiote plissado com faixa, colar largo de contas, braceletes e sandálias de papiro.', base: 'bryce', sandals: true, unlock: 'egito' },
   grecia: { name: 'Hoplita ateniense', desc: 'Elmo coríntio de bronze, couraça com os músculos batidos no metal, saiote de tiras de couro, quíton vermelho, grevas e o escudo redondo.', base: 'bryce', sandals: true, unlock: 'atenas', extras: ['helmet', 'aspis'] },
+  japao: { name: 'Samurai (armadura completa)', desc: 'Armadura tōsei-gusoku de lâminas laqueadas de preto amarradas com cordões de seda vermelha: kabuto com a crista dourada e a máscara menpō, couraça (dō), ombreiras (sode), saiote de placas (kusazuri), coxotes, caneleiras e braçais, e o par de espadas, katana e wakizashi. F saca a katana e golpeia; F de novo emenda os golpes.', base: 'brian', sandals: true, unlock: 'japao' },
   roma: { name: 'Legionário romano', desc: 'Gálea de ferro, couraça de placas (lorica segmentata), lenço de lã, túnica vermelha, cinturão com avental de tiras, gládio na bainha e cáligas.', base: 'bryce', sandals: true, unlock: 'roma' },
 };
-export const LOOK_ORDER = ['explorer', 'campo', 'deserto', 'egito', 'grecia', 'roma'];
+export const LOOK_ORDER = ['explorer', 'campo', 'deserto', 'egito', 'grecia', 'roma', 'japao'];
 
 // ---- tingir a textura original do modelo mantendo o relevo: cor nova × (brilho do texel ÷ brilho médio da peça)
 const lumCache = new WeakMap();
@@ -135,7 +137,7 @@ export function graftHead(model, meshes, bones, donorRoot) {
 // o explorador é moreno (pardo): o tom vai por cima da textura de pele do Mixamo, que é clara, no rosto e no corpo
 export const SKIN = 0xd6a27a;
 export function dress(ctx, lookId) {
-  const out = lookId === 'explorer' ? dressExplorer(ctx) : lookId === 'campo' || lookId === 'deserto' ? dressDrake(ctx, lookId === 'deserto') : lookId === 'egito' || lookId === 'grecia' || lookId === 'roma' ? dressAncient(ctx, lookId) : [];
+  const out = lookId === 'explorer' ? dressExplorer(ctx) : lookId === 'campo' || lookId === 'deserto' ? dressDrake(ctx, lookId === 'deserto') : lookId === 'egito' || lookId === 'grecia' || lookId === 'roma' ? dressAncient(ctx, lookId) : lookId === 'japao' ? dressSamurai(ctx) : [];
   const tone = new THREE.Color(SKIN), done = new Set();
   for (const me of ctx.meshes) { if (!/Body/.test(me.name) || done.has(me.material)) continue; const c = me.material.clone(); c.color.multiply(tone); me.material = c; done.add(c); }
   return out;
@@ -405,6 +407,105 @@ function dressAncient(ctx, id) {
   }
   return out;
 }
+// ---------------------------------------------------------------------------
+// Samurai (Edo, tōsei-gusoku): tudo o que é armadura é moldado no corpo e se dobra com ele; o capacete e a máscara
+// são o modelo "Samurai Helmet" (I_Live, Sketchfab, CC BY) e as espadas, o "Katanas" (Andrewlxlxl99, CC BY)
+function dressSamurai(ctx) {
+  const { meshes, bonePos, hips } = ctx;
+  const byPart = (re) => meshes.find((me) => re.test(me.name) && !/Graft/.test(me.name));
+  const shirt = byPart(/Shirt/), pants = byPart(/Pants|Shorts/), shoes = byPart(/Sneakers|Shoes/);
+  if (shoes) shoes.visible = false; // (sandálias de palha, feitas em mixamo.js)
+  const neck = bonePos('Neck'), ch = bonePos('Spine2'), hy = hips.y, out = [];
+  // por baixo: o quimono de armadura (yoroi-hitatare) e a calça, quase pretos
+  if (shirt) retint(shirt, 0x1e1618, { rough: 0.95, detail: 0.6, lo: 0.7, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.12 }), grainScale: 9 });
+  if (pants) retint(pants, 0x1c1618, { rough: 0.95, detail: 0.6, lo: 0.7, hi: 1.2, grain: clothTex('#8a8a8a', { weave: 0.12 }), grainScale: 9 });
+  const fit = fitterFor(ctx, /Shirt|Pants|Shorts|Body/);
+  const lames = M(0xffffff, { map: lamesTex('#0e0e10', '#a01c18'), roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide }); // laca preta e cordões de seda vermelha (aka-ito odoshi), como a máscara e a aba do kabuto
+  const lacquer = M(0x16161a, { roughness: 0.22, metalness: 0.2 });
+  const iron = M(0xffffff, { map: metalTex('#4a4c50'), metalness: 0.75, roughness: 0.42 });
+  const goldM = M(0xc9a044, { metalness: 0.9, roughness: 0.3 });
+  const cord = M(0xffffff, { map: clothTex('#c9a044', { weave: 0.1 }), roughness: 0.7 }); // (o cordão da cintura dourado, sobre o vermelho)
+  const armpit = (a, y) => !(y > ch.y - 0.03 && Math.abs(Math.sin(a)) > 0.74);
+  // dō: a couraça de lâminas laqueadas, com a placa lisa do peito (muna-ita) e as alças dos ombros (watagami)
+  fit.shell(lames, { y0: hy + 0.005, y1: ch.y + 0.06, rows: 26, cols: 64, off: 0.022, r0: 0.34, cx: hips.x, cz: hips.z, uvScale: [10, 5], mask: armpit });
+  fit.shell(lacquer, { y0: ch.y + 0.055, y1: ch.y + 0.15, rows: 6, cols: 64, off: 0.024, r0: 0.34, cx: hips.x, cz: hips.z, uvScale: [4, 1], mask: (a) => Math.abs(Math.sin(a)) < 0.55 }); // (só até as clavículas: mais alto, a placa lascava no pescoço)
+  // (as alças dos ombros, watagami, ficam por baixo das ombreiras)
+  fit.band(goldM, waist(ch.y + 0.058), { w: 0.012, th: 0.004, off: 0.03, n: 64, closed: true }); // a borda dourada da muna-ita
+  fit.band(cord, waist(hy + 0.035), { w: 0.03, th: 0.006, off: 0.03, n: 64, closed: true }); // o cordão que prende o dō na cintura
+  // medidas da cintura (para o saiote de placas)
+  const hit = (x, z) => fit.anchor(V3(hips.x + x, hy - 0.03, hips.z + z), V3(hips.x, hy - 0.03, hips.z));
+  const f = hit(0, 0.6), b = hit(0, -0.6), l = hit(0.6, 0), r = hit(-0.6, 0);
+  const Rz = f && b ? (f.p.z - b.p.z) / 2 : 0.13, Rx = l && r ? (l.p.x - r.p.x) / 2 : 0.17, cz = f && b ? (f.p.z + b.p.z) / 2 : hips.z, cx = l && r ? (l.p.x + r.p.x) / 2 : hips.x;
+  const ell = (a) => 1 / Math.sqrt((Math.sin(a) / Rx) ** 2 + (Math.cos(a) / Rz) ** 2);
+  const grid = (C, R, at) => { const pos = [], uv = [], idx = [];
+    for (let i = 0; i <= R; i++) for (let k = 0; k <= C; k++) { const [p, u, v] = at(i / R, k / C); pos.push(p.x, p.y, p.z); uv.push(u, v); }
+    for (let i = 0; i < R; i++) for (let k = 0; k < C; k++) { const p = i * (C + 1) + k; idx.push(p, p + 1, p + C + 2, p, p + C + 2, p + C + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g; };
+  // kusazuri: sete painéis de cinco lâminas pendurados da cintura, abrindo para fora (os da frente se mexem com as coxas)
+  const NP = 7, span = (Math.PI * 2) / NP;
+  for (let i = 0; i < NP; i++) {
+    const a = i * span, a0 = a - span * 0.47, a1 = a + span * 0.47, leg = Math.sin(a) >= 0 ? 'LeftUpLeg' : 'RightUpLeg', kf = Math.max(0, Math.cos(a)) * 0.45 + Math.abs(Math.sin(a)) * 0.2;
+    const g = grid(6, 6, (t, k) => { const aa = a0 + (a1 - a0) * k, rr = ell(aa) + 0.04 + 0.07 * t; return [V3(cx + Math.sin(aa) * rr, hy + 0.03 - 0.27 * t, cz + Math.cos(aa) * rr), k * 1.6, (1 - t) * 5]; });
+    fit.solid(lames, g, { w: { Hips: 1 } }, { w: { Hips: 1 - kf, [leg]: kf } });
+  }
+  // sode: as ombreiras grandes, penduradas dos ombros por fora dos braços
+  for (const sd of [1, -1]) {
+    const S = sd > 0 ? 'Left' : 'Right', A = bonePos(S + 'Arm');
+    const g = grid(6, 6, (t, k) => { const zz = -0.11 + 0.22 * k; return [V3(A.x + sd * (0.085 + 0.035 * (1 - (zz / 0.11) ** 2) + 0.05 * t), A.y + 0.04 - 0.25 * t, A.z + zz), k * 1.5, (1 - t) * 6]; });
+    fit.solid(lames, g, { w: { Spine2: 1 } }, { w: { [S + 'Shoulder']: 0.7, [S + 'Arm']: 0.3 } });
+  }
+  // kote: braçais de placas de ferro sobre a manga; haidate: o avental de placas nas coxas; suneate: caneleiras de talas
+  const ringAt = (mat, bone, child, t, w, rad = 0.1) => { const a = bonePos(bone), bb = bonePos(child); fit.band(mat, ring(a.clone().lerp(bb, t), bb.clone().sub(a), rad), { w, th: 0.005, off: 0.004, n: 28, closed: true }); };
+  for (const S of ['Left', 'Right']) { for (const t of [0.15, 0.38, 0.6, 0.82]) ringAt(iron, S + 'ForeArm', S + 'Hand', t, 0.045); for (const t of [0.4, 0.65]) ringAt(iron, S + 'Arm', S + 'ForeArm', t, 0.04, 0.11); }
+  const splint = M(0xffffff, { map: splintTex(), roughness: 0.3, metalness: 0.2 });
+  for (const S of ['Left', 'Right']) {
+    const k = bonePos(S + 'Leg'), u = bonePos(S + 'UpLeg'), ft = bonePos(S + 'Foot');
+    fit.shell(lames, { y0: k.y + 0.07, y1: u.y - 0.11, rows: 10, cols: 24, off: 0.012, r0: 0.12, cx: (k.x + u.x) / 2, cz: (k.z + u.z) / 2, uvScale: [3, 4], mask: (a) => Math.cos(a) > -0.2 });
+    fit.shell(splint, { y0: ft.y + 0.07, y1: k.y + 0.03, rows: 14, cols: 28, off: 0.01, r0: 0.11, cx: (k.x + ft.x) / 2, cz: (k.z + ft.z) / 2 + 0.01, uvScale: [1, 1], mask: (a) => Math.cos(a) > -0.4 });
+  }
+  out.push(...fit.finish());
+  // as espadas: a katana e a wakizashi na faixa, do lado esquerdo, o fio para cima e a ponta da bainha para trás;
+  // e a katana da mão direita (escondida: aparece ao sacar)
+  const K = ctx.katana, part = (n) => K?.getObjectByName(n)?.clone();
+  const kParts = K ? null : swordParts(), wParts = K ? null : swordParts({ L: 0.5, handle: 0.18, short: true });
+  const sheath = new THREE.Group(); sheath.name = 'kt_bainha';
+  const saya = part('saya') || kParts.saya, inK = part('katana') || kParts.sword.clone(); inK.name = 'kt_embainhada';
+  sheath.add(saya, inK); sheath.scale.setScalar(1.3); // (o mesmo tamanho da katana da mão)
+  ctx.attach('Hips', sheath, V3(hips.x + 0.15, hy + 0.06, hips.z + 0.11), [4.25, 0.12, 0.1]);
+  const waki = part('wakizashi') || (() => { const g = new THREE.Group(); g.add(wParts.sword, wParts.saya); return g; })();
+  ctx.attach('Hips', waki, V3(hips.x + 0.1, hy + 0.09, hips.z + 0.13), [4.4, 0.18, 0.06], [1.2, 1.2, 1.2]);
+  const hand = new THREE.Group(); hand.name = 'kt_mao'; hand.visible = false;
+  // a pegada medida na guarda das animações de espada de duas mãos: a lâmina segue o eixo da mão esquerda para a direita
+  // (as duas mãos no cabo, a direita junto da tsuba), para fora do corpo; a katana em tamanho real (~1,08 m)
+  // eixo do cabo medido nos golpes (média de 6 quadros: guarda, andar, cortes descendente, forte e baixo), da mão esquerda
+  // para a direita, no sistema da mão; o fio para o lado de fora do punho
+  const inner = new THREE.Group(); inner.name = 'kt_pega'; hand.add(inner);
+  { const y = V3(-0.522, -0.021, 0.853).normalize(), z = V3(0, -1, 0).addScaledVector(y, 0.021).normalize(), x = new THREE.Vector3().crossVectors(y, z).normalize(); z.crossVectors(x, y).normalize(); inner.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)); }
+  const KS = 1.3, G0 = V3(0, 0.035, 0); /* o punho direito logo abaixo da tsuba: o cabo passa dentro das duas mãos */ const hk = part('katana') || kParts.sword; hk.position.copy(G0); hk.scale.setScalar(KS); inner.add(hk);
+  const tip = new THREE.Object3D(); tip.name = 'kt_ponta'; tip.position.copy(G0).add(V3(0, 0.62 * KS, 0)); inner.add(tip);
+  const mid = new THREE.Object3D(); mid.name = 'kt_meio'; mid.position.copy(G0).add(V3(0, 0.25 * KS, 0)); inner.add(mid);
+  ctx.attach('RightHand', hand, bonePos('RightHand').add(V3(-0.07, -0.01, 0.02)), [0, 0, -Math.PI / 2]);
+  // o kabuto com a máscara: o cabelo fica por baixo
+  for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false;
+  ctx.gear('kabuto', { depth: 0.018, gap: 0.014, scale: 0.8, tilt: 0.04, dz: -0.02, metal: 0.5 }); // (ajustado olhando de frente e de lado: a máscara rente ao rosto, os olhos sob a aba)
+  return out;
+}
+function lamesTex(lac, cordC) { // lâminas laqueadas com a amarração cerrada de cordões de seda (kebiki-odoshi): uma lâmina por repetição
+  if (_rt.has('lm' + lac + cordC)) return _rt.get('lm' + lac + cordC); const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  x.fillStyle = lac; x.fillRect(0, 0, S, S);
+  const g = x.createLinearGradient(0, 0, 0, S * 0.3); g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(1, 'rgba(255,255,255,0.02)'); x.fillStyle = g; x.fillRect(0, 0, S, S * 0.3); // a borda de cima, brilhando
+  for (let i = 0; i < S; i += 8) { x.fillStyle = cordC; x.fillRect(i + 1, S * 0.34, 6, S * 0.66); x.fillStyle = 'rgba(0,0,0,0.35)'; x.fillRect(i + 6, S * 0.34, 1, S * 0.66); x.fillStyle = 'rgba(255,255,255,0.12)'; x.fillRect(i + 1, S * 0.34, 1, S * 0.66); }
+  x.fillStyle = 'rgba(0,0,0,0.55)'; x.fillRect(0, S * 0.3, S, 6); x.fillRect(0, S - 4, S, 4);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; _rt.set('lm' + lac + cordC, t); return t;
+}
+function splintTex() { // caneleiras: talas verticais laqueadas, amarradas por cordões no alto e embaixo
+  if (_rt.has('sp')) return _rt.get('sp'); const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  x.fillStyle = '#a01c18'; x.fillRect(0, 0, S, S);
+  for (let i = 0; i < S; i += 32) { const g = x.createLinearGradient(i, 0, i + 28, 0); g.addColorStop(0, '#0c0c10'); g.addColorStop(0.5, '#2a2a30'); g.addColorStop(1, '#0c0c10'); x.fillStyle = g; x.fillRect(i + 2, 0, 28, S); }
+  x.fillStyle = '#d8b04a'; for (const y of [18, S - 30]) x.fillRect(0, y, S, 6); x.fillStyle = '#c9a044'; x.fillRect(0, 0, S, 6);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; _rt.set('sp', t); return t;
+}
+
 // texturas das roupas antigas
 function canvasPleats(base) { // linho plissado: pregas finas na vertical (u dá a volta no saiote)
   if (_rt.has('pl' + base)) return _rt.get('pl' + base); const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
@@ -428,7 +529,7 @@ function strapsTex(leather, edge) { // tiras de couro (ptéryges) com franja e b
 // O guarda-roupa: as roupas de explorador valem desde o começo; a de cada cidade é ganha ao concluir todos os
 // objetivos dela e fica para sempre (vale nas outras cidades também). V abre o guarda-roupa (ou o botão na pausa).
 const KEY = 'cidades-historicas:roupas', WEAR = 'cidades-historicas:roupa';
-const CITY_NAME = { egito: 'Mênfis', atenas: 'Atenas', roma: 'Roma' };
+const CITY_NAME = { egito: 'Mênfis', atenas: 'Atenas', roma: 'Roma', japao: 'o Japão' };
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } } };
 export const isUnlocked = (id) => { const L = LOOKS[id]; return !!L && (!L.unlock || store.get(KEY, []).includes(id)); };
 export function wornLook() { const id = store.get(WEAR, 'explorer'); return isUnlocked(id) ? id : 'explorer'; }
@@ -445,7 +546,7 @@ export function setupWardrobe({ player, city, quests, objectives, toast }) {
   quests.listeners.push(check); check();
   // a ajuda das teclas e os créditos ganham a linha das roupas
   const keys = document.getElementById('keys'); if (keys && !/V roupas/.test(keys.textContent)) keys.textContent = keys.textContent.replace(' · M mapa', ' · V roupas · M mapa');
-  const cr = document.getElementById('credits'); if (cr && !/Emiliano/.test(cr.textContent)) cr.insertAdjacentHTML('beforeend', ' · roupas do explorador: chapéu "Hat" de Emiliano.Herrera.Galindo, gálea "Roman Legionnaire Helmet" de AlbertoGalindo3D (Sketchfab, CC BY 4.0).');
+  const cr = document.getElementById('credits'); if (cr && !/Emiliano/.test(cr.textContent)) cr.insertAdjacentHTML('beforeend', ' · roupas do explorador: kabuto "Samurai Helmet" de I_Live e espadas "Katanas" de Andrewlxlxl99 (Sketchfab, CC BY), chapéu "Hat" de Emiliano.Herrera.Galindo, gálea "Roman Legionnaire Helmet" de AlbertoGalindo3D (Sketchfab, CC BY 4.0).');
   // a janela
   const box = document.createElement('div'); box.id = 'wardrobe'; box.hidden = true;
   box.style.cssText = 'position:fixed;inset:0;z-index:45;display:grid;place-items:center;background:rgba(8,5,2,.55);backdrop-filter:blur(3px);padding:16px';

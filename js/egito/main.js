@@ -146,6 +146,7 @@ async function main() {
 
   await step(0.8, 'Preparando o explorador...');
   const player = new Player(scene, camera);
+  player.events.swoosh = () => audio?.swoosh?.(); // (o golpe de katana)
   player.bounds = [-WORLD, WORLD, -WORLD, WORLD];
   player.makeTorch(tex.glow);
   player.place(84, 0, -Math.PI / 2);

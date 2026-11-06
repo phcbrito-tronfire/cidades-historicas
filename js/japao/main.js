@@ -109,6 +109,7 @@ async function main() {
 
   await step(0.82, 'Preparando o explorador...');
   const player = new Player(scene, camera);
+  player.events.swoosh = () => audio?.swoosh?.(); // (o golpe de katana)
   player.bounds = BOUNDS;
   player.makeTorch(tex.glow, 'chochin'); // (no Japão de Edo, à noite se andava com a lanterna de papel, não com tocha)
   const start = city.spots.start;
