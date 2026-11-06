@@ -191,7 +191,8 @@ export function buildVillage(B, M, out) {
       house(B, M, out, { x, z: L.z, ry, w, d, roof: 'thatch', front: 'shoji', engawa: true, kind: 'oshi', doma: 4.2 });
       for (let i = 1; i <= 5; i++) { const px = edge + L.side * (1.6 + i * 2.0), py = terrainHeight(px, L.z); B.box(M.stoneLight, 0.9, 0.42, 0.7, px, py - 0.3, L.z + (i % 2 ? 0.3 : -0.3)); } // o caminho de pedras (enterradas)
       gardenPine(B, M, edge + L.side * 7, terrainHeight(edge + L.side * 7, L.z - 6), L.z - 6, rr(0.9, 1.2));
-      toro(B, M, out, edge + L.side * 8.5, terrainHeight(edge + L.side * 8.5, L.z + 5), L.z + 5, 0.9);
+      { const dr = out.houses[out.houses.length - 1]?.door, sz = dr && dr[1] > L.z ? -1 : 1; /* a lanterna do jardim fica do lado oposto à porta: antes ela ficava no caminho do portão até a porta e o explorador travava nela */
+        toro(B, M, out, edge + L.side * 9.5, terrainHeight(edge + L.side * 9.5, L.z + sz * 3.5), L.z + sz * 3.5, 0.9); }
       kura(B, M, out, x + L.side * 2, L.z + (k % 2 ? 1 : -1) * (w / 2 + 3.6), ry, 4.6, 3.6);
       out.oshi.push({ x, z: L.z, ry, gate: [gx + L.side * 1.4, L.z], garden: [edge + L.side * 5, L.z + 3] });
     }

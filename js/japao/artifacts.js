@@ -102,16 +102,22 @@ export class Artifacts {
     this.glowMat = new THREE.SpriteMaterial({ map: gt, color: 0xffe2a0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
     const beamGeo = new THREE.CylinderGeometry(0.04, 0.25, 7, 10, 1, true); beamGeo.translate(0, 3.5, 0);
     this.beamMat = new THREE.MeshBasicMaterial({ color: 0xffd88a, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    this.beamHi = this.beamMat.clone(); this.beamHi.opacity = 0.4; this.beamHi.color.set(0xffc850); // (a luz que sai de dentro das casas: mais forte, para se ver de dia)
     this.items = ARTIFACTS.map((def) => {
       const w = W[def.where] || [0, 0, 50];
       const p = w[2] === 'fundo' ? new THREE.Vector3(w[0], terrainAt(w[0], w[1]) + 0.1, w[1]) : freeSpot(w[0], w[1], w[2]);
       const g = new THREE.Group(); g.position.copy(p);
       const m = model(def.kind); m.scale.setScalar(2.2); m.position.y = 0.25; g.add(m);
       const glow = new THREE.Sprite(this.glowMat); glow.scale.setScalar(1.6); glow.position.y = 0.55; g.add(glow);
-      const beam = new THREE.Mesh(beamGeo, this.beamMat); g.add(beam);
+      const beam = new THREE.Mesh(beamGeo, this.beamMat); g.add(beam); let top = null;
+      // dentro de casa a coluna de luz sobe até passar do telhado: da rua se vê de qual casa ela sai (antes ficava escondida)
+      if (['oshiroom', 'inn', 'printshop', 'office'].includes(def.where)) {
+        beam.scale.set(1.8, 2.8, 1.8); beam.material = this.beamHi;
+        top = new THREE.Sprite(this.glowMat); top.scale.setScalar(4); top.position.y = 15; g.add(top); /* um brilho acima do telhado */
+      }
       g.traverse((o) => { if (o.isSprite || o === beam) o.layers.set(1); });
       scene.add(g);
-      const it = { def, g, m, beam, glow, base: p.y };
+      const it = { def, g, m, beam, glow, top, base: p.y };
       if (this.found.has(def.id)) g.visible = false;
       return it;
     });
@@ -195,7 +201,7 @@ export class Artifacts {
     for (const it of this.items) {
       if (!it.g.visible) continue;
       const d2 = (it.g.position.x - p.x) ** 2 + (it.g.position.z - p.z) ** 2;
-      it.beam.visible = d2 < 60 * 60 && d2 > 4;
+      it.beam.visible = d2 < 60 * 60 && d2 > 4; if (it.top) it.top.visible = d2 < 90 * 90 && d2 > 64;
       it.m.rotation.y = t * 0.8;
       it.m.position.y = 0.25 + Math.sin(t * 2 + it.base) * 0.05;
       it.glow.material.opacity = 0.6 + Math.sin(t * 3) * 0.25;
