@@ -3,6 +3,7 @@
 // virado para +x (o "rosto" do quadro local), escalado pelo comprimento pedido e copiado em cada lugar.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { precompile, track } from './aquecer.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ver } from './util.js';
 
@@ -39,13 +40,14 @@ async function loadModel(L, name) {
     const m = o.material; if (!def.keepMetal) { m.roughness = def.rough; m.metalness = def.metal ?? 0; } m.envMapIntensity = def.env ?? 0.6;
     if (def.tint) m.color.setRGB(...def.tint);
   });
+  await precompile(unit); // (os shaders prontos antes de o modelo entrar em cena: nada de travar quando ele aparece)
   return unit;
 }
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 // um modelo que falhe ao carregar não derruba o jogo: aquela escultura só não aparece
-const unitModel = (n) => (cache[n] ??= loadModel(loader, n).catch((e) => { console.warn('escultura', n, e); return null; }));
+const unitModel = (n) => (cache[n] ??= track(loadModel(loader, n)).catch((e) => { console.warn('escultura', n, e); return null; }));
 
 // uma cópia do modelo com o tamanho pedido (comprimento, ou altura se fit 'y'), olhando para +x
 export async function sculptureInstance(name, size) {

@@ -188,6 +188,7 @@ export class Player {
     addEventListener('keydown', (e) => {
       if (gameKeys.includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
+      if (e.code === 'Space' && !e.repeat) this.spaceTap = true; // (um toque rápido entre dois quadros não se perde)
       syncMods(e);
     });
     addEventListener('keyup', (e) => { this.keys.delete(e.code); syncMods(e); });
@@ -307,14 +308,18 @@ export class Player {
       const surfY = wl - 0.72; // cabeça e ombros acima da linha d'água; as mãos rompem a superfície a cada braçada
       // mergulho: SEGURAR o Espaço mantém o explorador embaixo d'água (desce até perto do fundo e fica ali, nadando
       // para onde quiser); soltar o Espaço faz subir. Ctrl desce mais rápido.
+      const tap = this.spaceTap && !this.locked; this.spaceTap = false;
       const sp = this.key('Space') && !this.locked;
-      if (sp && !this.spaceHeld && !this.diving && depth > 2.4) { this.diving = true; this.surfacing = false; this.diveVy = -2.4; this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.4); }
+      // (antes só com mais de 2,4 m de água; entre 1 e 2,4 m o Espaço não fazia nada e parecia que o mergulho falhava;
+      // agora a partir de 2 m, o mínimo para a cabeça ficar embaixo d'água)
+      if ((sp || tap) && (!this.spaceHeld || tap) && !this.diving && depth > 2.0) { this.diving = true; this.surfacing = false; this.diveVy = -2.4; this.events.ripple(new THREE.Vector3(p.x, wl + 0.02, p.z), 1.4); }
       if (this.diving) this.surfacing = !sp;
       this.spaceHeld = sp;
       if (this.diving) {
         // segurando: desce devagar até ~0,9 m do fundo e se mantém ali; nadando para a frente, a câmera ainda inclina a
         // trajetória (olhar para baixo = descer mais, para cima = subir um pouco)
-        const nearFloor = p.y < ground + 0.9;
+        const hover = clamp(depth - 1.95, 0.3, 0.9); // (em água de 2 m o explorador desce quase até o fundo, senão a cabeça fica de fora)
+        const nearFloor = p.y < ground + hover;
         let vyT = (nearFloor ? 0 : -1.1) - Math.sin(this.camPitch - 0.28) * 0.9 * this.speed + (this.key('ControlLeft', 'ControlRight') ? -1.6 : 0);
         if (nearFloor) vyT = Math.max(vyT, 0);
         if (this.surfacing || this.breath <= 0) vyT = 1.9;
@@ -334,7 +339,8 @@ export class Player {
       this.vy = 0;
       if (depth < 1.0 && !this.diving) { this.swimming = false; p.y = Math.max(ground, p.y); }
     } else {
-      if (this.onGround && this.key('Space') && !this.locked && !this.jumpHeld) {
+      const tapJ = this.spaceTap; this.spaceTap = false;
+      if (this.onGround && (this.key('Space') || tapJ) && !this.locked && !this.jumpHeld) {
         this.vy = 6.4; this.onGround = false; this.jumpHeld = true; this.events.step(true);
       }
       if (!this.key('Space')) this.jumpHeld = false;
@@ -362,7 +368,9 @@ export class Player {
     const inWater = this.swimming || (this.wading && depth > 0.7);
     if (inWater !== this._layerWet) {
       this._layerWet = inWater;
-      this.rig.root.traverse((n) => { if (!n.isSprite) n.layers.set(inWater ? 2 : 0); });
+      // (a luz da tocha fica onde está: mudar a camada de uma luz muda quantas luzes cada câmera vê — o reflexo da
+      // água via uma a menos — e o navegador recompilava todos os materiais refletidos: ~3 s de travada ao entrar no mar)
+      this.rig.root.traverse((n) => { if (!n.isSprite && !n.isLight) n.layers.set(inWater ? 2 : 0); });
     }
 
     // ondas na água
@@ -443,7 +451,7 @@ export class Player {
     this.speed = speed; this.swimming = false; this.diving = false; this.wading = false; this.onGround = true; this.vy = 0;
     this.mode = mode;
     this.rig.model.rotation.set(0, 0, 0); this.pitch = 0; this.lean = 0;
-    if (this._layerWet) { this._layerWet = false; this.rig.root.traverse((n) => { if (!n.isSprite) n.layers.set(0); }); }
+    if (this._layerWet) { this._layerWet = false; this.rig.root.traverse((n) => { if (!n.isSprite && !n.isLight) n.layers.set(0); }); }
     this.rig.holding = !!this.holding;
     animateHumanoid(this.rig, dt, 0, mode, t);
     this.updateTorch(dt, t);

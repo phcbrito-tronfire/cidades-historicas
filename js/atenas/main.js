@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
-import { warmUp } from '../comum/aquecer.js';
+import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
@@ -94,6 +94,7 @@ async function main() {
   const skelUpdate = THREE.Skeleton.prototype.update;
   THREE.Skeleton.prototype.update = function () { if (this._frame === FRAME.n) return; this._frame = FRAME.n; skelUpdate.call(this); };
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.15, 20000);
+  setLateWarm(renderer, scene, camera); // modelos que carregam depois compilam em segundo plano
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
   const sun = new THREE.DirectionalLight(0xffffff, 3);
@@ -201,6 +202,7 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   water.layers.set(1);
+  await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
   await step(1, 'Pronto!');

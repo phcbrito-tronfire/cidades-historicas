@@ -7,6 +7,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ver, mulberry32, clamp, lerp, angleLerp } from './util.js';
+import { precompile, track } from './aquecer.js';
 
 const DIR = 'assets/models/fauna/';
 // yaw/rot: endireita o modelo e vira a cabeça para +z; fit: medida usada para o tamanho (comprimento ou altura);
@@ -25,7 +26,7 @@ const DEFS = {
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = {};
 function unit(name) {
-  return (cache[name] ??= loader.loadAsync(ver(DIR + name + '.glb')).then((g) => {
+  return (cache[name] ??= track(loader.loadAsync(ver(DIR + name + '.glb'))).then(async (g) => {
     const d = DEFS[name] || {};
     const inner = g.scene; if (d.rot) inner.rotation.set(...d.rot);
     const turn = new THREE.Group(); turn.rotation.y = d.yaw || 0; turn.add(inner);
@@ -36,6 +37,7 @@ function unit(name) {
     const u = new THREE.Group(); u.scale.setScalar(k); u.add(norm);
     let skinned = false;
     u.traverse((o) => { if (!o.isMesh) return; if (o.isSkinnedMesh) skinned = true; o.frustumCulled = !o.isSkinnedMesh; o.castShadow = false; o.receiveShadow = false; if (o.material) o.material.envMapIntensity = 0.4; });
+    await precompile(u); // (os bichos do mar só aparecem perto da água: compilar já, sem travar quando surgem)
     return { u, clips: g.animations, skinned };
   }).catch((e) => { console.warn('fauna', name, e); return null; }));
 }

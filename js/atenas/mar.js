@@ -133,7 +133,7 @@ export async function buildSea(scene, tex, { onSting }) {
       // peixes: a maior parte na baía do Falero, onde se nada e mergulha (o resto espalhado pelo golfo)
       : r() < 0.7 ? seaSpot(r, 20, 190, 8, 75, 1.8, 14) : seaSpot(r, -100, 320, 15, 150, 2.5, 25),
   });
-  life.populate([['cardume', 14, 4, 'school'], ['pargo', 26, 0.55, 'fish'], ['golfinho', 4, 2.3, 'dolphin'], ['tartaruga', 5, 1.1, 'turtle'], ['aguaviva', 12, 0.45, 'jelly']]);
+  await life.populate([['cardume', 14, 4, 'school'], ['pargo', 26, 0.55, 'fish'], ['golfinho', 4, 2.3, 'dolphin'], ['tartaruga', 5, 1.1, 'turtle'], ['aguaviva', 12, 0.45, 'jelly']]);
 
   return {
     life, site, urchins: urchinPts,
