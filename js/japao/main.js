@@ -137,6 +137,7 @@ async function main() {
   festas.onSeen = (id) => quests.complete(id);
   actors.onArrow = (from) => festas.fire(from);
   quests.refs = { mount };
+  actors.audio = audio; // (o urso bufa)
   actors.onBear = () => { quests.complete('urso'); ui.toast('Um urso-negro! No Japão ele vive nas florestas das montanhas. Fique longe e não corra: ele costuma fugir de gente.', 'quest', 8000); };
   setupWardrobe({ player, city: 'japao', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 

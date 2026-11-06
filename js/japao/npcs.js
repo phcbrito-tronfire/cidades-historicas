@@ -142,8 +142,13 @@ export class Actors {
       for (let i = 0; i < (crow ? 7 : 2); i++) { const b = makeBird(crow ? 0x141414 : 0x5a4030); b.off = new V3(rr(-8, 8), rr(-3, 3), rr(-8, 8)); b.ph = rand() * 6; b.g.scale.setScalar(crow ? 1.3 : 2.6); this.scene.add(b.g); birds.push(b); }
       this.flocks.push({ center: c, r: rr(30, 90), w: rr(0.04, 0.09) * (rand() < 0.5 ? -1 : 1), birds, ph: rand() * 6, glide: !crow }); }
     // o urso-negro: anda devagar num circuito da floresta alta, longe da trilha
-    creature('urso', 1.7, { tint: [0.32, 0.3, 0.3] }).then((c) => { if (!c) return; const pts = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28; let x = 360 + Math.cos(a) * 140, z = 760 + Math.sin(a) * 120; pts.push(new V3(x, 0, z)); }
-      c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(c.holder); this.bear = { c, pts, i: 0, pos: pts[0].clone() }; });
+    // ele ronda devagar, andando de verdade (antes deslizava na pose parada e sumia de repente a 120 m), para e fareja o
+    // chão; se o explorador chega perto, fica em pé nas patas de trás olhando, bufa e foge correndo — o urso-negro
+    // japonês costuma fugir de gente
+    creature('urso', 1.7, { tint: [0.17, 0.16, 0.16], still: true }) /* (o urso-negro-asiático, tsukinowaguma, é preto) */.then((c) => { if (!c) return; const pts = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * 6.28; let x = 360 + Math.cos(a) * 140, z = 760 + Math.sin(a) * 120; pts.push(new V3(x, 0, z)); }
+      const A = {}; for (const [k, n] of [['idle', 'Stand_Idle_01'], ['walk', 'Walk'], ['run', 'Run'], ['stand', 'StandHind_Idle_01']]) { const cl = c.clips.find((q) => q.name === n); if (cl) { A[k] = c.mixer.clipAction(cl); A[k].play(); A[k].setEffectiveWeight(k === 'walk' ? 1 : 0); } }
+      c.holder.rotation.order = 'YXZ'; // (vira e depois inclina no próprio eixo, acompanhando a encosta)
+      c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; }); this.scene.add(c.holder); this.bear = { c, pts, i: 0, pos: pts[0].clone(), A, w: { idle: 0, walk: 1, run: 0, stand: 0 }, state: 'walk', t: 0, h: 0, huffed: false }; });
     this.spawnWild();
   }
   // ---- os bichos de verdade (modelos do Sketchfab): cervos-sika nas clareiras da floresta, a raposa deitada junto
@@ -209,9 +214,35 @@ export class Actors {
     }
     for (const fl of this.flocks) { fl.ph += dt * fl.w; const cx = fl.center.x + Math.cos(fl.ph) * fl.r, cz = fl.center.z + Math.sin(fl.ph) * fl.r, hd = Math.atan2(-Math.sin(fl.ph) * Math.sign(fl.w), Math.cos(fl.ph) * Math.sign(fl.w));
       for (const b of fl.birds) { b.g.position.set(cx + b.off.x, fl.center.y + b.off.y + Math.sin(t + b.ph) * 1.5, cz + b.off.z); b.g.rotation.y = hd; const flap = fl.glide ? Math.sin(t * 1.2 + b.ph) * 0.08 : Math.sin(t * 7 + b.ph) * 0.5; b.wl.rotation.z = flap; b.wr.rotation.z = -flap; b.g.visible = night < 0.5; } }
-    const B = this.bear; if (B) { const vis = near(B.pos, 120); B.c.holder.visible = vis; if (vis) { const tg = B.pts[B.i], dx = tg.x - B.pos.x, dz = tg.z - B.pos.z, d = Math.hypot(dx, dz); if (d < 2) B.i = (B.i + 1) % B.pts.length; else { B.pos.x += dx / d * dt * 0.9; B.pos.z += dz / d * dt * 0.9; }
-      B.pos.y = terrainHeight(B.pos.x, B.pos.z); B.c.holder.position.copy(B.pos); B.c.holder.rotation.y = angleLerp(B.c.holder.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 2)); B.c.mixer?.update(dt * 0.6);
-      if (near(B.pos, 30) && !this.bearSeen) { this.bearSeen = true; this.onBear?.(); } } }
+    const B = this.bear; if (B) this.updateBear(B, dt, pp, near);
+  }
+  updateBear(B, dt, pp, near) {
+    const dP = Math.hypot(pp.x - B.pos.x, pp.z - B.pos.z);
+    B.c.holder.visible = dP < 260; if (dP > 260) return;
+    B.t -= dt;
+    // estados: walk (ronda) → graze (para e fareja) → walk...; perto do explorador: stand (em pé, olhando) → flee (corre)
+    if (dP < 22 && (B.state === 'walk' || B.state === 'graze')) { B.state = 'stand'; B.t = 3.4; B.huffed = false; }
+    else if (B.state === 'stand' && B.t <= 0) { B.state = 'flee'; B.t = 7; let far = 0, best = -1; B.pts.forEach((q, i) => { const d = Math.hypot(q.x - pp.x, q.z - pp.z); if (d > best) { best = d; far = i; } }); B.i = far; }
+    else if (B.state === 'flee' && B.t <= 0) B.state = 'walk';
+    else if (B.state === 'graze' && B.t <= 0) B.state = 'walk';
+    let speed = 0, want = B.h;
+    if (B.state === 'walk' || B.state === 'flee') {
+      const tg = B.pts[B.i], dx = tg.x - B.pos.x, dz = tg.z - B.pos.z, d = Math.hypot(dx, dz);
+      if (d < 3) { B.i = (B.i + 1) % B.pts.length; if (B.state === 'walk') { B.state = 'graze'; B.t = rr(4, 9); } }
+      else { want = Math.atan2(dx, dz); speed = B.state === 'flee' ? 5.2 : 1.0; }
+    } else if (B.state === 'stand') { want = Math.atan2(pp.x - B.pos.x, pp.z - B.pos.z); if (!B.huffed && B.t < 2.6) { B.huffed = true; this.audio?.burst?.(0.35, 160, 0.25); } } // (bufa)
+    B.h = angleLerp(B.h, want, Math.min(1, dt * (B.state === 'flee' ? 4 : 1.6)));
+    const turnK = Math.max(0.3, Math.cos(Math.abs(((want - B.h + Math.PI * 3) % (Math.PI * 2)) - Math.PI))); // (vira antes de andar: nada de deslizar de lado)
+    B.pos.x += Math.sin(B.h) * speed * turnK * dt; B.pos.z += Math.cos(B.h) * speed * turnK * dt;
+    B.pos.y = terrainHeight(B.pos.x, B.pos.z);
+    const ahead = terrainHeight(B.pos.x + Math.sin(B.h) * 0.8, B.pos.z + Math.cos(B.h) * 0.8), behind = terrainHeight(B.pos.x - Math.sin(B.h) * 0.8, B.pos.z - Math.cos(B.h) * 0.8);
+    B.c.holder.position.copy(B.pos); B.c.holder.rotation.y = B.h; B.c.holder.rotation.x = -Math.atan2(ahead - behind, 1.6) * 0.8; // (o corpo acompanha a encosta)
+    // as animações misturadas (sem trocas secas), no ritmo do passo
+    const tgt = { idle: B.state === 'graze' ? 1 : 0, walk: B.state === 'walk' ? 1 : 0, run: B.state === 'flee' ? 1 : 0, stand: B.state === 'stand' ? 1 : 0 };
+    for (const k in B.A) { B.w[k] += (tgt[k] - B.w[k]) * Math.min(1, dt * 4); B.A[k].setEffectiveWeight(B.w[k]); }
+    if (B.A.walk) B.A.walk.timeScale = 0.75 * Math.max(0.4, turnK); if (B.A.run) B.A.run.timeScale = 1.0;
+    B.c.mixer.update(dt);
+    if (dP < 30 && !this.bearSeen) { this.bearSeen = true; this.onBear?.(); }
   }
   // a estação: no inverno os arrozais ficam vazios (a terra descansa) e quem anda na rua usa capa de algodão acolchoado
   setSeason(s) {
