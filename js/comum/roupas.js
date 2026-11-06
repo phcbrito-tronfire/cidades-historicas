@@ -471,9 +471,12 @@ function dressSamurai(ctx) {
   const sheath = new THREE.Group(); sheath.name = 'kt_bainha';
   const saya = part('saya') || kParts.saya, inK = part('katana') || kParts.sword.clone(); inK.name = 'kt_embainhada';
   sheath.add(saya, inK); sheath.scale.setScalar(1.3); // (o mesmo tamanho da katana da mão)
-  ctx.attach('Hips', sheath, V3(hips.x + 0.15, hy + 0.06, hips.z + 0.11), [4.25, 0.12, 0.1]);
+  // as bainhas passam por fora do quadril esquerdo (antes saíam da barriga e atravessavam o corpo): a boca na frente do
+  // lado esquerdo, a ponta para trás, para baixo e um pouco para fora; o fio para cima
+  const wear = (dx, dy, dz, back, down, out) => { const y = V3(out, -down, -back).normalize(), z = V3(0, 1, 0).addScaledVector(y, -y.y).normalize(), x = new THREE.Vector3().crossVectors(y, z); const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z))); return [V3(cx + Rx + dx, hy + dy, cz + dz), [e.x, e.y, e.z]]; };
+  { const [p, r] = wear(0.045, 0.05, 0.1, 0.88, 0.38, 0.22); ctx.attach('Hips', sheath, p, r); }
   const waki = part('wakizashi') || (() => { const g = new THREE.Group(); g.add(wParts.sword, wParts.saya); return g; })();
-  ctx.attach('Hips', waki, V3(hips.x + 0.1, hy + 0.09, hips.z + 0.13), [4.4, 0.18, 0.06], [1.2, 1.2, 1.2]);
+  { const [p, r] = wear(0.015, 0.085, 0.13, 0.9, 0.3, 0.2); ctx.attach('Hips', waki, p, r, [1.2, 1.2, 1.2]); }
   const hand = new THREE.Group(); hand.name = 'kt_mao'; hand.visible = false;
   // a pegada medida na guarda das animações de espada de duas mãos: a lâmina segue o eixo da mão esquerda para a direita
   // (as duas mãos no cabo, a direita junto da tsuba), para fora do corpo; a katana em tamanho real (~1,08 m)
