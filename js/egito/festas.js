@@ -61,8 +61,28 @@ export class Festivals {
     // Ápis
     this.apis = null;
     creature('touro', 2.6, { still: true }).then((c) => { if (!c) return;
-      const disk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 20), gold); disk.rotation.x = Math.PI / 2; disk.position.set(0, 1.85, 1.05); c.holder.add(disk);
-      const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.03, 1.0), new THREE.MeshStandardMaterial({ color: 0x2a4a9a, roughness: 0.9 })); cloth.position.set(0, 1.45, -0.1); c.holder.add(cloth); // manta azul com franja de ouro
+      // os enfeites presos aos ossos (acompanham o andar): o disco do sol com a naja entre os chifres, no osso da cabeça,
+      // e a manta de rede vermelha e azul com franja de ouro caindo pelos lados do dorso (antes um disco solto no ar,
+      // atrás da cabeça, e uma tábua azul fina enfiada nas costas)
+      const bone = (re) => { let b = null; c.o.traverse((o) => { if (!b && o.isBone && re.test(o.name)) b = o; }); return b; };
+      c.holder.updateMatrixWorld(true);
+      const attach = (b, mesh, pos) => { if (!b) { mesh.position.copy(pos); c.holder.add(mesh); return; }
+        b.add(mesh); b.updateMatrixWorld(true); mesh.position.copy(b.worldToLocal(pos.clone()));
+        const ws = new THREE.Vector3(); b.getWorldScale(ws); mesh.scale.set(1 / ws.x, 1 / ws.y, 1 / ws.z);
+        mesh.quaternion.copy(b.getWorldQuaternion(new THREE.Quaternion()).invert()); };
+      const sun = new THREE.Group();
+      const disk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 24), gold); disk.rotation.x = Math.PI / 2; sun.add(disk);
+      const uraeus = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.16, 8), gold); uraeus.position.set(0, -0.16, 0.05); sun.add(uraeus);
+      attach(bone(/spine012/), sun, new THREE.Vector3(0, 1.78, 1.0));
+      const ct = document.createElement('canvas'); ct.width = 256; ct.height = 128; const x = ct.getContext('2d');
+      x.fillStyle = '#a8261c'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#2c5d9c'; x.lineWidth = 5;
+      for (let i = -128; i < 256; i += 22) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 128, 128); x.stroke(); x.beginPath(); x.moveTo(i + 128, 0); x.lineTo(i, 128); x.stroke(); } // a rede de contas
+      x.fillStyle = '#e2b44a'; x.fillRect(0, 0, 256, 10); x.fillRect(0, 118, 256, 10); for (let i = 0; i < 256; i += 8) { x.fillRect(i, 0, 3, 18); x.fillRect(i, 110, 3, 18); } // franja de ouro
+      const tex = new THREE.CanvasTexture(ct); tex.colorSpace = THREE.SRGBColorSpace;
+      const cg = new THREE.CylinderGeometry(0.5, 0.5, 1.05, 22, 1, true, -1.25, 2.5); cg.rotateX(-Math.PI / 2);
+      const cloth = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide }));
+      attach(bone(/spine008/), cloth, new THREE.Vector3(0, 1.08, -0.15));
+      c.holder.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       const w = c.clips.find((cl) => /walk/i.test(cl.name)) || c.clips[0]; c.mixer.clipAction(w).play();
       c.holder.visible = false; scene.add(c.holder); this.apis = c; });
   }
