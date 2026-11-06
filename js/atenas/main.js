@@ -4,6 +4,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, labelTexture } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
+import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
@@ -202,6 +203,20 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   water.layers.set(1);
+  // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
+  const travel = makeTravel({ scene, player, points: [
+    { name: 'Acrópole', sub: 'diante da fachada leste do Parthenon', x: 68, z: 12, lx: 22, lz: 12 },
+    { name: 'Ágora', sub: 'a praça do mercado e das assembleias', x: AGORA.x, z: AGORA.z, lx: AGORA.x, lz: AGORA.z - 100 },
+    { name: 'Hefesteion', sub: 'o templo de Hefesto, sobre a ágora', x: HEPH.x + 26, z: HEPH.z + 14, lx: HEPH.x, lz: HEPH.z },
+    { name: 'Pnyx', sub: 'a colina da assembleia e a bema', x: S.bema.x + 6, z: S.bema.z - 14, lx: S.bema.x, lz: S.bema.z },
+    { name: 'Teatro de Dioniso', sub: 'a orquestra, ao pé da Acrópole', x: 22, z: 112, lx: 22, lz: 60 },
+    { name: 'Cerâmico', sub: 'os oleiros e o portão do Dípilon', x: -440, z: -360, lx: -480, lz: -405 },
+    { name: 'Porto do Pireu', sub: 'o cais e a trirreme Páralos', x: S.quay.x, z: S.quay.z, lx: S.trireme.x, lz: S.trireme.z },
+    { name: 'Galpões das trirremes', sub: 'os navios de guerra guardados em terra', x: S.sheds.x, z: S.sheds.z, lx: S.shedsLook.x, lz: S.shedsLook.z },
+    { name: 'Praia do Falero', sub: 'os pescadores e as redes', x: S.fisher.x + 4, z: S.fisher.z - 4, lx: S.fisher.x, lz: S.fisher.z + 30 },
+  ],
+    close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (boats.riding) boats.leave(player, S.quay); if (mount.state === 'riding') mount.dismount(player); return true; } });
+  ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
@@ -480,7 +495,7 @@ async function main() {
     boats.update(dt, t, player);
     if (boats.riding) { /* o barco já posicionou o explorador */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;

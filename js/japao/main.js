@@ -6,6 +6,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
+import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
@@ -161,6 +162,21 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   water.layers.set(1);
+  // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
+  const travel = makeTravel({ scene, player, points: [
+    { name: 'Vila dos oshi', sub: 'a rua das hospedarias dos peregrinos', x: 44, z: -300, lx: 44, lz: -200 },
+    { name: 'Santuário Sengen', sub: 'onde começa a trilha do Fuji', x: 40, z: 58, lx: 40, lz: 96 },
+    { name: 'Templo budista', sub: 'o pagode e o sino', x: 240, z: -110, lx: 333, lz: -110 },
+    { name: 'Residência do senhor', sub: 'o daikan e o pátio de arco e flecha', x: -239, z: -238, lx: -239, lz: -255 },
+    { name: 'Lago Kawaguchi', sub: 'a aldeia dos pescadores', x: -118, z: -522, lx: -200, lz: -600 },
+    { name: 'Santuário de Inari', sub: 'a fileira de torii vermelhos', x: -20, z: 0, lx: -94, lz: 81 },
+    { name: 'Moinho e arrozais', sub: 'a roda d’água do riacho', x: 190, z: -70, lx: 199, lz: -81 },
+    { name: 'Trilha Yoshida', sub: 'a casa de chá do pé da montanha', x: 30, z: 300, lx: 40, lz: 564 },
+    { name: 'Meio da subida', sub: 'a cabana de pedra das estações', x: 44, z: 1455, lx: 60, lz: 2160 },
+    { name: 'Cume do Fuji', sub: 'a borda da cratera e o santuário de cima', x: 60, z: 2150, lx: 67, lz: 2164 },
+  ],
+    close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (mount.state === 'riding') mount.dismount(player); return true; } });
+  ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0));
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
@@ -302,7 +318,7 @@ async function main() {
     t += dt;
     player.night = sky.state.night;
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { travel.update(dt); if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     actors.update(dt, t, player, quests, sky.state.night);
     festas.update(dt, t, player, sky.state.night);
     seasons.update(dt, t, camera, sky.current === 'tarde');

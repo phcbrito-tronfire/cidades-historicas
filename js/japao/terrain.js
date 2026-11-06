@@ -16,6 +16,13 @@ const ss = smoothstep;
 export const WATER_Y = 0;
 export const BOUNDS = [-700, 700, -760, 2330]; // x0, x1, z0, z1 andáveis
 export const FUJI = { x: 60, z: 2250, H: 780, R: 2050, crater: 80, depth: 48, p: 2.0 }; // p: quanto o perfil é côncavo (saia larga, topo íngreme)
+// o laguinho do eremita no fundo da cratera: uma bacia escavada de verdade (antes era uma placa azul pousada na grama,
+// sem fundo, e o explorador andava por cima dela)
+export const POND = { x: FUJI.x + 6, z: FUJI.z + 4 };
+export const pondRad = (a) => 3.5 + Math.sin(a * 2 + 1) * 0.35 + Math.sin(a * 3 + 0.4) * 0.22;
+export function pondE(x, z) { const dx = x - POND.x, dz = z - POND.z; return Math.hypot(dx, dz) / pondRad(Math.atan2(dz, dx)); }
+let POND_Y = null; const pondFloor = () => (POND_Y ??= landHeight(POND.x, POND.z));
+export const pondLevel = () => pondFloor() - 0.2;
 export const LAKE = { x: -440, z: -560, a: 300, b: 135, rot: 0.22 };
 export const STREET = { x: 40, z0: -440, z1: 20, hw: 5.5 }; // a rua dos oshi (norte–sul)
 export const SHRINE = { x: 40, z: 75, w: 90, d: 110 }; // o recinto do santuário Sengen, na floresta
@@ -169,6 +176,8 @@ export function terrainHeight(x, z) {
   { const S = polyDist(STREAM, x, z); if (S.d < 14) { const bed = bedAt(S.s), bank = S.d < 5 ? bed + 0.85 * ss(3.0, 5.0, S.d) : lerp(bed + 0.85, Math.max(h, bed + 1.0), ss(5.0, 11.5, S.d)); h = lerp(bank, h, ss(11.5, 14, S.d)); } }
   // o tameike: fundo de até 1,6 m, margem de terra
   { const e = inTameike(x, z); if (e < 1.8) { const W = tameikeLevel(), bed = W - 0.35 - 1.25 * Math.pow(Math.max(0, 1 - e * e), 0.6); h = e < 1 ? Math.min(h, bed) : lerp(Math.min(h, lerp(W - 0.35, W + 0.45, (e - 1) / 0.14)), h, ss(1.0, 1.8, e)); } }
+  // o laguinho da cratera: até ~75 cm de fundo, a margem baixa logo acima da água
+  if (Math.abs(x - POND.x) < 6 && Math.abs(z - POND.z) < 6) { const e = pondE(x, z); if (e < 1.18) { const y0 = pondFloor(), bed = y0 - 0.2 - 0.72 * Math.pow(Math.max(0, 1 - e * e), 0.6) - 0.02; h = e < 1 ? Math.min(h, bed) : Math.min(h, lerp(y0 - 0.17, y0, ss(1.0, 1.18, e))); } }
   // a cachoeira: o riacho cai de um degrau de rocha na floresta
   // (a borda de uma camada de lava antiga: um paredão de 11 m que atravessa a floresta de leste a oeste, mais alto
   //  no meio, onde o riacho despenca — como as cachoeiras do pé do Fuji, que caem da beira das camadas de lava)
@@ -182,6 +191,7 @@ export function inLake(x, z, m = 0) { const L = LAKE, c = Math.cos(L.rot), s = M
 export function waterLevelAt(x, z) {
   if (inLake(x, z, 40)) return WATER_Y;
   if (Math.abs(x - TAMEIKE.x) < 40 && Math.abs(z - TAMEIKE.z) < 30 && inTameike(x, z) < 1.12) return tameikeLevel();
+  if (Math.abs(x - POND.x) < 6 && Math.abs(z - POND.z) < 6 && pondE(x, z) < 1.0) return pondLevel();
   if (x > 140 && x < 410 && z > -670 && z < 340) { const S = polyDist(STREAM, x, z); if (S.d < 5.2) return streamLevel(S); }
   return -100;
 }
@@ -333,11 +343,12 @@ export function buildTerrain(scene, tex) {
   const mat = terrainMaterial(tex);
   const X0 = -720, X1 = 720, ZA = -780, ZB = 340, ZC = 2360;
   const valley = terrainMesh(mat, X0, X1, ZA, ZB, 3.4);
-  const slope = terrainMesh(mat, X0, X1, ZB - 4.25, ZC, 4.25, (x, z) => (z < ZB ? 0.15 : 0)); // (4,25 m: fino o bastante para os patamares das estações) // (a fileira que entra no vale fica um pouco abaixo)
+  const slope = terrainMesh(mat, X0, X1, ZB - 4.25, ZC, 4.25, (x, z) => (z < ZB ? 0.15 : Math.hypot(x - POND.x, z - POND.z) < 8 ? 1.5 : 0)); // (4,25 m: fino o bastante para os patamares das estações) // (a fileira que entra no vale fica um pouco abaixo)
   const inside = (x, z) => x > X0 + 2 && x < X1 - 2 && z > ZA + 2 && z < ZC - 2;
   const far = terrainMesh(mat, -4400, 4400, -3600, 6000, 40, (x, z) => (inside(x, z) ? 45 : 0)); // (bem abaixo das outras duas: no pé dos morros o triângulo de 40 m furava a malha fina e aparecia como cunha chapada)
   far.receiveShadow = false;
-  scene.add(valley, slope, far);
+  const pond = terrainMesh(mat, POND.x - 16, POND.x + 16, POND.z - 16, POND.z + 16, 0.25, () => -0.015); // o fundo da cratera em volta do laguinho, fino
+  scene.add(valley, slope, far, pond);
   return { terrain: valley, slope, far, mat };
 }
 

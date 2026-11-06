@@ -5,6 +5,7 @@ import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } fr
 import { loadHieroFont } from './hieroglifos.js';
 import { createPost } from '../comum/post.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
+import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
@@ -198,6 +199,20 @@ async function main() {
     if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.metalness < 0.5 && !o.material.userData.keepEnv) o.material.envMapIntensity = 0.55;
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
+  // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
+  const travel = makeTravel({ scene, player, points: [
+    { name: 'Templo de Ptah', sub: 'o portão do grande templo do deus de Mênfis', x: 15, z: city.spots.santuario.z, lx: city.spots.santuario.x, lz: city.spots.santuario.z },
+    { name: 'Mercado', sub: 'as bancas da beira do rio', x: city.spots.merit.x - 4, z: city.spots.merit.z - 6, lx: city.spots.merit.x, lz: city.spots.merit.z },
+    { name: 'Cais do Nilo', sub: 'os barcos e o rio', x: city.spots.quay.x - 3, z: city.spots.quay.z + 3, lx: city.spots.quay.x + 30, lz: city.spots.quay.z },
+    { name: 'Palácio Real', sub: 'a porta do palácio de Ramsés II', x: city.spots.gate.x + 8, z: city.spots.gate.z, lx: city.spots.gate.x, lz: city.spots.gate.z },
+    { name: 'Esfinge', sub: 'a Grande Esfinge e a Estela do Sonho', x: city.spots.sphinx.x + 14, z: city.spots.sphinx.z, lx: city.spots.sphinx.x - 30, lz: city.spots.sphinx.z },
+    { name: 'Pirâmides de Gizé', sub: 'a Grande Pirâmide e as pirâmides das rainhas', x: -180, z: -112, lx: city.pyramids.khufu.x, lz: city.pyramids.khufu.z },
+    { name: 'Sacara', sub: 'a pirâmide de degraus e o túmulo de Tia', x: city.spots.tia.x + 3, z: city.spots.tia.z, lx: city.spots.tiaTomb.x, lz: city.spots.tiaTomb.z },
+    { name: 'Campos de Tiy', sub: 'a lavoura de cevada e linho', x: city.spots.farm.x, z: city.spots.farm.z, lx: city.spots.farm.x + 30, lz: city.spots.farm.z },
+    { name: 'Bairro Norte', sub: 'as casas do povo de Mênfis', x: city.spots.nofret.x, z: city.spots.nofret.z - 5, lx: city.spots.nofret.x, lz: city.spots.nofret.z + 30 },
+  ],
+    close: () => { mapOpen = ui.toggleBigMap(player, hints(), city.pyramids); }, before: (p) => { if (mount.state === 'riding') mount.dismount(player); return true; } });
+  ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
@@ -459,7 +474,7 @@ async function main() {
     t += dt;
     player.night = sky.state.night;
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;

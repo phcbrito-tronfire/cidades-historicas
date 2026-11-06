@@ -5,6 +5,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, retint } from './textures.js';
 import { createPost } from '../comum/post.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
+import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
@@ -183,6 +184,21 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   water.layers.set(1);
+  // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
+  const travel = makeTravel({ scene, player, points: [
+    { name: 'Coliseu', sub: 'a entrada norte do anfiteatro', x: 0, z: -COL.B - 14, lx: 0, lz: 0 },
+    { name: 'Fórum Romano', sub: 'templos, basílicas e a Via Sacra', x: FORUM.x, z: FORUM.z, lx: FORUM.x - 50, lz: FORUM.z },
+    { name: 'Palatino', sub: 'os palácios dos imperadores', x: PALATINE.x, z: PALATINE.z, lx: PALATINE.x, lz: PALATINE.z + 50 },
+    { name: 'Capitólio', sub: 'o templo de Júpiter', x: CAPITOL.x + 25, z: CAPITOL.z, lx: CAPITOL.x, lz: CAPITOL.z },
+    { name: 'Circo Máximo', sub: 'a pista das corridas de bigas', x: CIRCUS.x - 60, z: CIRCUS.z + 14, lx: CIRCUS.x + 100, lz: CIRCUS.z + 14 },
+    { name: 'Panteão', sub: 'o templo de todos os deuses', x: -330, z: -290, lx: -330, lz: -260 },
+    { name: 'Ilha Tiberina', sub: 'o templo de Esculápio no meio do Tibre', x: ISOLA.x, z: ISOLA.z, lx: ISOLA.x + 30, lz: ISOLA.z },
+    { name: 'Naumaquia de Trajano', sub: 'as batalhas navais', x: NAUMACHIA.x, z: NAUMACHIA.z - 75, lx: NAUMACHIA.x, lz: NAUMACHIA.z },
+    { name: 'Portus de Trajano', sub: 'o porto hexagonal', x: city.spots.portus.x, z: city.spots.portus.z, lx: city.spots.portus.x, lz: city.spots.portus.z + 40 },
+    { name: 'Óstia', sub: 'a cidade portuária na foz do Tibre', x: city.spots.ostia.x, z: city.spots.ostia.z, lx: city.spots.ostia.x + 30, lz: city.spots.ostia.z },
+  ],
+    close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (boats.riding) boats.leave(player, city.spots.quay); if (mount.state === 'riding') mount.dismount(player); return true; } });
+  ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
   warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0));
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
@@ -339,7 +355,7 @@ async function main() {
     boats.update(dt, t, player);
     if (boats.riding) { /* o barco posiciona o explorador */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
     if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }

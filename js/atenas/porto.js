@@ -75,6 +75,7 @@ export function buildHarbor(B, M, out) {
     }
   }
   out.exclusions.push(shedBox); // (nada de mato e árvore nascendo nas rampas)
+  { const p = coastPoint(-298, -24); S.sheds = new V3(p.x, terrainHeight(p.x, p.z), p.z); S.shedsLook = coastPoint(-345, -14); } // (viagem rápida: ao lado da fileira de galpões)
   // empório: armazém comprido atrás do cais (grãos do mar Negro, vinho, azeite, madeira)
   {
     const p = coastPoint(-255, -40), ry = tangent(-255);

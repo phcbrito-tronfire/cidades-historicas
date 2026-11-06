@@ -14,7 +14,7 @@ import { mulberry32 } from '../comum/util.js';
 import { frame, toro, torii, nobori, roofGeo } from './kit.js';
 import { house, kura } from './vila.js';
 import { rippleNormals, stillWater } from '../comum/aguaparada.js';
-import { terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM, FALLS, fallEdge, TAMEIKE, inTameike, tameikeLevel } from './terrain.js';
+import { POND, pondRad, pondLevel, terrainHeight, HAMLETS, TEA, INARI, MILL, FUJI, TEMPLE, LEVEL, inLake, polyDist, STREAM, FALLS, fallEdge, TAMEIKE, inTameike, tameikeLevel } from './terrain.js';
 
 const V3 = THREE.Vector3;
 const rnd = mulberry32(1795);
@@ -133,23 +133,22 @@ export function buildExtras(B, M, out) {
   { const cx = FUJI.x, cz = FUJI.z, y = terrainHeight(cx, cz);
     // o laguinho: contorno redondo e irregular (de jardim), margem de pedras de vários tamanhos, água com ondinhas que
     // refletem o céu, folhas de lótus e duas carpas (koi) nadando devagar
-    { const px = cx + 6, pz = cz + 4, y = terrainHeight(cx + 6, cz + 4), rad = (a) => 3.5 + Math.sin(a * 2 + 1) * 0.35 + Math.sin(a * 3 + 0.4) * 0.22, sh = new THREE.Shape();
-      for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2, r = rad(a); if (i) sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); else sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    { const px = POND.x, pz = POND.z, y = terrainHeight(cx + 9.8, cz + 4), W = pondLevel(), rad = pondRad, sh = new THREE.Shape(); // (y: a grama da margem)
+      for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2, r = rad(a) * 1.03; /* (a beira da água entra um pouco por baixo do barranco) */ if (i) sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); else sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
       const flat = (g) => { g.rotateX(-Math.PI / 2); return g; };
-      const bed = new THREE.Mesh(flat(new THREE.ShapeGeometry(sh, 6)), new THREE.MeshStandardMaterial({ color: 0x2a3a30, roughness: 1 })); bed.position.set(px, y + 0.02, pz); out.extra.push(bed); // o fundo escuro (dá profundidade à água)
       const nrm = rippleNormals(); nrm.repeat.set(0.45, 0.45);
       const wg = flat(new THREE.ShapeGeometry(sh, 6)); { const p = wg.attributes.position, uv = wg.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i)); }
-      const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x24504e, roughness: 0.08, metalness: 0.4, envMapIntensity: 0.9, transparent: true, opacity: 0.84, normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3), depthWrite: false }));
+      const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({ color: 0x1f4a4a, roughness: 0.06, metalness: 0.35, envMapIntensity: 1.0, transparent: true, opacity: 0.72, normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3), depthWrite: false }));
       stillWater(water.material, { scale: 0.9, strength: 0.5 });
-      water.position.set(px, y + 0.14, pz); water.renderOrder = 2; out.extra.push(water);
-      for (let i = 0; i < 30; i++) { const a = (i / 30) * Math.PI * 2 + Math.sin(i * 7.3) * 0.05, r = rad(a) + 0.25 + (i % 2) * 0.15, s = 0.28 + ((i * 37) % 10) / 22; B.geo(new THREE.DodecahedronGeometry(1, 0), M.lava, px + Math.cos(a) * r, y + 0.05, pz + Math.sin(a) * r, { sx: s * 1.3, sy: s * 0.55, sz: s, ry: i * 1.7, uv: false }); } // a margem de pedras
-      for (let i = 0; i < 24; i++) { const a = i * 2.39, r = rad(a) + 0.7 + (i % 3) * 0.2; B.geo(new THREE.DodecahedronGeometry(0.1, 0), M.stone, px + Math.cos(a) * r, y + 0.03, pz + Math.sin(a) * r, { sy: 0.5, uv: false }); } // seixos
+      water.position.set(px, W, pz); water.renderOrder = 2; out.extra.push(water);
+      for (let i = 0; i < 30; i++) { const a = (i / 30) * Math.PI * 2 + Math.sin(i * 7.3) * 0.05, r = rad(a) + 0.25 + (i % 2) * 0.15, s = 0.28 + ((i * 37) % 10) / 22; B.geo(new THREE.DodecahedronGeometry(1, 0), M.lava, px + Math.cos(a) * r, terrainHeight(px + Math.cos(a) * r, pz + Math.sin(a) * r) - 0.04, pz + Math.sin(a) * r, { sx: s * 1.3, sy: s * 0.55, sz: s, ry: i * 1.7, uv: false }); } // a margem de pedras
+      for (let i = 0; i < 24; i++) { const a = i * 2.39, r = rad(a) + 0.7 + (i % 3) * 0.2; B.geo(new THREE.DodecahedronGeometry(0.1, 0), M.stone, px + Math.cos(a) * r, terrainHeight(px + Math.cos(a) * r, pz + Math.sin(a) * r) + 0.02, pz + Math.sin(a) * r, { sy: 0.5, uv: false }); } // seixos
       const padM = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.7, side: THREE.DoubleSide });
-      for (const [a, r, s] of [[0.6, 2.2, 0.32], [0.9, 2.6, 0.24], [2.8, 1.9, 0.3], [4.4, 2.4, 0.26], [4.7, 1.7, 0.2]]) { const pad = new THREE.Mesh(flat(new THREE.CircleGeometry(s, 14, 0.4, Math.PI * 2 - 0.4)), padM); pad.position.set(px + Math.cos(a) * r, y + 0.155, pz + Math.sin(a) * r); pad.rotation.y = a * 3; out.extra.push(pad); } // folhas de lótus
+      for (const [a, r, s] of [[0.6, 2.2, 0.32], [0.9, 2.6, 0.24], [2.8, 1.9, 0.3], [4.4, 2.4, 0.26], [4.7, 1.7, 0.2]]) { const pad = new THREE.Mesh(flat(new THREE.CircleGeometry(s, 14, 0.4, Math.PI * 2 - 0.4)), padM); pad.position.set(px + Math.cos(a) * r, W + 0.012, pz + Math.sin(a) * r); pad.rotation.y = a * 3; out.extra.push(pad); } // folhas de lótus
       const koiM = [new THREE.MeshStandardMaterial({ color: 0xe8642a, roughness: 0.5 }), new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.5 })];
       const kois = [0, 1].map((k) => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), koiM[k]); b.scale.set(0.8, 0.55, 2.4); g.add(b); const tl = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 5), koiM[k]); tl.rotation.x = -Math.PI / 2; tl.position.z = -0.3; g.add(tl); if (k) { const sp = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), koiM[0]); sp.position.set(0, 0.03, 0.08); g.add(sp); } out.extra.push(g); return g; });
-      let tt = 0; out.animated.push({ fn: (dt) => { tt += dt; nrm.offset.x += dt * 0.01; nrm.offset.y += dt * 0.006; kois.forEach((g, k) => { const a = tt * (0.25 + k * 0.08) + k * 3, r = 1.6 + Math.sin(tt * 0.3 + k) * 0.6; g.position.set(px + Math.cos(a) * r, y + 0.07, pz + Math.sin(a) * r); g.rotation.y = -a + (k ? 0 : 0); g.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)); }); } });
-      addCircle(px, pz, 3.3, y - 1, y + 0.1); }
+      let tt = 0; out.animated.push({ fn: (dt) => { tt += dt; nrm.offset.x += dt * 0.01; nrm.offset.y += dt * 0.006; kois.forEach((g, k) => { const a = tt * (0.25 + k * 0.08) + k * 3, r = 1.6 + Math.sin(tt * 0.3 + k) * 0.6; g.position.set(px + Math.cos(a) * r, W - 0.3, pz + Math.sin(a) * r); g.rotation.y = -a + (k ? 0 : 0); g.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)); }); } });
+      }
     house(B, M, out, { x: cx - 7, z: cz - 1, ry: Math.PI * 0.85, w: 9, d: 7, roof: 'thatch', front: 'shoji', engawa: true, kind: 'hermit', doma: 3 });
     toro(B, M, out, cx - 1, y, cz + 6, 0.9);
     out.summitTree = { x: cx + 1.5, y, z: cz - 6 }; addCircle(cx + 1.5, cz - 6, 0.5, y - 1, y + 4);

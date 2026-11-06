@@ -178,6 +178,7 @@ export class UI {
     ctx.drawImage(this.mapBg, 0, 0, MP, MP, 0, 0, W, W);
     const toPx = (x, z) => [((x - MX0) / MS) * k, ((z - MZ0) / MS) * k];
     ctx.font = '600 14px Cinzel, Georgia, serif'; ctx.textAlign = 'center';
+    this.onMapDrawn?.(ctx, toPx); // os pontos da viagem rápida (comum/viagem.js), por baixo dos nomes
     for (const [t, x, z] of this.labels) { const [lx, ly] = toPx(x, z); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,245,220,0.85)'; ctx.strokeText(t, lx, ly); ctx.fillStyle = '#3a2410'; ctx.fillText(t, lx, ly); }
     for (const h of hints) { const [x, y] = toPx(h[0], h[1]); ctx.fillStyle = '#ffcc33'; ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); ctx.stroke(); }
     const [x, y] = toPx(player.pos.x, player.pos.z);
