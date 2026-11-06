@@ -185,7 +185,7 @@ async function main() {
   });
   water.layers.set(1);
   // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
-  const travel = makeTravel({ scene, player, points: [
+  const travel = makeTravel({ scene, player, toast: (m) => ui.toast(m), points: [
     { name: 'Coliseu', sub: 'a entrada norte do anfiteatro', x: 0, z: -COL.B - 14, lx: 0, lz: 0 },
     { name: 'Fórum Romano', sub: 'templos, basílicas e a Via Sacra', x: FORUM.x, z: FORUM.z, lx: FORUM.x - 50, lz: FORUM.z },
     { name: 'Palatino', sub: 'os palácios dos imperadores', x: PALATINE.x, z: PALATINE.z, lx: PALATINE.x, lz: PALATINE.z + 50 },
@@ -274,7 +274,7 @@ async function main() {
       prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
-    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
+    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
   });
   const hints = () => { const h = []; for (const o of OBJECTIVES) { if (quests.isDone(o.id)) continue; const hh = quests.hintFor(o); if (hh) h.push(hh); if (h.length >= 3) break; } return h; };
 
@@ -353,9 +353,10 @@ async function main() {
     player.night = sky.state.night;
     boats.night = sky.state.night;
     boats.update(dt, t, player);
+    travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (boats.riding) { /* o barco posiciona o explorador */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
-    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
     if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }

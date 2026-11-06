@@ -163,7 +163,7 @@ async function main() {
   });
   water.layers.set(1);
   // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
-  const travel = makeTravel({ scene, player, points: [
+  const travel = makeTravel({ scene, player, toast: (m) => ui.toast(m), points: [
     { name: 'Vila dos oshi', sub: 'a rua das hospedarias dos peregrinos', x: 44, z: -300, lx: 44, lz: -200 },
     { name: 'Santuário Sengen', sub: 'onde começa a trilha do Fuji', x: 40, z: 58, lx: 40, lz: 96 },
     { name: 'Templo budista', sub: 'o pagode e o sino', x: 240, z: -110, lx: 333, lz: -110 },
@@ -248,7 +248,7 @@ async function main() {
       prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
-    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
+    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
   });
   const hints = () => { const h = []; for (const o of OBJECTIVES) { if (quests.isDone(o.id)) continue; const hh = quests.hintFor(o); if (hh) h.push(hh); if (h.length >= 3) break; } return h; };
 
@@ -317,8 +317,9 @@ async function main() {
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night, underwater.amount); return; }
     t += dt;
     player.night = sky.state.night;
+    travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { travel.update(dt); if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     actors.update(dt, t, player, quests, sky.state.night);
     festas.update(dt, t, player, sky.state.night);
     seasons.update(dt, t, camera, sky.current === 'tarde');

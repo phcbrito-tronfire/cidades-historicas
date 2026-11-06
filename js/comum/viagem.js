@@ -2,6 +2,9 @@
 // pontos dourados. Clicou num deles, o explorador some numa coluna de luz dourada (a tela clareia) e reaparece no
 // destino, com a mesma luz se desfazendo em volta dele. (No mapa os pontos são azuis com uma estrelinha branca: os
 // amarelos são os objetivos.)
+// Regra (pedido do Pedro, 06/11/2026): cada ponto só libera a viagem depois que o aluno chega lá por conta própria
+// (a pé, a cavalo ou de barco) — senão ninguém anda pela cidade, só pula de um lugar para o outro. No mapa, os
+// pontos ainda não visitados ficam cinza, com cadeado. Os liberados ficam salvos no navegador, por cidade.
 //
 // Uso (main.js de cada cidade, ANTES do warmUp, para os shaders da luz já estarem compilados):
 //   const travel = makeTravel({ scene, player, points, close: () => { mapOpen = ui.toggleBigMap(...) }, before, after })
@@ -33,7 +36,12 @@ function beamTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
 }
 
-export function makeTravel({ scene, player, points, close, before = () => true, after = () => {} }) {
+const RADIUS = 25; // chegar a 25 m do ponto libera a viagem até ele
+export function makeTravel({ scene, player, points, close, before = () => true, after = () => {}, toast = () => {} }) {
+  const KEY = 'cidades-historicas:' + ((location.pathname.match(/(\w+)\.html/) || [])[1] || 'cidade') + ':viagem';
+  const open = new Set(); try { JSON.parse(localStorage.getItem(KEY) || '[]').forEach((n) => open.add(n)); } catch (e) { /* sem armazenamento */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...open])); } catch (e) { /* */ } };
+  let first = !open.size; // no primeiro passeio, o lugar onde a jornada começa já vale como visitado
   if (!document.getElementById('travel-css')) { const st = document.createElement('style'); st.id = 'travel-css'; st.textContent = CSS; document.head.appendChild(st); }
   const flash = document.createElement('div'); flash.id = 'travel-flash'; document.body.appendChild(flash);
   const tip = document.createElement('div'); tip.id = 'travel-tip'; tip.hidden = true; document.body.appendChild(tip);
@@ -54,7 +62,8 @@ export function makeTravel({ scene, player, points, close, before = () => true, 
 
   let job = null, last = null; // last: a última desenhada do mapa (para o clique achar o ponto)
   const canvas = document.getElementById('bigmap-canvas');
-  const foot = document.querySelector('#bigmap .bm-foot'); if (foot && !/viajar/.test(foot.textContent)) foot.textContent += ' · clique num ponto azul para viajar até lá';
+  const foot = document.querySelector('#bigmap .bm-foot'), footBase = foot?.textContent || '';
+  const footText = () => { if (foot) foot.textContent = `${footBase} · viagem rápida: ${open.size} de ${points.length} lugares liberados (os cinza se liberam quando você chega lá)`; };
   const pick = (e) => {
     if (!last) return null;
     const r = canvas.getBoundingClientRect(), px = ((e.clientX - r.left) / r.width) * canvas.width, py = ((e.clientY - r.top) / r.height) * canvas.height;
@@ -63,15 +72,15 @@ export function makeTravel({ scene, player, points, close, before = () => true, 
     return best;
   };
   canvas?.addEventListener('mousemove', (e) => {
-    const p = pick(e); canvas.style.cursor = p ? 'pointer' : '';
+    const p = pick(e); canvas.style.cursor = p && open.has(p.name) ? 'pointer' : '';
     if (!p) { tip.hidden = true; return; }
-    tip.hidden = false; tip.innerHTML = `${p.name}${p.sub ? `<small>${p.sub}</small>` : ''}`; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px';
+    tip.hidden = false; tip.innerHTML = open.has(p.name) ? `${p.name}${p.sub ? `<small>${p.sub}</small>` : ''}` : `${p.name}<small>Ainda não visitado: vá até lá (andando, a cavalo ou de barco) para liberar a viagem</small>`; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px';
   });
   canvas?.addEventListener('mouseleave', () => { tip.hidden = true; });
   canvas?.addEventListener('click', (e) => { const p = pick(e); if (p) go(p); });
 
   function go(p) {
-    if (job || !before(p)) return;
+    if (job || !open.has(p.name) || !before(p)) return;
     tip.hidden = true; if (!document.getElementById('bigmap')?.hidden) close(); // (fecha o mapa só se estiver aberto)
     player.locked = true; player.keys?.clear();
     job = { p, t: 0, moved: false };
@@ -83,9 +92,16 @@ export function makeTravel({ scene, player, points, close, before = () => true, 
     points, go,
     // desenha os pontos no mapa grande (chamado pelo ui depois de desenhar o fundo)
     draw(ctx, toPx) {
-      last = { toPx };
+      last = { toPx }; footText();
       for (const p of points) {
         const [x, y] = toPx(p.x, p.z);
+        if (!open.has(p.name)) { // ainda não visitado: cinza, com um cadeadinho
+          ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.fillStyle = 'rgba(110,104,96,0.85)';
+          ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = '#f2ece0'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y - 1.2, 2.2, Math.PI, 0); ctx.stroke();
+          ctx.fillStyle = '#f2ece0'; ctx.fillRect(x - 3, y - 1, 6, 4.2);
+          continue;
+        }
         // (azul com anel branco: diferente dos marcadores amarelos dos objetivos)
         const g = ctx.createRadialGradient(x, y, 0, x, y, 17); g.addColorStop(0, 'rgba(150,215,255,0.85)'); g.addColorStop(1, 'rgba(90,170,255,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 17, 0, 7); ctx.fill();
@@ -95,7 +111,15 @@ export function makeTravel({ scene, player, points, close, before = () => true, 
       }
     },
     get busy() { return !!job; },
-    update(dt) {
+    // os lugares de cada cidade que o aluno já visitou (o reinício da jornada apaga)
+    reset() { open.clear(); try { localStorage.removeItem(KEY); } catch (e) { /* */ } },
+    isOpen: (p) => open.has(p.name),
+    update(dt, active = true) {
+      if (active && !job) { // chegou perto de um ponto por conta própria: libera
+        const P = player.pos;
+        if (first) { first = false; let best = null, bd = 80 * 80; for (const p of points) { const d = (p.x - P.x) ** 2 + (p.z - P.z) ** 2; if (d < bd) { bd = d; best = p; } } if (best) { open.add(best.name); save(); } }
+        for (const p of points) if (!open.has(p.name) && (p.x - P.x) ** 2 + (p.z - P.z) ** 2 < RADIUS * RADIUS) { open.add(p.name); save(); toast(`Viagem rápida liberada: ${p.name}. Agora dá para voltar aqui pelo mapa (M).`); }
+      }
       if (!job) return;
       job.t += dt; const t = job.t, T1 = 0.75, T2 = 1.7;
       // ida: a luz cresce em volta do explorador e a tela clareia; no meio, ele muda de lugar; volta: a luz se desfaz

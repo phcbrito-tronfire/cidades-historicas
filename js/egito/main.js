@@ -200,7 +200,7 @@ async function main() {
     if ((o.isSprite && o !== sky.moon && o !== sky.moonGlow) || (o.isMesh && o.material && o.material.transparent && !o.isSkinnedMesh && o.material.depthWrite === false)) o.layers.set(1);
   });
   // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
-  const travel = makeTravel({ scene, player, points: [
+  const travel = makeTravel({ scene, player, toast: (m) => ui.toast(m), points: [
     { name: 'Templo de Ptah', sub: 'o portão do grande templo do deus de Mênfis', x: 15, z: city.spots.santuario.z, lx: city.spots.santuario.x, lz: city.spots.santuario.z },
     { name: 'Mercado', sub: 'as bancas da beira do rio', x: city.spots.merit.x - 4, z: city.spots.merit.z - 6, lx: city.spots.merit.x, lz: city.spots.merit.z },
     { name: 'Cais do Nilo', sub: 'os barcos e o rio', x: city.spots.quay.x - 3, z: city.spots.quay.z + 3, lx: city.spots.quay.x + 30, lz: city.spots.quay.z },
@@ -358,7 +358,7 @@ async function main() {
       prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7); // a resolução adaptativa passa a valer para o novo nível
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
-    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
+    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
   });
 
   function showEnding() {
@@ -473,8 +473,9 @@ async function main() {
     if (paused) { scene.updateMatrixWorld(); post.render(dt, sky.state.night); return; }
     t += dt;
     player.night = sky.state.night;
+    travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;

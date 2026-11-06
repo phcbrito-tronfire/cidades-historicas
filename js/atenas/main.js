@@ -204,7 +204,7 @@ async function main() {
   });
   water.layers.set(1);
   // viagem rápida: pontos azuis no mapa (M); clicou, o explorador vai até lá numa coluna de luz (antes do aquecimento: a luz já compilada)
-  const travel = makeTravel({ scene, player, points: [
+  const travel = makeTravel({ scene, player, toast: (m) => ui.toast(m), points: [
     { name: 'Acrópole', sub: 'diante da fachada leste do Parthenon', x: 68, z: 12, lx: 22, lz: 12 },
     { name: 'Ágora', sub: 'a praça do mercado e das assembleias', x: AGORA.x, z: AGORA.z, lx: AGORA.x, lz: AGORA.z - 100 },
     { name: 'Hefesteion', sub: 'o templo de Hefesto, sobre a ágora', x: HEPH.x + 26, z: HEPH.z + 14, lx: HEPH.x, lz: HEPH.z },
@@ -368,7 +368,7 @@ async function main() {
       prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7); // a resolução adaptativa passa a valer para o novo nível
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
-    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); location.reload(); } }
+    if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
   });
 
   function showEnding() {
@@ -493,9 +493,10 @@ async function main() {
     player.night = sky.state.night;
     boats.night = sky.state.night;
     boats.update(dt, t, player);
+    travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (boats.riding) { /* o barco já posicionou o explorador */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
-    else { travel.update(dt); if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;
