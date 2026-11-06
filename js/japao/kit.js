@@ -42,6 +42,15 @@ function shojiTex() { // papel de arroz numa grade fina de madeira
     x.fillStyle = '#5a4030'; for (let i = 0; i <= 4; i++) x.fillRect(i * (W / 4) - 1.5, 0, 3, H); for (let j = 0; j <= 6; j++) x.fillRect(0, j * (H / 6) - 1.5, W, 3);
   }));
 }
+function fusumaTex() { // fusuma: papel grosso estampado em karakami (losangos de ouro claro) e a moldura laqueada dos lados de cada folha
+  return toTexture(cv(128, 128, (x, W, H) => {
+    x.fillStyle = '#ece2c6'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(150,130,90,0.05)'; x.fillRect(R() * W, R() * H, 5, 2); }
+    x.strokeStyle = 'rgba(190,160,90,0.55)'; x.lineWidth = 1.5;
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 3; i++) { const cx = 22 + i * 42 + (j % 2) * 21, cy = 16 + j * 32; x.beginPath(); x.moveTo(cx, cy - 9); x.lineTo(cx + 9, cy); x.lineTo(cx, cy + 9); x.lineTo(cx - 9, cy); x.closePath(); x.stroke(); x.beginPath(); x.arc(cx, cy, 2.5, 0, 7); x.stroke(); }
+    x.fillStyle = '#2a1e16'; x.fillRect(0, 0, 5, H); x.fillRect(W - 5, 0, 5, H);
+  }));
+}
 function tatamiTex() { // tatame: palha de igusa em fiozinhos, com a borda de pano escuro
   return toTexture(cv(256, 128, (x, W, H) => {
     x.fillStyle = '#c8bf84'; x.fillRect(0, 0, W, H);
@@ -96,7 +105,7 @@ export function createMaterials(tex) {
   M.tatami = std({ map: tatamiTex(), roughness: 0.95 }); M.tatami.userData.uv = { s: 1.8, sv: 0.9 };
   M.koshi = std({ map: koshiTex(), roughness: 0.8 }); M.koshi.userData.uv = { s: 1.6 };
   M.namako = std({ map: namakoTex(), roughness: 0.6 }); M.namako.userData.uv = { s: 1.2 };
-  M.fusuma = std({ color: 0xe8dcc0, roughness: 0.9 }); // portas de correr de papel grosso, pintadas
+  M.fusuma = std({ map: fusumaTex(), roughness: 0.9 }); M.fusuma.userData.uv = { s: 0.9 }; // portas de correr de papel grosso estampado (antes uma placa branca lisa)
   M.straw = std({ color: 0xc8b070, roughness: 1 });
   M.netting = std({ map: toTexture(cv(64, 64, (x, W, H) => { x.fillStyle = '#5a5040'; x.fillRect(0, 0, W, H); x.strokeStyle = '#c8bca0'; x.lineWidth = 2; for (let i = 0; i < W; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 32, H); x.stroke(); x.beginPath(); x.moveTo(i + 32, 0); x.lineTo(i, H); x.stroke(); } })), side: THREE.DoubleSide, roughness: 1 }); M.netting.userData.uv = { s: 1 }; // a rede de pesca // corda de palha (shimenawa), tapetes, fardos
   M.paper = std({ color: 0xf6f2ea, roughness: 0.9 });
@@ -112,7 +121,7 @@ export function createMaterials(tex) {
   M.flame = new THREE.MeshBasicMaterial({ color: 0xffb050 });
   M.lantern = std({ color: 0xf2e6c8, emissive: 0xffa040, emissiveIntensity: 0.15, roughness: 0.9 }); // lanterna de papel (chōchin)
   M.redCloth = std({ color: 0xb0281e, roughness: 0.95 }); // o banco vermelho das casas de chá
-  M.noren = [['#26344a', '宿'], ['#3a2a22', '茶'], ['#2a3a2a', '蕎'], ['#4a2a2a', '酒'], ['#2a3044', '米'], ['#3a3a3a', '湯']].map(([c, t]) => std({ map: noren(c, t), side: THREE.DoubleSide, roughness: 0.95 }));
+  M.noren = [['#26344a', '宿'], ['#3a2a22', '茶'], ['#2a3a2a', '蕎'], ['#4a2a2a', '酒'], ['#2a3044', '米'], ['#3a3a3a', '湯']].map(([c, t]) => std({ map: noren(c, t), side: THREE.DoubleSide, roughness: 0.95, transparent: true, opacity: 1 })); // (transparente desde já: ao entrar em casa só a opacidade muda)
   M.nobori = [['#f2ece0', '富士講'], ['#24305a', '富士山'], ['#a02a20', '浅間'], ['#2a4a30', '御師']].map(([c, t]) => std({ map: banner(c, t), side: THREE.DoubleSide, roughness: 0.95 }));
   M.nobori[0].map = (() => { const t = banner('#f2ece0', '富士講'); return t; })();
   M.scroll = std({ map: scrollTex(), roughness: 0.9 });

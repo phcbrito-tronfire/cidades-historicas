@@ -18,7 +18,7 @@ function hut(B, M, out, x, z, ry, n, name) {
   const f = frame(B, x, y, z, ry);
   f.box(M.lava, w + 0.6, 0.4, d + 0.6, 0, -0.3, 0);
   f.wall(M.lava, -w / 2, -d / 2, w / 2, -d / 2, H, 0.6); f.wall(M.lava, -w / 2, -d / 2, -w / 2, d / 2, H, 0.6); f.wall(M.lava, w / 2, -d / 2, w / 2, d / 2, H, 0.6);
-  f.wall(M.wood, -w / 2, d / 2, w / 2, d / 2, H, 0.12, [[w / 2 - 1, 1.8, 1.8]]);
+  f.wall(M.wood, -w / 2, d / 2, w / 2, d / 2, H, 0.12, [[w / 2 - 1, 1.8, H - 0.12]]); // (porta até o teto: 1,8 m batia a cabeça)
   f.box(M.wood, w - 1.2, 0.4, 1.4, 0, 0, -d / 2 + 1.0); f.box(M.straw, w - 1.4, 0.06, 1.2, 0, 0.4, -d / 2 + 1.0); // o estrado onde se dormia, com esteiras
   f.box(M.wood, w + 1, 0.2, d + 1.2, 0, H, 0, { rx: 0.06 }); // o teto de tábuas
   for (let i = 0; i < 8; i++) f.geo(new THREE.DodecahedronGeometry(0.3 + (i % 3) * 0.08, 0), M.lava, -w / 2 + 0.7 + (i % 4) * 1.8, H + 0.35, i < 4 ? -0.9 : 0.9, { uv: false }); // as pedras que seguram o teto

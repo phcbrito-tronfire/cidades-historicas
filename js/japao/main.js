@@ -321,7 +321,8 @@ async function main() {
     player.night = sky.state.night;
     travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player);
+      { const p = player.pos, inH = city.houses.some((h) => { const c = Math.cos(h.ry), s = Math.sin(h.ry), dx = p.x - h.x, dz = p.z - h.z; return Math.abs(dx * c - dz * s) < h.w / 2 + 0.6 && Math.abs(dx * s + dz * c) < h.d / 2 + 0.6; }), op = inH ? 0.18 : 1; for (const m of city.M.noren) m.opacity += (op - m.opacity) * Math.min(1, dt * 6); } /* dentro de casa, o noren da porta quase some: ele cobria a câmera */ }
     actors.update(dt, t, player, quests, sky.state.night);
     festas.update(dt, t, player, sky.state.night);
     seasons.update(dt, t, camera, sky.current === 'tarde');
