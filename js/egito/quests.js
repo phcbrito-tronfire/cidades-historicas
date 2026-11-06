@@ -19,7 +19,7 @@ export const OBJECTIVES = [
   { id: 'merneptah', text: 'Encontre o príncipe Merneptah no quartel', hint: null },
   { id: 'isetnofret', text: 'Seja recebido pela rainha Isetnofret no jardim do palácio', hint: [36, -121] },
   { id: 'rahotep', text: 'Conheça Rahotep, o vizir do Norte, diante da porta do palácio', hint: [66, -128] },
-  { id: 'tia', text: 'Encontre a princesa Tia, irmã do faraó, a caminho da necrópole', hint: [-165, -62] },
+  { id: 'tia', text: 'Encontre a princesa Tia, irmã do faraó, no túmulo que ela constrói em Sacara', hint: [-211.5, -173.5] },
   { id: 'escaravelhos', text: 'Encontre os 5 escaravelhos dourados', count: 5 },
   { id: 'festas', text: 'Veja as duas festas de Mênfis: a barca de Ptah e o touro Ápis (aperte C para passar o tempo)' },
   { id: 'artefatos', text: 'Encontre os 26 artefatos do Egito Antigo', count: 26 },

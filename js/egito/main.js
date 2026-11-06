@@ -395,6 +395,7 @@ async function main() {
     if (Math.abs(dR) < 46) return 'Margem do Nilo';
     for (const l of city.landmarks || []) if (inR(l.rect)) return l.name;
     if (Math.hypot(x + 155, z - 22) < 30) return 'A Grande Esfinge';
+    if (x < -175 && z < -150) return 'Sacara';
     if (x < -175) return 'Planalto de Gizé';
     if (Math.hypot(x - city.spots.nofret.x, z - city.spots.nofret.z) < 14) return 'Praça de Nofret';
     if (z > 25) return 'Bairro Norte';

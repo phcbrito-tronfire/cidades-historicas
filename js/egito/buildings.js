@@ -641,6 +641,56 @@ export function buildCity(scene, tex) {
   torch(cx + 2, G(cx + 2, cz + 6), cz + 6); // (no chão de verdade: com a altura do canteiro, a tocha ficava 1 m no ar)
   out.spots.hori = new V3(cx + 3, cy, cz + 2);
 
+  // ======================= SACARA: a pirâmide de degraus de Djoser e o túmulo da princesa Tia ================
+  // Sacara é a necrópole de Mênfis, no deserto do oeste. A pirâmide de degraus do rei Djoser (c. 2650 a.C., do
+  // arquiteto Imhotep) foi a primeira pirâmide do mundo: seis degraus de calcário, de base retangular. Ao lado, o
+  // túmulo da princesa Tia, irmã de Ramsés II, e do marido (também Tia, supervisor do tesouro), achado de verdade em
+  // Sacara: um túmulo em forma de pequeno templo — pilone, pátio com colunas e a capela com uma pirâmide pontuda em
+  // cima. Aqui ele está em obras: andaime no pilone do norte, blocos no chão e escultores trabalhando. (No mapa, Sacara
+  // fica bem mais perto das pirâmides de Gizé do que na realidade, a uns 15 km.)
+  {
+    const DX = -262, DZ = -190; let dy = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) dy = Math.min(dy, G(DX + a * 23, DZ + b * 20)); dy -= 0.2;
+    const steps = 6, hh = 3.7;
+    for (let k = 0; k < steps; k++) { const sc = 1 - k * 0.145, w = 46 * sc, d = 40 * sc;
+      B.geo(taper(w, hh + 0.05, d, 0.95, 0.95), M.limestone, DX, dy + k * hh + hh / 2, DZ); addBox(DX, DZ, w, d, -5, dy + (k + 1) * hh); }
+    out.spots.djoser = new V3(DX + 30, G(DX + 30, DZ), DZ);
+    const TX = -225, TZ = -175; let ty = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) ty = Math.min(ty, G(TX + a * 12, TZ + b * 7)); ty -= 0.1;
+    const wallT = (x0, x1, z0, z1, h, m = M.limestone) => { const w = x1 - x0, d = z1 - z0; B.box(m, w, h, d, (x0 + x1) / 2, ty, (z0 + z1) / 2); addBox((x0 + x1) / 2, (z0 + z1) / 2, w, d, -5, ty + h); };
+    B.box(M.limestone, 22, 0.3, 13, TX, ty - 0.1, TZ); // o piso de lajes
+    // pilone: a torre do sul pronta, a do norte ainda baixa, com o andaime em volta
+    B.geo(taper(2.2, 5.6, 4.9, 0.9), M.limestone, TX + 10, ty + 2.8, TZ - 3.55); addBox(TX + 10, TZ - 3.55, 2.2, 4.9, -5, ty + 5.6);
+    B.geo(taper(2.2, 3.4, 4.9, 0.95), M.limestone, TX + 10, ty + 1.7, TZ + 3.55); addBox(TX + 10, TZ + 3.55, 2.2, 4.9, -5, ty + 3.4);
+    B.box(M.limestone, 2.0, 1.0, 2.8, TX + 10, ty + 3.4, TZ); // a verga do portão (apoiada nas duas torres)
+    for (const [px, pz] of [[TX + 8.6, TZ + 1.2], [TX + 11.4, TZ + 1.2], [TX + 8.6, TZ + 6.2], [TX + 11.4, TZ + 6.2]]) { B.geo(new THREE.CylinderGeometry(0.06, 0.07, 5.2, 6), M.wood, px, ty + 2.6, pz); addCircle(px, pz, 0.1, -5, ty + 5); } // andaime
+    for (const yy of [1.8, 3.6]) for (const px of [TX + 8.6, TX + 11.4]) B.box(M.wood, 0.3, 0.06, 5.2, px, ty + yy, TZ + 3.7);
+    // pátio: os muros, quatro colunas de papiro e a capela no fundo com a pirâmide em cima
+    wallT(TX - 7, TX + 9, TZ - 6.3, TZ - 5.5, 3.2); wallT(TX - 7, TX + 9, TZ + 5.5, TZ + 6.3, 3.2);
+    for (const cxx of [TX + 1.5, TX + 5.5]) for (const czz of [TZ - 3.2, TZ + 3.2]) column(B, M, cxx, ty, czz, 0.32, 2.9, 3.2, false);
+    wallT(TX - 11, TX - 3, TZ - 6.3, TZ - 5.5, 3.6); wallT(TX - 11, TX - 3, TZ + 5.5, TZ + 6.3, 3.6); wallT(TX - 11.8, TX - 11, TZ - 6.3, TZ + 6.3, 3.6);
+    wallT(TX - 3.8, TX - 3, TZ - 5.5, TZ - 0.8, 3.6); wallT(TX - 3.8, TX - 3, TZ + 0.8, TZ + 5.5, 3.6); // a fachada da capela, com a porta
+    B.box(M.limestone, 0.8, 1.0, 1.7, TX - 3.4, ty + 2.6, TZ);
+    B.box(M.limestone, 9, 0.4, 13.4, TX - 7.4, ty + 3.6, TZ); addBox(TX - 7.4, TZ, 9, 13.4, ty + 3.4, ty + 4.0); // o teto da capela
+    B.geo(pyramidGeo(3.0, 5.2, 4), M.limestone, TX - 7.4, ty + 4.0, TZ, { uv: false }); B.geo(pyramidGeo(0.45, 0.78, 2), M.capGold, TX - 7.4, ty + 8.42, TZ, { uv: false }); // a pirâmide pontuda da capela
+    B.box(M.relief, 0.08, 2.6, 4.2, TX - 10.95, ty + 0.4, TZ, { uv: { s: 4 } }); // a estela do fundo da capela (entalhada)
+    // canteiro: blocos, o trenó, cestos de massa, potes de tinta
+    for (let i = 0; i < 7; i++) { const bx = TX + rr(12, 17), bz = TZ + (i % 2 ? 1 : -1) * rr(6.5, 9.5), by = G(bx, bz); /* (dos lados: a frente da porta, onde está a princesa, fica livre) */ B.box(M.limestone, rr(1.0, 1.6), rr(0.6, 0.9), rr(0.8, 1.3), bx, by - 0.1, bz, { ry: rand() }); addBox(bx, bz, 1.2, 1.0, -5, by + 0.8); }
+    for (let i = 0; i < 4; i++) jar(B, M, TX + 8 + i * 0.5, ty, TZ - 8.2, 0.7);
+    // a cadeira de carregar da princesa (liteira), estacionada à sombra: o assento com encosto e as duas varas
+    { const lx = TX + 16, lz = TZ + 5, ly = G(lx, lz); B.box(M.wood, 1.1, 0.5, 0.8, lx, ly + 0.25, lz); B.box(M.gold, 1.14, 0.08, 0.84, lx, ly + 0.75, lz); B.box(M.wood, 0.1, 0.9, 0.8, lx - 0.5, ly + 0.8, lz); B.box(M.blue, 0.9, 0.06, 0.7, lx, ly + 0.83, lz, { uv: false });
+      for (const sd of [-1, 1]) B.geo(new THREE.CylinderGeometry(0.045, 0.045, 3.6, 6), M.wood, lx, ly + 0.55, lz + sd * 0.48, { rz: Math.PI / 2 });
+      for (const [a, b] of [[-0.45, -0.32], [0.45, -0.32], [-0.45, 0.32], [0.45, 0.32]]) B.box(M.wood, 0.08, 0.25, 0.08, lx + a, ly, lz + b); addBox(lx, lz, 1.4, 1.2, -5, ly + 1.2); }
+    out.spots.tia = new V3(TX + 13.5, G(TX + 13.5, TZ + 1.5), TZ + 1.5);
+    out.spots.tiaTomb = new V3(TX, ty, TZ);
+    out.landmarks = out.landmarks || [];
+    out.landmarks.push(
+      { name: 'Pirâmide de degraus de Djoser', tag: 'Sacara — a primeira pirâmide', rect: [DX - 24, DX + 24, DZ - 21, DZ + 21],
+        text: 'Construída para o rei Djoser por volta de 2650 a.C., é a primeira grande construção de pedra do mundo. O arquiteto Imhotep empilhou seis "mastabas" (túmulos baixos e retangulares) cada vez menores, formando uma escada para o rei subir ao céu. Em 1250 a.C. ela já tinha 1.400 anos, e Imhotep era venerado como sábio e médico. O príncipe Khaemwaset mandou restaurá-la.',
+        foot: 'Ao lado fica o túmulo que a princesa Tia está construindo.' },
+      { name: 'Túmulo da princesa Tia (em obras)', tag: 'Sacara — túmulo de Tia e Tia', rect: [TX - 12, TX + 12, TZ - 7, TZ + 7],
+        text: 'Túmulo da princesa Tia, irmã de Ramsés II, e de seu marido, também chamado Tia, supervisor do tesouro. Foi achado em Sacara por arqueólogos no século XX. Tem a forma de um pequeno templo: um pilone na entrada, um pátio com colunas e a capela no fundo, com uma pequena pirâmide pontuda em cima, como se usava no Novo Império. Nas paredes, os escultores entalham a vida do casal e os dois diante dos deuses.',
+        foot: 'A torre do norte do pilone ainda está sendo erguida: veja o andaime.' });
+  }
+
   // ======================= PALÁCIO REAL =====================================
   const PX0 = -15, PX1 = 55, PZ0 = -160, PZ1 = -105, PY = 1.0, PWH = 5;
   out.exclusions.push([PX0 - 6, PX1 + 30, PZ0 - 6, PZ1 + 6]);

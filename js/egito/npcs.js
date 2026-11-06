@@ -57,7 +57,7 @@ export class Actors {
       merneptah: [S.quartel.x + 5, S.quartel.z + 3, -Math.PI / 2],
       isetnofret: [36, -121, -Math.PI / 2],
       rahotep: [66, -128, -Math.PI / 2], // diante da porta do palácio
-      tia: [-165, -62, Math.PI / 2],
+      tia: [S.tia.x, S.tia.z, Math.PI / 2], // na porta do túmulo que ela constrói em Sacara (antes, largada no meio do areal)
     };
     for (const def of NPCS) {
       const [x, z, ry] = P[def.id];
@@ -158,6 +158,18 @@ export class Actors {
     for (let i = 0; i < 3; i++) {
       const h = this.addHuman({ outfit: 'soldier', hair: 'short', extras: [i === 2 ? 'khopesh' : 'spear'], pose: i === 2 ? null : 'spear' }, Q.x + 3 + i * 1.8, Q.z + 8, -Math.PI / 2);
       this.agents.push({ ...h, kind: 'soldier', static: true, lines: SOLDIER_LINES, mode: i === 2 ? 'talk' : 'idle', ry: -Math.PI / 2 });
+    }
+    // a comitiva da princesa Tia no túmulo de Sacara (portador do leque e guarda) e os escultores trabalhando
+    const S2 = C.spots; if (S2.tia) {
+      const ft = this.addHuman({ outfit: 'longkilt', hair: 'short', extras: ['flabellum'], collar: 0xd9a23e, pose: 'spear' }, S2.tia.x + 0.6, S2.tia.z + 1.4, Math.PI / 2);
+      this.agents.push({ ...ft, kind: 'soldier', ry: Math.PI / 2, static: true, mode: 'idle', lines: ['Acompanho a princesa desde o palácio. A liteira ficou ali, à sombra.', 'A princesa vem toda semana ver as obras. Os escultores trabalham mais depressa quando ela chega!'] });
+      const gd = this.addHuman({ outfit: 'soldier', hair: 'khat', khat: 0xe8dcc0, extras: ['spear', 'shield'], pose: 'spear' }, S2.tia.x + 1.2, S2.tia.z - 1.6, Math.PI / 2);
+      this.agents.push({ ...gd, kind: 'soldier', ry: Math.PI / 2, static: true, mode: 'idle', lines: SOLDIER_LINES });
+      const T0 = C.spots.tiaTomb;
+      for (const [dx, dz, ry] of [[3.5, -4.6, Math.PI], [3.5, 4.6, 0], [-1.5, 4.6, 0], [9.8, 6.0, -Math.PI / 2]]) {
+        const h = this.addHuman({ outfit: 'worker', hair: pick(['short', 'bald']), collar: null }, T0.x + dx, T0.z + dz, ry);
+        this.agents.push({ ...h, kind: 'worker', static: true, mode: 'work', ry, lines: ['Estou entalhando o banquete da princesa: os músicos, as cestas de frutas, os jarros de vinho.', 'Primeiro o desenhista risca a figura em vermelho, o mestre corrige em preto, e só então a gente entalha.', 'Esta pedra é de Tura, a melhor do Egito. Corta como queijo de cabra!'] });
+      }
     }
     // operários nas pirâmides
     const Hs = C.spots.hori;
