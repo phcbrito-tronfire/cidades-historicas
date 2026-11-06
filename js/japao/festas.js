@@ -6,11 +6,39 @@
 //   de 3 m acesas ao longo de toda a rua — a vila inteira fica dourada.
 // Os avisos só aparecem para quem está no lugar do acontecimento.
 import * as THREE from 'three';
-import { makeHumanoid, animateHumanoid, playOnce } from '../comum/mixamo.js';
+import { makeHumanoid, animateHumanoid, playOnce, loadAnims } from '../comum/mixamo.js';
 import { terrainHeight, STREET, SHRINE } from './terrain.js';
 import { rr, rand } from '../comum/util.js';
 
 const V3 = THREE.Vector3;
+// A dança da miko (miko-mai): lenta e cerimonial, de frente para o salão do kami. Ela se curva, ergue o molho de
+// sininhos (suzu) e o sacode, anda em círculo pelo palco (o "mai" é girar), gira no lugar com a hakama abrindo e
+// balança com as mãos juntas em oração; e recomeça. Movimentos do Mixamo (reverência formal, oração balançando, giro,
+// braço erguido), mais lentos; o tambor (taiko) marca o tempo e os sininhos tocam quando ela os ergue.
+const KG_CLIPS = ['kg_reverencia', 'kg_oracao', 'kg_giro', 'kg_ergue'];
+const KG_SEQ = [
+  { clip: 'kg_reverencia', speed: 0.7 }, { clip: 'kg_ergue', speed: 0.65, bells: true }, { walk: 0.25, dur: 4.5 },
+  { clip: 'kg_giro', speed: 0.75 }, { clip: 'kg_oracao', speed: 0.8, dur: 6 }, { clip: 'kg_ergue', speed: 0.65, bells: true },
+  { walk: 0.25, dur: 4.5 }, { clip: 'kg_giro', speed: 0.75 }, { walk: 0.25, dur: 4.5 }, { walk: 0.25, dur: 4.5 },
+];
+// o suzu: cabo curto, três anéis de sininhos dourados e as cinco fitas coloridas (goshiki) caindo
+function suzu() {
+  const g = new THREE.Group(), gold = new THREE.MeshStandardMaterial({ color: 0xd8b048, metalness: 0.9, roughness: 0.3 });
+  const h = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0x3a2a1a })); h.position.y = 0.06; g.add(h);
+  const bell = new THREE.SphereGeometry(0.014, 8, 6);
+  [[0.2, 0.06, 7], [0.25, 0.045, 5], [0.29, 0.03, 3]].forEach(([y, r, n]) => { for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, b = new THREE.Mesh(bell, gold); b.position.set(Math.cos(a) * r, y, Math.sin(a) * r); g.add(b); } });
+  ['#2a7a3a', '#e8c040', '#c0281e', '#f2f0ea', '#4a3a9a'].forEach((c, i) => { const rb = new THREE.Mesh(new THREE.PlaneGeometry(0.035, 0.42), new THREE.MeshStandardMaterial({ color: c, side: THREE.DoubleSide, roughness: 0.9 })); rb.position.set(-0.03 + i * 0.015, -0.2, 0.01 * (i - 2)); rb.rotation.y = i * 0.35; g.add(rb); });
+  return g;
+}
+// o leque (hiōgi): branco com o sol vermelho e as bordas douradas
+function fan() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#f4efe2'; x.fillRect(0, 0, 256, 128); x.fillStyle = '#c0281e'; x.beginPath(); x.arc(128, 60, 30, 0, 7); x.fill();
+  x.fillStyle = '#d8b048'; x.fillRect(0, 0, 256, 8); x.fillRect(0, 120, 256, 8);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.26, 18, 1, 0, Math.PI * 0.75), new THREE.MeshStandardMaterial({ map: t, side: THREE.DoubleSide, roughness: 0.8 }));
+  const g = new THREE.Group(); m.rotation.set(0, Math.PI / 2, -0.9); g.add(m); return g;
+}
 export const DAYS = [
   { id: 'comum', label: 'Dia comum', msg: 'Um dia comum na vila: os lavradores nos arrozais, os samurais no treino de arco da manhã.' },
   { id: 'kagura', label: 'Dança kagura', msg: 'Hoje há dança kagura no santuário: a miko dança para os kami no palco do pátio.' },
@@ -27,7 +55,9 @@ export class Festas {
     const fl = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.04, 0.12), new THREE.MeshStandardMaterial({ color: 0xf2f0ea })); fl.position.z = -0.4; arrowG.add(fl);
     this.arrows = []; for (let i = 0; i < 6; i++) { const a = arrowG.clone(); a.visible = false; scene.add(a); this.arrows.push({ g: a, t: -1 }); }
     // a dançarina de kagura (miko): quimono branco, hakama vermelha, leque
-    if (city.spots.kagura) { const k = city.spots.kagura; this.miko = makeHumanoid({ outfit: 'kannushi', cloth: 0xf8f6f0, hakama: 0xb8261e, female: true, hair: 'shimada', extras: ['fan'] }); this.miko.root.position.set(k.x, k.y, k.z); this.miko.root.visible = false; scene.add(this.miko.root); }
+    if (city.spots.kagura) { const k = city.spots.kagura; this.miko = makeHumanoid({ outfit: 'kannushi', cloth: 0xf8f6f0, hakama: 0xb8261e, female: true, hair: 'shimada', extras: [] }); this.miko.root.position.set(k.x, k.y, k.z); this.miko.root.visible = false; scene.add(this.miko.root);
+      this.miko.handR.add(suzu()); this.miko.handL.add(fan()); loadAnims(KG_CLIPS);
+      this.kg = { i: 0, t: 0, ang: 0, face: Math.atan2(10, 14), beat: 0, bellT: 0 }; } // (de frente para o salão do kami)
     // as tochas da festa do fogo: feixes de pinho em pé na beira da rua, com a ponta acesa
     this.fires = []; const bundle = new THREE.CylinderGeometry(0.45, 0.6, 3.2, 10), bm = new THREE.MeshStandardMaterial({ color: 0x8a6a40, roughness: 1 }), rope = new THREE.MeshStandardMaterial({ color: 0xc8b070 });
     const sprite = new THREE.SpriteMaterial({ map: glow, color: 0xff9a3a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -62,9 +92,26 @@ export class Festas {
         if (a.t > 4) { a.t = -1; a.stuck = false; a.g.visible = false; } }
     }
     // ---- kagura
-    if (this.miko) { const on = ev === 'kagura' && night < 0.5; this.miko.root.visible = on && Math.hypot(p.x - C.spots.kagura.x, p.z - C.spots.kagura.z) < 70;
-      if (this.miko.root.visible) { this.miko.root.rotation.y = Math.sin(t * 0.6) * 1.6 + Math.PI / 2; animateHumanoid(this.miko, dt, Math.abs(Math.cos(t * 0.6)) > 0.7 ? 0.6 : 0, Math.abs(Math.cos(t * 0.6)) > 0.7 ? 'walk' : 'talk', t);
-        if (Math.hypot(p.x - C.spots.kagura.x, p.z - C.spots.kagura.z) < 22) { if (!this.seen.has('kagura')) { this.seen.add('kagura'); this.toast('A miko dança a kagura: o leque e os sininhos chamam os kami. As danças contam histórias dos mitos — como a deusa do sol, escondida numa caverna, saiu para ver a dança.', 'quest', 9000); this.onSeen?.('kagura'); } } } }
+    if (this.miko) {
+      const on = ev === 'kagura' && night < 0.5, dK = Math.hypot(p.x - C.spots.kagura.x, p.z - C.spots.kagura.z), M = this.miko, K = this.kg, k = C.spots.kagura;
+      M.root.visible = on && dK < 110;
+      if (M.root.visible) {
+        const st = KG_SEQ[K.i], act = st.clip && M.act(st.clip), dur = st.dur ?? (act ? act.getClip().duration / st.speed : 3);
+        if (K.t === 0 && act) act.reset(); // cada passo começa do início
+        K.t += dt;
+        let mode = 'idle', speed = 0;
+        if (st.walk) { K.ang += dt * 0.35; mode = 'walk'; speed = 0.45; } // anda em círculo pelo palco (devagar)
+        else if (act) { mode = '@' + st.clip; M.speeds = { [st.clip]: st.speed }; }
+        const R = 1.2; /* o círculo tem 1,2 m: ela fica nele também nos passos parados */
+        M.root.position.set(k.x + Math.sin(K.ang) * R, k.y, k.z + Math.cos(K.ang) * R);
+        M.root.rotation.y = st.walk ? K.ang + Math.PI / 2 : K.face;
+        animateHumanoid(M, dt, speed, mode, t);
+        if (st.bells && dK < 45) { K.bellT -= dt; const f = K.t / dur; if (f > 0.25 && f < 0.7 && K.bellT <= 0) { K.bellT = 0.22; this.audio?.tone?.([2400 + rand() * 900, 3300 + rand() * 600], 0.25, 'triangle', 0.035); } } // os sininhos
+        if (dK < 55) { K.beat -= dt; if (K.beat <= 0) { K.beat = st.walk ? 0.9 : 1.6; this.audio?.burst?.(0.3, 95, 0.32); } } // o taiko marca o tempo
+        if (K.t >= dur) { K.t = 0; K.i = (K.i + 1) % KG_SEQ.length; }
+        if (dK < 25 && !this.seen.has('kagura')) { this.seen.add('kagura'); this.toast('A miko dança a kagura: o leque e os sininhos chamam os kami. As danças contam histórias dos mitos — como a deusa do sol, escondida numa caverna, saiu para ver a dança.', 'quest', 9000); this.onSeen?.('kagura'); }
+      }
+    }
     // ---- a festa do fogo
     const fire = ev === 'himatsuri' && night > 0.5;
     this.fireGroup.visible = fire; if (!fire && this.fireLights[0].intensity) for (const l of this.fireLights) l.intensity = 0;
