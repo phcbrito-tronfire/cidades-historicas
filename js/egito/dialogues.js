@@ -295,7 +295,7 @@ export const NPCS = [
   },
   {
     id: 'ramses', name: 'Ramsés II', title: 'Senhor das Duas Terras', objective: 'farao',
-    look: { outfit: 'pharaoh', hair: 'nemes', extras: ['crook'], skin: 0x9c6644, height: 1.82, pose: 'royal' },
+    look: { outfit: 'pharaoh', hair: 'nemes', crown: 'pschent', extras: ['crook'], skin: 0x9c6644, height: 1.82, pose: 'royal' },
     greet: 'Então você é o viajante de quem toda Mênfis fala. Eu sou Usermaatre Setepenre, Ramsés, Amado de Amon, Senhor das Duas Terras e filho de Rá. Fale: o rei o escuta.',
     topics: [
       { q: 'O que é ser faraó?', a: [

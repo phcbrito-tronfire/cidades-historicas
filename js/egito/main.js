@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
+import { loadHieroFont } from './hieroglifos.js';
 import { createPost } from '../comum/post.js';
 import { warmUp } from '../comum/aquecer.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
@@ -10,7 +11,8 @@ import { makeWaterFX } from '../comum/waterfx.js';
 import { makeUnderwater } from '../comum/submerso.js';
 import { Artifacts } from './artifacts.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { pressTerrain, buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight, WORLD } from './terrain.js';
+import { pressTerrain, buildTerrain, buildVegetation, buildHorizon, riverX, LAKE, terrainHeight, WORLD, setPoolWater } from './terrain.js';
+import { stillWater } from '../comum/aguaparada.js';
 import { buildCity } from './buildings.js';
 import { setCharTextures } from './characters.js';
 import { placeSculptures, sculptureInstance, registerSculptures } from '../comum/sculptures.js';
@@ -99,6 +101,7 @@ async function main() {
   let pbr = null;
   try { pbr = await loadPBR('assets/textures', (f) => ui.progress(0.03 + f * 0.12)); }
   catch (e) { console.warn('Texturas fotográficas indisponíveis, usando as procedurais', e); }
+  await loadHieroFont('assets/fonts/NotoSansEgyptianHieroglyphs-Regular.ttf'); // os hieróglifos de verdade das paredes
   const tex = getTextures(!!pbr);
   tex.pbr = pbr;
   if (pbr) buildPhotoComposites(tex, pbr);
@@ -115,7 +118,7 @@ async function main() {
   const city = buildCity(scene, tex);
   { const n = pressTerrain(world.terrain, city.floors); console.info('lajes de piso:', city.floors.length, '· vértices do chão rebaixados:', n); }
   const ruins = buildNileRuins(scene, city);
-  if (city.pool) { city.pool.children.forEach((m) => (m.material = world.calmWater)); scene.add(city.pool); }
+  if (city.pool) { const pw = world.calmWater.clone(); pw.transparent = true; pw.opacity = 0.72; pw.color.set(0x2a8a96); pw.depthWrite = false; stillWater(pw, { scale: 0.5, strength: 0.35 }); city.pool.children.forEach((m) => (m.material = pw)); scene.add(city.pool); setPoolWater(city.poolRects); } // (água de verdade: vê-se o fundo de azulejos)
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');
   buildVegetation(scene, tex, city.exclusions, city.plants);
   await placeSculptures(scene, city.sculptures);

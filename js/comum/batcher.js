@@ -50,7 +50,7 @@ export class Batcher {
     // agrupa por material E por quadra do mapa: cada quadra vira uma malha própria, que a câmera (e as sombras e o
     // reflexo do Nilo) pode descartar quando está fora de vista — antes, a cidade inteira era desenhada sempre
     g.computeBoundingBox();
-    if (SCAN) { const fr = (new Error().stack || '').split('\n').filter((l) => /\.js/.test(l) && !/batcher\.js/.test(l)).slice(0, 2).map((l) => ((m) => (m ? m[1] + ':' + m[2] : '?'))(l.match(/(js\/[^?)]+\.js)(?:\?[^:)]*)?:(\d+)/))); globalThis.__pieces.push({ b: g.boundingBox.clone(), src: fr.join(' < ') }); }
+    if (SCAN) { const fr = (new Error().stack || '').split('\n').filter((l) => /\.js/.test(l) && !/batcher\.js/.test(l)).slice(0, 2).map((l) => ((m) => (m ? m[1] + ':' + m[2] : '?'))(l.match(/(js\/[^?)]+\.js)(?:\?[^:)]*)?:(\d+)/))); globalThis.__pieces.push({ b: g.boundingBox.clone(), src: fr.join(' < '), m: mat.uuid, mn: mat.name || mat.map?.uuid?.slice(0, 4) || mat.color?.getHexString?.() }); }
     const c = g.boundingBox.getCenter(new THREE.Vector3());
     const key = Math.floor(c.x / CELL) + ',' + Math.floor(c.z / CELL);
     if (!this.groups.has(mat)) this.groups.set(mat, new Map());

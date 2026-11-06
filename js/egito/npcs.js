@@ -74,6 +74,11 @@ export class Actors {
       if (def.id === 'ramses' && S.throneSeat) { h.rig.root.position.copy(S.throneSeat); k.seated = true; for (const o of [h.rig.tail, h.rig.skirt]) if (o) o.visible = false; }
       this.key.push(k);
     }
+    // os portadores do leque, de pé no estrado ao lado do trono ("portador do leque à direita do rei" era um título de honra)
+    if (S.throneSeat) for (const dz of [-1.75, 1.75]) {
+      const h = this.addHuman({ outfit: 'longkilt', hair: 'short', extras: ['flabellum'], collar: 0xd9a23e, pose: 'spear' }, S.throneSeat.x - 0.4, S.throneSeat.z + dz, Math.PI / 2);
+      this.agents.push({ ...h, kind: 'soldier', ry: Math.PI / 2, static: true, mode: 'idle', lines: ['Sou portador do leque à direita do rei. É um título de honra: poucos ficam tão perto dele.', 'O leque de penas de avestruz dá sombra ao Senhor das Duas Terras e espanta as moscas. Fale baixo diante dele.'] });
+    }
     // guardas do palácio e do templo
     const G = S.gate;
     this.guards = [];

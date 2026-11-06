@@ -79,7 +79,10 @@ export function terrainHeight(x, z) {
   return h;
 }
 
+let POOLS = [];
+export function setPoolWater(r) { POOLS = r || []; }
 export function waterLevelAt(x, z) {
+  for (const [x0, x1, z0, z1, y] of POOLS) if (x > x0 && x < x1 && z > z0 && z < z1) return y; // o tanque do palácio
   if (x > LAKE.x0 - 0.2 && x < LAKE.x1 + 0.2 && z > LAKE.z0 - 0.2 && z < LAKE.z1 + 0.2) return LAKE.y;
   if (Math.abs(x - riverX(z)) < RIVER_HALF + 14) return WATER_Y;
   return -100;

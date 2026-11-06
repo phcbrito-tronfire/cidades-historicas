@@ -456,6 +456,16 @@ export function makeHumanoid(o = {}) {
       } else headPart(new THREE.SphereGeometry(1, 18, 14), m(0x1f3f8c, { roughness: 0.35, metalness: 0.3 }), [0, R * 0.6, -R * 0.2], [0.15, 0, 0], [R * 1.1, R * 1.6, R * 1.35]);
       headPart(new THREE.CylinderGeometry(0.011, 0.018, 0.065, 6), gold(), [0, R * 0.95, R * 0.95], [0.35, 0, 0]);
       headPart(new THREE.CylinderGeometry(0.016, 0.011, 0.09, 6), m(0x2c5d9c), [0, -R * 1.05, R * 0.75], [0.2, 0, 0]);
+      if (o.crown === 'pschent') {
+        const red = m(0xa8261c, { roughness: 0.5 }), white = m(0xf3efe4, { roughness: 0.55 });
+        headPart(new THREE.CylinderGeometry(R * 1.02, R * 1.12, R * 0.95, 24, 1, false), red, [0, R * 1.25, -R * 0.08]); // o cesto da coroa vermelha
+        headPart(new THREE.BoxGeometry(R * 0.85, R * 2.1, R * 0.32), red, [0, R * 2.05, -R * 0.92], [-0.08, 0, 0]); // a haste de trás
+        headPart(new THREE.TorusGeometry(R * 0.26, R * 0.045, 6, 14, Math.PI * 1.6), gold(), [0, R * 1.95, R * 0.72], [0, Math.PI / 2, 0.4]); // a espiral
+        const pts = []; for (let i = 0; i <= 14; i++) { const t = i / 14; pts.push(new THREE.Vector2(R * (0.78 - 0.42 * t + 0.18 * Math.sin(t * Math.PI)), R * 2.5 * t)); }
+        headPart(new THREE.LatheGeometry(pts, 22), white, [0, R * 1.5, -R * 0.12]); // a coroa branca, bulbosa, saindo de dentro
+        headPart(new THREE.SphereGeometry(R * 0.22, 12, 10), white, [0, R * 4.0, -R * 0.12]);
+        headPart(new THREE.CylinderGeometry(0.014, 0.022, 0.08, 6), gold(), [0, R * 1.55, R * 1.06], [0.25, 0, 0]); // a naja (ureu) na testa da coroa
+      }
     } break;
     case 'fedora': {
       // chapéu feito na medida da cabeça: mede os vértices reais de rosto e cabelo (pose T) na altura da fita
@@ -869,7 +879,18 @@ export function makeHumanoid(o = {}) {
     }
     if (e === 'rudis') handR.add(meshAt(new THREE.CylinderGeometry(0.012, 0.014, 1.1, 6), m(0x6b4a2e), 0, 0.3, 0)); // bastão do juiz (summa rudis)
     if (e === 'staff') handR.add(meshAt(new THREE.CylinderGeometry(0.013, 0.017, 1.7, 6), m(0x6b4a2e), 0, 0.3, 0));
-    if (e === 'crook') { handR.add(meshAt(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6), m(0x2c5d9c), 0, 0.12, 0)); handR.add(meshAt(new THREE.TorusGeometry(0.05, 0.014, 5, 10, Math.PI), gold(), 0.05, 0.32, 0)); handL.add(meshAt(new THREE.CylinderGeometry(0.013, 0.013, 0.35, 6), gold(), 0, 0.1, 0)); }
+    if (e === 'crook') {
+      const blue = m(0x1f4f9c, { roughness: 0.35, metalness: 0.3 });
+      for (let i = 0; i < 7; i++) handR.add(meshAt(new THREE.CylinderGeometry(0.016, 0.016, 0.075, 8), i % 2 ? gold() : blue, 0, -0.08 + i * 0.075, 0)); // o cabo do cajado, em faixas
+      handR.add(meshAt(new THREE.TorusGeometry(0.06, 0.016, 6, 14, Math.PI), gold(), 0.06, 0.46, 0)); // a curva
+      for (let i = 0; i < 5; i++) handL.add(meshAt(new THREE.CylinderGeometry(0.014, 0.014, 0.07, 8), i % 2 ? blue : gold(), 0, -0.04 + i * 0.07, 0)); // o cabo do mangual
+      for (let k = -1; k <= 1; k++) for (let j = 0; j < 4; j++) handL.add(meshAt(new THREE.CylinderGeometry(0.012, 0.01, 0.055, 6), j % 2 ? blue : gold(), 0.03 + j * 0.035 + k * 0.006, 0.31 - j * 0.045, k * 0.022, [0, 0, 0.7])); // os três fios de contas caindo
+    }
+    if (e === 'flabellum') { // leque de penas de avestruz numa haste longa (os "portadores do leque" do rei)
+      handR.add(meshAt(new THREE.CylinderGeometry(0.016, 0.02, 2.3, 8), m(0x6b4a2e), 0, 0.75, 0));
+      handR.add(meshAt(new THREE.CylinderGeometry(0.04, 0.03, 0.12, 10), gold(), 0, 1.9, 0));
+      for (let i = 0; i < 9; i++) { const a = -1.1 + (i / 8) * 2.2; handR.add(meshAt(new THREE.PlaneGeometry(0.13, 0.62), m(i % 2 ? 0xf4efe2 : 0xe2d2b0, { side: THREE.DoubleSide, roughness: 0.95 }), Math.sin(a) * 0.3, 2.2 + Math.cos(a) * 0.28, 0, [0, 0, -a])); }
+    }
     if (e === 'scroll') handL.add(meshAt(new THREE.CylinderGeometry(0.028, 0.028, 0.2, 8), m(0xe9dcb4), 0, 0.0, 0.04, [0, 0, Math.PI / 2]));
     if (e === 'basket') { headPart(new THREE.CylinderGeometry(0.19, 0.14, 0.15, 12), m(0xb79c5c, { roughness: 1 }), [0, R * 1.4, 0]); for (let i = 0; i < 5; i++) headPart(new THREE.SphereGeometry(0.055, 7, 5), pick([m(0xa82030), m(0xc88a48), m(0x6d9a3a)]), [rr(-0.09, 0.09), R * 1.4 + 0.09, rr(-0.09, 0.09)]); }
     if (e === 'jar') { const pts = []; for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push(new THREE.Vector2(0.03 + Math.sin(t * Math.PI) * 0.12, t * 0.32)); } headPart(new THREE.LatheGeometry(pts, 12), m(0xa4552f), [0, R * 1.0, 0]); }

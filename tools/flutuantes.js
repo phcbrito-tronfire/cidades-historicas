@@ -82,3 +82,26 @@ export function meshGaps(scene, { minGap = 0.3, maxAbove = 0.3 } = {}) {
     if (worst > minGap) { globalThis.__meshBad.push({ src: p.src, gap: worst, x: wx, z: wz }); const k = p.src.split(' < ')[0]; const e = bad.get(k) || { n: 0, max: 0, ex: '' }; e.n++; if (worst > e.max) { e.max = worst; e.ex = `(${wx.toFixed(1)}, ${wz.toFixed(1)})`; } bad.set(k, e); } }
   return { grids: grids.map((G) => G.dx.toFixed(2)), list: [...bad.entries()].sort((a, b) => b[1].max - a[1].max).slice(0, 40).map(([k, e]) => `${e.n}x até ${e.max.toFixed(2)} ${e.ex} ${k}`) };
 }
+
+// Superfícies brigando: duas peças de materiais diferentes com uma face no mesmo plano e se sobrepondo (o "pisca-pisca"
+// de textura, como a faixa azul das esfinges no topo do pedestal). coplanar() — lista por linha do código.
+export function coplanar({ tol = 0.004, minArea = 0.02 } = {}) {
+  const P = globalThis.__pieces; if (!P) return 'abra a página com ?scan=1';
+  const H = new Map(), S = 4, key = (i, j) => i + ',' + j;
+  P.forEach((p, n) => { const b = p.b; for (let i = Math.floor(b.min.x / S); i <= Math.floor(b.max.x / S); i++) for (let j = Math.floor(b.min.z / S); j <= Math.floor(b.max.z / S); j++) { const k = key(i, j); if (!H.has(k)) H.set(k, []); H.get(k).push(n); } });
+  const ov = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+  const hits = new Map(), seen = new Set();
+  for (const L of H.values()) for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+    const A = P[L[i]], Bp = P[L[j]]; if (A.m === Bp.m) continue; const id = L[i] + ':' + L[j]; if (seen.has(id)) continue; seen.add(id);
+    const a = A.b, b = Bp.b;
+    const ox = ov(a.min.x, a.max.x, b.min.x, b.max.x), oy = ov(a.min.y, a.max.y, b.min.y, b.max.y), oz = ov(a.min.z, a.max.z, b.min.z, b.max.z);
+    let face = null;
+    if (ox * oz > minArea && (Math.abs(a.max.y - b.max.y) < tol)) face = 'topo';
+    else if (oy * oz > minArea && (Math.abs(a.max.x - b.max.x) < tol || Math.abs(a.min.x - b.min.x) < tol) && ox > 0.01) face = 'x';
+    else if (ox * oy > minArea && (Math.abs(a.max.z - b.max.z) < tol || Math.abs(a.min.z - b.min.z) < tol) && oz > 0.01) face = 'z';
+    if (!face) continue;
+    const k = [A.src.split(' < ')[0], Bp.src.split(' < ')[0]].sort().join(' x ') + ' (' + face + ')';
+    const e = hits.get(k) || { n: 0, ex: '' }; e.n++; if (!e.ex) e.ex = `(${((a.min.x + a.max.x) / 2).toFixed(1)}, ${a.max.y.toFixed(2)}, ${((a.min.z + a.max.z) / 2).toFixed(1)})`; hits.set(k, e);
+  }
+  return [...hits.entries()].sort((x, y) => y[1].n - x[1].n).map(([k, e]) => `${e.n}x ${k} ${e.ex}`);
+}

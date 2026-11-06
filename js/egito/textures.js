@@ -1,6 +1,7 @@
 // Texturas procedurais desenhadas em canvas (nada de arquivos externos)
 import * as THREE from 'three';
 import { fbm, vnoise, mulberry32, clamp } from '../comum/util.js';
+import { hieroOk, templeWall, palaceBand, cartouche, TXT } from './hieroglifos.js';
 
 let maxAniso = 8;
 export function setAniso(n) { maxAniso = n; }
@@ -176,8 +177,8 @@ export function getTextures(photo = false) {
     drawBlocks(ctx, S, 64, 128, '#5a4228', 1, 0.2);
     const rnd = mulberry32(42);
     band(ctx, 8, 18, S, rnd);
-    // dois registros com figuras e colunas de hieróglifos
-    for (let r = 0; r < 2; r++) {
+    if (hieroOk()) templeWall(ctx); // cenas e textos de verdade (hieroglifos.js)
+    else for (let r = 0; r < 2; r++) {
       const top = 40 + r * 220, bottom = top + 200;
       ctx.fillStyle = PAL.black; ctx.fillRect(0, bottom, S, 3);
       let x = 20;
@@ -416,7 +417,8 @@ export function buildPhotoComposites(tex, pbr) {
     p.scale(S / 512, S / 512);
     const rnd = mulberry32(42);
     band(p, 8, 18, 512, rnd);
-    for (let r = 0; r < 2; r++) {
+    if (hieroOk()) templeWall(p); // cenas e textos de verdade (hieroglifos.js): o rei oferecendo a Ptah, os cartuchos de Ramsés II
+    else for (let r = 0; r < 2; r++) {
       const top = 40 + r * 220, bottom = top + 200;
       p.fillStyle = PAL.black; p.fillRect(0, bottom, 512, 2);
       let x = 20;
@@ -442,6 +444,7 @@ export function buildPhotoComposites(tex, pbr) {
     for (let i = 0; i < 4; i++) { p.fillStyle = cols[i]; p.fillRect(0, 8 + i * 9, 256, 6); }
     for (let k = 0; k < 2; k++) {
       const cx = 64 + k * 128;
+      if (hieroOk()) { cartouche(p, k ? TXT.nome : TXT.prenome, cx, 80, 28, '#1f3f74'); continue; }
       p.strokeStyle = PAL.black; p.lineWidth = 3; p.beginPath(); p.roundRect(cx - 26, 80, 52, 200, 24); p.stroke();
       for (let i = 0; i < 5; i++) glyph(p, Math.floor(rnd() * 9), cx, 105 + i * 38, 30, rnd);
     }
@@ -465,6 +468,7 @@ export function buildPhotoComposites(tex, pbr) {
       p.fillStyle = [PAL.red, PAL.blue, PAL.green][Math.floor(x / 16) % 3];
       p.beginPath(); p.moveTo(x + 2, 70); p.lineTo(x + 2, 52); p.arc(x + 8, 52, 6, Math.PI, 0); p.lineTo(x + 14, 70); p.fill();
     }
+    if (hieroOk()) palaceBand(p, 92, 512, 17); // "o deus perfeito, senhor das Duas Terras" e o nome de Ramsés II no cartucho
     p.fillStyle = 'rgba(160,130,90,0.55)'; p.fillRect(0, 512 - 60, 512, 60);
     for (let x = 8; x < 512; x += 40) {
       p.fillStyle = PAL.blue; p.beginPath(); p.moveTo(x, 512 - 64); p.lineTo(x + 12, 512 - 100); p.lineTo(x + 24, 512 - 64); p.fill();

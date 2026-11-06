@@ -7,6 +7,7 @@ import { addBox, addCircle, addPyramid } from '../comum/collision.js';
 import { terrainHeight, riverX, LAKE } from './terrain.js';
 import { pbrSet } from './textures.js';
 import { Batcher, mat4 } from '../comum/batcher.js';
+import { dreamStela, hieroOk } from './hieroglifos.js';
 export { mat4 };
 const V3 = THREE.Vector3;
 
@@ -150,6 +151,16 @@ export function createMaterials(tex) {
     set(M.basalt, { normalMap: rep(P.rock_boulder_dry, 1).normalMap });
     M.basalt.userData.uv = { s: 2 };
   } else M.pyramid = M.limestone;
+  // a Estela do Sonho de Tutmés IV (granito, com a cena e o texto em hieróglifos de verdade)
+  { const t = new THREE.CanvasTexture(hieroOk() ? dreamStela() : document.createElement('canvas')); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; M.stela = hieroOk() ? std({ map: t, roughness: 0.45 }) : M.granite; }
+  // azulejos de faiança azul do fundo do tanque do palácio
+  {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const v = Math.floor(Math.random() * 30); x.fillStyle = `rgb(${30 + v},${110 + v},${150 + v})`; x.fillRect(i * 32 + 1, j * 32 + 1, 30, 30); }
+    x.strokeStyle = '#e8e0c8'; x.lineWidth = 2; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32, 128); x.stroke(); x.beginPath(); x.moveTo(0, i * 32); x.lineTo(128, i * 32); x.stroke(); }
+    const t = new THREE.CanvasTexture(x.canvas); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    M.poolTiles = std({ map: t, roughness: 0.3 }); M.poolTiles.userData.uv = { s: 1.2 };
+  }
   // teto estrelado (estrelas de cinco pontas amarelas no azul, como nos tetos dos templos e das tumbas)
   {
     const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
@@ -371,10 +382,13 @@ export function buildCity(scene, tex) {
     addBox(1, zc, 8, 17.5, -5, TY + 19.8);
   };
   pyl(12.25); pyl(-12.25);
-  B.box(M.relief, 6, 4, 7, 1, TY + 11, 0);
+  // o portal: as ombreiras vão da porta até dentro das torres (a face delas é inclinada) e sobem até a verga; antes a
+  // verga era um bloco de 7 m solto entre os pilonos, com vão dos dois lados
+  for (const sz of [-1, 1]) { B.box(M.relief, 6, 15, 2.6, 1, TY, sz * 4.3); addBox(1, sz * 4.3, 6, 2.6, -5, TY + 15); }
+  B.box(M.relief, 6, 4, 11.2, 1, TY + 11, 0);
+  cornice(1, 0, 6, 11.2, TY + 15, 0.55);
   { const g = new THREE.PlaneGeometry(6.6, 1.24); g.rotateY(Math.PI / 2); B.geo(g, M.wingedSun, 4.03, TY + 13.4, 0, { uv: false }); } // disco solar alado
   addBox(1, 0, 6, 7, TY + 11, TY + 15);
-  B.box(M.sandstone, 6.4, 11, 0.6, 1, TY, 3.7); B.box(M.sandstone, 6.4, 11, 0.6, 1, TY, -3.7);
   // mastros com flâmulas
   for (const z of [-17, -7, 7, 17]) {
     B.geo(new THREE.CylinderGeometry(0.16, 0.24, 26, 8), M.wood, 5.6, TY + 13, z);
@@ -514,13 +528,40 @@ export function buildCity(scene, tex) {
       B.box(M.limestone, 5.4, 1.2, 4.5, x, y - 0.4, z, { ry: -ang });
     }
   };
-  B.box(M.limestone, 16, 6, 30, khafre.x + khafre.half + 9, G(khafre.x + khafre.half + 9, khafre.z) - 0.5, khafre.z);
-  addBox(khafre.x + khafre.half + 9, khafre.z, 16, 30, -5, G(khafre.x + khafre.half + 9, khafre.z) + 5.5);
-  causeway(khafre.x + khafre.half + 17, khafre.z, -172, 30);
-  B.box(M.limestone, 14, 5, 22, -164, G(-164, 34) - 0.5, 48); // templo do vale
-  addBox(-164, 48, 14, 22, -5, G(-164, 48) + 4.5);
-  B.box(M.limestone, 14, 5, 24, khufu.x + khufu.half + 8, G(khufu.x + khufu.half + 8, khufu.z) - 0.5, khufu.z);
-  addBox(khufu.x + khufu.half + 8, khufu.z, 14, 24, -5, G(khufu.x + khufu.half + 8, khufu.z) + 4.5);
+  // Templos do Império Antigo (já com 1.300 anos em 1250 a.C.): paredes grossas de calcário revestidas de granito rosa
+  // na parte de baixo, duas portas na fachada leste, a sala de pilares de granito por dentro (com as vigas e o teto
+  // de lajes, algumas já caídas) e o piso de alabastro. Antes eram caixas lisas de pedra, que pareciam concreto.
+  const oldTemple = (cx, cz, w, d, h) => {
+    let y = Infinity; for (const [a, b] of [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) y = Math.min(y, G(cx + a * w / 2, cz + b * d / 2)); y -= 0.3;
+    const t = 2.2, hw = w / 2, hd = d / 2, dw = 2.2;
+    B.box(M.white, w - 0.4, 0.32, d - 0.4, cx, y, cz); // piso de alabastro
+    const wall = (x0, x1, z0, z1) => { const ww = x1 - x0, dd = z1 - z0, mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+      B.box(M.limestone, ww, h, dd, mx, y, mz); addBox(mx, mz, ww, dd, -5, y + h);
+      B.box(M.granite, ww + 0.14, h * 0.55, dd + 0.14, mx, y, mz); }; // o revestimento de granito, mais saliente
+    wall(cx - hw, cx - hw + t, cz - hd, cz + hd); // fundo
+    wall(cx - hw + t, cx + hw, cz + hd - t, cz + hd); wall(cx - hw + t, cx + hw, cz - hd, cz - hd + t); // laterais
+    const d0 = cz - d / 4, d1 = cz + d / 4; // as duas portas da fachada
+    for (const [a, b] of [[cz - hd + t, d0 - dw / 2], [d0 + dw / 2, d1 - dw / 2], [d1 + dw / 2, cz + hd - t]]) wall(cx + hw - t, cx + hw, a, b);
+    for (const dz of [d0, d1]) { B.box(M.limestone, t, h - 3.2, dw + 0.2, cx + hw - t / 2, y + 3.2, dz); addBox(cx + hw - t / 2, dz, t, dw, y + 3.2, y + h); } // vergas das portas
+    // a sala de pilares: pilares quadrados de granito, vigas por cima e o teto de lajes (umas faltando)
+    const ix0 = cx - hw + t + 2, ix1 = cx + hw - t - 2.4, iz0 = cz - hd + t + 1.8, iz1 = cz + hd - t - 1.8;
+    const nx = Math.max(1, Math.round((ix1 - ix0) / 3.4)), nz = Math.max(1, Math.round((iz1 - iz0) / 3.4));
+    for (let j = 0; j <= nz; j++) { const pz = iz0 + (iz1 - iz0) * j / nz;
+      for (let i = 0; i <= nx; i++) { const px = ix0 + (ix1 - ix0) * i / nx; B.box(M.granite, 0.95, h - 1.6, 0.95, px, y + 0.3, pz); addBox(px, pz, 0.95, 0.95, -5, y + h - 1.3); }
+      B.box(M.granite, ix1 - ix0 + 1.2, 0.7, 1.0, (ix0 + ix1) / 2, y + h - 1.3, pz); } // (a viga embaixo das lajes do teto: no mesmo plano, piscava)
+    for (let x0 = cx - hw + t; x0 < cx + hw - t - 0.1; x0 += 2.4) for (let z0 = cz - hd + t; z0 < cz + hd - t - 0.1; z0 += 2.4) {
+      if (rand() < 0.22) { B.box(M.limestone, 2.2, 1.1, 2.4, x0 + 1.2 + rr(-0.3, 0.3), y + 0.3, z0 + 1.2, { ry: rr(-0.4, 0.4) }); continue; } // a laje caída no chão (o teto aberto em cima)
+      const ww = Math.min(2.4, cx + hw - t - x0), dd = Math.min(2.4, cz + hd - t - z0);
+      B.box(M.limestone, ww + 0.02, 0.6, dd + 0.02, x0 + ww / 2, y + h - 0.6, z0 + dd / 2); addBox(x0 + ww / 2, z0 + dd / 2, ww, dd, y + h - 0.6, y + h);
+    }
+    // blocos caídos do alto, encostados nas paredes por fora
+    for (let i = 0; i < 5; i++) { const sd = rand() < 0.5 ? -1 : 1, bx = cx + rr(-hw, hw), bz = cz + sd * (hd + rr(1.2, 2.6)); B.box(M.limestone, rr(1.4, 2.2), rr(0.9, 1.3), rr(1.2, 1.8), bx, G(bx, bz) - 0.15, bz, { ry: rr(0, 3) }); addBox(bx, bz, 1.8, 1.6, -5, G(bx, bz) + 1.0); }
+    return y;
+  };
+  oldTemple(khafre.x + khafre.half + 9, khafre.z, 16, 30, 6.5); // templo funerário de Quéfren
+  causeway(khafre.x + khafre.half + 17, khafre.z, -172, 44); // a calçada até o Templo do Vale
+  oldTemple(-164, 48, 14, 22, 6); // Templo do Vale de Quéfren, ao lado da Esfinge
+  oldTemple(khufu.x + khufu.half + 8, khufu.z, 14, 24, 5.5); // templo funerário de Quéops
 
   // Esfinge
   // Grande Esfinge: corpo de leão esculpido na rocha e rosto humano (de frente para o nascer do sol)
@@ -528,17 +569,19 @@ export function buildCity(scene, tex) {
     // modelo 3D esculpido (Sketchfab, CC BY): comprimento L, largura ~0,59 L, altura ~0,53 L; olha para +x
     const SX = -166, SZ = 22, L = 32, gy = G(-158, 22) - 0.3;
     SCULPT.push({ model: 'esfinge_giza', x: SX, y: gy, z: SZ, ry: 0, length: L });
-    // estela do sonho de Tutmés IV e a estátua do rei diante das patas
-    const fx = SX + 0.5 * L;
-    B.box(M.relief, 0.5, 3.6, 2.4, fx + 2.6, gy, SZ, { uv: { s: 3 } });
-    addBox(fx + 2.6, SZ, 0.6, 2.4, -5, gy + 3.6);
-    const sx = fx + 4.8;
-    B.box(M.limestone, 1.1, 0.5, 1.1, sx, gy, SZ); addBox(sx, SZ, 1.1, 1.1, -5, gy + 3.4);
-    out.statues.push({ x: sx, y: gy + 0.5, z: SZ, ry: Math.PI / 2, h: 2.8, painted: true });
+    // Entre as patas, a capela a céu aberto de Tutmés IV: a Estela do Sonho (granito, c. 1401 a.C.) encostada no peito da
+    // Esfinge, as estelas menores de Ramsés II nas laterais e um altar de oferendas na frente. A estela conta o sonho do
+    // príncipe que dormiu à sombra da Esfinge, coberta de areia: ela prometeu fazê-lo rei se ele a desenterrasse.
+    // (Antes havia aqui uma estátua de faraó inventada e uma placa com símbolos sem sentido.)
+    const fx = SX + 0.5 * L, cx2 = SX + 0.3 * L; // (a estela logo à frente do peito do modelo)
+    B.box(M.stela, 0.55, 3.4, 2.3, cx2, gy, SZ, { uv: false }); addBox(cx2, SZ, 0.6, 2.3, -5, gy + 3.4);
+    for (const sd of [-1, 1]) { B.box(M.stela, 1.4, 1.9, 0.35, cx2 + 2.6, gy, SZ + sd * 2.05, { uv: false }); addBox(cx2 + 2.6, SZ + sd * 2.05, 1.4, 0.4, -5, gy + 1.9); } // estelas de Ramsés II
+    B.box(M.limestone, 1.5, 0.9, 1.5, cx2 + 1.8, gy, SZ); addBox(cx2 + 1.8, SZ, 1.5, 1.5, -5, gy + 0.9); offerings(B, M, cx2 + 1.8, gy + 0.9, SZ); // altar
+    for (const sd of [-1, 1]) { B.box(M.mud, 0.5, 1.4, 1.3, fx - 0.4, gy, SZ + sd * 1.85); addBox(fx - 0.4, SZ + sd * 1.85, 0.5, 1.3, -5, gy + 1.4); } // a mureta de tijolo na entrada da capela
     out.spots.sphinx = new V3(fx + 8, G(fx + 8, SZ), SZ);
-    // colisão: tronco e cabeça, e as patas estendidas
+    // colisão: tronco e cabeça; as duas patas separadas, com o corredor da capela entre elas
     addBox(SX - 0.15 * L, SZ, 0.7 * L, 0.6 * L, -5, gy + 0.53 * L);
-    addBox(SX + 0.33 * L, SZ, 0.34 * L, 0.42 * L, -5, gy + 0.1 * L);
+    for (const sd of [-1, 1]) addBox(SX + 0.36 * L, SZ + sd * 0.14 * L, 0.3 * L, 0.12 * L, -5, gy + 0.1 * L);
   }
   out.zones.piramides = [-320, -150, -130, 190];
 
@@ -550,17 +593,22 @@ export function buildCity(scene, tex) {
     addBox(x, z, w, w, -5, y + 1.1);
   }
   // trenó com bloco
-  B.box(M.wood, 4, 0.3, 0.3, cx + 6, cy, cz - 6 - 0.8); B.box(M.wood, 4, 0.3, 0.3, cx + 6, cy, cz - 6 + 0.8);
-  for (let i = -1; i <= 1; i++) B.box(M.wood, 0.3, 0.2, 2, cx + 6 + i * 1.3, cy + 0.3, cz - 6);
-  B.box(M.limestone, 2.4, 1.6, 1.8, cx + 6, cy + 0.5, cz - 6);
-  { const gy = G(cx + 13, cz - 6) + 0.05, a = Math.atan2(cy + 0.6 - gy, 6); // as cordas de puxar o bloco descem do trenó até o chão
-    for (let i = 0; i < 3; i++) B.geo(new THREE.CylinderGeometry(0.04, 0.04, Math.hypot(6, cy + 0.6 - gy), 4), M.rope, cx + 10 + i * 0.3, (cy + 0.6 + gy) / 2, cz - 6 + (i - 1) * 0.4, { rz: Math.PI / 2 - a }); }
-  addBox(cx + 6, cz - 6, 4, 2, -5, cy + 2);
+  { const sx = cx + 6, sz = cz - 6, sy = Math.min(G(sx - 2, sz), G(sx + 2, sz), G(sx, sz)) - 0.05; // (o trenó no chão de verdade: antes ficava na altura do centro do canteiro e boiava)
+    B.box(M.wood, 4, 0.3, 0.3, sx, sy, sz - 0.8); B.box(M.wood, 4, 0.3, 0.3, sx, sy, sz + 0.8);
+    for (let i = -1; i <= 1; i++) B.box(M.wood, 0.3, 0.2, 2, sx + i * 1.3, sy + 0.3, sz);
+    B.box(M.limestone, 2.4, 1.6, 1.8, sx, sy + 0.5, sz);
+    const gy = G(sx + 7, sz) + 0.05, a = Math.atan2(sy + 0.25 - gy, 5); // as cordas, da ponta do trenó até o chão
+    for (let i = 0; i < 3; i++) B.geo(new THREE.CylinderGeometry(0.04, 0.04, Math.hypot(5, sy + 0.25 - gy), 4), M.rope, sx + 4.5, (sy + 0.25 + gy) / 2, sz + (i - 1) * 0.4, { rz: Math.PI / 2 - a });
+    addBox(sx, sz, 4, 2, -5, sy + 2.1); }
   // tendas
-  for (let i = 0; i < 4; i++) {
-    const x = cx - 14 + i * 7, z = cz + 14, y = G(x, z);
-    B.geo(new THREE.CylinderGeometry(1.8, 1.8, 5, 3, 1, true), M.esteira, x, y + 0.9, z, { rz: Math.PI / 2, ry: Math.PI / 2, uv: false });
-    addBox(x, z, 3.2, 5, -5, y + 2.2);
+  for (let i = 0; i < 4; i++) { // barraca dos trabalhadores: duas águas de esteira sobre uma cumeeira e duas forquilhas
+    const x = cx - 14 + i * 7, z = cz + 14, y = Math.min(G(x, z - 2.4), G(x, z + 2.4), G(x - 1.6, z), G(x + 1.6, z)) - 0.05, H = 2.2, hw = 1.7;
+    const sl = Math.hypot(H, hw), ang = Math.atan2(H, hw);
+    for (const sd of [-1, 1]) B.box(M.esteira, 0.05, sl, 4.6, x + sd * hw / 2, y + H / 2 - sl / 2, z, { rz: sd * (Math.PI / 2 - ang) });
+    B.geo(new THREE.CylinderGeometry(0.06, 0.06, 5.0, 6), M.wood, x, y + H + 0.02, z, { rx: Math.PI / 2 }); // a cumeeira
+    for (const e of [-2.3, 2.3]) for (const sd of [-1, 1]) B.geo(new THREE.CylinderGeometry(0.05, 0.06, H * 1.05, 6), M.wood, x + sd * 0.35, y + H / 2, z + e, { rz: -sd * 0.16 }); // as forquilhas
+    B.box(M.esteira, 2.4, 0.03, 3.6, x, y + 0.02, z); // a esteira de dormir no chão
+    jar(B, M, x + 1.2, y, z + 2.9, 0.9); addBox(x, z, 3.4, 4.6, -5, y + 1.0);
   }
   torch(cx + 2, G(cx + 2, cz + 6), cz + 6); // (no chão de verdade: com a altura do canteiro, a tocha ficava 1 m no ar)
   out.spots.hori = new V3(cx + 3, cy, cz + 2);
@@ -576,7 +624,9 @@ export function buildCity(scene, tex) {
   B.box(M.sandstone, 70, 0.3, 55, (PX0 + PX1) / 2, PY - 0.25, (PZ0 + PZ1) / 2);
   // torres do portão
   for (const z of [-138.5, -126.5]) { B.geo(taper(4.5, 8, 5, 0.85), M.relief, PX1 + 0.5, PY + 4 - 0.4, z); addBox(PX1 + 0.5, z, 4.5, 5, -5, PY + 8); }
-  B.box(M.relief, 4.5, 2.4, 7, PX1 + 0.5, PY + 5, -132.5); addBox(PX1 + 0.5, -132.5, 4.5, 7, PY + 5, PY + 7.4);
+  B.box(M.relief, 4.2, 2.4, 8.2, PX1 + 0.5, PY + 5, -132.5); addBox(PX1 + 0.5, -132.5, 4.5, 7, PY + 5, PY + 7.4); // a verga entra nas torres (as faces delas são inclinadas)
+  for (const sz of [-1, 1]) { B.box(M.relief, 4.2, 5.4, 1.0, PX1 + 0.5, PY - 0.4, -132.5 + sz * 3.6); addBox(PX1 + 0.5, -132.5 + sz * 3.6, 4.2, 1.0, -5, PY + 5); } // as ombreiras
+  cornice(PX1 + 0.5, -132.5, 4.2, 8.2, PY + 7.4, 0.45);
   out.gateBlock = addBox(PX1 + 0.5, -132.5, 4.5, 7, -5, PY + 5, { camPass: true });
   out.zones.palacio = [PX0, PX1, PZ0, PZ1];
   out.spots.gate = new V3(PX1 + 4, PY, -132.5);
@@ -598,7 +648,7 @@ export function buildCity(scene, tex) {
   for (let x = -6; x <= 18; x += 6) for (const z of [-140, -125]) column(B, M, x, PY - 0.3, z, 0.55, TH - 1.6, TH, false);
   B.box(M.paintedFloor, 22, 0.03, 13, 6, PY + 0.06, -132.5, { uv: false, noGround: true }); /* o chão pintado, entre as colunas (um dedo acima do piso: no mesmo plano, sumia) */
   // móveis: baús, mesas de oferenda com jarros, lampadários altos e banquinhos para os conselheiros
-  for (const [bx, bz] of [[16, -146.5], [12, -146.5], [16, -118.5]]) { B.box(M.wood, 1.4, 0.75, 0.8, bx, PY - 0.3, bz); B.box(M.gold, 1.44, 0.06, 0.84, bx, PY + 0.42, bz); B.box(M.blue, 1.0, 0.3, 0.02, bx, PY + 0.05, bz + 0.41, { uv: false }); addBox(bx, bz, 1.4, 0.8, -5, PY + 0.5); }
+  for (const [bx, bz] of [[16, -146.5], [12, -146.5], [16, -118.5]]) { B.box(M.wood, 1.4, 0.75, 0.8, bx, PY - 0.3, bz); B.box(M.gold, 1.44, 0.06, 0.84, bx, PY + 0.42, bz); B.box(M.blue, 1.0, 0.3, 0.06, bx, PY + 0.05, bz + 0.43, { uv: false }); addBox(bx, bz, 1.4, 0.8, -5, PY + 0.5); }
   for (const z of [-137.5, -127.5]) { B.box(M.wood, 0.9, 0.7, 0.6, 3, PY - 0.3, z); jar(B, M, 2.8, PY + 0.4, z, 0.5); jar(B, M, 3.2, PY + 0.4, z, 0.45); addBox(3, z, 0.9, 0.6, -5, PY + 0.6); }
   for (const [lx, lz] of [[-2, -144], [-2, -121], [14, -144], [14, -121]]) { B.geo(new THREE.CylinderGeometry(0.05, 0.07, 2.2, 8), M.gold, lx, PY + 0.8, lz); B.geo(new THREE.CylinderGeometry(0.22, 0.08, 0.18, 10), M.gold, lx, PY + 1.95, lz); out.torches.push(new V3(lx, PY + 2.1, lz)); addCircle(lx, lz, 0.2, -5, PY + 2); }
   for (let i = 0; i < 4; i++) for (const z of [-136, -129]) { const sx2 = 4 + i * 2.6; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) B.box(M.wood, 0.05, 0.45, 0.05, sx2 + a * 0.2, PY - 0.3, z + b * 0.2); B.box(M.wood, 0.48, 0.06, 0.48, sx2, PY + 0.15, z); B.box(M.red, 0.4, 0.05, 0.4, sx2, PY + 0.21, z, { uv: false }); }
@@ -612,6 +662,11 @@ export function buildCity(scene, tex) {
   B.box(M.gold, 0.44, 0.04, 0.72, -8.62, PY + 0.76, -132.5);
   addBox(-9.3, -132.5, 1.6, 1.6, -5, PY + 2.6);
   for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 0.9, z); torch(-5.5, PY + 1.85, z, false); }
+  { const y0 = PY + 0.5, ch = 3.8, x0 = -10.45, x1 = -6.55, z0 = -136.9, z1 = -128.1;
+    for (const x of [x0, x1]) for (const z of [z0, z1]) { for (let k = 0; k < 8; k++) B.geo(new THREE.CylinderGeometry(0.13, 0.13, ch / 8 + 0.01, 12), k % 2 ? M.blue : M.gold, x, y0 + (k + 0.5) * ch / 8, z, { uv: false }); B.geo(new THREE.CylinderGeometry(0.26, 0.14, 0.32, 12), M.green, x, y0 + ch + 0.16, z, { uv: false }); addCircle(x, z, 0.16, -5, y0 + ch); }
+    B.box(M.stars, x1 - x0 + 0.7, 0.3, z1 - z0 + 0.7, (x0 + x1) / 2, y0 + ch + 0.32, (z0 + z1) / 2);
+    cornice((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0 + 0.7, z1 - z0 + 0.7, y0 + ch + 0.62, 0.35);
+    for (let z = z0; z <= z1 + 0.01; z += 0.55) B.geo(new THREE.CylinderGeometry(0.04, 0.09, 0.32, 6), M.gold, x1 + 0.55, y0 + ch + 2.15, z, { uv: false }); } // o friso de najas (ureus) na frente do dossel
   torch(18, PY - 0.3, -146); torch(18, PY - 0.3, -119);
   out.lights.push({ pos: new V3(2, PY + 5, -132.5), color: 0xffb070, intensity: 150, dist: 30 });
   out.spots.throne = new V3(-6, PY + 0.5, -132.5);
@@ -619,21 +674,24 @@ export function buildCity(scene, tex) {
   out.zones.trono = [TX0, TX1, TZ0, TZ1];
 
   // jardim com piscina em T
-  for (const [x0, x1, z0, z1] of [[30, 46, -137, -128], [42, 46, -150, -115]]) {
-    const cxx = (x0 + x1) / 2, czz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
-    B.box(M.sandstone, w + 1, 0.6, d + 1, cxx, PY - 0.2, czz);
-  }
+  // (antes a "água" era um plano 2 cm acima de uma laje de pedra: uma plataforma azul, sem fundo nem borda)
+  const POOL_Y = PY + 0.36;
+  for (const [x0, x1, z0, z1] of [[30, 46, -137, -128], [42, 46, -150, -115]]) B.box(M.poolTiles, x1 - x0, 0.06, z1 - z0, (x0 + x1) / 2, PY + 0.02, (z0 + z1) / 2, { noGround: true }); // fundo de azulejos
+  const rim = [[30, -137, 42, -137], [42, -137, 42, -150], [42, -150, 46, -150], [46, -150, 46, -115], [46, -115, 42, -115], [42, -115, 42, -128], [42, -128, 30, -128], [30, -128, 30, -137]];
+  let area = 0; for (const [ax, az, bx2, bz2] of rim) area += ax * bz2 - bx2 * az; // (o lado de fora de cada trecho, pelo sentido do contorno)
+  for (const [ax, az, bx2, bz2] of rim) { const dx = bx2 - ax, dz = bz2 - az, L = Math.hypot(dx, dz), nx = (area > 0 ? dz : -dz) / L, nz = (area > 0 ? -dx : dx) / L;
+    const mx = (ax + bx2) / 2 + nx * 0.25, mz = (az + bz2) / 2 + nz * 0.25, w = Math.abs(dx) > 0.01 ? L + 0.5 : 0.5, d = Math.abs(dz) > 0.01 ? L + 0.5 : 0.5;
+    B.box(M.sandstone, w, 0.55, d, mx, PY - 0.1, mz); addBox(mx, mz, w, d, -5, PY + 0.45); }
   const pool = new THREE.Group();
-  for (const [x0, x1, z0, z1] of [[30.3, 45.7, -136.7, -128.3], [42.3, 45.7, -149.7, -115.3]]) {
+  for (const [x0, x1, z0, z1] of [[30, 46, -137, -128], [42, 46, -150, -137], [42, 46, -128, -115]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), null);
-    m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, PY + 0.42, (z0 + z1) / 2); pool.add(m);
+    m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, POOL_Y, (z0 + z1) / 2); pool.add(m);
   }
-  out.pool = pool;
-  addBox(38, -132.5, 17, 10, -5, PY + 0.4); addBox(44, -132.5, 5, 36, -5, PY + 0.4);
+  out.pool = pool; out.poolRects = [[30, 46, -137, -128, POOL_Y], [42, 46, -150, -115, POOL_Y]];
   for (let i = 0; i < 18; i++) {
     const x = rr(31, 45), z = rr(-136, -129);
-    B.geo(new THREE.CylinderGeometry(0.35, 0.35, 0.03, 10), M.green, x, PY + 0.44, z);
-    if (i % 3 === 0) B.geo(new THREE.ConeGeometry(0.12, 0.25, 6), M.linen, x, PY + 0.5, z);
+    B.geo(new THREE.CylinderGeometry(0.35, 0.35, 0.03, 10), M.green, x, POOL_Y + 0.02, z);
+    if (i % 3 === 0) B.geo(new THREE.ConeGeometry(0.12, 0.25, 6), M.linen, x, POOL_Y + 0.1, z);
   }
   // canteiros junto aos muros (antes uma fila de bolinhas verdes) e os sicômoros que davam sombra ao jardim
   for (let x = 27; x < 52; x += 2.2) for (const z of [-108.5, -156.5]) plants.shrubs.push([x + rr(-0.4, 0.4), z + rr(-0.5, 0.5), PY - 0.1, rr(0.55, 0.85)]);
@@ -949,7 +1007,7 @@ function column(B, M, x, y, z, r, h, total, open = false, mat) {
     for (let i = 0; i < sp.count; i++) { const t = (sp.getY(i) + h * 0.44) / (h * 0.88); const k = t < 0.12 ? 0.86 + t * 1.15 : 1; sp.setX(i, sp.getX(i) * k); sp.setZ(i, sp.getZ(i) * k); }
     B.geo(lobed(shaft, 0.1), M.colShaft, x, y + h * 0.44, z, { uv: false });
     // anéis (as amarras do feixe)
-    B.geo(lobed(new THREE.CylinderGeometry(r * 1.02, r * 1.02, h * 0.08, 64, 1, true), 0.08), M.colBands, x, y + h * 0.88 + h * 0.04, z, { uv: false });
+    B.geo(lobed(new THREE.CylinderGeometry(r * 1.02, r * 1.02, h * 0.12 + 0.04, 64, 1, true), 0.08), M.colBands, x, y + h * 0.94, z, { uv: false }); // (do fim do fuste até o capitel, sem vão)
     // capitel
     const pts = [];
     for (let i = 0; i <= 12; i++) {
@@ -994,7 +1052,7 @@ let SCULPT = [];
 function miniSphinx(B, M, x, y, z, ry) {
   const F = mat4(x, y, z, 0, ry, 0);
   B.box(M.sandstone, 3, 1, 1.4, 0, 0, 0, { frame: F });
-  B.box(M.blue, 3.04, 0.12, 1.44, 0, 0.88, 0, { frame: F, uv: false });
+  B.box(M.blue, 3.04, 0.12, 1.44, 0, 0.82, 0, { frame: F, uv: false }); // (a faixa fica 6 cm abaixo do topo de pedra)
   const p = new V3(0, 0, 0).applyMatrix4(F);
   SCULPT.push({ model: 'esfinge_avenida', x: p.x, y: y + 1.0, z: p.z, ry, length: 2.9 }); // escultura (modelo 3D) sobre o pedestal
   addBox(p.x, p.z, 1.6, 3.1, -5, y + 2.8);
