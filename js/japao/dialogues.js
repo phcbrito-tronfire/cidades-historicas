@@ -100,6 +100,9 @@ export const NPCS = [
       { q: 'Como é uma katana?', a: [
         'O ferreiro dobra o aço dezenas de vezes e cobre a lâmina de barro antes de mergulhá-la na água: o fio fica duríssimo e o dorso, flexível. A linha ondulada que aparece no fio, o hamon, é a assinatura do ferreiro.',
         'Um samurai usa duas: a longa, katana, e a curta, wakizashi. Só os samurais podem usar as duas juntas: é sinal da classe.'] },
+      { q: 'Onde se treina o corte de verdade?', a: [
+        'Lá fora, no pátio, ficam os feixes de palha de arroz amarrados no suporte. Quem tem espada de verdade testa ali o corte: a lâmina tem de entrar inclinada e sair limpa, sem arrastar a palha.',
+        'Há quem corte bambu também. É duro por fora e oco por dentro, e cresce tão depressa que na estação seguinte o bambuzal já se fechou de novo.'] },
       { q: 'O que é o bushidō?', a: [
         'Hoje se fala muito disso: lealdade, coragem, honestidade, controle de si. Muito do que se escreve vem desta época de paz, quando os samurais tiveram tempo de pensar no que deviam ser.'] },
     ],

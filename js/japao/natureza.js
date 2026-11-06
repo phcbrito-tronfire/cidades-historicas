@@ -121,7 +121,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
     const d = new THREE.Object3D();
     for (const L of cells.values()) {
       const im = new THREE.InstancedMesh(geo, mat, L.length);
-      L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); if (tint) im.setColorAt(i, tint(p)); });
+      L.forEach((p, i) => { f(d, p); d.updateMatrix(); im.setMatrixAt(i, d.matrix); if (tint) im.setColorAt(i, tint(p)); (p.refs || (p.refs = [])).push([im, i]); }); /* (refs: onde cada planta está nas malhas — o corte da katana esconde o colmo) */
       im.castShadow = shadow; im.receiveShadow = true; im.computeBoundingSphere(); if (far) im.userData.far = far; scene.add(im); made.push(im); chunks.push(im);
     }
     return made;
@@ -224,7 +224,7 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false, e
     firM.color.setHex(sn === 'inverno' ? 0x6a7a6a : 0x3f5a40); sugiM.color.setHex(sn === 'inverno' ? 0x6a7060 : sn === 'outono' ? 0x5a6a3e : 0x4f6a3e); }; // (no inverno os pinheiros e cedros ficam mais cinzentos, com geada)
   const sakuraLeaf = sakuraM.map;
   let cullT = 0; const cc = chunks.map((im) => im.boundingSphere ? im.boundingSphere.center.clone() : new THREE.Vector3());
-  return { M, water, counts, setSeason, kinds, chunks, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; const R = (chunks[i].userData.far || farR) + 70; chunks[i].visible = dx * dx + dz * dz < R * R && chunks[i].userData.season !== false; } },
+  return { M, water, counts, setSeason, kinds, chunks, bamboo: { list: kinds.bamboo, culm, bTop, bend, M: { culm: bambooM, leaf: bambooLeaf } }, cull(cam, dt) { if ((cullT -= dt) > 0) return; cullT = 0.4; const p = cam.position; for (let i = 0; i < chunks.length; i++) { const c = cc[i], dx = c.x - p.x, dz = c.z - p.z; const R = (chunks[i].userData.far || farR) + 70; chunks[i].visible = dx * dx + dz * dz < R * R && chunks[i].userData.season !== false; } },
     update(dt) { tFall += dt; mistUp(dt, tFall); fallTex2.offset.y += dt * 2.6; fallTex.offset.y += dt * 1.6; water.userData.tick(dt); } };
 }
 

@@ -45,6 +45,7 @@ export class Seasons {
     if (instant) this.nature?.setSeason(this.name);
     this.toast?.(MSG[this.name], '', 8000);
     this.rainDay = this.name === 'verao' && Math.random() < 0.6;
+    this.onSeason?.(this.name); // (o bambu cortado cresce de novo)
   }
   onDay() { this.dayCount++; if (this.dayCount % 4 === 0) this.next(); this.rainDay = this.name === 'verao' && Math.random() < 0.5; }
   apply() {

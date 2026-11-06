@@ -126,6 +126,12 @@ export class AudioFX {
   lyre() { if (!this.ctx) return; const now = this.ctx.currentTime; [293.7, 349.2, 440, 523.3, 587.3].forEach((f, i) => this.pluck(f, now + i * 0.12, 0.45)); }
   sistrum() { if (!this.ctx) return; for (let i = 0; i < 10; i++) setTimeout(() => this.tone([3000 + Math.random() * 2500], 0.08, 'square', 0.025), i * 45); }
   swoosh() { this.burst(0.25, 1800, 0.18); }
+  // o corte: o estalo seco do bambu (e o oco do colmo), o chiado da palha, o metal batendo e o colmo caindo no chão
+  ring(freqs, dur, vol, type = 'sine') { if (!this.ctx) return; const now = this.ctx.currentTime; for (const f of freqs) { const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, now); g.gain.exponentialRampToValueAtTime(0.0008, now + dur); o.connect(g).connect(this.master); o.start(now); o.stop(now + dur + 0.05); } }
+  cutBamboo() { this.burst(0.05, 6500, 0.45); this.ring([760, 1140], 0.16, 0.1, 'triangle'); }
+  cutStraw() { this.burst(0.16, 3400, 0.34); }
+  clang() { this.burst(0.03, 9000, 0.3); this.ring([2380, 3170, 4410, 5960], 0.7, 0.05); }
+  fall() { this.burst(0.45, 360, 0.4); this.burst(1.1, 2800, 0.07); }
   splash() { this.burst(0.7, 700, 0.35); }
   step(jump, run, built) { footstep(this.ctx, this.master, { jump, run, surface: built ? 'wood' : 'earth' }); }
   wade(run) { wadeStep(this.ctx, this.master, { run }); }

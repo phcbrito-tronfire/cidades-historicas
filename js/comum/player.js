@@ -113,7 +113,7 @@ export class Player {
   sheathe() { const K = this.kat, P = this.katParts(); K.drawn = false; K.clip = null; K.queued = false; this.rig.locoSet = null; this.rig.speeds = null; if (P) { P.hand.visible = false; P.sheathed.visible = true; } }
   strike(name) {
     const K = this.kat, info = KT_INFO[name], a = this.rig.act(name); if (!a) return false;
-    K.clip = name; K.t = 0; K.dur = a.getClip().duration * info.end; K.swooshed = false; K.idle = 0;
+    K.clip = name; K.t = 0; K.dur = a.getClip().duration * info.end; K.swooshed = false; K.idle = 0; K.swing = (K.swing || 0) + 1;
     playOnce(this.rig, name, K.dur);
     return true;
   }
@@ -130,6 +130,7 @@ export class Player {
       const info = KT_INFO[K.clip], f = K.t / (K.dur / info.end), cutting = f > info.cut[0] && f < info.cut[1];
       if (cutting && !K.swooshed) { K.swooshed = true; this.events.swoosh?.(); }
       this.trail.update(P.tip, P.mid, cutting);
+      if (cutting) this.events.cut?.(K.clip, K.swing, P); /* o que a lâmina acerta (bambu, palha, parede) */
       if (K.queued && f > info.next) { K.queued = false; K.combo = (K.combo + 1) % KT_CHAIN.length; this.strike(KT_CHAIN[K.combo]); } // emenda o próximo, sem voltar à guarda
       else if (K.t >= K.dur) { K.clip = null; this.rig.once = null; }
       return;
@@ -314,6 +315,7 @@ export class Player {
   }
 
   update(dt, t) {
+    if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.06; } /* o impacto do golpe: tudo para por uma fração de segundo */
     if (this.climb) return this.updateClimb(dt, t);
     // entrada relativa à câmera (estilo Uncharted): ↑ vai para onde a câmera olha, ← → para os lados
     let f = this.locked ? 0 : (this.key('ArrowUp', 'KeyW') ? 1 : 0) - (this.key('ArrowDown', 'KeyS') ? 1 : 0);
@@ -550,6 +552,7 @@ export class Player {
     if (snap) this.camPos.copy(want);
     else this.camPos.lerp(want, Math.min(1, dt * 14));
     this.camera.position.copy(this.camPos);
+    if (this.shake > 0.002) { const k = this.shake; this.camera.position.x += (Math.random() - 0.5) * k; this.camera.position.y += (Math.random() - 0.5) * k; this.camera.position.z += (Math.random() - 0.5) * k; this.shake *= Math.pow(0.0015, Math.min(dt, 0.1)); } /* o tremor do impacto */
     this.camera.lookAt(this.camTarget);
   }
 

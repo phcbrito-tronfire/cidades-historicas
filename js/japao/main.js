@@ -15,6 +15,7 @@ import { makeUnderwater } from '../comum/submerso.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { pressTerrain, buildTerrain, buildHorizon, terrainHeight, inLake, polyDist, fujiH, fujiR, WATER_Y, BOUNDS, LAKE, STREET, SHRINE, RESIDENCE, TEMPLE, FIELDS, FUJI, STREAM, TRAIL, SNOW_Y } from './terrain.js';
 import { buildNature } from './natureza.js';
+import { makeCutting } from './corte.js';
 import { buildCity } from './buildings.js';
 import { Actors } from './npcs.js';
 import { Festas } from './festas.js';
@@ -110,6 +111,8 @@ async function main() {
   await step(0.82, 'Preparando o explorador...');
   const player = new Player(scene, camera);
   player.events.swoosh = () => audio?.swoosh?.(); // (o golpe de katana)
+  const cutting = makeCutting({ scene, player, nature, city, audio, toast: (m, k, ms) => ui.toast(m, k, ms) }); window.__cut = cutting; // o bambu e os feixes de palha que a katana corta
+  player.events.cut = (clip, swing, parts) => cutting.hit(clip, swing, parts);
   player.bounds = BOUNDS;
   player.makeTorch(tex.glow, 'chochin'); // (no Japão de Edo, à noite se andava com a lanterna de papel, não com tocha)
   const start = city.spots.start;
@@ -153,7 +156,7 @@ async function main() {
   post.grade.uniforms.uUnderCol.value.setRGB(0.16, 0.42, 0.44);
   post.grade.uniforms.uWarm.value = 0.15; post.grade.uniforms.uSat.value = 1.08; // verdes úmidos, sem o dourado do Mediterrâneo
   const seasons = new Seasons(scene, { terrainU: world.mat.userData.U, nature, paddies: city.paddies, roofU, post, actors, audio, toast: null });
-  seasons.set(0, true); seasons.toast = (m, k, ms) => ui.toast(m, k, ms);
+  seasons.set(0, true); seasons.toast = (m, k, ms) => ui.toast(m, k, ms); seasons.onSeason = () => cutting.regrow(); // (na troca de estação o bambuzal cortado volta a crescer)
   quests.refs = { ...quests.refs, seasons, nature };
   const timeLabel = () => `${{ manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' }[sky.current]} · ${seasons.label()}`;
   camera.layers.enable(3); sun.shadow.camera.layers.enable(3);
@@ -331,7 +334,7 @@ async function main() {
     if (quests.artifactCount !== artifacts.count) { quests.artifactCount = artifacts.count; ui.renderObjectives(quests); }
     quests.update(dt, t, player);
     sky.update(dt, t, player.pos);
-    nature.update(dt); nature.cull(camera, dt);
+    nature.update(dt); nature.cull(camera, dt); cutting.update(dt);
     for (const a of city.animated) { if (a.fn) { a.fn(dt, t); continue; } if (a.spin) a.g.rotation.z += a.spin * dt; if (a.bob) a.g.position.y = 0.12 + Math.sin(t * 1.1 + a.g.position.x) * 0.05; } // o moinho girando e os barcos balançando
     water.material.uniforms.time.value += dt * 0.4;
     { const u = water.material.uniforms.uSwim.value; u.set(player.pos.x, 0, player.pos.z, player.swimming ? Math.min(1, u.w + dt * 2) : Math.max(0, u.w - dt * 2)); }
