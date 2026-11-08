@@ -186,7 +186,7 @@ async function main() {
 
   await step(0.96, 'Desenhando o mapa da Ática...');
   const S = city.spots;
-  ui.buildMapBackground([
+  const mapJob = ui.buildMapBackground([
     ['Acrópole', 0, -2], ['Parthenon', 22, 30], ['Ágora', AGORA.x, AGORA.z], ['Hefesteion', -392, -230], ['Pnyx', -340, 70], ['Areópago', -152, -116],
     ['Teatro de Dioniso', 22, 150], ['Odeon', 102, 150], ['Cerâmico', -425, -350], ['Dípilon', -480, -405], ['Porto', S.quay.x, S.quay.z + 30], ['Praia do Falero', S.fisher.x + 60, S.fisher.z + 40],
     ['Longas Muralhas', -420, 250], ['Golfo Sarônico', -150, 760], ['Psitália', -622, 452], ['Salamina', -738, 640],
@@ -218,10 +218,11 @@ async function main() {
   ],
     close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (boats.riding) boats.leave(player, S.quay); if (mount.state === 'riding') mount.dismount(player); return true; } });
   ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
+  ui.progress(1, 'Recebendo os últimos modelos...');
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
-  warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0)); // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
+  await warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0), (f, t) => ui.progressEnd(f, t)); await mapJob; // compila e sobe tudo agora (inclusive o que só aparece à noite): nada trava depois
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
-  await step(1, 'Pronto!');
+  ui.progressEnd(1, 'Pronto!'); await nextFrame();
   ui.doneLoading();
 
   // ---------------- estado de jogo ----------------

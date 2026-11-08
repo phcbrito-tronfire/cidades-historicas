@@ -1,5 +1,7 @@
 // Interface: carregamento, HUD, diário, diálogos, cartão de item, minimapa e mapa grande
 import { OBJECTIVES, FINAL_REQ } from './quests.js';
+import { startLoadingScreen } from '../comum/carregando.js';
+import { breath } from '../comum/util.js';
 import { terrainHeight, WATER_Y, forestAt, fujiH, inLake, polyDist, TRAIL, STREAM, STREET, FIELDS, SNOW_Y, inTameike } from './terrain.js';
 import { boxes } from '../comum/collision.js';
 
@@ -21,15 +23,16 @@ const TIPS = [
 export class UI {
   constructor() {
     this.toastsEl = $('#toasts');
-    $('#load-tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
+    this.stopLoadingScreen = startLoadingScreen(TIPS);
     this.journalOpen = true;
     this.dialogState = null;
     this.mapBg = null;
     addEventListener('keydown', (e) => this.dialogKeys(e));
   }
 
-  progress(frac, text) { $('#load-fill').style.width = `${Math.round(frac * 100)}%`; if (text) $('#load-step').textContent = text; }
-  doneLoading() { $('#loading').hidden = true; }
+  progress(frac, text) { $('#load-fill').style.width = `${Math.round(frac * 60)}%`; if (text) $('#load-step').textContent = text; } /* montar a cidade: até 60% da barra */
+  progressEnd(frac, text) { $('#load-fill').style.width = `${Math.round(60 + frac * 40)}%`; if (text) $('#load-step').textContent = text; } /* preparar os gráficos: o resto */
+  doneLoading() { $('#loading').hidden = true; this.stopLoadingScreen?.(); }
   showIntro(onStart) {
     $('#intro').hidden = false;
     $('#btn-start').onclick = () => { $('#intro').hidden = true; $('#hud').hidden = false; onStart(); };
@@ -135,24 +138,30 @@ export class UI {
   }
 
   // ---------------- mapas ----------------
-  buildMapBackground(labels) {
+  async buildMapBackground(labels) {
+    let tb = performance.now();
     const S = MP, c = document.createElement('canvas'); c.width = c.height = S;
-    const ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
-    for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
-      const x = MX0 + px * MS, z = MZ0 + py * MS, h = terrainHeight(x, z);
+    const ctx = c.getContext('2d');
+    const H = S >> 1, sc = document.createElement('canvas'); sc.width = sc.height = H; /* (o relevo em meia resolução: um quarto do trabalho, e ampliado fica até mais suave) */
+    const sx = sc.getContext('2d'), img = sx.createImageData(H, H);
+    for (let py = 0; py < H; py++) { if (performance.now() - tb > 12) { await breath(); tb = performance.now(); } for (let px = 0; px < H; px++) {
+      const x = MX0 + px * 2 * MS, z = MZ0 + py * 2 * MS, h = terrainHeight(x, z);
       let r, g, b;
       const fu = fujiH(x, z);
       if (h < WATER_Y - 0.05 && inLake(x, z, 20)) { const dep = Math.min(1, -h / 12); r = 70 - dep * 30; g = 130 - dep * 40; b = 150 - dep * 30; }
       else if (h > SNOW_Y + 10) { r = 236; g = 238; b = 242; }
       else if (fu > 320) { const k = Math.min(1, (fu - 320) / 250); r = 128 - k * 30; g = 98 - k * 22; b = 86 - k * 16; }
-      else if (polyDist(TRAIL, x, z).d < 3 && z > 120) { r = 150; g = 110; b = 90; }
-      else if (polyDist(STREAM, x, z).d < 4 || inTameike(x, z) < 1) { r = 80; g = 140; b = 160; }
+      else if (inTameike(x, z) < 1) { r = 80; g = 140; b = 160; }
       else if (Math.abs(x - STREET.x) < STREET.hw && z > STREET.z0 && z < STREET.z1 + 60) { r = 196; g = 170; b = 128; }
       else if (x > FIELDS.x0 && x < FIELDS.x1 && z > FIELDS.z0 && z < FIELDS.z1) { r = 150; g = 176; b = 104; }
       else { const fo = forestAt(x, z), k = Math.min(1, Math.max(0, (h - 10) / 300)); r = 150 - fo * 70 - k * 30; g = 176 - fo * 66 - k * 30; b = 118 - fo * 50 - k * 20; }
-      const i = (py * S + px) * 4; img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
-    }
-    ctx.putImageData(img, 0, 0);
+      const i = (py * H + px) * 4; img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+    } }
+    sx.putImageData(img, 0, 0);
+    ctx.imageSmoothingQuality = 'high'; ctx.drawImage(sc, 0, 0, S, S);
+    const line = (pts, w, color) => { ctx.strokeStyle = color; ctx.lineWidth = w / MS; ctx.lineCap = ctx.lineJoin = 'round'; ctx.beginPath(); let on = false; for (const p of pts) { const X = (p[0] - MX0) / MS, Z = (p[1] - MZ0) / MS; if (on) ctx.lineTo(X, Z); else ctx.moveTo(X, Z); on = true; } ctx.stroke(); };
+    line(TRAIL.filter((p) => p[1] > 120 && fujiH(p[0], p[1]) <= 320), 6, 'rgb(150,110,90)');
+    line(STREAM, 8, 'rgb(80,140,160)');
     ctx.fillStyle = 'rgba(80,50,25,0.8)';
     for (const bx of boxes) {
       const gy = terrainHeight((bx.minX + bx.maxX) / 2, (bx.minZ + bx.maxZ) / 2);

@@ -145,7 +145,7 @@ async function main() {
   setupWardrobe({ player, city: 'japao', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 
   await step(0.96, 'Desenhando o mapa da região...');
-  ui.buildMapBackground([
+  const mapJob = ui.buildMapBackground([
     ['Lago Kawaguchi', LAKE.x, LAKE.z], ['Vila dos oshi', STREET.x + 30, (STREET.z0 + STREET.z1) / 2], ['Santuário Sengen', SHRINE.x + 60, SHRINE.z], ['Residência do senhor', RESIDENCE.x, RESIDENCE.z - 50],
     ['Templo', TEMPLE.x, TEMPLE.z - 50], ['Arrozais', (FIELDS.x0 + FIELDS.x1) / 2, (FIELDS.z0 + FIELDS.z1) / 2], ['Cachoeira', 400, 200], ['Trilha Yoshida', 140, 1000], ['Monte Fuji', FUJI.x, FUJI.z - 160],
   ]);
@@ -182,10 +182,11 @@ async function main() {
   ],
     close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (mount.state === 'riding') mount.dismount(player); return true; } });
   ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
+  ui.progress(1, 'Recebendo os últimos modelos...');
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
-  warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0));
+  await warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0), (f, t) => ui.progressEnd(f, t)); await mapJob;
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
-  await step(1, 'Pronto!');
+  ui.progressEnd(1, 'Pronto!'); await nextFrame();
   ui.doneLoading();
 
   // ---------------- estado de jogo ----------------

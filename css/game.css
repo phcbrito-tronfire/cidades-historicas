@@ -22,10 +22,15 @@ kbd { display: inline-block; min-width: 1.7em; padding: 1px 6px; margin-right: 3
 #loading h1 { font-family: 'Cinzel', serif; font-weight: 900; font-size: clamp(3rem, 10vw, 6rem); margin: 0.1em 0 0; letter-spacing: 0.08em;
   background: linear-gradient(180deg, #fff1c2, #e8b84a 55%, #9a6a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .era { font-style: italic; font-size: 1.2rem; opacity: 0.85; margin-bottom: 2rem; }
-.bar { height: 6px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.4); }
+.bar { position: relative; height: 8px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.4); }
+/* um brilho que corre pela barra sem parar: quem desenha é a placa, então continua andando mesmo se a página se ocupar */
+.bar::after { content: ''; position: absolute; inset: 0; width: 35%; background: linear-gradient(90deg, transparent, rgba(255,240,200,0.55), transparent); animation: load-shine 1.5s linear infinite; pointer-events: none; }
+@keyframes load-shine { from { transform: translateX(-110%); } to { transform: translateX(300%); } }
 #load-fill { height: 100%; width: 0; background: linear-gradient(90deg, #9a6a1c, #ffd98a); transition: width 0.25s; }
 #load-step { margin-top: 0.8rem; font-size: 1.05rem; opacity: 0.85; }
-.tip { margin-top: 2rem; font-size: 1.05rem; font-style: italic; opacity: 0.7; min-height: 3em; }
+.tip { margin-top: 2rem; font-size: 1.05rem; font-style: italic; opacity: 0.7; min-height: 3em; transition: opacity 0.4s; }
+.tip.trocando { opacity: 0; }
+.load-note { margin-top: 1.1rem; font-size: 0.92rem; opacity: 0.55; }
 
 /* ---------- pergaminhos ---------- */
 #intro, #pause, #ending, #fallback { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8, 5, 2, 0.55); backdrop-filter: blur(3px); padding: 16px; }

@@ -1,8 +1,10 @@
 // Utilidades matemáticas e ruído procedural (sem dependências)
 
-// versão da publicação (tools/versao.mjs): vem no ?v= da URL deste módulo; ver(url) a acrescenta aos arquivos
-// carregados à parte (modelos 3D), para o navegador não reaproveitar cópias antigas do cache
-export const VERSION = new URL(import.meta.url).searchParams.get('v') || '';
+// versão dos modelos 3D (tools/versao.mjs): vem no &m= da URL deste módulo e só muda quando algum modelo muda; ver(url)
+// a acrescenta aos arquivos carregados à parte, para o navegador não reaproveitar cópias antigas do cache
+// (e não baixar tudo de novo quando só o código mudou)
+const QUERY = new URL(import.meta.url).searchParams;
+export const VERSION = QUERY.get('m') || QUERY.get('v') || '';
 export const ver = (url) => (VERSION ? url + (url.includes('?') ? '&' : '?') + 'v=' + VERSION : url);
 
 export function mulberry32(a) {
@@ -61,4 +63,6 @@ export function fbm(x, y, oct = 4, period = 0) {
 }
 
 // próximo quadro (com reserva por tempo: abas em segundo plano pausam o requestAnimationFrame)
+const breathCh = new MessageChannel(), breathQ = []; breathCh.port1.onmessage = () => breathQ.shift()?.();
+export const breath = () => new Promise((r) => { breathQ.push(r); breathCh.port2.postMessage(0); }); /* deixa a página respirar, mesmo com a aba em segundo plano */
 export const nextFrame = () => new Promise((r) => { let done = false; const f = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(f); setTimeout(f, 60); });

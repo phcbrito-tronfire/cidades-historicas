@@ -166,7 +166,7 @@ async function main() {
   races.onWin = () => quests.complete('circo'); // jumentos, pombos, barcaças no Tibre, bois no mercado
 
   await step(0.96, 'Desenhando o mapa de Roma...');
-  ui.buildMapBackground([
+  const mapJob = ui.buildMapBackground([
     ['Coliseu', 0, -COL.B - 10], ['Fórum Romano', FORUM.x, FORUM.z], ['Palatino', PALATINE.x, PALATINE.z], ['Capitólio', CAPITOL.x, CAPITOL.z],
     ['Circo Máximo', CIRCUS.x, CIRCUS.z], ['Fórum Boário', MARKET.x, MARKET.z], ['Tibre', -600, -150], ['Ilha Tiberina', ISOLA.x - 40, ISOLA.z], ['Naumaquia de Trajano', NAUMACHIA.x, NAUMACHIA.z - 75],
     ['Campo de Marte', -420, -330], ['Panteão', -330, -290], ['Fórum de Trajano', -243, -150], ['Termas de Trajano', 120, -230], ['Aqueduto (Aqua Claudia)', 200, 290], ['Aventino', -330, 400], ['Célio', 95, 205], ['Esquilino', 210, -60], ['Mar Tirreno', -860, 780], ['Portus de Trajano', city.spots.portus.x, city.spots.portus.z - 70], ['Óstia', city.spots.ostia.x - 40, city.spots.ostia.z - 30],
@@ -200,10 +200,11 @@ async function main() {
   ],
     close: () => { mapOpen = ui.toggleBigMap(player, hints()); }, before: (p) => { if (boats.riding) boats.leave(player, city.spots.quay); if (mount.state === 'riding') mount.dismount(player); return true; } });
   ui.onMapDrawn = (ctx, toPx) => travel.draw(ctx, toPx);
+  ui.progress(1, 'Recebendo os últimos modelos...');
   await modelsSettled(); // barcos, peixes, golfinhos... todos em cena antes de compilar (senão travava na beira do mar)
-  warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0));
+  await warmUp(renderer, scene, camera, () => post.render(0.016, 0, 0), (f, t) => ui.progressEnd(f, t)); await mapJob;
   const cull = distanceCull(scene, camera, renderer, player.rig.root); cull.set(PROFILE[quality].px);
-  await step(1, 'Pronto!');
+  ui.progressEnd(1, 'Pronto!'); await nextFrame();
   ui.doneLoading();
 
   // ---------------- estado de jogo ----------------

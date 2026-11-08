@@ -1,5 +1,7 @@
 // Interface: carregamento, HUD, diário, diálogos, cartão de item, minimapa e mapa grande
 import { OBJECTIVES, PHARAOH_REQ } from './quests.js';
+import { startLoadingScreen } from '../comum/carregando.js';
+import { breath } from '../comum/util.js';
 import { terrainHeight, riverX, LAKE } from './terrain.js';
 import { boxes } from '../comum/collision.js';
 
@@ -17,15 +19,16 @@ const TIPS = [
 export class UI {
   constructor() {
     this.toastsEl = $('#toasts');
-    $('#load-tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
+    this.stopLoadingScreen = startLoadingScreen(TIPS);
     this.journalOpen = true;
     this.dialogState = null;
     this.mapBg = null;
     addEventListener('keydown', (e) => this.dialogKeys(e));
   }
 
-  progress(frac, text) { $('#load-fill').style.width = `${Math.round(frac * 100)}%`; if (text) $('#load-step').textContent = text; }
-  doneLoading() { $('#loading').hidden = true; }
+  progress(frac, text) { $('#load-fill').style.width = `${Math.round(frac * 60)}%`; if (text) $('#load-step').textContent = text; } /* montar a cidade: até 60% da barra */
+  progressEnd(frac, text) { $('#load-fill').style.width = `${Math.round(60 + frac * 40)}%`; if (text) $('#load-step').textContent = text; } /* preparar os gráficos: o resto */
+  doneLoading() { $('#loading').hidden = true; this.stopLoadingScreen?.(); }
   showIntro(onStart) {
     $('#intro').hidden = false;
     $('#btn-start').onclick = () => { $('#intro').hidden = true; $('#hud').hidden = false; onStart(); };
@@ -131,12 +134,14 @@ export class UI {
   }
 
   // ---------------- mapas ----------------
-  buildMapBackground() {
+  async buildMapBackground() {
+    let tb = performance.now();
     const S = 800, step = 2;
     const c = document.createElement('canvas'); c.width = c.height = S;
     const ctx = c.getContext('2d');
     const img = ctx.createImageData(S, S);
     for (let py = 0; py < S; py += step) {
+      if (performance.now() - tb > 12) { await breath(); tb = performance.now(); }
       for (let px = 0; px < S; px += step) {
         const x = px - 400, z = py - 400;
         const h = terrainHeight(x, z);
