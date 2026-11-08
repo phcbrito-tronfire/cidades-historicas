@@ -1,13 +1,14 @@
 // Níveis de gráfico. O jogo foi feito num notebook com placa de vídeo dedicada, mas a maioria dos alunos joga em
 // computadores com vídeo integrado (Intel/AMD no processador) ou no Chrome sem aceleração. Na primeira visita o nível
 // é escolhido pela placa de vídeo; depois, se o jogo ficar lento, ele desce sozinho. A escolha fica guardada.
+// Quem escolhe o nível no menu (Esc) manda: daí em diante o jogo não mexe mais nem no nível nem na resolução.
 //   alto   — tudo ligado (placa dedicada)
 //   leve   — sem oclusão de ambiente e sem brilho, sombra menor, resolução 1x, reflexo da água mais espaçado,
 //            gente e objetos pequenos de longe somem antes (vídeo integrado, celular)
 //   minimo — sombra pequena só em volta do jogador e resolução reduzida (navegador sem aceleração de vídeo)
 import { isTouch } from './touch.js';
 
-const KEY = 'ch-graficos';
+const KEY = 'ch-graficos', MANUAL = 'ch-graficos-manual';
 export const LEVELS = ['alto', 'leve', 'minimo'];
 export const PROFILE = {
   alto: { pr: 1.5, aa: true, shadow: 4096, shadowR: 140, soft: true, ao: true, bloom: true, refl: 512, reflEvery: 2, npcR: 60, px: 0, npcShadow: 40 },
@@ -46,7 +47,12 @@ export function detectQuality() {
   return { level, gpu, software, saved: false };
 }
 
-export function saveQuality(level) { try { localStorage.setItem(KEY, level); } catch (e) { /* sem armazenamento */ } }
+let manual = false; try { manual = localStorage.getItem(MANUAL) === '1'; } catch (e) { /* navegação privada */ }
+export const isManualQuality = () => manual;
+// byUser: a escolha veio do menu (Esc), e não da descida automática
+export function saveQuality(level, byUser = false) { if (byUser) manual = true; try { localStorage.setItem(KEY, level); if (byUser) localStorage.setItem(MANUAL, '1'); } catch (e) { /* sem armazenamento */ } }
+// o piso da resolução adaptativa: no nível escolhido à mão a resolução não cai (o piso é o próprio teto)
+export const prFloor = (prMax) => (manual ? prMax : Math.max(0.5, prMax * 0.7));
 export const qualityLabel = (l) => ({ alto: 'alto', leve: 'leve', minimo: 'mínimo' }[l] || l);
 
 // aplica um nível com o jogo rodando (o antialias e o tipo de sombra só mudam ao recarregar)
@@ -70,7 +76,7 @@ export function slowWatch(onSlow) {
   return (raw) => {
     // um quadro de mais de meio segundo sozinho é a aba voltando do segundo plano; vários seguidos é um computador
     // que não aguenta (ex.: navegador sem aceleração de vídeo)
-    if (window.__noSlow) return; // testes no painel do app, que roda a ~1,5 fps
+    if (window.__noSlow || manual) return; // (testes no painel do app, que roda a ~1,5 fps; ou o nível foi escolhido à mão)
     if (raw > 0.5) { if (++big >= 3) { big = 0; onSlow(raw * 1000); } return; }
     big = 0;
     if (warm > 0) { warm -= raw; return; } // o começo sempre tem algum tranco

@@ -8,7 +8,7 @@ import { createPost } from '../comum/post.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
 import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
-import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, PROFILE, LEVELS } from '../comum/qualidade.js';
+import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, prFloor, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { makeWater } from '../comum/agua.js';
 import { makeUnderwater } from '../comum/submerso.js';
@@ -248,9 +248,9 @@ async function main() {
     if (act === 'sound') { audio.setEnabled(!audio.enabled); e.target.textContent = `Som: ${audio.enabled ? 'ligado' : 'desligado'}`; }
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {
-      quality = LEVELS[(LEVELS.indexOf(quality) + 1) % LEVELS.length]; saveQuality(quality);
+      quality = LEVELS[(LEVELS.indexOf(quality) + 1) % LEVELS.length]; saveQuality(quality, true);
       applyQuality(quality, { renderer, sun, post, actors, cull });
-      prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
+      prMax = renderer.getPixelRatio(); prMin = prFloor(prMax);
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
     if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
@@ -290,7 +290,7 @@ async function main() {
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
   let t = 0, miniT = 0;
-  let prMax = renderer.getPixelRatio(), prMin = Math.max(0.5, prMax * 0.7);
+  let prMax = renderer.getPixelRatio(), prMin = prFloor(prMax);
   let frameAvg = 16, adaptT = 0;
   const adaptRes = (raw) => {
     if (document.hidden || raw > 0.25) return;
@@ -304,7 +304,7 @@ async function main() {
   const slow = slowWatch(() => {
     const i = LEVELS.indexOf(quality); if (i >= LEVELS.length - 1) return;
     quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, actors, cull });
-    prMax = renderer.getPixelRatio(); prMin = Math.max(0.5, prMax * 0.7);
+    prMax = renderer.getPixelRatio(); prMin = prFloor(prMax);
     const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`;
     ui.toast(`O jogo estava pesado neste computador: gráficos no modo ${qualityLabel(quality)}. Dá para trocar no menu (Esc).`, 'quest', 7000);
   });
