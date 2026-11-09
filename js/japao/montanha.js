@@ -52,7 +52,7 @@ export function buildMountain(B, M, out) {
   { const p = trailAt(0.07), sd = -1, x = p.x + p.dz * 8 * sd, z = p.z - p.dx * 8 * sd, f = frame(B, x, terrainHeight(x, z) + 0.05, z, Math.atan2(-p.dz * sd, p.dx * sd));
     for (const px of [-2.5, 2.5]) for (const pz of [-1.6, 1.6]) f.post(M.darkWood, px, pz, 2.6, 0.1);
     f.roof(M.thatch, 7.4, 5.4, 1.8, 2.6, { thick: 0.4, sori: 0.05, gable: true }); f.box(M.mud, 1.2, 0.8, 0.8, -1.8, 0, -1.0); f.geo(new THREE.CylinderGeometry(0.22, 0.2, 0.25, 12), M.iron, -1.8, 0.92, -1.0, { uv: false }); out.torches.push(new V3(...(() => { const [a, b] = f.W(-1.8, -1.0); return [a, f.y + 0.9, b]; })()));
-    for (const dx of [-1, 1.2]) { f.box(M.redCloth, 1.8, 0.06, 0.7, dx, 0.45, 1.0); f.box(M.wood, 1.8, 0.4, 0.6, dx, 0.05, 1.0); f.solid(dx, 1.0, 1.8, 0.7, -1, 0.5); out.seats.push({ ...(([a, b]) => ({ x: a, z: b }))(f.W(dx - 0.4, 1.0)), y: f.y + 0.5, ry: f.ry + Math.PI }); }
+    for (const dx of [-1, 1.2]) { f.box(M.wood, 1.8, 0.4, 0.6, dx, 0.05, 1.0); f.box(M.redCloth, 1.84, 0.06, 0.7, dx, 0.45, 1.0); f.solid(dx, 1.0, 1.8, 0.7, -1, 0.5); out.seats.push({ ...(([a, b]) => ({ x: a, z: b }))(f.W(dx - 0.4, 1.0)), y: f.y + 0.5, ry: f.ry + Math.PI }); }
     f.box(M.noren[1], 1.6, 0.6, 0.02, 0, 2.0, 1.65, { noGround: true });
     for (let i = 0; i < 4; i++) { const [nx, nz] = f.W(-3 + i * 2, 2.8); nobori(B, M, nx, terrainHeight(nx, nz), nz, f.ry, i); }
     out.spots.trailTea = new V3(x, f.y, z); }

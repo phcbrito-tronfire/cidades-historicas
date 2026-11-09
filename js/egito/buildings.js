@@ -741,7 +741,7 @@ export function buildCity(scene, tex) {
   addBox(-9.3, -132.5, 1.6, 1.6, -5, PY + 2.6);
   for (const z of [-137, -128]) { B.geo(new THREE.CylinderGeometry(0.3, 0.3, 1.8, 10), M.gold, -5.5, PY + 0.9, z); torch(-5.5, PY + 1.85, z, false); }
   { const y0 = PY + 0.5, ch = 3.8, x0 = -10.45, x1 = -6.55, z0 = -136.9, z1 = -128.1;
-    for (const x of [x0, x1]) for (const z of [z0, z1]) { for (let k = 0; k < 8; k++) B.geo(new THREE.CylinderGeometry(0.13, 0.13, ch / 8 + 0.01, 12), k % 2 ? M.blue : M.gold, x, y0 + (k + 0.5) * ch / 8, z, { uv: false }); B.geo(new THREE.CylinderGeometry(0.26, 0.14, 0.32, 12), M.green, x, y0 + ch + 0.16, z, { uv: false }); addCircle(x, z, 0.16, -5, y0 + ch); }
+    for (const x of [x0, x1]) for (const z of [z0, z1]) { for (let k = 0; k < 8; k++) B.geo(new THREE.CylinderGeometry(0.13, 0.13, ch / 8, 12), k % 2 ? M.blue : M.gold, x, y0 + (k + 0.5) * ch / 8, z, { uv: false }); B.geo(new THREE.CylinderGeometry(0.26, 0.14, 0.32, 12), M.green, x, y0 + ch + 0.16, z, { uv: false }); addCircle(x, z, 0.16, -5, y0 + ch); }
     B.box(M.stars, x1 - x0 + 0.7, 0.3, z1 - z0 + 0.7, (x0 + x1) / 2, y0 + ch + 0.32, (z0 + z1) / 2);
     cornice((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0 + 0.7, z1 - z0 + 0.7, y0 + ch + 0.62, 0.35);
     for (let z = z0; z <= z1 + 0.01; z += 0.55) B.geo(new THREE.CylinderGeometry(0.04, 0.09, 0.32, 6), M.gold, x1 + 0.55, y0 + ch + 2.15, z, { uv: false }); } // o friso de najas (ureus) na frente do dossel
@@ -963,7 +963,7 @@ function visitHouse(B, M, x, y, z, ry, mat, out, info) {
     }
   };
   // piso de barro batido
-  box(M.clay, W, 0.1, D, 0, -0.02, 0); col(0, 0, W - 0.1, D - 0.1, -1, 0.08);
+  box(M.clay, W - 0.06, 0.1, D - 0.06, 0, -0.02, 0); col(0, 0, W - 0.1, D - 0.1, -1, 0.08); /* (3 cm para dentro: a beirada do piso ficava no mesmo plano da face de fora das paredes e piscava no rodapé) */
   // paredes externas e internas
   wallX(D / 2 - t / 2, -W / 2, W / 2, [[-0.6, 0.6]]);
   wallX(-D / 2 + t / 2, -W / 2, W / 2);
@@ -975,7 +975,7 @@ function visitHouse(B, M, x, y, z, ry, mat, out, info) {
   // friso pintado na sala principal
   for (const sx of [-1, 1]) box(M.palaceWall, 0.02, H - 0.1, 2.9, sx * (W / 2 - t - 0.012), 0.05, 0.1, { uv: { s: 6, sv: H, y0: y } });
   // telhado (sala da frente, sala principal e quarto) — a cozinha fica a céu aberto
-  const rf = (w, d, lx, lz) => { box(M.reed, w, 0.08, d, lx, H - 0.08, lz); box(mat, w, 0.25, d, lx, H, lz); col(lx, lz, w, d, H, H + 0.25); };
+  const rf = (w, d, lx, lz) => { box(M.reed, w - 0.06, 0.08, d - 0.06, lx, H - 0.08, lz); /* (o forro de junco fica por dentro das paredes: a beirada dele piscava no alto da fachada) */ box(mat, w, 0.25, d, lx, H, lz); col(lx, lz, w, d, H, H + 0.25); };
   rf(W, D / 2 + 1.6 + t / 2, 0, (D / 2 - 1.6 - t / 2) / 2);
   rf(W / 2, D / 2 - 1.6 - t / 2, -W / 4, (-D / 2 - 1.6 - t / 2) / 2);
   for (const [w, d, lx, lz] of [[W, 0.25, 0, D / 2 - 0.125], [0.25, 6.3, -W / 2 + 0.125, 1.34], [0.25, 6.3, W / 2 - 0.125, 1.34]]) solid(mat, w, 0.55, d, lx, H + 0.25, lz);
@@ -1230,7 +1230,7 @@ function rowHouse(B, M, x0, x1, z0, z1, face, y, out, end = 0) {
     let wx = cx + rr(-w / 2 + 0.9, w / 2 - 0.9); if (Math.abs(wx - dx) < 1.2) wx = dx + (wx < dx ? -1.4 : 1.4);
     if (Math.abs(wx - cx) > w / 2 - 0.6) continue;
     B.box(M.window, 0.7, 0.42, 0.1, wx, y + h - 1.05, bf + face * 0.03, { uv: false });
-    for (const sd of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.42, 0.12, wx + sd, y + h - 1.05, bf + face * 0.05, { uv: false });
+    for (const sd of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.4, 0.12, wx + sd, y + h - 1.04, bf + face * 0.05, { uv: false }); /* (1 cm menores que o vão: as pontas das grades piscavam contra a janela) */
   }
   // vigas de palmeira saindo da frente, logo abaixo do terraço
   for (let i = 0; i < Math.floor(w / 1.3); i++) B.geo(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 6), M.wood, x0 + 0.6 + i * 1.3, y + h - 0.25, bf, { rx: Math.PI / 2 });
@@ -1268,7 +1268,7 @@ function rowHouse(B, M, x0, x1, z0, z1, face, y, out, end = 0) {
   // as ruas de norte a sul eram só paredões lisos)
   for (const sd of end === 0 ? [] : end === 2 ? [-1, 1] : [end]) {
     const ex = sd < 0 ? x0 : x1, ry = Math.PI / 2;
-    for (let k = 0; k < 2; k++) { const wz = bz + (k ? 1 : -1) * d * rr(0.15, 0.3); B.box(M.window, 0.7, 0.42, 0.1, ex + sd * 0.03, y + h - 1.05, wz, { ry, uv: false }); for (const o of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.42, 0.12, ex + sd * 0.05, y + h - 1.05, wz + o, { ry, uv: false }); }
+    for (let k = 0; k < 2; k++) { const wz = bz + (k ? 1 : -1) * d * rr(0.15, 0.3); B.box(M.window, 0.7, 0.42, 0.1, ex + sd * 0.03, y + h - 1.05, wz, { ry, uv: false }); for (const o of [-0.18, 0, 0.18]) B.box(M.wood, 0.05, 0.4, 0.12, ex + sd * 0.05, y + h - 1.04, wz + o, { ry, uv: false }); }
     if (rand() < 0.4) { const dz2 = bz + rr(-d / 5, d / 5); B.box(M.dark, 0.9, 1.95, 0.12, ex + sd * 0.02, y - 0.05, dz2, { ry, uv: false }); B.box(M.wood, 1.3, 0.16, 0.28, ex + sd * 0.07, y + 1.9, dz2, { ry }); }
     else if (rand() < 0.6) { B.adobe(M.mud, 0.55, 0.75, Math.min(3, d - 1), ex + sd * 0.28, y - 0.35, bz, { batter: 0, jitter: 0.05 }); addBox(ex + sd * 0.28, bz, 0.55, Math.min(3, d - 1), -5, y + 0.4); } // banco de adobe (mastaba) junto à parede
     if (rand() < 0.5) for (let i = 0; i < 2; i++) jar(B, M, ex + sd * 0.45, y - 0.05, bz + d * 0.38 * (i ? 1 : -1) * rr(0.6, 1), rr(0.8, 1.1));

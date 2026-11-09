@@ -34,7 +34,7 @@ export function temple(B, M, out, o) {
   // pódio (concreto revestido de mármore) e escadaria na frente (+x local)
   box(M.marbleWall, D, P, W, 0, 0, 0);
   box(M.travertine, D + 1.2, 9, W + 1.2, 0, -9, 0); // alicerce até o chão (em encosta o pódio não fica no ar)
-  box(M.marble, D + 0.3, 0.35, W + 0.3, 0, P - 0.35, 0);
+  box(M.marble, D + 0.3, 0.37, W + 0.3, 0, P - 0.35, 0); // (2 cm acima do pódio: no mesmo plano, o piso do templo inteiro piscava entre o mármore da cornija e a parede do pódio)
   const nSt = Math.ceil(P / 0.3), run = 0.38;
   for (let i = 0; i < nSt; i++) box(M.marble, run, (i + 1) * (P / nSt), W * 0.75, D / 2 + run * (nSt - i - 0.5), 0, 0);
   // colunas: o pórtico na frente (deep fileiras) e meias colunas nas laterais da cela
@@ -188,7 +188,7 @@ export function buildForum(B, M, out) {
     // as baias de largada (carceres), na ponta oeste: doze portões em arco, com a tribuna do magistrado no meio
     { const xc = C.x - C.hw + 9, n = 12, span = C.hd * 2 - 14, bw = span / n;
       for (let i = 0; i < n; i++) B.geo(circusBay(bw, 4.6), M.travertine, xc, y, C.z - span / 2 + bw * (i + 0.5), { ry: Math.PI / 2 });
-      B.box(M.travertine2, 3, 4.6, span, xc - 2, y, C.z); B.box(M.marble, 4, 2.4, 6, xc, y + 4.6, C.z); B.box(M.travertine, 4.2, 0.4, span, xc - 1, y + 4.6, C.z);
+      B.box(M.travertine2, 3, 4.6, span, xc - 2, y, C.z); B.box(M.marble, 4, 2.38, 6, xc, y + 4.62, C.z); B.box(M.travertine, 4.2, 0.4, span, xc - 1, y + 4.6, C.z);
       addBox(xc - 1, C.z, 4, span, y - 1, y + 7); }
     out.exclusions.push([C.x - C.hw - 10, C.x + C.hw + 10, C.z - C.hd - 14, C.z + C.hd + 14]);
     S.circus = new V3(C.x, y, C.z);

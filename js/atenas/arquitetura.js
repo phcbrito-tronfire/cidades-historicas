@@ -126,13 +126,13 @@ export function doricTemple(B, o) {
     box(mat, bw, h, EW - inset - 2 * bw, -EL / 2 + bw / 2 + inset / 2, y, ez); box(mat, bw, h, EW - inset - 2 * bw, EL / 2 - bw / 2 - inset / 2, y, ez);
   };
   ringBox(M.marble, ah, Ya, 0.05);
-  ringBox(M.paintRed, 0.12, Ya + ah - 0.12, 0.0);
+  ringBox(M.paintRed, 0.12, Ya + ah - 0.12, -0.02); /* (1 cm para fora: rente, a faixa vermelha ficava no mesmo plano das paredes de ponta das stoas e piscava) */
   ringBox(M.marble, fh, Ya + ah, 0.1);
   box(M.ceiling, EL - 0.3, 0.3, EW - 0.3, 0, Ya + ah + fh - 0.3, ez); // forro de caixotões (sob o telhado)
   // tríglifos (frente, fundo e lados): sobre cada coluna e no meio de cada vão
   const tg = (x, z, ry) => box(M.triglyph, ic * 0.24, fh * 0.98, 0.12, x, Ya + ah + 0.01, z, { ry });
   let nMet = 0; // (templo rico: métopas em relevo, três cenas alternadas)
-  const met = (x, z, ry) => { if (o.rich && M.metopeR) box(M.metopeR[nMet++ % M.metopeR.length], ic * 0.42, fh * 0.86, 0.08, x, Ya + ah + fh * 0.07, z, { ry, uv: false }); else box(M.metope, ic * 0.42, fh * 0.86, 0.06, x, Ya + ah + fh * 0.07, z, { ry }); };
+  const met = (x, z, ry) => { if (o.rich && M.metopeR) box(M.metopeR[nMet++ % M.metopeR.length], ic * 0.42, fh * 0.86, 0.06, x, Ya + ah + fh * 0.07, z, { ry, uv: false }); /* (6 cm, como as lisas: com 8 a frente da métopa ficava no plano dos tríglifos, que a cobrem nas bordas, e piscava) */ else box(M.metope, ic * 0.42, fh * 0.86, 0.06, x, Ya + ah + fh * 0.07, z, { ry }); };
   const front = [], side = [];
   for (let i = 0; i < ns; i++) { side.push(-L / 2 + D * 0.625 + i * ic); if (i < ns - 1) side.push(-L / 2 + D * 0.625 + (i + 0.5) * ic); }
   for (let j = 0; j < nf; j++) { front.push(W / 2 - D * 0.625 - j * ic); if (j < nf - 1) front.push(W / 2 - D * 0.625 - (j + 0.5) * ic); }

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR } from './textures.js';
 import { createPost } from '../comum/post.js';
+import { upgradeSky } from '../comum/ceu.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
 import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
@@ -39,7 +40,7 @@ async function main() {
   let renderer;
   const Q = detectQuality();
   let quality = Q.level;
-  try { renderer = new THREE.WebGLRenderer({ antialias: PROFILE[quality].aa, powerPreference: 'high-performance' }); } catch (e) { ui.fail(); return; }
+  try { renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' }); } catch (e) { ui.fail(); return; }
   renderer.setPixelRatio(Math.min(devicePixelRatio, PROFILE[quality].pr));
   { const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`; }
   if (isTouch) {
@@ -131,7 +132,7 @@ async function main() {
 
   await step(0.9, 'Acendendo as lanternas...');
   const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: city.lights });
-  sky.horizon = horizon; sky.apply(sky.state);
+  sky.horizon = horizon; upgradeSky(sky, { cover: 0.5, haze: [40, 420, 0.9], leve: quality !== 'alto' }); sky.apply(sky.state); // céu, nuvens e ar novos (comum/ceu.js)
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));

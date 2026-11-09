@@ -154,7 +154,9 @@ export function buildColosseum(B, M, out) {
     const n = 16, run = (HOLE.x1 - HOLE.x0) / n, rise = C.hyp / n;
     for (let k = 0; k < n; k++) {
       const x = HOLE.x1 - run * (k + 0.5), top = Y - rise * (k + 1);
-      B.box(M.wood, run + 0.02, 0.2, HOLE.z * 2 - 0.1, x, top - 0.2, 0); B.box(M.travertine, run, top - (Y - C.hyp) - 0.2, HOLE.z * 2 - 0.2, x, Y - C.hyp, 0);
+      // (o último degrau já é o chão do hipogeu: desenhado, ficava no plano do piso e piscava; e o bloco de pedra de baixo saía com altura negativa)
+      if (top - (Y - C.hyp) > 0.05) B.box(M.wood, run + 0.02, 0.2, HOLE.z * 2 - 0.1, x, top - 0.2, 0);
+      if (top - (Y - C.hyp) - 0.2 > 0.02) B.box(M.travertine, run, top - (Y - C.hyp) - 0.2, HOLE.z * 2 - 0.2, x, Y - C.hyp, 0);
       addBox(x, 0, run, HOLE.z * 2, Y - C.hyp - 1, top);
     }
     S.hypogeumStair = V(HOLE.x1 + 1, Y, 0);
@@ -240,8 +242,9 @@ export function buildColosseum(B, M, out) {
     // túneis: paredes e teto dos de leste/oeste; rampa, paredes e teto dos de norte/sul
     for (const s of [-1, 1]) {
       const xa = C.a0, xb = C.a0 + C.D;
-      for (const sz of [-1, 1]) { B.box(M.brick, xb - xa, 3.2, 0.4, s * (xa + xb) / 2, Y, sz * (C.gate + 0.2)); addBox(s * (xa + xb) / 2, sz * (C.gate + 0.2), xb - xa, 0.4, Y - 1, Y + 3.2); }
-      B.box(M.travertine, xb - xa, 0.4, C.gate * 2 + 0.8, s * (xa + xb) / 2, Y + 3.2, 0);
+      const xw = xa + 0.2; // (as paredes de tijolo começam depois das ombreiras de mármore do portão: sobrepostas, as duas faces de dentro piscavam)
+      for (const sz of [-1, 1]) { B.box(M.brick, xb - xw, 3.2, 0.4, s * (xw + xb) / 2, Y, sz * (C.gate + 0.2)); addBox(s * (xa + xb) / 2, sz * (C.gate + 0.2), xb - xa, 0.4, Y - 1, Y + 3.2); }
+      B.box(M.travertine, xb - xa, 0.4, C.gate * 2 + 0.84, s * (xa + xb) / 2, Y + 3.2, 0); /* (2 cm mais largo que as paredes de tijolo: com a mesma largura, a lateral do teto piscava contra elas) */
       // piso de pedra do túnel, da fachada até dentro da arena: o chão desenhado (grade de 3,4 m) descia em rampa da
       // altura do túnel até o fundo do hipogeu bem na soleira, e ali aparecia um buraco
       { const x0 = C.a0 - 0.8, x1 = C.A + 0.3; B.box(M.travertine2, x1 - x0, 0.3, C.gate * 2 + 0.1, s * (x0 + x1) / 2, Y - 0.28, 0); }
@@ -251,10 +254,10 @@ export function buildColosseum(B, M, out) {
         const dA = C.podium + (j / n) * (C.D - C.podium), dB = C.podium + ((j + 1) / n) * (C.D - C.podium), yA = rampY(dA), yB = rampY(dB), zc = s * (C.b0 + (dA + dB) / 2), len = dB - dA; // desde o pódio: sem vão entre a fila da frente e o túnel
         const slope = Math.atan2(yA - yB, len) * s;
         B.box(M.travertine, C.gate * 2, 0.3, len + 0.05, 0, (yA + yB) / 2 - 0.3, zc, { rx: slope });
-        for (const sx of [-1, 1]) { B.box(M.brick, 0.4, 3.4 + Math.abs(yA - yB) + 0.2, len + 0.05, sx * (C.gate + 0.2), Math.min(yA, yB), zc); /* (até dentro do teto: na rampa sobrava uma fresta entre a parede e o teto) */ addBox(sx * (C.gate + 0.2), zc, 0.4, len, Math.min(yA, yB) - 1, Math.max(yA, yB) + 3.2); }
+        for (const sx of [-1, 1]) { B.box(M.brick, 0.4, 3.4 + Math.abs(yA - yB) + 0.18, len + 0.05, sx * (C.gate + 0.2), Math.min(yA, yB), zc); /* (até dentro do teto: na rampa sobrava uma fresta entre a parede e o teto) */ addBox(sx * (C.gate + 0.2), zc, 0.4, len, Math.min(yA, yB) - 1, Math.max(yA, yB) + 3.2); }
         // teto do túnel; onde as fileiras ficam mais baixas que ele, o teto vira o camarote elevado (o pulvinar), com mureta
         { const top = Math.max(yA, yB) + 3.2, rowH = rowY(Math.min(C.rows - 1, Math.floor((dA - C.podium) / C.row)));
-          B.box(M.travertine, C.gate * 2 + 0.8, 0.4, len + 0.05, 0, top, zc); addBox(0, zc, C.gate * 2 + 0.8, len, top - 0.2, top + 0.4);
+          B.box(M.travertine, C.gate * 2 + 0.84, 0.4, len + 0.05, 0, top, zc); addBox(0, zc, C.gate * 2 + 0.8, len, top - 0.2, top + 0.4);
           if (top > rowH) for (const sx of [-1, 1]) { B.box(M.marble, 0.3, 1.0, len + 0.05, sx * (C.gate + 0.25), top + 0.4, zc); addBox(sx * (C.gate + 0.25), zc, 0.3, len, top, top + 1.4); } }
       }
     }

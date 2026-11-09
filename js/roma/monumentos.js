@@ -62,7 +62,7 @@ export function buildMonuments(B, M, out) {
       const doors = [0, 1, 2, 3, 4, 5].map((i) => hx - 18 + i * 7.2);
       let x0 = hx - W2; for (const dx of doors) { wall(M.plasterOchre, dx - 1.2 - x0, 4, t, (x0 + dx - 1.2) / 2, y, F - t / 2); x0 = dx + 1.2; } wall(M.plasterOchre, hx + W2 - x0, 4, t, (x0 + hx + W2) / 2, y, F - t / 2);
       B.box(M.plasterOchre, W2 * 2, H - 4, t, hx, y + 4, F - t / 2, { noGround: true }); addBox(hx, F - t / 2, W2 * 2, t, y + 4, y + H);
-      for (const dx of doors) B.box(M.travertine, 2.8, 0.35, t + 0.1, dx, y + 4, F - t / 2, { noGround: true }); // vergas
+      for (const dx of doors) B.box(M.travertine, 2.8, 0.37, t + 0.1, dx, y + 3.98, F - t / 2, { noGround: true }); // vergas (2 cm abaixo da parede de cima: rentes, piscavam no alto de cada porta)
       wall(M.plasterOchre, W2 * 2, H, t, hx, y, hz - D2 + t / 2); // fundo
       // laterais do salão, com a passagem (3 × 5 m) para cada ala
       for (const s of [-1, 1]) { const wx = hx + s * (W2 - t / 2);

@@ -44,7 +44,7 @@ export function house(B, M, out, o) {
   } else {
     f.wall(wallMat, -hw, hd, xd, hd, H - 0.4, 0.12, [[dm / 2, 2.0, Math.min(H - 0.55, 2.3)]]); // a porta da doma (livre: ~2 m)
     const fm = o.front === 'shoji' ? M.shoji : M.koshi; f.wall(fm, xd, hd, hw, hd, H - 0.4, 0.08, o.kind === 'oshi' ? [[(hw - xd) / 2, 2.2, H - 0.4]] : []); // (a entrada do assoalho: shōji abertos, sem verga baixa)
-    if (o.front === 'koshi') f.box(M.stoneLight, hw - xd, 0.4, 0.2, (xd + hw) / 2, 0, hd); // soco de pedra sob a grade
+    if (o.front === 'koshi') f.box(M.stoneLight, hw - xd, 0.4, 0.16, (xd + hw) / 2, 0, hd); // soco de pedra sob a grade (2 cm recuado dos esteios: rente, piscava contra eles)
   }
   f.wall(wallMat, -hw, -hd, hw, -hd, H - 0.4, 0.12, o.engawa ? [[(xd + hw) / 2 + hw, (hw - xd) - 0.6, H]] : [[w * 0.7, 1.8, H - 0.4]]); // (a porta dos fundos dá no assoalho: até a viga)
   if (o.engawa) { // o fundo do assoalho abre para o jardim: shōji de correr afastados e a varanda de tábuas
@@ -60,7 +60,7 @@ export function house(B, M, out, o) {
   f.box(M.darkWood, 0.1, 0.08, d, xm, FL + 1.9, 0); // o kamoi, a verga das fusuma
   if (H - 0.34 - FL - 1.98 > 0.05) f.wall(M.koshi, xm, -hd, xm, hd, H - 0.34 - FL - 1.98, 0.04, [], { y0: FL + 1.98 }); // o ranma: a grade de madeira entre a verga e a viga (nas casas mais altas)
   { const ix = xd + (xm - xd) / 2, iz = 0.6; // irori: caixa de cinza no chão da sala, a corrente com o gancho e a chaleira
-    f.box(M.darkWood, 1.3, 0.08, 1.3, ix, FL - 0.04, iz); f.box(M.dark, 1.05, 0.06, 1.05, ix, FL - 0.03, iz); f.box(M.fire, 0.4, 0.04, 0.3, ix, FL + 0.0, iz);
+    f.box(M.darkWood, 1.3, 0.08, 1.3, ix, FL - 0.04, iz); f.box(M.dark, 1.05, 0.075, 1.05, ix, FL - 0.03, iz); f.box(M.fire, 0.4, 0.04, 0.3, ix, FL + 0.03, iz); /* (a cinza 5 mm acima da moldura e a brasa por cima dela: antes a brasa ficava no plano da moldura e piscava, e a cinza nem aparecia) */
     f.box(M.iron, 0.03, H - FL - 0.84, 0.03, ix, FL + 0.7, iz); f.box(M.darkWood, 0.14, 0.14, 2 * hd, ix, H - 0.14, 0); // (a corrente do gancho pende da viga que cruza a sala) f.geo(new THREE.SphereGeometry(0.2, 10, 6), M.iron, ix, FL + 0.62, iz, { sy: 0.8, uv: false });
     const [wx, wz] = f.W(ix, iz); out.torches.push(new V3(wx, y + FL + 0.1, wz)); out.hearths.push({ x: wx, y: y + FL, z: wz, ry: o.ry }); }
   { const tx = hw - 0.5; f.box(M.wood, 0.9, 0.12, 1.8, tx, FL, -hd + 1.6); f.box(M.scroll, 0.02, 1.2, 0.5, hw - 0.1, FL + 0.6, -hd + 1.6); f.geo(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), M.stoneLight, tx, FL + 0.25, -hd + 1.2, { uv: false }); } // tokonoma: pergaminho e o vaso
@@ -138,7 +138,7 @@ function gardenPine(B, M, x, y, z, s = 1) { // pinheiro podado do jardim (niwaki
 function chaya(B, M, out, o) {
   const { f, y } = house(B, M, out, { ...o, roof: 'thatch', front: 'open', w: o.w, d: o.d, kind: 'tea', doma: o.w * 0.55 });
   const hd = o.d / 2;
-  for (const dx of [-o.w * 0.25, o.w * 0.2]) { f.box(M.redCloth, 1.8, 0.06, 0.7, dx, 0.45, hd + 1.0); f.box(M.wood, 1.8, 0.4, 0.6, dx, 0.05, hd + 1.0); f.solid(dx, hd + 1.0, 1.8, 0.7, -1, 0.5); // bancos vermelhos
+  for (const dx of [-o.w * 0.25, o.w * 0.2]) { f.box(M.wood, 1.8, 0.4, 0.6, dx, 0.05, hd + 1.0); f.box(M.redCloth, 1.84, 0.06, 0.7, dx, 0.45, hd + 1.0); /* (o banco antes do pano: o pano, posto primeiro, descia até o chão por dentro do banco e piscava nas pontas) */ f.solid(dx, hd + 1.0, 1.8, 0.7, -1, 0.5); // bancos vermelhos
     out.seats.push({ ...(([a, b]) => ({ x: a, z: b }))(f.W(dx - 0.4, hd + 1.05)), y: y + 0.5, ry: o.ry }); } // (de frente para a rua)
   { const [ux, uz] = f.W(o.w * 0.48, hd + 1.4); B.geo(new THREE.CylinderGeometry(0.03, 0.03, 2.6, 5), M.darkWood, ux, y + 1.3, uz, { uv: false }); B.geo(new THREE.ConeGeometry(1.4, 0.5, 18, 1, true), M.redCloth, ux, y + 2.55, uz, { uv: false }); addCircle(ux, uz, 0.05, y - 1, y + 2.4); } // o guarda-sol (nodate-gasa)
   f.box(M.noren[1], 1.8, 0.7, 0.02, -o.w / 2 + o.w * 0.27, 2.0, hd + 0.1, { noGround: true });

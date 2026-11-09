@@ -29,7 +29,7 @@ export function buildNaumachia(scene, M, crowdGeo, crowdMat, { fx = null, toast 
       const th = (i / 96) * TAU; if (i % 24 < 2) continue;
       const [x0, z0] = P(d, th), [x1, z1] = P(d, th + TAU / 96), len = Math.hypot(x1 - x0, z1 - z0) + 0.1;
       B.box(M.wood, len, 0.25, 1.3, (x0 + x1) / 2, y - 0.25, (z0 + z1) / 2, { ry: Math.atan2(x1 - x0, z1 - z0) + Math.PI / 2 });
-      B.box(M.darkWood, 0.25, y - terrainHeight(x0, z0) + 0.3, 0.25, x0, terrainHeight(x0, z0) - 0.3, z0);
+      B.box(M.darkWood, 0.25, y - terrainHeight(x0, z0) + 0.28, 0.25, x0, terrainHeight(x0, z0) - 0.3, z0); // (o topo do poste 2 cm abaixo das tábuas: rente, piscava)
       for (let s = 0; s < 3; s++) if (rand() < 0.7) { const u = (s + 0.5) / 3, [sx, sz] = P(d, th + (u * TAU) / 96); seats.push([sx, y, sz]); }
       if (k === 7 && i % 4 === 0) addCircle(x0, z0, 0.6, 0, y + 1);
     }

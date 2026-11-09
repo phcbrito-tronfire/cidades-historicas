@@ -2,6 +2,7 @@
 // do sol atravessando), bolhas saindo do explorador e a imagem tingida e ondulando (post.js).
 import * as THREE from 'three';
 import { waterAt } from './collision.js';
+import { atmoUnderwater } from './ceu.js';
 
 export function makeUnderwater(scene, water, { color = 0x1d6f78, near = 0.5, far = 28 } = {}) {
   // a superfície vista de baixo: o Water só desenha a face de cima
@@ -23,6 +24,7 @@ export function makeUnderwater(scene, water, { color = 0x1d6f78, near = 0.5, far
       const wl = waterAt(camera.position.x, camera.position.z);
       const below = camera.position.y < wl - 0.05;
       k = below ? 1 : 0;
+      atmoUnderwater(k);
       under.visible = below;
       if (below && !saved && scene.fog) saved = { c: scene.fog.color.clone(), n: scene.fog.near, f: scene.fog.far };
       if (below && scene.fog) { scene.fog.color.copy(fogCol); scene.fog.near = near; scene.fog.far = far; }

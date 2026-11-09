@@ -10,10 +10,13 @@ import { isTouch } from './touch.js';
 
 const KEY = 'ch-graficos', MANUAL = 'ch-graficos-manual';
 export const LEVELS = ['alto', 'leve', 'minimo'];
+// (alto: resolução 1,25x com 4 amostras por pixel nas bordas — MSAA. Medido em 09/11/2026 num notebook com RTX 3050, em
+// 1920x1080: custa o mesmo que os 1,5x sem antisserrilhado de antes, e as bordas ficam lisas; 1,5x com MSAA custava
+// 3 a 5 ms a mais por quadro e derrubava de 72 para 48 quadros por segundo em vários pontos)
 export const PROFILE = {
-  alto: { pr: 1.5, aa: true, shadow: 4096, shadowR: 140, soft: true, ao: true, bloom: true, refl: 512, reflEvery: 2, npcR: 60, px: 0, npcShadow: 40 },
-  leve: { pr: 1, aa: false, shadow: 2048, shadowR: 80, soft: false, ao: false, bloom: false, refl: 256, reflEvery: 4, npcR: 36, px: 10, npcShadow: 18 },
-  minimo: { pr: 0.7, aa: false, shadow: 512, shadowR: 45, soft: false, ao: false, bloom: false, refl: 128, reflEvery: 6, npcR: 28, px: 18, npcShadow: 12 },
+  alto: { pr: 1.25, aa: true, msaa: 4, shadow: 4096, shadowR: 140, soft: true, ao: true, bloom: true, refl: 512, reflEvery: 2, npcR: 60, px: 0, npcShadow: 40 },
+  leve: { pr: 1, aa: false, msaa: 0, shadow: 2048, shadowR: 80, soft: false, ao: false, bloom: false, refl: 256, reflEvery: 4, npcR: 36, px: 10, npcShadow: 18 },
+  minimo: { pr: 0.7, aa: false, msaa: 0, shadow: 512, shadowR: 45, soft: false, ao: false, bloom: false, refl: 128, reflEvery: 6, npcR: 28, px: 18, npcShadow: 12 },
 };
 
 // nome da placa de vídeo (num contexto descartável, antes de criar o do jogo)
@@ -29,21 +32,21 @@ function gpuName() {
 }
 
 // resolução do reflexo da água (lida pelo agua.js na hora de criar o mar e o Nilo)
-export const QS = { refl: 512 };
+export const QS = { refl: 512, level: 'alto' };
 
 export function detectQuality() {
   const gpu = gpuName();
   const software = /swiftshader|llvmpipe|softpipe|basic render|software/i.test(gpu);
   let saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* navegação privada */ }
-  if (saved && PROFILE[saved]) { QS.refl = PROFILE[saved].refl; return { level: saved, gpu, software, saved: true }; }
+  if (saved && PROFILE[saved]) { QS.refl = PROFILE[saved].refl; QS.level = saved; return { level: saved, gpu, software, saved: true }; }
   let level;
   if (software) level = 'minimo';
   else if (isTouch) level = 'leve';
   else if (/nvidia|geforce|rtx|gtx|quadro|radeon (rx|pro)|apple m\d/i.test(gpu) && !/intel/i.test(gpu)) level = 'alto';
   else level = 'leve'; // Intel UHD/Iris, Radeon integrada, ou placa desconhecida
   if (level === 'alto' && navigator.deviceMemory && navigator.deviceMemory <= 4) level = 'leve';
-  QS.refl = PROFILE[level].refl;
+  QS.refl = PROFILE[level].refl; QS.level = level;
   return { level, gpu, software, saved: false };
 }
 
@@ -55,7 +58,7 @@ export function saveQuality(level, byUser = false) { if (byUser) manual = true; 
 export const prFloor = (prMax) => (manual ? prMax : Math.max(0.5, prMax * 0.7));
 export const qualityLabel = (l) => ({ alto: 'alto', leve: 'leve', minimo: 'mínimo' }[l] || l);
 
-// aplica um nível com o jogo rodando (o antialias e o tipo de sombra só mudam ao recarregar)
+// aplica um nível com o jogo rodando (o tipo de sombra só muda ao recarregar)
 export function applyQuality(level, { renderer, sun, post, actors, cull }) {
   const P = PROFILE[level];
   renderer.setPixelRatio(Math.min(devicePixelRatio, P.pr));
@@ -64,7 +67,7 @@ export function applyQuality(level, { renderer, sun, post, actors, cull }) {
   const c = sun.shadow.camera;
   if (sun.shadow.mapSize.x !== P.shadow) { sun.shadow.mapSize.set(P.shadow, P.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   c.left = -P.shadowR; c.right = P.shadowR; c.top = P.shadowR; c.bottom = -P.shadowR; c.updateProjectionMatrix();
-  if (post) { if (post.ao) post.ao.enabled = P.ao; post.bloom.enabled = P.bloom; post.resize(); }
+  if (post) { if (post.ao) post.ao.enabled = P.ao; post.bloom.enabled = P.bloom; post.setAA(P.msaa); } // (setAA: MSAA nos gráficos altos, FXAA nos outros; já refaz os tamanhos)
   if (actors) { actors.viewR = P.npcR; actors.shadowR = P.npcShadow; } // (a sombra redesenha o boneco inteiro: nos leves, só de quem está perto)
   if (cull) cull.set(P.px); // objetos pequenos e longe deixam de ser desenhados
   return P;

@@ -258,7 +258,7 @@ normal = normalize( tbn * mapN );
       let tx = q.x - o.x, tz = q.z - o.z; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
       const nx = -tz * w / 2, nz = tx * w / 2;
       verts.push(p.x + nx, terrainHeight(p.x + nx, p.z + nz) + 0.06, p.z + nz, p.x - nx, terrainHeight(p.x - nx, p.z - nz) + 0.06, p.z - nz);
-      if (i < pts.length - 1) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      if (i < pts.length - 1) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } // (faces para cima: na ordem antiga a água dos canais ficava virada para baixo e não aparecia)
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));

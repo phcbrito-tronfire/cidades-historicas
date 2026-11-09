@@ -4,6 +4,10 @@
 export const STEP = 0.45;
 export const boxes = [];
 export const circles = [];
+// miolo dos prédios girados: só para a câmera (solidAt). As paredes deles são blocos de ~1 m no contorno e o meio ficava
+// oco: com o explorador encostado na fachada, a câmera entrava no prédio e, de dentro, as paredes não são desenhadas —
+// via-se a rua do outro lado, com portas e janelas soltas no ar (as "paredes abertas" de Óstia, do Portus e das ínsulas)
+const cores = [];
 const pyramids = [];
 let terrainFn = () => 0;
 let waterFn = () => -100;
@@ -24,6 +28,7 @@ export function addBox(cx, cz, w, d, bottom, top, opts = {}) {
 export function addRotBox(cx, cz, w, d, ry, bottom, top, fill = false) { // fill: cobre por dentro também (cais e plataformas onde se anda)
   const c = Math.cos(ry), s = Math.sin(ry);
   if (Math.abs(s) < 0.02 || Math.abs(c) < 0.02) { const sw = Math.abs(s) > 0.5; return addBox(cx, cz, sw ? d : w, sw ? w : d, bottom, top); }
+  if (!fill && w > 2.4 && d > 2.4) cores.push({ x: cx, z: cz, c, s, hw: w / 2 - 0.12, hd: d / 2 - 0.12, bottom, top, R: Math.hypot(w, d) / 2 });
   const a = 0.9, nu = Math.max(1, Math.ceil(w / a)), nv = Math.max(1, Math.ceil(d / a)), du = w / nu, dv = d / nv, ring = 2;
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
     if (!fill && i >= ring && i < nu - ring && j >= ring && j < nv - ring) continue; // por dentro não precisa (ninguém chega lá)
@@ -39,21 +44,22 @@ export function addCircle(x, z, r, bottom, top) {
 export function addPyramid(x, z, half, h, baseY) { pyramids.push({ x, z, half, h, baseY }); }
 
 // grade espacial (células de 8 m): cada consulta olha só as caixas e círculos da célula, e não os milhares da cidade
-const CELL = 8, grid = new Map(), NONE = { b: [], c: [] };
+const CELL = 8, grid = new Map(), NONE = { b: [], c: [], r: [] };
 let gridN = -1;
 const key = (i, j) => i * 100003 + j;
 function rebuild() {
-  grid.clear(); gridN = boxes.length + circles.length;
+  grid.clear(); gridN = boxes.length + circles.length + cores.length;
   const put = (o, list, x0, x1, z0, z1) => {
     const i0 = Math.floor(x0 / CELL), i1 = Math.floor(x1 / CELL), j0 = Math.floor(z0 / CELL), j1 = Math.floor(z1 / CELL);
-    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j); let c = grid.get(k); if (!c) grid.set(k, (c = { b: [], c: [] })); c[list].push(o); }
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j); let c = grid.get(k); if (!c) grid.set(k, (c = { b: [], c: [], r: [] })); c[list].push(o); }
   };
   const M = 1.3; // folga para o raio de quem se move (até 1,2 m)
   for (const b of boxes) put(b, 'b', b.minX - M, b.maxX + M, b.minZ - M, b.maxZ + M);
   for (const c of circles) put(c, 'c', c.x - c.r - M, c.x + c.r + M, c.z - c.r - M, c.z + c.r + M);
+  for (const r of cores) put(r, 'r', r.x - r.R, r.x + r.R, r.z - r.R, r.z + r.R);
 }
 function cellAt(x, z) {
-  if (gridN !== boxes.length + circles.length) rebuild();
+  if (gridN !== boxes.length + circles.length + cores.length) rebuild();
   return grid.get(key(Math.floor(x / CELL), Math.floor(z / CELL))) || NONE;
 }
 
@@ -101,6 +107,11 @@ export function solidAt(x, y, z) {
   for (const b of C.b) {
     if (!b.enabled || b.camPass) continue;
     if (y > b.bottom && y < b.top && x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return true;
+  }
+  for (const r of C.r) {
+    if (y <= r.bottom || y >= r.top) continue;
+    const dx = x - r.x, dz = z - r.z;
+    if (Math.abs(dx * r.c - dz * r.s) < r.hw && Math.abs(dx * r.s + dz * r.c) < r.hd) return true;
   }
   for (const p of pyramids) {
     const m = Math.max(Math.abs(x - p.x), Math.abs(z - p.z));

@@ -29,7 +29,7 @@ export function buildTiberina(B, M, out) {
   for (let i = 0; i < outline.length - 1; i++) {
     const [u0, v0] = outline[i], [u1, v1] = outline[i + 1], p = W((u0 + u1) / 2, (v0 + v1) / 2), q0 = W(u0, v0), q1 = W(u1, v1);
     const L = Math.hypot(q1.x - q0.x, q1.z - q0.z), ry = Math.atan2(q1.x - q0.x, q1.z - q0.z);
-    B.box(M.travertine, 1.4, top - bot, L + 0.1, p.x, bot, p.z, { ry });
+    B.box(M.travertine, 1.4, top - bot - 0.02, L + 0.1, p.x, bot, p.z, { ry }); // (2 cm abaixo das lajes: rente, a borda da ilha inteira piscava contra o piso)
     if (!heads.some(([hu, hv]) => Math.hypot((u0 + u1) / 2 - hu, (v0 + v1) / 2 - hv) < 3.6)) addCircle(p.x, p.z, 0.8, bot - 1, top);
   }
   // a proa: a quilha de pedra na ponta e o bastão de Esculápio (com a serpente) esculpido no costado

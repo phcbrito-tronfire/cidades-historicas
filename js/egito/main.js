@@ -4,6 +4,7 @@ const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, buildPhotoComposites, labelTexture } from './textures.js';
 import { loadHieroFont } from './hieroglifos.js';
 import { createPost } from '../comum/post.js';
+import { upgradeSky } from '../comum/ceu.js';
 import { warmUp, setLateWarm, modelsSettled } from '../comum/aquecer.js';
 import { makeTravel } from '../comum/viagem.js';
 import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho.js';
@@ -57,7 +58,7 @@ async function main() {
   const Q = detectQuality();
   let quality = Q.level;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: PROFILE[quality].aa, powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
   } catch (e) { ui.fail(); return; }
   renderer.setPixelRatio(Math.min(devicePixelRatio, PROFILE[quality].pr));
   { const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`; }
@@ -165,7 +166,7 @@ async function main() {
 
   await step(0.88, 'Acendendo as tochas e afinando as harpas...');
   const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: world.water, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: city.lights });
-  sky.horizon = horizon; sky.apply(sky.state);
+  sky.horizon = horizon; upgradeSky(sky, { cover: 0.22, glow: 0.7, haze: [20, 200, 0.8], leve: quality !== 'alto' }); sky.apply(sky.state); // céu, nuvens e ar novos (comum/ceu.js)
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, city.M.gold, tex.glow, ui, audio);
   setupWardrobe({ player, city: 'egito', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) }); // roupas do explorador (V)

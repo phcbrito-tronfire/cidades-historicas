@@ -528,21 +528,33 @@ export class Player {
 
   updateCamera(dt, snap = false) {
     const R = this.rideCam;
-    if (R) return this.updateBoatCamera(dt, R);
+    if (R) { this.ghost(false); return this.updateBoatCamera(dt, R); }
     this.camDist = lerp(this.camDist, this.camTargetDist + (this.speed > 6 ? 0.8 : 0), Math.min(1, dt * 3));
     // alvo levemente acima do ombro direito (enquadramento de jogo de aventura)
-    const sx = Math.cos(this.camYawW) * 0.45, sz = -Math.sin(this.camYawW) * 0.45;
-    const target = new THREE.Vector3(this.pos.x + sx, this.pos.y + (this.diving ? 0.75 : this.swimming ? 0.9 : 1.6), this.pos.z + sz);
+    // (encostado numa parede à direita, o ponto sobre o ombro cairia dentro dela: ele volta para perto da cabeça)
+    const ty = this.pos.y + (this.diving ? 0.75 : this.swimming ? 0.9 : 1.6);
+    let sx = 0, sz = 0;
+    for (const k of [0.45, 0.25, 0.1, 0]) { sx = Math.cos(this.camYawW) * k; sz = -Math.sin(this.camYawW) * k; if (!solidAt(this.pos.x + sx * 1.5, ty, this.pos.z + sz * 1.5)) break; }
+    const target = new THREE.Vector3(this.pos.x + sx, ty, this.pos.z + sz);
     this.camTarget = this.camTarget ? this.camTarget.lerp(target, Math.min(1, dt * 12)) : target.clone();
     if (snap) this.camTarget.copy(target);
     const yaw = this.camYawW;
     const pitch = this.camPitch;
     const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-    // recua até bater em algo sólido
+    // recua até bater em algo sólido, e para 30 cm antes. Antes a câmera nunca chegava a menos de 60 cm do explorador:
+    // com ele de costas para uma parede, ela ficava DENTRO da parede — e de dentro as paredes não são desenhadas
+    // (via-se a cidade inteira através do prédio). Agora ela chega até junto do ombro, e também confere os lados
+    // (uma parede rente, ao lado da câmera, era cortada pela borda da imagem).
     let d = this.camDist;
-    for (let st = 0.4; st <= this.camDist; st += 0.25) {
-      const q = this.camTarget.clone().addScaledVector(dir, st);
-      if (solidAt(q.x, q.y, q.z)) { d = Math.max(0.6, st - 0.35); break; }
+    const q = new THREE.Vector3();
+    for (let st = 0.1; st <= this.camDist; st += 0.1) {
+      q.copy(this.camTarget).addScaledVector(dir, st);
+      if (solidAt(q.x, q.y, q.z)) { d = Math.max(0.12, st - 0.3); break; }
+    }
+    const rx = Math.cos(yaw) * 0.22, rz = -Math.sin(yaw) * 0.22;
+    for (let i = 0; i < 12 && d > 0.2; i++) {
+      q.copy(this.camTarget).addScaledVector(dir, d);
+      if (solidAt(q.x + rx, q.y, q.z + rz) || solidAt(q.x - rx, q.y, q.z - rz) || solidAt(q.x, q.y + 0.2, q.z)) d = Math.max(0.12, d - 0.15); else break;
     }
     const want = this.camTarget.clone().addScaledVector(dir, d);
     const wl = waterAt(want.x, want.z);
@@ -550,10 +562,26 @@ export class Player {
     if (this.diving) { if (want.y > wl - 0.3) want.y = wl - 0.3; }
     else if (want.y < wl + 0.35) want.y = wl + 0.35;
     if (snap) this.camPos.copy(want);
-    else this.camPos.lerp(want, Math.min(1, dt * 14));
+    else {
+      this.camPos.lerp(want, Math.min(1, dt * 14));
+      // a suavização não pode deixar a câmera para trás, dentro do que acabou de barrar o caminho
+      const back = this.camPos.distanceTo(this.camTarget);
+      if (back > d + 0.05 && d < this.camDist - 0.05) this.camPos.sub(this.camTarget).multiplyScalar((d + 0.05) / back).add(this.camTarget);
+    }
     this.camera.position.copy(this.camPos);
     if (this.shake > 0.002) { const k = this.shake; this.camera.position.x += (Math.random() - 0.5) * k; this.camera.position.y += (Math.random() - 0.5) * k; this.camera.position.z += (Math.random() - 0.5) * k; this.shake *= Math.pow(0.0015, Math.min(dt, 0.1)); } /* o tremor do impacto */
     this.camera.lookAt(this.camTarget);
+    // com a câmera colada no explorador (ele encostado numa parede), ela ficaria dentro da cabeça dele — via-se o chapéu
+    // por baixo e os olhos soltos. Ali o corpo some e a vista fica em primeira pessoa; ao desencostar, ele volta.
+    { const hx = this.pos.x - this.camPos.x, hz = this.pos.z - this.camPos.z, dd = hx * hx + hz * hz, dy = Math.abs(this.pos.y + 1.2 - this.camPos.y);
+      this.ghost(this._ghost ? dd < 0.42 && dy < 1.3 : dd < 0.27 && dy < 1.2); }
+  }
+  // esconde/mostra o corpo do explorador. Só as malhas: uma luz (a tocha) nunca muda de visibilidade com o jogo rodando
+  // (o navegador recompilaria todos os materiais)
+  ghost(on) {
+    if (!!this._ghost === on || !this.rig?.root) return;
+    if (on) { this._ghost = []; this.rig.root.traverse((o) => { if ((o.isMesh || o.isSprite) && o.visible) { o.visible = false; this._ghost.push(o); } }); }
+    else { for (const o of this._ghost) o.visible = true; this._ghost = null; if (this.torch) this.torch.lit = null; } // (a tocha reaplica o aceso/apagado dela)
   }
 
   // no barco: órbita em volta do meio do casco (a roda do mouse aproxima/afasta), sem colidir com o próprio barco
