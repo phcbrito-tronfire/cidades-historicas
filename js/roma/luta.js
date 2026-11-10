@@ -14,12 +14,14 @@ import { rand, rr, clamp } from '../comum/util.js';
 const BASE_CLIPS = ['gl_guarda', 'gl_lado', 'gl_alto', 'gl_baixo', 'gl_desce', 'gl_combo', 'gl_forte', 'gl_cabo', 'gl_chute', 'gl_bloqueio', 'gl_impacto', 'gl_cabeca', 'gl_morte_f', 'gl_morte_t', 'gl_vitoria'];
 const EXTRA_CLIPS = ['so_guarda', 'so_jab', 'so_direto', 'so_gancho', 'so_uppercut', 'so_soco_forte', 'es_rola', 'es_esquiva', 'gl_defesa', 'gl_saca', 'lanca'];
 // em que fração do clipe o golpe chega (mais de um número: uma sequência de golpes no mesmo clipe)
-export const HIT_AT = { gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.55], so_direto: [0.48], so_gancho: [0.5], so_uppercut: [0.4], so_soco_forte: [0.28, 0.4, 0.52, 0.62], lanca: [0.42] }; // (medido: o quadro em que a mão vai mais longe à frente)
+export const HIT_AT = { gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.55], so_direto: [0.48], so_gancho: [0.5], so_uppercut: [0.4], so_soco_forte: [0.28, 0.4, 0.52, 0.62], lanca: [0.24] }; /* (a estocada: o braço já está todo esticado aos 24%) */ // (medido: o quadro em que a mão vai mais longe à frente)
 // ritmo de cada clipe (a estocada do Mixamo é lenta para a lança: acelerada; o resto, um pouco mais rápido que o original)
 const CLIP_RATE = { lanca: 1.6, so_soco_forte: 1.25, so_uppercut: 1.2 };
+// onde o golpe termina (fração do clipe): a estocada recolhe o braço aos 55%; o resto é só a volta ao parado
+const CLIP_END = { lanca: 0.6 };
 export const WEAPONS = {
   gladio: { name: 'o gládio', reach: 1.85, arc: 1.0, dmg: [13, 19], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 24 },
-  lanca: { name: 'a lança', reach: 2.6, arc: 0.55, dmg: [16, 23], chain: ['lanca', 'gl_alto', 'gl_baixo', 'gl_alto'], heavy: 'gl_forte', thrown: 34 },
+  lanca: { name: 'a lança', reach: 2.6, arc: 0.7, dmg: [14, 20], chain: ['lanca', 'lanca', 'lanca'], rates: [1.6, 1.95, 1.75], heavy: 'lanca', heavyRate: 1.3, thrown: 34 }, /* (só estocadas: golpe de espada com lança apontava a ponta para o céu) */
   punhos: { name: 'os punhos', reach: 1.3, arc: 0.9, dmg: [5, 8], chain: ['so_jab', 'so_direto', 'so_gancho', 'so_uppercut'], heavy: 'so_soco_forte' },
 };
 const RATE = 1.15; // (os golpes um pouco mais rápidos que o original: lutando, o jogador não pode esperar)
@@ -42,6 +44,10 @@ export function makeWeapon(kind, color = 0xa8261e) {
     g.add(at(new THREE.CylinderGeometry(0.014, 0.016, 2.0, 6), mat(0x7a5a36), 0, 0.55, 0));
     g.add(at(new THREE.ConeGeometry(0.03, 0.2, 6), mat(0xc8cdd2, { metalness: 0.9, roughness: 0.3 }), 0, 1.64, 0));
     g.userData.hand = { rot: [Math.PI * 0.45, 0, 0], pos: [0, 0, 0] }; g.userData.len = 1.75;
+    // duas pegadas: a de carregar (a ponta para cima e para a frente) e a da estocada (medida no clipe: na extensão do braço,
+    // a lança aponta para a frente, um pouco para baixo, com a ponta a 2,5 m à frente na altura do peito)
+    g.userData.qCarry = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI * 0.45, 0, 0));
+    g.userData.qThrust = new THREE.Quaternion().setFromEuler(new THREE.Euler(2.253, -0.827, -0.412));
   } else if (kind === 'escudo') { // o scutum: curvo, retangular, com o umbo de bronze e as faixas
     const w = 0.66, hgt = 1.05;
     const face = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, hgt, 18, 1, true, -w / 1.24, w / 0.62), mat(color, { side: THREE.DoubleSide })); face.position.z = -0.6; face.castShadow = true; g.add(face);
@@ -203,6 +209,9 @@ export class Melee {
     }
     this.updateFlying(dt);
     this.stance();
+    // a lança gira na mão: pegada de estocada no golpe e parado em guarda; de carregar andando, parado e no escudo
+    const Wm = this.meshes.right;
+    if (Wm?.userData.qThrust) { const thrust = (this.clip === 'lanca') || (P.rig.locoSet?.idle === 'gl_guarda' && speed < 0.4 && !this.block && !this.clip); Wm.quaternion.slerp(thrust ? Wm.userData.qThrust : Wm.userData.qCarry, Math.min(1, dt * 16)); }
   }
 
   holdPose() { // escudo erguido (ou a guarda dos punhos), parado no quadro certo enquanto se segura a tecla
@@ -221,8 +230,9 @@ export class Melee {
     const a = P.rig.act(name); if (!a) return;
     // mira suave: vira para o adversário mais perto à frente
     const tg = this.nearestTarget(4.5, 1.4); if (tg) P.facing = Math.atan2(tg.pos.x - P.pos.x, tg.pos.z - P.pos.z);
-    const rate = CLIP_RATE[name] || RATE;
-    this.clip = name; this.t = 0; this.full = a.getClip().duration / rate; this.dur = this.full * 0.94; this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = name === W.heavy;
+    const isHeavy = heavy && name === W.heavy;
+    const rate = isHeavy && W.heavyRate ? W.heavyRate : (!isHeavy && W.rates ? W.rates[this.combo] : 0) || CLIP_RATE[name] || RATE;
+    this.clip = name; this.t = 0; this.full = a.getClip().duration / rate; this.dur = this.full * (CLIP_END[name] || 0.94); this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = isHeavy;
     playOnce(P.rig, name, this.dur); a.timeScale = rate;
     this.swingAt = this.lastAct = performance.now(); this.onSwing?.(this);
     if (this.right) this.audio?.swoosh?.();
