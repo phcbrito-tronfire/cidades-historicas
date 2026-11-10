@@ -38,6 +38,8 @@ import { Games } from './jogos.js';
 import { Legion } from './legiao.js';
 import { buildNaumachia } from './naumaquia.js';
 import { Races } from './circo.js';
+import { Melee } from './luta.js';
+import { Arena } from './arena.js';
 import { Daily } from './cotidiano.js';
 import { MARKET } from './mercado.js';
 
@@ -153,7 +155,8 @@ async function main() {
   sky.horizon = horizon; upgradeSky(sky, { cover: 0.42, leve: quality !== 'alto' }); sky.apply(sky.state); // céu, nuvens e ar novos (comum/ceu.js)
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
-  setupWardrobe({ player, city: 'roma', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) }); // roupas do explorador (V)
+  const extraLooks = []; // (a roupa de gladiador: entra na lista quando o resto de Roma estiver pronto, logo abaixo)
+  const wardrobe = setupWardrobe({ player, city: 'roma', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms), extra: extraLooks }); // roupas do explorador (V)
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   quests.artifactCount = artifacts.count;
   // os jogos do Coliseu: o programa muda a cada novo dia (gladiadores, caçada, desfile, batalha naval)
@@ -164,7 +167,15 @@ async function main() {
   const races = new Races(scene, { crowdGeo: games.crowd.geometry, crowdMat: games.crowd.material, quality, toast: (m, k, ms) => ui.toast(m, k, ms), excite: () => { games.excite = 1; } }); // bigas no Circo Máximo
   const daily = new Daily(scene, city, { quality });
   quests.refs = { boats, mount, sea }; // objetivos que dependem do barco, da montaria e do naufrágio
-  races.onWin = () => quests.complete('circo'); // jumentos, pombos, barcaças no Tibre, bois no mercado
+  races.onWin = () => quests.complete('circo');
+  // os jogos de Roma (lutar no Coliseu, caçar na arena, correr no Circo) só se abrem para quem concluiu a cidade inteira
+  const romeDone = () => OBJECTIVES.every((o) => quests.isDone(o.id)) && artifacts.count >= artifacts.total;
+  // a luta (legionário e gladiador) e a arena do Coliseu: o guarda, os combates, a caçada e os prêmios
+  const melee = new Melee(scene, player, { health, audio, toast: (m, k, ms) => ui.toast(m, k, ms), blood: games.blood });
+  const arena = new Arena(scene, { games, player, melee, health, ui, audio, artifacts, toast: (m, k, ms) => ui.toast(m, k, ms), eligible: romeDone, faint });
+  races.onPlayerFinish = (place) => { if (place === 1 && !arena.has('auriga')) setTimeout(() => arena.award('auriga'), 1500); };
+  extraLooks.push({ id: 'gladiador', ok: romeDone, msg: 'Você conheceu Roma inteira: todos os objetivos e todos os artefatos! Ganhou a roupa de gladiador (mirmilão). Vestido com ela (V), procure o guarda na entrada oeste do Coliseu; e no Circo Máximo, o organizador das corridas.' });
+  wardrobe.check(); // jumentos, pombos, barcaças no Tibre, bois no mercado
 
   await step(0.96, 'Desenhando o mapa de Roma...');
   const mapJob = ui.buildMapBackground([
@@ -254,6 +265,9 @@ async function main() {
     switch (e.code) {
       case 'KeyE': {
         if (boats.riding) { boats.leave(player, city.spots.quay); ui.toast('Você desembarcou.'); break; }
+        if (races.driving || arena.running) break;
+        if (arena.nearGuard(player.pos, sky.state.night > 0.5)) { arena.talk(sky.state.night > 0.5); break; }
+        if (races.nearOrganizer?.(player.pos)) { races.talk({ ui, audio, player, eligible: romeDone(), night: sky.state.night > 0.5 }); break; }
         const tgt = actors.nearestInteractable(player.pos); if (tgt) { talkTo(tgt); break; }
         const b = boats.nearestBoardable(player.pos); if (b) { boats.board(player, b); ui.toast('↑ remar · ↓ ré · ← → leme · E: descer', '', 5000); }
         break;
@@ -310,6 +324,7 @@ async function main() {
 
   // ---------------- vida ----------------
   const onDeath = () => {
+    if (arena.playerDown()) return; // (na arena, quem decide é a plateia)
     player.locked = true; player.collapse();
     faint('Você desmaiou... e acordou junto ao Coliseu, com a cabeça doendo.', () => {
       player.diving = false; player.swimming = false; player.breath = 60;
@@ -317,11 +332,11 @@ async function main() {
     });
   };
 
-  window.__game = { naumachia, games, legion, races, daily, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { melee, arena, naumachia, games, legion, races, daily, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, boats, city, health, sea, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
-  let t = 0, miniT = 0;
+  let t = 0, miniT = 0, wardT = 0;
   let prMax = renderer.getPixelRatio(), prMin = prFloor(prMax);
   let frameAvg = 16, adaptT = 0;
   const adaptRes = (raw) => {
@@ -357,7 +372,9 @@ async function main() {
     boats.night = sky.state.night;
     boats.update(dt, t, player);
     travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
+    if (started) melee.tick(); // (liga a luta antes do explorador se mexer: o Espaço vira esquiva, o passo encurta no golpe)
     if (boats.riding) { /* o barco posiciona o explorador */ }
+    else if (races.driving) { /* a biga posiciona o explorador (races.update) */ }
     else if (mount.state === 'riding') mount.update(dt, t, player);
     else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) artifacts.update(dt, t, player);
@@ -365,6 +382,8 @@ async function main() {
     if (started && sky.state.night < 0.5 && Math.hypot(player.pos.x / COL.A, player.pos.z / COL.B) < 1.2) { quests.seenEvents.add(games.event.id === 'naumachia' ? null : games.event.id); quests.seenEvents.delete(null); if (quests.seenEvents.size >= 3) quests.complete('jogos'); }
     actors.update(dt, t, player, quests, sky.state.night);
     games.cam = camera.position; games.update(dt, t, player, sky.state.night);
+    arena.update(dt, t, sky.state.night > 0.5);
+    if ((wardT = (wardT || 0) - dt) <= 0) { wardT = 2; wardrobe.check(); } /* (a roupa de gladiador chega quando o último artefato é achado) */
     legion.update(dt, t, player);
     races.update(dt, t, player, sky.state.night);
     daily.update(dt, t, player);
@@ -380,7 +399,10 @@ async function main() {
     fx.update(dt);
     if (started) {
       const parts = [];
-      const tgt = !ui.dialogOpen && actors.nearestInteractable(player.pos);
+      if (!ui.dialogOpen && !races.driving && races.nearOrganizer?.(player.pos)) parts.push('<kbd>E</kbd> Falar com o organizador das corridas');
+      if (!ui.dialogOpen && !arena.running && arena.nearGuard(player.pos, sky.state.night > 0.5)) parts.push('<kbd>E</kbd> Falar com o guarda do Coliseu');
+      { const ah = arena.hint(); if (ah) parts.push(ah); const mh = !races.driving && melee.hint(); if (mh) parts.push(mh); }
+      const tgt = !ui.dialogOpen && !races.driving && !arena.running && actors.nearestInteractable(player.pos);
       if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : 'o ' + (NAMES[tgt.type] || 'romano').toLowerCase()}`);
       { const bt = !tgt && !boats.riding && boats.nearestBoardable(player.pos); if (bt) parts.push('<kbd>E</kbd> Embarcar no ' + (bt.name || 'barco')); if (boats.riding) parts.push('<kbd>↑</kbd> Remar · <kbd>↓</kbd> Ré · <kbd>←→</kbd> Leme · <kbd>E</kbd> Descer'); }
       if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');

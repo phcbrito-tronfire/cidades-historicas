@@ -136,7 +136,7 @@ export class Actors {
     walker('toga', R(-205, -18, 90, 30), 10); walker('woman', R(-205, -18, 90, 30), 6); walker('tunic', R(-205, -18, 90, 30), 6); // Fórum
     walker('soldier', R(-205, -18, 80, 25), 3, { lines: SOLDIER_LINES, speed: 1.2 });
     for (const [x, z] of [[-100, 0], [90, 10], [0, -75], [0, 80]]) { walker('tunic', R(x, z, 20, 12), 4); walker('woman', R(x, z, 20, 12), 2); walker('child', R(x, z, 20, 12), 1, { lines: CHILD_LINES, speed: 2.8, run: true, as: 'child' }); } // em volta do Coliseu
-    walker('tunic', R(-235, 250, 120, 6), 6); walker('worker', R(-120, 120, 60, 40), 4, { lines: WORKER_LINES }); // Circo e ruas do Célio
+    walker('tunic', R(-235, 250, 98, 1.6), 6) /* (só em cima da spina: antes andavam pela pista, no caminho das bigas) */; walker('worker', R(-120, 120, 60, 40), 4, { lines: WORKER_LINES }); // Circo e ruas do Célio
     // Fórum Boário: um vendedor atrás de cada barraca e fregueses andando pelo corredor
     for (const st of this.city.marketStalls || []) {
       const h = this.addHuman(this.romanLook(rand() < 0.4 ? 'woman' : 'tunic'), st.x, st.z, st.ry);

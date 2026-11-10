@@ -130,6 +130,7 @@ export class Artifacts {
   }
 
   get count() { return this.found.size; }
+  get total() { return ARTIFACTS.length; }
 
   buildUI() {
     const css = document.createElement('style');
@@ -189,8 +190,12 @@ export class Artifacts {
     const cells = ARTIFACTS.map((d, i) => this.found.has(d.id)
       ? `<div class="it" data-i="${i}"><b>${d.name}</b>${d.era}</div>`
       : `<div class="it no"><b>???</b>Ainda não encontrado</div>`).join('');
-    this.col.innerHTML = `<div class="box"><h2>Coleção de artefatos — ${this.found.size}/${ARTIFACTS.length}</h2><div class="grid">${cells}</div><button>Fechar (K)</button></div>`;
+    // os prêmios ganhos na arena e no Circo (arena.js), num grupo à parte: não contam como artefatos achados
+    const P = this.prizes?.() || [];
+    const pz = P.length ? `<h2 style="margin-top:1em">Prêmios dos jogos — ${P.length}</h2><div class="grid">${P.map((p, i) => `<div class="it" data-p="${i}"><b>${p.name}</b>${p.era}</div>`).join('')}</div>` : '';
+    this.col.innerHTML = `<div class="box"><h2>Coleção de artefatos — ${this.found.size}/${ARTIFACTS.length}</h2><div class="grid">${cells}</div>${pz}<button>Fechar (K)</button></div>`;
     this.col.querySelector('button').onclick = () => (this.col.hidden = true);
+    this.col.querySelectorAll('.it[data-p]').forEach((el) => (el.onclick = () => { this.col.hidden = true; const p = P[+el.dataset.p]; this.showInfo({ tag: 'Prêmio', name: p.name, era: p.era, story: p.story }); }));
     this.col.querySelectorAll('.it[data-i]').forEach((el) => (el.onclick = () => { this.col.hidden = true; this.showCard(ARTIFACTS[+el.dataset.i], false); }));
     this.col.hidden = false;
   }

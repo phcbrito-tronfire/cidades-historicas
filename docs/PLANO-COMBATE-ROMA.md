@@ -1,6 +1,6 @@
 # Plano — combate em Roma (e golpes do Japão revistos)
 
-Pedido do Pedro (09/11/2026). Tudo isso só se abre para quem **concluiu todos os objetivos de Roma e pegou todos os
+Pedido do Pedro (09/11/2026). **Feito em 10/11/2026: as quatro etapas, juntas** (`js/roma/luta.js`, `js/roma/arena.js`, `js/roma/circo.js`, `js/roma/corrida.js`). Pendente: socos e rolamento de verdade do Mixamo (precisa do login do Pedro no navegador do app); até lá, o soco usa a pancada com o punho da espada e o chute, e a esquiva, o agachar da aterrissagem. Tudo isso só se abre para quem **concluiu todos os objetivos de Roma e pegou todos os
 artefatos**. Cada etapa é publicada e conferida antes da próxima.
 
 ## O que já existe e será aproveitado
@@ -47,3 +47,11 @@ artefatos**. Cada etapa é publicada e conferida antes da próxima.
 - Morrer na arena: sair vivo pela clemência (padrão) ou morrer de verdade e recomeçar na porta?
 - Mouse para golpear e defender, mantendo F e Q no teclado (padrão).
 - Gladiador mirmilão como prêmio a mais, junto do legionário (padrão).
+
+## Como ficou (10/11/2026)
+- Teclas: F ou clique golpeia (emenda); correndo, o golpe forte. Q ou botão direito segura o escudo. Espaço esquiva. G arremessa a lança ou o gládio. P pega a arma do chão. No celular, botões Golpe, Escudo e Arremessar.
+- Golpe forte pode arrancar a arma da mão (do explorador e dos adversários): luta-se no soco ou pega-se outra. Os adversários também vão buscar armas no chão.
+- Munus: trácio → reciário → secutor e hoplômaco juntos. Quem apanha 3 vezes seguidas apara ou devolve na hora. De joelhos: E poupa, F golpe final; a plateia grita missio ou iugula. Prêmios: palma, bolsa; com 3 vitórias, a rudis.
+- Venatio: de lança, leão → urso → touro e leão (investidas e botes; Espaço para sair de lado). Prêmio: áureo de Trajano.
+- Bigas: 3 voltas; ↑ soltar, ↓ segurar, ← → raia, Shift chicote, E desistir; derrapa e naufraga na meta se entrar rápido demais. 1º lugar: palma e coroa do auriga.
+- Roupa nova: Gladiador (mirmilão), ganha com todos os objetivos E todos os artefatos de Roma. Os prêmios aparecem na coleção (K).

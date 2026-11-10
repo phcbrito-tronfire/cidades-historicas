@@ -16,7 +16,10 @@ const BREATH = 60; // fôlego do mergulho, em segundos
 const KT_CLIPS = ['kt_guarda', 'kt_andar', 'kt_correr', 'kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro', 'kt_salto', 'kt_combo'];
 const KT_CHAIN = ['kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro'];
 // por golpe: quanto do clipe usar (o fim é a volta para a guarda), quando o próximo pode emendar, e a janela do rastro
-const KT_INFO = { kt_desce: { end: 0.85, next: 0.5, cut: [0.18, 0.5] }, kt_forte: { end: 0.82, next: 0.5, cut: [0.25, 0.55] }, kt_baixo: { end: 0.8, next: 0.5, cut: [0.3, 0.55] }, kt_giro: { end: 0.85, next: 0.6, cut: [0.25, 0.65] }, kt_salto: { end: 0.8, next: 0.6, cut: [0.35, 0.65] } };
+// (antes o golpe acabava em 80–85% e o seguinte emendava na metade, justo quando os braços se estendem: o corte parecia
+// encolhido. Agora o movimento vai até o fim, a emenda vem depois da extensão e o corpo avança um passo no corte)
+const KT_INFO = { kt_desce: { end: 0.96, next: 0.72, cut: [0.18, 0.5] }, kt_forte: { end: 0.95, next: 0.72, cut: [0.25, 0.55] }, kt_baixo: { end: 0.95, next: 0.7, cut: [0.3, 0.55] }, kt_giro: { end: 0.96, next: 0.78, cut: [0.25, 0.65] }, kt_salto: { end: 0.92, next: 0.75, cut: [0.35, 0.65] } };
+const KT_RATE = 1.12; // (um pouco mais rápido que o original: o golpe tem peso, mas não arrasta)
 const KT_LOCO = { idle: 'kt_guarda', andar: 'kt_andar', andar_f: 'kt_andar', trotar: 'kt_correr', correr: 'kt_correr' };
 
 // tocha na mão esquerda: nos eixos da mão +y sobe pelo antebraço e +z aponta para a frente; o cabo sai do punho
@@ -110,11 +113,13 @@ export class Player {
     if (K.model !== m) { K.model = m; const g = (n) => m.getObjectByName(n); K.parts = g('kt_mao') ? { hand: g('kt_mao'), sheathed: g('kt_embainhada'), tip: g('kt_ponta'), mid: g('kt_meio') } : null; }
     return K.parts;
   }
+  // desloca o corpo por um instante (v em m/s, para onde olha, ou na direção dada), respeitando paredes
+  lunge(v, t, dx = Math.sin(this.facing), dz = Math.cos(this.facing)) { this.push = { vx: dx * v, vz: dz * v, t }; }
   sheathe() { const K = this.kat, P = this.katParts(); K.drawn = false; K.clip = null; K.queued = false; this.rig.locoSet = null; this.rig.speeds = null; if (P) { P.hand.visible = false; P.sheathed.visible = true; } }
   strike(name) {
     const K = this.kat, info = KT_INFO[name], a = this.rig.act(name); if (!a) return false;
-    K.clip = name; K.t = 0; K.dur = a.getClip().duration * info.end; K.swooshed = false; K.idle = 0; K.swing = (K.swing || 0) + 1;
-    playOnce(this.rig, name, K.dur);
+    K.clip = name; K.t = 0; K.dur = a.getClip().duration * info.end / KT_RATE; K.swooshed = false; K.idle = 0; K.swing = (K.swing || 0) + 1;
+    playOnce(this.rig, name, K.dur); a.timeScale = KT_RATE;
     return true;
   }
   updateKatana(dt, speed) {
@@ -128,7 +133,7 @@ export class Player {
     if (K.clip) { // golpeando
       K.t += dt;
       const info = KT_INFO[K.clip], f = K.t / (K.dur / info.end), cutting = f > info.cut[0] && f < info.cut[1];
-      if (cutting && !K.swooshed) { K.swooshed = true; this.events.swoosh?.(); }
+      if (cutting && !K.swooshed) { K.swooshed = true; this.events.swoosh?.(); if (K.clip !== 'kt_giro') this.lunge(K.clip === 'kt_salto' ? 3.2 : 2.2, 0.2); } /* o corpo acompanha o corte: um passo à frente */
       this.trail.update(P.tip, P.mid, cutting);
       if (cutting) this.events.cut?.(K.clip, K.swing, P); /* o que a lâmina acerta (bambu, palha, parede) */
       if (K.queued && f > info.next) { K.queued = false; K.combo = (K.combo + 1) % KT_CHAIN.length; this.strike(KT_CHAIN[K.combo]); } // emenda o próximo, sem voltar à guarda
@@ -347,6 +352,7 @@ export class Player {
     if (this.wading) target *= 0.55;
     if (has && turnDiff > 1.2 && this.onGround) target *= 0.35; // meia-volta: desacelera e gira
     if (this.kat.clip) target *= this.kat.clip === 'kt_salto' ? 0.7 : 0.18; // golpeando: o passo é o do golpe
+    if (this.combat?.moveScale !== undefined) target *= this.combat.moveScale; /* (Roma: golpeando ou defendendo, o passo é curto) */
     // curva suave (arranque progressivo, sem degrau) com um piso linear para não ficar eterna no fim
     const grounded = this.onGround || this.swimming;
     const k = target > this.speed ? (grounded ? (this.swimming ? 1.6 : 3.2) : 0.6) : (grounded ? (this.swimming ? 2.2 : 4) : 0.3);
@@ -358,6 +364,7 @@ export class Player {
     const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
     const before = p.clone();
     if (this.speed > 0.01) moveWithCollision(p, fx * this.speed * dt, fz * this.speed * dt, 0.32, 1.75);
+    if (this.push && this.push.t > 0) { const k2 = Math.min(dt, this.push.t); this.push.t -= dt; if (!this.swimming) moveWithCollision(p, this.push.vx * k2, this.push.vz * k2, 0.32, 1.75); }
     const W = this.bounds; p.x = clamp(p.x, W[0], W[1]); p.z = clamp(p.z, W[2], W[3]);
     const realSpeed = before.distanceTo(new THREE.Vector3(p.x, before.y, p.z)) / Math.max(dt, 1e-4);
     if (realSpeed < this.speed * 0.3 && this.onGround) this.speed = Math.max(realSpeed, this.speed * 0.8); // bateu na parede
@@ -403,7 +410,8 @@ export class Player {
       if (depth < 1.0 && !this.diving) { this.swimming = false; p.y = Math.max(ground, p.y); }
     } else {
       const tapJ = this.spaceTap; this.spaceTap = false;
-      if (this.onGround && (this.key('Space') || tapJ) && !this.locked && !this.jumpHeld) {
+      if (this.combat?.space && (this.key('Space') || tapJ) && !this.jumpHeld) { this.jumpHeld = true; this.combat.space(); } /* (de arma na mão, o Espaço é a esquiva) */
+      else if (this.onGround && (this.key('Space') || tapJ) && !this.locked && !this.jumpHeld) {
         this.vy = 6.4; this.onGround = false; this.jumpHeld = true; this.events.step(true);
       }
       if (!this.key('Space')) this.jumpHeld = false;
@@ -467,6 +475,7 @@ export class Player {
     if (this.swingT > 0) { this.swingT = 0; playOnce(this.rig, 'Sword_Attack', 0.9); }
     if (this.pickT > 0) { this.pickT = 0; playOnce(this.rig, 'PickUp_Table', 0.8); }
     this.updateKatana(dt, realSpeed);
+    this.combat?.update?.(dt, realSpeed, t);
     animateHumanoid(this.rig, dt, realSpeed, mode, t);
     this.rig.root.rotation.y = this.facing;
     // inclina o corpo nas curvas e ao acelerar
