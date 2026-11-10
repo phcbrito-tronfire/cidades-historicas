@@ -13,7 +13,7 @@ export const LOOKS = {
   grecia: { name: 'Hoplita ateniense', desc: 'Elmo coríntio de bronze, couraça com os músculos batidos no metal, saiote de tiras de couro, quíton vermelho, grevas e o escudo redondo.', base: 'bryce', sandals: true, unlock: 'atenas', extras: ['helmet', 'aspis'] },
   japao: { name: 'Samurai (armadura completa)', desc: 'Armadura tōsei-gusoku de lâminas laqueadas de preto amarradas com cordões de seda vermelha: kabuto com a crista dourada e a máscara menpō, couraça (dō), ombreiras (sode), saiote de placas (kusazuri), coxotes, caneleiras e braçais, e o par de espadas, katana e wakizashi. F saca a katana e golpeia; F de novo emenda os golpes.', base: 'brian', sandals: true, unlock: 'japao' },
   roma: { name: 'Legionário romano', desc: 'Gálea de ferro, couraça de placas (lorica segmentata), lenço de lã, túnica vermelha, cinturão com avental de tiras, gládio e escudo (scutum) e cáligas. F (ou clique) golpeia; Q (ou botão direito) ergue o escudo; Espaço esquiva.', base: 'bryce', sandals: true, unlock: 'roma' },
-  gladiador: { name: 'Gladiador (mirmilão)', desc: 'Elmo de aba larga com a grade nos olhos e a crista de peixe, o braço da espada enfaixado (manica), a tanga de linho (subligaculum) com o cinturão largo (balteus), a greva na perna esquerda, o escudo grande e o gládio. É a roupa que o guarda do Coliseu exige de quem quer lutar na arena.', base: 'bryce', sandals: true, unlock: 'roma-arena', hint: 'Conclua todos os objetivos de Roma e encontre todos os artefatos da cidade para ganhar esta roupa.', extras: ['murmillo', 'manica'] },
+  gladiador: { name: 'Gladiador (mirmilão)', desc: 'Elmo de aba larga com a grade nos olhos e a crista de peixe, o braço da espada enfaixado (manica), a tanga de linho (subligaculum) com o cinturão largo (balteus), a greva na perna esquerda, o escudo grande e o gládio. É a roupa que o guarda do Coliseu exige de quem quer lutar na arena.', base: 'bryce', sandals: true, unlock: 'roma-arena', hint: 'Conclua todos os objetivos de Roma e encontre todos os artefatos da cidade para ganhar esta roupa.', npc: { outfit: 'worker', skin: 0xc48d62, beard: 'short', bareLegs: true, extras: ['murmillo', 'manica', 'balteus', 'ocrea'], sandals: true } },
 };
 export const LOOK_ORDER = ['explorer', 'campo', 'deserto', 'egito', 'grecia', 'roma', 'gladiador', 'japao'];
 
@@ -138,7 +138,7 @@ export function graftHead(model, meshes, bones, donorRoot) {
 // o explorador é moreno (pardo): o tom vai por cima da textura de pele do Mixamo, que é clara, no rosto e no corpo
 export const SKIN = 0xd6a27a;
 export function dress(ctx, lookId) {
-  const out = lookId === 'explorer' ? dressExplorer(ctx) : lookId === 'campo' || lookId === 'deserto' ? dressDrake(ctx, lookId === 'deserto') : lookId === 'egito' || lookId === 'grecia' || lookId === 'roma' || lookId === 'gladiador' ? dressAncient(ctx, lookId) : lookId === 'japao' ? dressSamurai(ctx) : [];
+  const out = lookId === 'explorer' ? dressExplorer(ctx) : lookId === 'campo' || lookId === 'deserto' ? dressDrake(ctx, lookId === 'deserto') : lookId === 'egito' || lookId === 'grecia' || lookId === 'roma' ? dressAncient(ctx, lookId) : lookId === 'japao' ? dressSamurai(ctx) : [];
   const tone = new THREE.Color(SKIN), done = new Set();
   for (const me of ctx.meshes) { if (!/Body/.test(me.name) || done.has(me.material)) continue; const c = me.material.clone(); c.color.multiply(tone); me.material = c; done.add(c); }
   return out;
@@ -367,20 +367,6 @@ function dressAncient(ctx, id) {
     for (const s of ['Left', 'Right']) { const k = bonePos(s + 'Leg'), f = bonePos(s + 'Foot');
       fit.shell(greaveM, { y0: f.y + 0.06, y1: k.y + 0.04, rows: 14, cols: 28, off: 0.008, r0: 0.11, cx: (k.x + f.x) / 2, cz: (k.z + f.z) / 2 + 0.01, bump: (a, y, t) => 0.006 * Math.max(0, Math.cos(a)) * Math.sin(t * Math.PI), uvScale: [2, 2] }); }
     out.push(...fit.finish());
-  }
-  if (id === 'gladiador') {
-    // tronco nu (a camisa do modelo vira pele), tanga de linho branco (subligaculum) e o cinturão largo (balteus)
-    if (shirt) retint(shirt, 0xc0906a, { rough: 0.62, detail: 0.25, lo: 0.9, hi: 1.08 });
-    if (shorts) retint(shorts, 0xefe6d2, { rough: 0.95, detail: 0.45, lo: 0.82, hi: 1.12, grain: clothTex('#9a9a9a', { weave: 0.12 }), grainScale: 9 });
-    const fit = fitterFor(ctx, /Shirt|Shorts|Body/);
-    const leather = M(0xffffff, { map: leatherTex('#4a2c16'), roughness: 0.6 }), bronzeM = M(0xd0a050, { metalness: 0.9, roughness: 0.3 });
-    fit.band(leather, waist(hy + 0.06), { w: 0.11, th: 0.008, off: 0.03, n: 64, closed: true });
-    for (let i = -4; i <= 4; i++) { const a = i * 0.26, at = fit.anchor(V3(Math.sin(a) * 0.5, hy + 0.06, Math.cos(a) * 0.5), V3(0, hy + 0.06, 0)); if (at) fit.solid(bronzeM, placeOn(new THREE.CylinderGeometry(0.014, 0.014, 0.006, 10).rotateX(Math.PI / 2).translate(0, 0, 0.042), at), at); } // (as tachas de bronze do cinturão)
-    // greva (ocrea) só na perna esquerda, a que fica à frente, por baixo da borda do escudo
-    { const k = bonePos('LeftLeg'), f = bonePos('LeftFoot'), greaveM = M(0xffe2b0, { map: metalTex('#b98a46'), metalness: 0.6, roughness: 0.36 });
-      fit.shell(greaveM, { y0: f.y + 0.06, y1: k.y + 0.08, rows: 14, cols: 28, off: 0.009, r0: 0.11, cx: (k.x + f.x) / 2, cz: (k.z + f.z) / 2 + 0.01, bump: (a, y, t) => 0.007 * Math.max(0, Math.cos(a)) * Math.sin(t * Math.PI), uvScale: [2, 2] }); }
-    out.push(...fit.finish());
-    for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false; // (debaixo do elmo fechado)
   }
   if (id === 'roma') {
     const red = 0x9a2a1e;

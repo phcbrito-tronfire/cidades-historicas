@@ -106,7 +106,13 @@ export class Melee {
   request() { this.queued = true; }
 
   // a arena entrega um conjunto de armas (ou devolve o controle à roupa, com null)
-  equip(right, left, forced = true) { this.forced = forced ? { right, left } : null; this.right = right; this.left = left; this.drawn = true; this.dress(); }
+  equip(right, left, forced = true) { this.forced = forced ? { right, left } : null; this.right = right; this.left = left; this.drawn = !!forced; this.dress(); }
+  // zera tudo o que é do momento da luta (fim da arena, desmaio): nada de golpe, empurrão ou atordoamento pendurado
+  reset() {
+    const P = this.player;
+    this.clip = null; this.queued = false; this.block = false; this.blockHeld = false; this.stun = 0; this.invuln = 0; this.rolling = 0; this.drawDelay = 0; this.throwReq = false; this.pickReq = false;
+    P.push = null; P.hitStop = 0; P.shake = 0; P.rig.once = null; P.speed = 0;
+  }
   // as armas que a roupa traz
   defaults() { const L = this.player.look; if (this.forced) return; this.right = 'gladio'; this.left = 'escudo'; this.shieldColor = L === 'gladiador' ? 0x9a2a1e : 0xa8261e; }
 
@@ -124,8 +130,14 @@ export class Melee {
       }
     };
     want('right', this.right, r.handR); want('left', this.left, r.handL);
-    // a postura de guarda com a arma na mão
-    r.locoSet = this.drawn ? { idle: this.right ? 'gl_guarda' : hasClip('so_guarda') ? 'so_guarda' : 'gl_guarda' } : null;
+    this.stance();
+  }
+  // a postura de guarda (agachado, a arma à frente) só na arena ou logo depois de lutar; fora disso, de pé, relaxado
+  // (antes o gladiador andava sempre curvado em guarda, e parecia estar levando um golpe)
+  stance() {
+    const r = this.player.rig, guard = this.drawn && (!!this.forced || performance.now() - (this.lastAct || 0) < 6000);
+    const want = guard ? (this.right ? 'gl_guarda' : hasClip('so_guarda') ? 'so_guarda' : 'gl_guarda') : null;
+    if ((r.locoSet?.idle || null) !== want) r.locoSet = want ? { idle: want } : null;
   }
 
   // ---- a cada quadro, antes do explorador (main.js): liga o controle do explorador quando a luta vale
@@ -153,7 +165,7 @@ export class Melee {
     if (!on) { if (P.combat === this) { P.combat = null; this.drawn = false; this.clip = null; this.dress(); } this.lookSeen = null; return; }
     P.combat = this;
     this.space = this.drawn && P.onGround ? () => this.dodge() : null;
-    this.moveScale = this.clip ? (this.clip === WEAPONS.gladio.heavy ? 0.5 : 0.22) : this.block ? 0.4 : this.stun > 0 ? 0.1 : undefined;
+    this.moveScale = this.clip ? (this.hitI >= this.hits.length ? 0.6 : this.heavy ? 0.5 : 0.32) : this.block ? 0.45 : this.stun > 0 ? 0.15 : undefined;
   }
 
   // ---- dentro do update do explorador (depois do movimento, antes da animação)
@@ -163,7 +175,9 @@ export class Melee {
     if (this.rolling > 0) { this.rolling -= dt; this.queued = false; }
     if (this.invuln > 0) this.invuln -= dt;
     // a defesa: segurando Q ou o botão direito
+    if (this.blockHeld && this.clip && this.hitI >= this.hits.length) { this.clip = null; P.rig.once = null; } // (o fim do golpe se cancela no escudo)
     const blk = this.blockHeld && !this.clip && P.onGround && this.stun <= 0;
+    if (blk) this.lastAct = performance.now();
     if (blk && !this.drawn) { this.drawn = true; this.dress(); }
     if (blk !== this.block) { this.block = blk; if (!blk && P.rig.once && /gl_defesa|gl_bloqueio|so_guarda/.test(P.rig.once.name)) P.rig.once = null; }
     if (this.block) this.holdPose();
@@ -175,7 +189,7 @@ export class Melee {
       this.t += dt; const f = this.t / this.full;
       const hk = this.hits[this.hitI];
       if (hk !== undefined && f >= hk) { this.hitI++; this.strikeLands(); }
-      if (this.queued && f > 0.62 && this.hitI >= this.hits.length) { this.queued = false; this.next(); }
+      if (this.queued && this.hitI >= this.hits.length && f > Math.max(0.5, this.hits[this.hits.length - 1] + 0.1)) { this.queued = false; this.next(); }
       else if (this.t >= this.dur) { this.clip = null; P.rig.once = null; }
     } else if (this.drawDelay > 0) { this.drawDelay -= dt; if (this.drawDelay <= 0) this.next(this.heavyNext); }
     else if (this.queued && this.stun <= 0 && !(this.rolling > 0)) {
@@ -186,6 +200,7 @@ export class Melee {
     // arma guardada depois de um tempo parado (o legionário; o gladiador anda sempre armado)
     if (this.drawn && !this.forced && P.look === 'roma') { this.idle = speed < 0.2 && !this.clip && !this.block ? this.idle + dt : 0; if (this.idle > 8) { this.drawn = false; this.dress(); } }
     this.updateFlying(dt);
+    this.stance();
   }
 
   holdPose() { // escudo erguido (ou a guarda dos punhos), parado no quadro certo enquanto se segura a tecla
@@ -207,7 +222,7 @@ export class Melee {
     const rate = CLIP_RATE[name] || RATE;
     this.clip = name; this.t = 0; this.full = a.getClip().duration / rate; this.dur = this.full * 0.94; this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = name === W.heavy;
     playOnce(P.rig, name, this.dur); a.timeScale = rate;
-    this.swingAt = performance.now(); this.onSwing?.(this);
+    this.swingAt = this.lastAct = performance.now(); this.onSwing?.(this);
     if (this.right) this.audio?.swoosh?.();
     if (name !== 'gl_chute') P.lunge(this.heavy ? 3.2 : 2.0, 0.18);
   }
@@ -244,8 +259,9 @@ export class Melee {
 
   // esquiva: um salto curto para o lado (ou para trás), sem levar golpe no meio
   dodge() {
-    const P = this.player; if (this.dodgeT > performance.now() || this.clip || this.stun > 0) return;
-    this.dodgeT = performance.now() + 650; this.invuln = 0.42;
+    const P = this.player; if (this.dodgeT > performance.now() || this.stun > 0 || (this.clip && this.hitI < this.hits.length)) return;
+    if (this.clip) { this.clip = null; P.rig.once = null; } // (o fim do golpe se cancela na esquiva)
+    this.dodgeT = performance.now() + 650; this.invuln = 0.42; this.lastAct = performance.now();
     let f = (P.key('ArrowUp', 'KeyW') ? 1 : 0) - (P.key('ArrowDown', 'KeyS') ? 1 : 0), s = (P.key('ArrowRight', 'KeyD') ? 1 : 0) - (P.key('ArrowLeft', 'KeyA') ? 1 : 0);
     if (!f && !s) f = -1; // parado: recua
     const fwX = -Math.sin(P.camYawW), fwZ = -Math.cos(P.camYawW);
@@ -265,7 +281,7 @@ export class Melee {
   // ---- levar um golpe (a arena chama): devolve 'dodged' | 'blocked' | 'hit'
   receive(dmg, from, { heavy = false, unblockable = false, knock = 1 } = {}) {
     const P = this.player;
-    if (this.invuln > 0) return 'dodged';
+    if (this.invuln > 0 || this.health?.dead || P.locked) return 'dodged';
     const dx = from.x - P.pos.x, dz = from.z - P.pos.z, d = Math.hypot(dx, dz) || 1;
     const front = (dx * Math.sin(P.facing) + dz * Math.cos(P.facing)) / d > 0.3;
     if (this.block && front && !unblockable) {
@@ -273,7 +289,7 @@ export class Melee {
       dmg *= this.right ? 0.45 : 0.6; // (apara com a espada, ou a guarda dos punhos: tira só parte)
     }
     this.health?.damage(Math.round(dmg));
-    this.clip = null; this.queued = false; this.stun = heavy ? 0.55 : 0.32;
+    this.clip = null; this.queued = false; this.stun = heavy ? 0.45 : 0.25;
     playOnce(P.rig, heavy && hasClip('gl_cabeca') ? 'gl_cabeca' : hasClip('gl_impacto') ? 'gl_impacto' : 'golpe', heavy ? 0.6 : 0.42);
     P.lunge(-(heavy ? 3.4 : 2.0) * knock, 0.16, dx / d, dz / d); P.shake = heavy ? 0.14 : 0.08;
     this.blood?.spray(P.pos.clone().setY(P.pos.y + 1.2), new THREE.Vector3(-dx / d, 0, -dz / d), heavy ? 18 : 10);

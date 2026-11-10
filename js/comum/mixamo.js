@@ -311,9 +311,11 @@ export function makeHumanoid(o = {}) {
   // as roupas do explorador (o jogador): outfit 'explorer' é o traje de sempre
   const look = o.look || (o.outfit === 'explorer' ? 'explorer' : null);
   const LK = look ? LOOKS[look] || LOOKS.explorer : null;
-  if (look) o = { hair: LK.hair || 'natural', skin: 0xc48d62, collar: null, extras: LK.extras || [], ...o, outfit: 'explorer' };
+  if (look && LK.npc) o = { ...LK.npc, base: LK.base, height: o.height }; // (roupas feitas como as do povo: gladiador)
+  else if (look) o = { hair: LK.hair || 'natural', skin: 0xc48d62, collar: null, extras: LK.extras || [], ...o, outfit: 'explorer' };
   const outfit = o.outfit || 'kilt';
   const isExp = outfit === 'explorer';
+  const isLook = !!(look && !LK.npc); // (o dress() de roupas.js só para as roupas feitas sobre o traje do explorador)
   const greek = GREEK.has(outfit), jp = JP.has(outfit);
   const female = outfit === 'dress' || outfit === 'peplos' || outfit === 'kimono_f' || (jp && !!o.female);
   // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
@@ -384,7 +386,7 @@ export function makeHumanoid(o = {}) {
       else me.material = fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6); // torso nu, no mesmo tom da pele texturizada
       continue;
     }
-    if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, linen, 0.95); continue; }
+    if (/Pants|Shorts|Bottoms/.test(p)) { me.material = o.bareLegs ? fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6) : fold(mat, linen, 0.95); continue; }
     if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; } // trocados por pés com sandália (abaixo)
   }
 
@@ -822,7 +824,11 @@ export function makeHumanoid(o = {}) {
         const brim = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx * 1.9, fit.rx * 2, 0.015, 26), iron); brim.position.y = -0.06; brim.scale.z = 1.1; g.add(brim);
         const face = new THREE.Mesh(new THREE.CylinderGeometry(fit.rx + 0.02, fit.rx + 0.02, 0.2, 20, 1, true, -Math.PI * 0.45, Math.PI * 0.9), iron); face.position.y = -0.14; g.add(face);
         for (let i = 0; i < 5; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.07, 0.004), m(0x1a1410)); bar.position.set(-0.04 + i * 0.02, -0.06, fit.rz + 0.02); g.add(bar); }
-        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.13, fit.rz * 2.4), iron); fin.position.set(0, 0.2, -0.01); g.add(fin);
+        const fs = new THREE.Shape(); fs.moveTo(-0.15, 0); fs.quadraticCurveTo(-0.07, 0.17, 0.1, 0.19); fs.quadraticCurveTo(0.2, 0.12, 0.14, 0); fs.lineTo(-0.15, 0);
+        const fg = new THREE.ExtrudeGeometry(fs, { depth: 0.016, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004, bevelSegments: 1, curveSegments: 10 }); fg.translate(0, 0, -0.008); fg.rotateY(Math.PI / 2);
+        const fin = new THREE.Mesh(fg, iron); fin.position.set(0, 0.1, 0.005); g.add(fin);
+        for (let i = 0; i < 6; i++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.006, 0.012), iron); r.position.set(0, 0.105 + 0.012 * Math.sin(i), 0.1 - i * 0.04); g.add(r); } // (o rebite da barbatana no casco)
+        const plume = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.24), m(o.plume ?? 0xb02a20, { roughness: 1 })); plume.position.set(0, 0.29, -0.04); plume.rotation.x = 0.15; g.add(plume); // penacho de crina
       } else if (e === 'secutor') { // secutor: elmo liso e redondo, fechado, com dois furinhos nos olhos (para a rede não prender)
         bowl.scale.set(fit.rx + 0.03, 0.2, fit.rz + 0.04);
         const face = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.4), iron); face.scale.set(fit.rx + 0.03, 0.22, fit.rz + 0.04); g.add(face);
@@ -862,9 +868,25 @@ export function makeHumanoid(o = {}) {
       g.rotation.x = Math.PI * 0.45; // na mão, o +y aponta para o ombro: a lâmina sai do punho para a frente, não pelo braço
       handR.add(g);
     }
+    if (e === 'balteus') { // o cinturão largo de couro com placas de bronze, por cima da tanga
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.2, 0.11, 26, 1, true), m(0x4a2c16, { roughness: 0.6, side: THREE.DoubleSide }));
+      attach('Hips', belt, new THREE.Vector3(hips.x, hips.y + 0.07, hips.z + 0.005), [0, 0, 0], [1, 1, 0.82]);
+      for (let i = -4; i <= 4; i++) { const a = i * 0.3, st = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.008, 10), m(0xd0a050, { metalness: 0.9, roughness: 0.3 })); st.rotation.set(Math.PI / 2, 0, -a); attach('Hips', st, new THREE.Vector3(hips.x + Math.sin(a) * 0.195, hips.y + 0.07, hips.z + Math.cos(a) * 0.162), [Math.PI / 2, a, 0]); }
+    }
+    if (e === 'ocrea') for (const side of ['LeftLeg']) { // a greva de bronze só na perna da frente (a esquerda, sob o escudo)
+      if (!bones[side] || !bones[side.replace('Leg', 'Foot')]) continue;
+      const a = bonePos(side), b = bonePos(side.replace('Leg', 'Foot')), dir = b.clone().sub(a).normalize();
+      const e2 = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+      attach(side, new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.052, 0.36, 16, 1, true), m(0xc8a050, { metalness: 0.8, roughness: 0.35, side: THREE.DoubleSide })), a.clone().lerp(b, 0.45), [e2.x, e2.y, e2.z], [1, 1, 0.9]);
+    }
     if (e === 'manica') for (const p of ['RightForeArm', 'RightArm']) { // braçadeira acolchoada do braço da espada
-      if (!bones[p]) continue; const a = bonePos(p);
-      attach(p, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.24, 12, 1, true), m(0xd8ccb0, { roughness: 1 })), a.clone().add(new THREE.Vector3(0, -0.12, 0)), [0, 0, 0]);
+      const child = p === 'RightArm' ? 'RightForeArm' : 'RightHand'; if (!bones[p] || !bones[child]) continue;
+      // ao longo do osso (na pose T o braço é horizontal: em pé, o cilindro saía pelas costas como placas soltas)
+      const a = bonePos(p), b = bonePos(child), dir = b.clone().sub(a), len = dir.length(); dir.normalize();
+      const e2 = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(p === 'RightArm' ? 0.058 : 0.05, p === 'RightArm' ? 0.052 : 0.043, len * 0.86, 12, 4, true), m(0xd8ccb0, { roughness: 1, side: THREE.DoubleSide }));
+      attach(p, pad, a.clone().lerp(b, 0.5), [e2.x, e2.y, e2.z]);
+      for (let k = 1; k < 4; k++) attach(p, new THREE.Mesh(new THREE.TorusGeometry(p === 'RightArm' ? 0.058 : 0.049, 0.005, 4, 14), m(0x6a4a2a, { roughness: 0.8 })), a.clone().lerp(b, 0.1 + k * 0.2), [e2.x + Math.PI / 2, e2.y, e2.z]); // (as tiras de couro que amarram o acolchoado)
     }
     if (e === 'trident') { // tridente do reciário
       const g = new THREE.Group(), steel = m(0xc8cdd2, { metalness: 0.9, roughness: 0.3 });
@@ -902,7 +924,7 @@ export function makeHumanoid(o = {}) {
   }
 
   // o traje do explorador (e as outras roupas dele): moldado sobre o corpo, em roupas.js
-  if (look) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, katana: KATANA, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
+  if (isLook) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, katana: KATANA, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
 
   const h = o.height || (female ? rr(1.58, 1.7) : rr(1.66, 1.8));
   const natural = headTop;

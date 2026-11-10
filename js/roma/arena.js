@@ -85,7 +85,7 @@ class Foe {
   update(dt, t) {
     const A = this.A, P = A.player, me = this.pos, K = this.K;
     if (this.st === 'dead' || this.st === 'gone') { animateHumanoid(this.r, dt, 0, 'idle', t); return; }
-    if (this.st === 'kneel') { if (!this.r.once) playOnce(this.r, 'ajoelhado', 999); animateHumanoid(this.r, dt, 0, 'idle', t); this.place(); return; }
+    if (this.st === 'kneel') { if (this.finishT > 0 && (this.finishT -= dt) <= 0) { A.kill(this); return; } if (!this.r.once) playOnce(this.r, 'ajoelhado', 999); animateHumanoid(this.r, dt, 0, 'idle', t); this.place(); return; }
     const goal = this.st === 'exit' ? IN_EAST : null;
     let tx = P.pos.x, tz = P.pos.z;
     if (goal) { tx = goal.x + 4; tz = goal.z; }
@@ -248,7 +248,7 @@ export class Arena {
     addEventListener('keydown', (e) => {
       if (!this.kneeling || e.repeat || this.ui.dialogOpen) return;
       if (e.code === 'KeyE') { e.stopImmediatePropagation(); this.verdict(false); }
-      if (e.code === 'KeyF') { e.stopImmediatePropagation(); this.verdict(true); }
+      if (e.code === 'KeyF' && this.kneelNear()) { e.stopImmediatePropagation(); this.verdict(true); } // (longe dele, o F é um golpe comum: na última luta há outro adversário de pé)
     }, true);
   }
 
@@ -309,11 +309,12 @@ export class Arena {
     if (this.kneeling) { f.st = 'exit'; f.r.once = null; this.say(`${f.K.name[0].toUpperCase() + f.K.name.slice(1)} larga a arma e sai da arena, vencido.`); return; }
     f.st = 'kneel'; f.atk = null; playOnce(f.r, 'ajoelhado', 999);
     const missio = rand() < 0.62; this.kneeling = { f, missio }; this.games.excite = 1;
-    this.say(`${f.K.name[0].toUpperCase() + f.K.name.slice(1)} cai de joelhos e ergue o dedo pedindo clemência. A plateia grita: ${missio ? '"Missio!" — querem que você o poupe' : '"Iugula!" — querem o golpe final'}. E: poupar · F: golpe final.`, 9000);
+    this.say(`${f.K.name[0].toUpperCase() + f.K.name.slice(1)} cai de joelhos e ergue o dedo pedindo clemência. A plateia grita: ${missio ? '"Missio!" — querem que você o poupe' : '"Iugula!" — querem o golpe final'}. E: poupar · de perto, F: golpe final.`, 9000);
   }
+  kneelNear() { const k = this.kneeling, P = this.player.pos; return !!k && Math.hypot(k.f.pos.x - P.x, k.f.pos.z - P.z) < 2.6; }
   verdict(kill) {
     const { f, missio } = this.kneeling; this.kneeling = null;
-    if (kill) { this.melee.request(); this.kill(f); this.say(missio ? 'A plateia vaia: queriam que ele vivesse.' : 'O povo aplaude o golpe final.'); }
+    if (kill) { const P = this.player; P.facing = Math.atan2(f.pos.x - P.pos.x, f.pos.z - P.pos.z); this.melee.request(); f.finishT = 0.5; this.say(missio ? 'A plateia vaia: queriam que ele vivesse.' : 'O povo aplaude o golpe final.'); }
     else { f.st = 'exit'; f.r.once = null; this.say(missio ? 'Você o poupa, e a plateia aplaude: ele sai vivo da arena.' : 'Você o poupa contra a vontade do povo; vaias por toda a cávea, mas ele sai vivo.'); }
     this.games.excite = 1;
   }
@@ -351,7 +352,7 @@ export class Arena {
   finish(won) {
     const P = this.player;
     for (const f of this.foes) this.scene.remove(f.r.root); for (const b of this.beasts) if (b.holder) this.scene.remove(b.holder);
-    this.foes = []; this.beasts = []; this.kneeling = null; this.melee.clearGround(); this.melee.equip(null, null, false); this.melee.lookSeen = null;
+    this.foes = []; this.beasts = []; this.kneeling = null; this.melee.clearGround(); this.melee.reset(); this.melee.equip(null, null, false); this.melee.lookSeen = null;
     this.games.playerEvent = null; this.mode = null; this.state = null;
     P.place(GUARD.x - 2.5, GUARD.z - 1.5, -Math.PI / 2);
     if (won && this.pending?.length) { const list = this.pending; this.pending = null; list.forEach((id, i) => setTimeout(() => this.award(id), 600 + i * 300)); }
@@ -378,7 +379,7 @@ export class Arena {
 
   hint() {
     if (!this.mode) return '';
-    if (this.kneeling) return '<kbd>E</kbd> Poupar &nbsp;·&nbsp; <kbd>F</kbd> Golpe final';
+    if (this.kneeling) return this.kneelNear() ? '<kbd>E</kbd> Poupar &nbsp;·&nbsp; <kbd>F</kbd> Golpe final' : '<kbd>E</kbd> Poupar &nbsp;·&nbsp; chegue perto para o golpe final';
     const list = this.mode === 'munus' ? this.foes : this.beasts, alive = list.filter((x) => x.alive);
     return alive.map((x) => `${(x.K.name).replace(/^o /, '')}: ${Math.max(0, Math.round((x.hp / (x.maxHp || x.K.hp)) * 100))}%`).join(' · ');
   }
