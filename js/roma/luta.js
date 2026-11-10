@@ -12,13 +12,15 @@ import { rand, rr, clamp } from '../comum/util.js';
 
 // golpes do pacote "Sword And Shield" do Mixamo (já usados pelos gladiadores do Coliseu) e, quando chegarem, os de soco
 const BASE_CLIPS = ['gl_guarda', 'gl_lado', 'gl_alto', 'gl_baixo', 'gl_desce', 'gl_combo', 'gl_forte', 'gl_cabo', 'gl_chute', 'gl_bloqueio', 'gl_impacto', 'gl_cabeca', 'gl_morte_f', 'gl_morte_t', 'gl_vitoria'];
-const EXTRA_CLIPS = ['so_guarda', 'so_jab', 'so_direto', 'so_gancho', 'so_uppercut', 'so_soco_forte', 'es_rola', 'es_esquiva', 'gl_defesa', 'lanca'];
+const EXTRA_CLIPS = ['so_guarda', 'so_jab', 'so_direto', 'so_gancho', 'so_uppercut', 'so_soco_forte', 'es_rola', 'es_esquiva', 'gl_defesa', 'gl_saca', 'lanca'];
 // em que fração do clipe o golpe chega (mais de um número: uma sequência de golpes no mesmo clipe)
-export const HIT_AT = { gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.35], so_direto: [0.4], so_gancho: [0.45], so_uppercut: [0.45], so_soco_forte: [0.4], lanca: [0.45] };
+export const HIT_AT = { gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.55], so_direto: [0.48], so_gancho: [0.5], so_uppercut: [0.4], so_soco_forte: [0.28, 0.4, 0.52, 0.62], lanca: [0.42] }; // (medido: o quadro em que a mão vai mais longe à frente)
+// ritmo de cada clipe (a estocada do Mixamo é lenta para a lança: acelerada; o resto, um pouco mais rápido que o original)
+const CLIP_RATE = { lanca: 1.6, so_soco_forte: 1.25, so_uppercut: 1.2 };
 export const WEAPONS = {
   gladio: { name: 'o gládio', reach: 1.85, arc: 1.0, dmg: [13, 19], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 24 },
   lanca: { name: 'a lança', reach: 2.6, arc: 0.55, dmg: [16, 23], chain: ['lanca', 'gl_alto', 'gl_baixo', 'gl_alto'], heavy: 'gl_forte', thrown: 34 },
-  punhos: { name: 'os punhos', reach: 1.3, arc: 0.9, dmg: [5, 8], chain: ['so_jab', 'so_direto', 'so_gancho', 'gl_cabo'], heavy: 'gl_chute' },
+  punhos: { name: 'os punhos', reach: 1.3, arc: 0.9, dmg: [5, 8], chain: ['so_jab', 'so_direto', 'so_gancho', 'so_uppercut'], heavy: 'so_soco_forte' },
 };
 const RATE = 1.15; // (os golpes um pouco mais rápidos que o original: lutando, o jogador não pode esperar)
 const V = () => new THREE.Vector3();
@@ -158,6 +160,7 @@ export class Melee {
   update(dt, speed, t) {
     const P = this.player;
     if (this.stun > 0) this.stun -= dt;
+    if (this.rolling > 0) { this.rolling -= dt; this.queued = false; }
     if (this.invuln > 0) this.invuln -= dt;
     // a defesa: segurando Q ou o botão direito
     const blk = this.blockHeld && !this.clip && P.onGround && this.stun <= 0;
@@ -174,10 +177,11 @@ export class Melee {
       if (hk !== undefined && f >= hk) { this.hitI++; this.strikeLands(); }
       if (this.queued && f > 0.62 && this.hitI >= this.hits.length) { this.queued = false; this.next(); }
       else if (this.t >= this.dur) { this.clip = null; P.rig.once = null; }
-    } else if (this.queued && this.stun <= 0) {
+    } else if (this.drawDelay > 0) { this.drawDelay -= dt; if (this.drawDelay <= 0) this.next(this.heavyNext); }
+    else if (this.queued && this.stun <= 0 && !(this.rolling > 0)) {
       this.queued = false;
-      if (!this.drawn) { this.drawn = true; this.dress(); }
-      this.combo = -1; this.next(speed > 5.5);
+      if (!this.drawn) { this.drawn = true; this.dress(); if (hasClip('gl_saca') && this.right === 'gladio') { playOnce(P.rig, 'gl_saca', 0.42); this.drawDelay = 0.3; this.heavyNext = speed > 5.5; this.combo = -1; } }
+      if (!(this.drawDelay > 0)) { this.combo = -1; this.next(speed > 5.5); }
     }
     // arma guardada depois de um tempo parado (o legionário; o gladiador anda sempre armado)
     if (this.drawn && !this.forced && P.look === 'roma') { this.idle = speed < 0.2 && !this.clip && !this.block ? this.idle + dt : 0; if (this.idle > 8) { this.drawn = false; this.dress(); } }
@@ -186,7 +190,7 @@ export class Melee {
 
   holdPose() { // escudo erguido (ou a guarda dos punhos), parado no quadro certo enquanto se segura a tecla
     const r = this.player.rig, clip = hasClip('gl_defesa') ? 'gl_defesa' : this.right || this.left ? 'gl_bloqueio' : hasClip('so_guarda') ? 'so_guarda' : 'gl_bloqueio';
-    if (!r.once || r.once.name !== clip) { playOnce(r, clip, 0.3); const a = r.act(clip); if (a && clip === 'gl_bloqueio') { a.time = a.getClip().duration * 0.22; a.timeScale = 0; } }
+    if (!r.once || r.once.name !== clip) { playOnce(r, clip, 0.3); const a = r.act(clip); if (a && clip === 'gl_bloqueio') { a.time = a.getClip().duration * 0.22; a.timeScale = 0; } else if (a) a.setLoop(THREE.LoopRepeat, Infinity); }
     if (r.once) r.once.t = 0.3;
   }
 
@@ -200,8 +204,9 @@ export class Melee {
     const a = P.rig.act(name); if (!a) return;
     // mira suave: vira para o adversário mais perto à frente
     const tg = this.nearestTarget(4.5, 1.4); if (tg) P.facing = Math.atan2(tg.pos.x - P.pos.x, tg.pos.z - P.pos.z);
-    this.clip = name; this.t = 0; this.full = a.getClip().duration / RATE; this.dur = this.full * 0.94; this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = name === W.heavy;
-    playOnce(P.rig, name, this.dur); a.timeScale = RATE;
+    const rate = CLIP_RATE[name] || RATE;
+    this.clip = name; this.t = 0; this.full = a.getClip().duration / rate; this.dur = this.full * 0.94; this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = name === W.heavy;
+    playOnce(P.rig, name, this.dur); a.timeScale = rate;
     this.swingAt = performance.now(); this.onSwing?.(this);
     if (this.right) this.audio?.swoosh?.();
     if (name !== 'gl_chute') P.lunge(this.heavy ? 3.2 : 2.0, 0.18);
@@ -245,9 +250,15 @@ export class Melee {
     if (!f && !s) f = -1; // parado: recua
     const fwX = -Math.sin(P.camYawW), fwZ = -Math.cos(P.camYawW);
     let dx = fwX * f - fwZ * s, dz = fwZ * f + fwX * s; const n = Math.hypot(dx, dz) || 1; dx /= n; dz /= n;
-    P.lunge(7.5, 0.3, dx, dz);
-    const clip = hasClip('es_rola') && f > 0 ? 'es_rola' : hasClip('es_esquiva') ? 'es_esquiva' : 'aterrissar';
-    playOnce(P.rig, clip, clip === 'aterrissar' ? 0.42 : 0.6);
+    const roll = hasClip('es_rola') && f > 0;
+    if (roll) { // rolamento para a frente: ~4 m, sem levar golpe no meio do giro
+      this.invuln = 0.75; this.dodgeT = performance.now() + 1250; P.lunge(3.8, 1.05, dx, dz);
+      playOnce(P.rig, 'es_rola', 1.15); const a = P.rig.act('es_rola'); if (a) a.timeScale = 2.06;
+    } else { // de lado ou para trás: o passo rápido de esquiva
+      P.lunge(6.5, 0.28, dx, dz);
+      const clip = hasClip('es_esquiva') ? 'es_esquiva' : 'aterrissar'; playOnce(P.rig, clip, clip === 'aterrissar' ? 0.42 : 0.62); const a = P.rig.act(clip); if (a && clip === 'es_esquiva') a.timeScale = 2.2;
+    }
+    this.rolling = roll ? 1.05 : 0;
     this.events?.dodge?.();
   }
 

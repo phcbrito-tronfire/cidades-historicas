@@ -43,7 +43,7 @@ const KINDS = {
 };
 const ROUNDS = [['thraex'], ['retiarius'], ['secutor', 'hoplomachus']];
 const ATTACKS = [['gl_alto', 3], ['gl_baixo', 2], ['gl_desce', 2], ['gl_combo', 1.4], ['gl_forte', 1], ['gl_cabo', 0.8], ['gl_chute', 0.8]];
-const pickAttack = (armed) => { const L = armed ? ATTACKS.filter(([c]) => hasClip(c)) : [['gl_cabo', 2], ['gl_chute', 1]].filter(([c]) => hasClip(c)); let s = 0; for (const [, w] of L) s += w; let r = rand() * s; for (const [c, w] of L) { r -= w; if (r <= 0) return c; } return L[0]?.[0] || 'golpe'; };
+const pickAttack = (armed) => { const L = armed ? ATTACKS.filter(([c]) => hasClip(c)) : [['so_jab', 2.5], ['so_direto', 2], ['so_gancho', 1.5], ['so_uppercut', 1], ['gl_cabo', 1.2], ['gl_chute', 1]].filter(([c]) => hasClip(c)); /* (sem arma: no soco, como os gladiadores de verdade quando perdiam a espada) */ let s = 0; for (const [, w] of L) s += w; let r = rand() * s; for (const [c, w] of L) { r -= w; if (r <= 0) return c; } return L[0]?.[0] || 'golpe'; };
 
 class Foe {
   constructor(A, kind, scene) {
