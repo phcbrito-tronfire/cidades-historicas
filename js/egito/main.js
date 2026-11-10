@@ -44,6 +44,7 @@ import { GUARD_LINES } from './dialogues.js';
 import { buildNile } from './nilo.js';
 import { SonsFeras } from '../comum/sons-feras.js';
 import { Melee } from '../comum/luta.js';
+import { Seasons } from './estacoes.js';
 import { buildNileRuins } from './ruinas.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
@@ -125,7 +126,7 @@ async function main() {
   const ruins = buildNileRuins(scene, city);
   if (city.pool) { const pw = world.calmWater.clone(); pw.transparent = true; pw.opacity = 0.72; pw.color.set(0x2a8a96); pw.depthWrite = false; stillWater(pw, { scale: 0.5, strength: 0.35 }); city.pool.children.forEach((m) => (m.material = pw)); scene.add(city.pool); setPoolWater(city.poolRects); } // (água de verdade: vê-se o fundo de azulejos)
   await step(0.55, 'Plantando palmeiras, papiros e campos de cevada...');
-  buildVegetation(scene, tex, city.exclusions, city.plants);
+  const veg = buildVegetation(scene, tex, city.exclusions, city.plants);
   await placeSculptures(scene, city.sculptures);
   for (const st of city.statues) { const o = makeStatue({ h: st.h, painted: st.painted }); o.position.set(st.x, st.y, st.z); o.rotation.y = st.ry; scene.add(o); }
   const flags = makeFlags(scene, city.flags);
@@ -197,7 +198,11 @@ async function main() {
   await step(0.95, 'Desenhando o mapa da cidade...');
   const mapJob = ui.buildMapBackground();
   ui.renderObjectives(quests);
-  ui.setTime('Tarde');
+  // as três estações do Nilo: a cheia, a germinação e a colheita (o trigo brota, cresce, amarela e é ceifado)
+  const seasons = new Seasons(scene, { wheat: veg.wheat, water: world.water, toast: (m, k, ms) => ui.toast(m, k, ms), info: (c) => artifacts.showInfo(c) });
+  let timeLabel = 'Tarde', seasonShown = '';
+  const showTime = () => { seasonShown = seasons.label(); ui.setTime(`${timeLabel} · ${seasonShown}`); };
+  showTime();
   const post = await createPost(renderer, scene, camera);
   // mergulho no Nilo: água barrenta, enxerga-se pouco
   const underwater = makeUnderwater(scene, world.water, { color: 0x3f6e4c, near: 1.5, far: 24 }); // turvo, mas dá para ver as ruínas e o barco afundado
@@ -352,7 +357,7 @@ async function main() {
       case 'KeyE': { const t = actors.nearestInteractable(player.pos); if (t) talkTo(t); break; }
       case 'KeyP': pickOrDrop(); break;
       case 'KeyR': useItem(); break;
-      case 'KeyC': { const p = sky.next(); ui.setTime(p.label); ui.toast(p.msg); festas.onTime(sky.current); break; }
+      case 'KeyC': { const p = sky.next(); if (sky.current === 'manha') seasons.newDay(); timeLabel = p.label; showTime(); ui.toast(p.msg); festas.onTime(sky.current); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyH': mount.key(player); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints(), city.pyramids); break;
@@ -442,7 +447,7 @@ async function main() {
     });
   };
 
-  window.__game = { melee, festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { seasons, melee, festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -505,6 +510,7 @@ async function main() {
     festas.update(dt, t, player, sky.state.night);
     if (festas.seen.size >= 2) quests.complete('festas');
     nile.update(dt, t, player);
+    seasons.update(dt); if (seasons.label() !== seasonShown) showTime();
     if (started) health.update(dt, player);
     items.update(t, player.pos);
     quests.update(dt, t, player);

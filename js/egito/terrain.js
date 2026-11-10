@@ -81,7 +81,11 @@ export function terrainHeight(x, z) {
 
 let POOLS = [];
 export function setPoolWater(r) { POOLS = r || []; }
+let FLOOD = -100; // nível da cheia nos campos da margem leste (estacoes.js); -100 = campos secos
+export function setFlood(y) { FLOOD = y; }
+export function floodLevel() { return FLOOD; }
 export function waterLevelAt(x, z) {
+  if (FLOOD > -50) { const d = x - riverX(z); if (d > RIVER_HALF && d < 152 && Math.abs(z) < 330 && terrainHeight(x, z) < FLOOD) return FLOOD; }
   for (const [x0, x1, z0, z1, y] of POOLS) if (x > x0 && x < x1 && z > z0 && z < z1) return y; // o tanque do palácio
   if (x > LAKE.x0 - 0.2 && x < LAKE.x1 + 0.2 && z > LAKE.z0 - 0.2 && z < LAKE.z1 + 0.2) return LAKE.y;
   if (Math.abs(x - riverX(z)) < RIVER_HALF + 14) return WATER_Y;
@@ -438,7 +442,7 @@ export function buildVegetation(scene, tex, exclusions, extra = {}) {
     if (isExcluded(x, z)) continue;
     const plot = Math.floor((z + 1000) / 34) + Math.floor(d / 30) * 7;
     if (plot % 5 === 0) continue; // terra em pousio
-    wheatPts.push({ x, z, ripe: ((plot * 2654435761) >>> 0) % 3 === 0 });
+    wheatPts.push({ x, z, plot, ripe: ((plot * 2654435761) >>> 0) % 3 === 0 });
   }
   const wheat = new THREE.InstancedMesh(wheatG, wheatMat, wheatPts.length);
   const green = new THREE.Color(0x7fa33a), gold = new THREE.Color(0xffffff);
@@ -448,6 +452,7 @@ export function buildVegetation(scene, tex, exclusions, extra = {}) {
     wheat.setMatrixAt(i, dummy.matrix); wheat.setColorAt(i, p.ripe ? gold : green);
   });
   wheat.receiveShadow = true; scene.add(wheat);
+  wheat.userData.pts = wheatPts; // (as estações, estacoes.js, fazem o trigo brotar, crescer, amarelar e ser ceifado)
 
   // --- pedras e arbustos do deserto
   const rockG = new THREE.IcosahedronGeometry(1, 2);
@@ -499,7 +504,7 @@ export function buildVegetation(scene, tex, exclusions, extra = {}) {
   plantInstances(scene, kit.pot.plant, kit.pot.plantMat, potList.map((p) => ({ ...p, s: rr(0.85, 1.2) })), { depth: frondDepth });
   potList.forEach((p) => addCircle(p.x, p.z, 0.4, -5, p.y + 1.5));
 
-  return { palms: palmPts };
+  return { palms: palmPts, wheat };
 }
 
 // Montanhas e escarpas distantes no horizonte (silhuetas enevoadas, deixam o vale do Nilo aberto)
