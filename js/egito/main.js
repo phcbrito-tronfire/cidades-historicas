@@ -43,6 +43,7 @@ import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
 import { buildNile } from './nilo.js';
 import { SonsFeras } from '../comum/sons-feras.js';
+import { Melee } from '../comum/luta.js';
 import { buildNileRuins } from './ruinas.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
@@ -134,9 +135,10 @@ async function main() {
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
   const nile = await buildNile(scene, city, {
     onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
-    onBite: () => { health.damage(24); audio.splash(); ui.toast('O crocodilo mordeu! Fuja para longe do rio.'); },
+    // vestido de soldado (khopesh e escudo), a mordida pode ser aparada no escudo ou esquivada (Espaço); senão, dói inteira
+    onBite: (k) => { const r = melee.active ? melee.receive(24, k.pos, { heavy: true, knock: 1.6 }) : (health.damage(24), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O crocodilo mordeu! Golpeie (F) ou erga o escudo (Q).' : 'O crocodilo mordeu! Fuja para longe do rio.'); },
     onHippoWarn: () => ui.toast('Um hipopótamo! Ele defende o seu pedaço do rio — saia de perto.', 'quest', 5000),
-    onHippo: () => { health.damage(30); audio.splash(); ui.toast('O hipopótamo investiu! Nade para longe dele.'); },
+    onHippo: (k) => { const r = melee.active ? melee.receive(30, k.pos, { heavy: true, knock: 2.4 }) : (health.damage(30), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O hipopótamo investiu! Saia de lado (Espaço) e golpeie (F).' : 'O hipopótamo investiu! Corra para longe dele.'); },
     sons: new SonsFeras(audio, () => ({ pos: player.pos, yaw: player.camYawW })),
   });
 
@@ -151,6 +153,10 @@ async function main() {
 
   await step(0.8, 'Preparando o explorador...');
   const player = new Player(scene, camera);
+  // a luta do soldado egípcio (a roupa conquistada em Mênfis): khopesh na mão e escudo de couro, contra os crocodilos e os
+  // hipopótamos do Nilo (o mesmo sistema de Roma: F golpeia, Q ergue o escudo, Espaço esquiva, G arremessa, P pega de volta)
+  const melee = new Melee(scene, player, { health, audio, toast: (m, k, ms) => ui.toast(m, k, ms) });
+  melee.targets = () => [...nile.crocs.list, ...nile.hippos.list].filter((k) => k.hit && k.alive);
   player.events.swoosh = () => audio?.swoosh?.(); // (o golpe de katana)
   player.bounds = [-WORLD, WORLD, -WORLD, WORLD];
   player.makeTorch(tex.glow);
@@ -436,7 +442,7 @@ async function main() {
     });
   };
 
-  window.__game = { festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { melee, festas, mount, player, quests, sky, actors, items, post, renderer, scene, camera, artifacts, health, nile, city, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -482,7 +488,7 @@ async function main() {
     player.night = sky.state.night;
     travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    else { if (started) melee.tick(); /* (liga a luta antes do explorador se mexer) */ if (started && !mapOpen && !artifacts.open) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
     if (started) {
       for (const h of city.visitHouses) {
         const r = h.rect, pp = player.pos;
@@ -520,6 +526,7 @@ async function main() {
         parts.push(`<kbd>E</kbd> Falar com ${nm}`);
       }
       if (it) parts.push(`<kbd>P</kbd> Pegar ${it.name}`);
+      { const mh = mount.state !== 'riding' && melee.hint(); if (mh) parts.push(mh); }
       if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar');
       else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no jumento');
       ui.prompt(parts.join(' &nbsp;·&nbsp; '));

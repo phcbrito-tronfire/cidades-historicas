@@ -164,10 +164,13 @@ export class Crocodiles {
   // opts: { waterY, floorAt(x,z), inRiver(x,z), homes: [{x,z,ry}], onBite(), onWarn(), sons }
   constructor(scene, opts) { this.scene = scene; this.o = opts; this.list = []; this.warned = false; }
   async populate() {
-    const { Fera } = await import('./feras.js');
+    const { Fera, alvoFera } = await import('./feras.js');
     for (const h of this.o.homes) {
       const f = await Fera.criar('crocodilo', null, { size: 3.6 + Math.random() * 1.2 }); if (!f) return;
-      const k = { f, holder: f.holder, home: h, x: h.x, z: h.z, h: h.ry, state: 'bask', cd: 0, lunge: 0, t: Math.random() * 10, v: 0, gape: Math.random() * 12, pos: { x: h.x, z: h.z } };
+      const k = { f, holder: f.holder, home: h, x: h.x, z: h.z, h: h.ry, state: 'bask', cd: 0, lunge: 0, t: Math.random() * 10, v: 0, gape: Math.random() * 12, pos: new THREE.Vector3(h.x, 0, h.z) };
+      // golpeado (a khopesh do soldado), fica bravo e caça também em terra; muito ferido, foge para a água
+      alvoFera(k, 'crocodilo', { hp: 70, sons: this.o.sons, onHit: (k) => { if (k.hp < k.maxHp * 0.3 && Math.random() < 0.5) { k.state = 'back'; k.angry = 0; } else { k.angry = 18; k.state = 'hunt'; this.closeMouth(k); } } });
+      k.respawn = () => { k.state = 'bask'; k.angry = 0; };
       this.scene.add(f.holder); this.list.push(k);
     }
   }
@@ -177,16 +180,22 @@ export class Crocodiles {
     for (const k of this.list) {
       const f = k.f, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz);
       const vis = d < 140; k.holder.visible = vis; if (!vis) continue;
+      if (k.tickAlvo(dt, d)) { k.pos.set(k.x, k.holder.position.y, k.z); continue; }
+      if (k.angry > 0) k.angry -= dt;
       k.cd -= dt;
-      const exposed = player.swimming || player.wading || this.o.inRiver(P.x, P.z, 3);
+      const exposed = player.swimming || player.wading || this.o.inRiver(P.x, P.z, 3) || k.angry > 0;
       const fromHome = Math.hypot(P.x - k.home.x, P.z - k.home.z);
       if (k.state === 'bask' && exposed && d < 16 && k.cd <= 0) { k.state = 'hunt'; this.closeMouth(k); this.o.sons?.voz('crocodilo', k.pos, { quem: k, gap: 4 }); if (!this.warned) { this.warned = true; this.o.onWarn?.(); } }
-      if (k.state === 'hunt' && (fromHome > 34 || !exposed && d > 6)) k.state = 'back';
+      // a caça sai da água e segue em terra; quem corre (Shift) escapa: em terra o crocodilo é mais lento que uma corrida,
+      // e desiste quando a presa se afasta demais ou ele se afasta demais de casa
+      const myFloor = this.o.floorAt(k.x, k.z), inWater = W - myFloor > f.height * 0.9;
+      if (k.state === 'hunt') { if (d > 14) k.lost = (k.lost || 0) + dt; else k.lost = 0; if (Math.hypot(k.x - k.home.x, k.z - k.home.z) > 38 || k.lost > 2.5) { k.state = 'back'; k.lost = 0; k.angry = 0; } }
       let sp = 0, want = k.h;
       if (k.state === 'hunt') {
-        want = Math.atan2(dx, dz); sp = player.swimming ? 3.4 : 2.6;
+        want = Math.atan2(dx, dz); sp = inWater ? 4.0 : 3.6;
+        if (k.recoil > 0) { k.recoil -= dt; want += Math.PI * 0.5 * (k.side ||= 1); sp = 1.2; } // (depois da mordida, recua um pouco e volta)
         if (d < 2.8 && k.cd <= 0) { k.lunge = 0.45; k.cd = 2.4; f.play(f.has('botecorrendo') && d > 1.8 ? 'botecorrendo' : 'atk', { rate: 1.1 }); this.o.sons?.voz('crocodilo', k.pos, { quem: k, gap: 1.5, rate: 1.1 }); }
-        if (k.lunge > 0) { sp = d > 1.4 ? 8 : 0; k.lunge -= dt; if (k.lunge <= 0 && d < 3.2) { this.o.onBite?.(k); k.state = 'back'; k.cd = 5; } }
+        if (k.lunge > 0) { sp = d > 1.4 ? 8 : 0; k.lunge -= dt; if (k.lunge <= 0 && d < 3.2) { this.o.onBite?.(k); k.recoil = 1.2; k.side = Math.random() < 0.5 ? 1 : -1; k.cd = 2.8; } }
       } else if (k.state === 'back') {
         const hx = k.home.x - k.x, hz = k.home.z - k.z, hd = Math.hypot(hx, hz);
         if (hd < 0.8) { k.state = 'bask'; want = k.home.ry; } else { want = Math.atan2(hx, hz); sp = 1.4; }
@@ -201,8 +210,8 @@ export class Crocodiles {
       // velocidade com inércia: o bicho pesado arranca devagar (o bote é a exceção)
       k.v = lerp(k.v, sp, Math.min(1, dt * (k.lunge > 0 ? 10 : sp > k.v ? 1.4 : 2.5)));
       const nx = k.x + Math.sin(k.h) * k.v * dt, nz = k.z + Math.cos(k.h) * k.v * dt;
-      if (this.o.inRiver(nx, nz, 2)) { k.x = nx; k.z = nz; }
-      k.pos.x = k.x; k.pos.z = k.z;
+      if (this.o.inRiver(nx, nz, 2) || k.state !== 'bask') { k.x = nx; k.z = nz; } // (caçando ou voltando, anda também em terra)
+      k.pos.set(k.x, k.holder.position.y || 0, k.z);
       const floor = this.o.floorAt(k.x, k.z), depth = W - floor, swim = depth > f.height * 0.9;
       // na água (mesmo no raso): só as costas e os olhos de fora, como os de verdade; em terra: deitado no chão
       const y = Math.max(floor - 0.04, W - f.height * 0.42);

@@ -86,6 +86,8 @@ export class Fera {
     if (this.acts.morte) { this.play('morte'); this.one.hold = true; } else this.tip = 0; // (sem animação de morte: tomba de lado)
     this.dead = true;
   }
+  // de volta à vida (um bicho novo no lugar do que morreu): de pé, sem gesto pendurado
+  revive() { this.dead = false; this.one = null; this.tip = 0; this.o.rotation.z = 0; for (const [k, a] of Object.entries(this.acts)) if (!this.loco.includes(k)) a.stop(); }
   // speed: velocidade do corpo (m/s), que escolhe e acerta o passo do andar, do trote e da corrida
   update(dt, speed = 0) {
     this.speed = speed; if (!this.mixer) return;
@@ -120,4 +122,29 @@ export class Fera {
     if (this.dead && !this.acts.morte) { this.tip = Math.min(1, this.tip + dt * 2.5); this.o.rotation.z = this.tip * Math.PI / 2 * 0.95; }
     this.mixer.update(dt);
   }
+}
+
+// uma fera solta (Nilo) vira alvo da luta do explorador: vida, tranco, voz de dor, morte e, depois de um tempo longe
+// dos olhos, um bicho novo no lugar. k precisa de: f (Fera), pos (Vector3), home; o resto é posto aqui
+export function alvoFera(k, kind, { hp, sons, onHit, onDie } = {}) {
+  k.hp = k.maxHp = hp; k.rad = Math.max(0.6, k.f.size * 0.2); k.dead = false; k.knock = 0; k.kdir = new THREE.Vector3();
+  Object.defineProperty(k, 'alive', { get: () => !k.dead && k.f.holder.visible });
+  Object.defineProperty(k, 'aimY', { get: () => k.f.holder.position.y + k.f.height * 0.55 });
+  Object.defineProperty(k, 'K', { get: () => ESPECIES[kind] });
+  k.hit = (dmg, dir, how = {}) => {
+    if (k.dead) return 'none';
+    k.hp -= dmg; k.knock = 0.16; k.kdir.copy(dir).setY(0).normalize();
+    if (k.hp <= 0) { k.dead = true; k.deadT = 0; k.f.die(); sons?.voz(kind, k.pos, { rate: 0.85, vol: 1 }); onDie?.(k); return 'hit'; }
+    sons?.voz(kind, k.pos, { quem: k, gap: 0.9, rate: 1.1, vol: 0.85 });
+    if (k.f.has('golpe') && (!k.f.busy || k.f.one?.k === 'atk2')) k.f.play('golpe', { rate: 1.25 });
+    onHit?.(k, how); return 'hit';
+  };
+  // a cada quadro, antes do resto: morto, tranco e volta à vida. Devolve true se o bicho está morto (o resto pula)
+  k.tickAlvo = (dt, distPlayer) => {
+    if (k.knock > 0) { const s = Math.min(dt, k.knock); k.knock -= dt; k.x += k.kdir.x * 3.2 * s; k.z += k.kdir.z * 3.2 * s; }
+    if (!k.dead) return false;
+    k.deadT += dt; k.f.update(dt, 0);
+    if (k.deadT > 40 && distPlayer > 60) { k.dead = false; k.hp = k.maxHp; k.f.revive(); k.x = k.home.x; k.z = k.home.z; k.respawn?.(); }
+    return true;
+  };
 }

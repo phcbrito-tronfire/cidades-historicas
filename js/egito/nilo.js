@@ -2,7 +2,8 @@
 // verdade matavam pescadores e lavadeiras) e peixes — tilápias e percas — passando no fundo do rio.
 import { riverX, RIVER_HALF, terrainHeight, WATER_Y } from './terrain.js';
 import { Crocodiles, SeaLife } from '../comum/fauna.js';
-import { Fera } from '../comum/feras.js';
+import { Fera, alvoFera } from '../comum/feras.js';
+import * as THREE from 'three';
 import { lerp, angleLerp } from '../comum/util.js';
 
 const inRiver = (x, z, margin = 0) => Math.abs(x - riverX(z)) < RIVER_HALF + margin;
@@ -26,7 +27,10 @@ class Hippos {
     for (const h of this.o.homes) {
       const f = await Fera.criar('hipo', null, { size: 3.6 + Math.random() * 0.7 }); if (!f) return;
       f.swimming = false; this.scene.add(f.holder);
-      this.list.push({ f, home: h, x: h.x, z: h.z, h: Math.random() * 6, v: 0, wx: h.x, wz: h.z, wait: Math.random() * 5, yawn: 3 + Math.random() * 10, cd: 0, st: 'wander', pos: { x: h.x, z: h.z } });
+      this.list.push({ f, home: h, x: h.x, z: h.z, h: Math.random() * 6, v: 0, wx: h.x, wz: h.z, wait: Math.random() * 5, yawn: 3 + Math.random() * 10, cd: 0, st: 'wander', pos: new THREE.Vector3(h.x, 0, h.z) });
+      const k = this.list[this.list.length - 1];
+      alvoFera(k, 'hipo', { hp: 160, sons: this.o.sons, onHit: (k) => { k.st = 'charge'; k.angry = 20; } }); // (golpeado, investe — também em terra)
+      k.respawn = () => { k.st = 'wander'; k.angry = 0; };
     }
   }
   update(dt, t, player) {
@@ -34,15 +38,20 @@ class Hippos {
     for (const k of this.list) {
       const f = k.f, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz);
       const vis = d < 160; f.holder.visible = vis; if (!vis) continue;
+      if (k.tickAlvo(dt, d)) { k.pos.set(k.x, f.holder.position.y, k.z); continue; }
+      if (k.angry > 0) k.angry -= dt;
       k.cd -= dt; k.yawn -= dt;
-      const near = (player.swimming || player.wading) && d < 9;
+      const near = ((player.swimming || player.wading || inRiver(P.x, P.z, 4)) && d < 10) || k.angry > 0;
       let sp = 0, want = k.h;
       if (k.st === 'wander' && near && k.cd <= 0) { k.st = 'charge'; this.o.sons?.voz('hipo', k.pos, { quem: k, gap: 2 }); if (!this.warned) { this.warned = true; this.o.onWarn?.(); } }
-      if (k.st === 'charge') {
-        want = Math.atan2(dx, dz); sp = 3.6;
+      if (k.st === 'charge') { // investe e persegue também em terra (o hipopótamo corre mais que um homem andando; correndo, dá para fugir)
+        const deep = W - terrainHeight(k.x, k.z) > f.height * 0.6;
+        want = Math.atan2(dx, dz); sp = deep ? 3.4 : 6.0;
+        if (k.recoil > 0) { k.recoil -= dt; want += Math.PI * 0.6 * (k.side || 1); sp = 1.5; }
         if (d < 3.2 && !f.busy) { f.play('atk', { rate: 1.2 }); k.biteT = 0.45; }
-        if (k.biteT > 0 && (k.biteT -= dt) <= 0 && d < 3.8) { this.o.onBite?.(k); k.st = 'back'; k.cd = 6; }
-        if (!near && d > 14) k.st = 'back';
+        if (k.biteT > 0 && (k.biteT -= dt) <= 0 && d < 3.8) { this.o.onBite?.(k); k.recoil = 1.4; k.side = Math.random() < 0.5 ? 1 : -1; }
+        if (d > 16) k.lost = (k.lost || 0) + dt; else k.lost = 0;
+        if (k.lost > 2 || Math.hypot(k.x - k.home.x, k.z - k.home.z) > 45) { k.st = 'back'; k.cd = 8; k.lost = 0; k.angry = 0; }
       } else if (k.st === 'back') { const hx = k.home.x - k.x, hz = k.home.z - k.z; want = Math.atan2(hx, hz); sp = 1.2; if (Math.hypot(hx, hz) < 3) k.st = 'wander'; }
       else { // passeia devagar pelo fundo, perto de casa
         const wx = k.wx - k.x, wz = k.wz - k.z, wd = Math.hypot(wx, wz);
@@ -53,7 +62,7 @@ class Hippos {
       k.h = angleLerp(k.h, want, Math.min(1, dt * 1.6));
       k.v = lerp(k.v, sp, Math.min(1, dt * (sp > k.v ? 1.2 : 2)));
       const nx = k.x + Math.sin(k.h) * k.v * dt, nz = k.z + Math.cos(k.h) * k.v * dt;
-      if (inRiver(nx, nz, -4)) { k.x = nx; k.z = nz; } k.pos.x = k.x; k.pos.z = k.z;
+      if (inRiver(nx, nz, -4) || k.st !== 'wander') { k.x = nx; k.z = nz; } k.pos.set(k.x, f.holder.position.y || 0, k.z); // (passeando fica no rio; investindo ou voltando, sai para a margem)
       // dentro d'água: só o alto da cabeça e as costas de fora; no bocejo e na investida, a cabeça sobe
       const up = f.one && (f.one.k === 'rugir' || f.one.k === 'atk') ? 0.3 : 0;
       const y = Math.max(terrainHeight(k.x, k.z), W - f.height * (0.78 - up));

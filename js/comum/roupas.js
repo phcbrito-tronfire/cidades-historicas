@@ -1,5 +1,5 @@
 // As roupas do explorador: o traje de sempre (jaqueta de couro, chapéu, bolsa a tiracolo, coldre e chicote), duas
-// variações de campo e de deserto, e as três roupas conquistadas ao terminar uma cidade (nobre egípcio, hoplita
+// variações de campo e de deserto, e as roupas conquistadas ao terminar uma cidade (soldado egípcio, hoplita
 // grego, legionário romano, samurai). Tudo o que encosta no corpo é moldado sobre ele (vestir.js) e se dobra com ele.
 import * as THREE from 'three';
 import { makeFitter, leatherTex, clothTex, metalTex } from './vestir.js';
@@ -9,7 +9,7 @@ export const LOOKS = {
   explorer: { name: 'Explorador', desc: 'Jaqueta de couro, chapéu de feltro, bolsa de lona a tiracolo, coldre e chicote.', base: 'explorador', hair: 'fedora' },
   campo: { name: 'Explorador de campo', desc: 'Camisa henley azul-petróleo, calça cáqui, coldre de ombro e relógio de pulso.', base: 'brian' },
   deserto: { name: 'Explorador do deserto', desc: 'Camisa henley creme, coldre de ombro, munhequeira de couro e calça de lona.', base: 'brian' },
-  egito: { name: 'Nobre egípcio', desc: 'Peruca de tranças, túnica de linho fino, saiote plissado com faixa, colar largo de contas, braceletes e sandálias de papiro.', base: 'bryce', sandals: true, unlock: 'egito' },
+  egito: { name: 'Soldado egípcio', desc: 'Lenço de linho na cabeça, couraça de linho acolchoado com tiras de couro, saiote de linho com o avental de couro na frente, braçadeiras, sandálias — e a khopesh, a espada curva de bronze, com o escudo de couro de boi. F golpeia, Q ergue o escudo, Espaço esquiva, G arremessa a khopesh.', base: 'bryce', sandals: true, unlock: 'egito' },
   grecia: { name: 'Hoplita ateniense', desc: 'Elmo coríntio de bronze, couraça com os músculos batidos no metal, saiote de tiras de couro, quíton vermelho, grevas e o escudo redondo.', base: 'bryce', sandals: true, unlock: 'atenas', extras: ['helmet', 'aspis'] },
   japao: { name: 'Samurai (armadura completa)', desc: 'Armadura tōsei-gusoku de lâminas laqueadas de preto amarradas com cordões de seda vermelha: kabuto com a crista dourada e a máscara menpō, couraça (dō), ombreiras (sode), saiote de placas (kusazuri), coxotes, caneleiras e braçais, e o par de espadas, katana e wakizashi. F saca a katana e golpeia; F de novo emenda os golpes.', base: 'brian', sandals: true, unlock: 'japao' },
   roma: { name: 'Legionário romano', desc: 'Gálea de ferro, couraça de placas (lorica segmentata), lenço de lã, túnica vermelha, cinturão com avental de tiras, gládio e escudo (scutum) e cáligas. F (ou clique) golpeia; Q (ou botão direito) ergue o escudo; Espaço esquiva.', base: 'bryce', sandals: true, unlock: 'roma' },
@@ -320,30 +320,31 @@ function dressAncient(ctx, id) {
   const goldM = M(0xe0b04a, { metalness: 0.95, roughness: 0.28 });
   const ringAt = (fit, mat, bone, child, t, w, r = 0.11) => { const a = bonePos(bone), b = bonePos(child); fit.band(mat, ring(a.clone().lerp(b, t), b.clone().sub(a), r), { w, th: 0.005, off: 0.003, n: 28, closed: true }); };
   if (id === 'egito') {
-    // túnica de linho fino plissado (as mangas curtas da camisa viram as do linho), saiote longo plissado
-    const pleat = clothTex('#bcbcbc', { weave: 0.05 });
-    if (shirt) retint(shirt, 0xeadfc8, { rough: 0.95, detail: 0.35, lo: 0.85, hi: 1.1, grain: pleat, grainScale: 14 });
+    // soldado do Novo Império (o exército de Ramsés II): couraça de linho acolchoado com tiras de couro cruzadas, saiote
+    // de linho (shendyt) com o avental triangular de couro na frente, cinturão, lenço de linho na cabeça e braçadeiras
+    // de couro. A khopesh (espada curva de bronze) e o escudo de couro de boi vão nas mãos (luta.js).
+    if (shirt) retint(shirt, 0xd9c9a2, { rough: 0.95, detail: 0.45, lo: 0.8, hi: 1.12, grain: clothTex('#a8a8a8', { weave: 0.14, stripes: [[0.0, 0.06, '#8a8a8a'], [0.33, 0.39, '#8a8a8a'], [0.66, 0.72, '#8a8a8a']] }), grainScale: 7 });
     if (shorts) retint(shorts, 0xf0e6d2, { rough: 0.95, detail: 0.3, lo: 0.85, hi: 1.1 });
     const linen = M(0xffffff, { map: canvasPleats('#f2e9d6'), roughness: 0.95, side: THREE.DoubleSide });
-    if (ctx.cloth) ctx.cloth(ctx.clothGeometry('nobre', ctx.PROF.LONGKILT, 60), linen, -0.03, 0.8);
+    if (ctx.cloth) ctx.cloth(ctx.clothGeometry('shendyt', ctx.PROF.KILT, 40), linen, -0.03, 0.8);
     const fit = fitterFor(ctx, /Shirt|Shorts|Body|Graft_Body/);
-    // faixa vermelha e azul na cintura, com a ponta do nó caindo na frente
-    const sash = M(0xffffff, { map: clothTex('#a8402c', { weave: 0.08, stripes: [[0.0, 0.22, '#1f4fa8'], [0.78, 1.0, '#1f4fa8']] }), roughness: 0.85 });
-    fit.band(sash, waist(hy + 0.04), { w: 0.05, th: 0.006, off: 0.012, n: 60, closed: true });
-    fit.band(sash, [{ p: V3(0.02, hy + 0.03, 0.5), c: V3(0.02, hy + 0.03, 0) }, { p: V3(0.03, hy - 0.08, 0.5), c: V3(0.02, hy - 0.08, 0) }, { p: V3(0.035, hy - 0.2, 0.5), c: V3(0.02, hy - 0.2, 0) }], { w: 0.045, th: 0.004, off: 0.035, n: 10 });
-    // colar largo (wesekh): fileiras de contas de ouro, lápis-lazúli, cornalina e turquesa, sobre os ombros e o peito
-    const collar = M(0xffffff, { map: ctx.stripeTex('collar'), metalness: 0.55, roughness: 0.4, side: THREE.DoubleSide });
-    fit.shell(collar, { y0: ch.y + 0.02, y1: neck.y - 0.005, rows: 10, cols: 56, off: 0.008, r0: 0.3, cx: neck.x, cz: neck.z, bump: (a, y, s) => 0.004 * (1 - s) });
-    // braceletes no alto do braço e nos pulsos
-    for (const s of ['Left', 'Right']) { ringAt(fit, goldM, s + 'Arm', s + 'ForeArm', 0.3, 0.035); ringAt(fit, collar, s + 'ForeArm', s + 'Hand', 0.85, 0.04); }
+    const leatherM = M(0xffffff, { map: leatherTex('#6a4024'), roughness: 0.65 });
+    // tiras de couro cruzando o peito, do ombro ao quadril (como nos relevos de Kadesh)
+    for (const sd of [1, -1]) fit.band(leatherM, [{ p: V3(sd * 0.16, neck.y + 0.02, 0.5), c: V3(sd * 0.1, neck.y - 0.05, 0) }, { p: V3(-sd * 0.02, ch.y - 0.02, 0.5), c: V3(0, ch.y - 0.02, 0) }, { p: V3(-sd * 0.15, hy + 0.06, 0.5), c: V3(-sd * 0.08, hy + 0.06, 0) }], { w: 0.04, th: 0.005, off: 0.018, n: 18 });
+    // cinturão de couro e o avental triangular na frente (couro listrado de vermelho e creme)
+    fit.band(leatherM, waist(hy + 0.04), { w: 0.05, th: 0.006, off: 0.02, n: 60, closed: true });
+    const apron = M(0xffffff, { map: clothTex('#a8402c', { weave: 0.1, stripes: [[0.0, 0.14, '#e8d8b0'], [0.43, 0.57, '#e8d8b0'], [0.86, 1.0, '#e8d8b0']] }), roughness: 0.8, side: THREE.DoubleSide });
+    fit.band(apron, [{ p: V3(0, hy + 0.02, 0.5), c: V3(0, hy + 0.02, 0) }, { p: V3(0, hy - 0.12, 0.5), c: V3(0, hy - 0.12, 0) }, { p: V3(0, hy - 0.26, 0.5), c: V3(0, hy - 0.26, 0) }], { w: 0.17, th: 0.005, off: 0.06, n: 10, taper: 0.35 });
+    // braçadeiras de couro nos antebraços (a do arco, na esquerda, mais larga)
+    for (const sd of ['Left', 'Right']) ringAt(fit, leatherM, sd + 'ForeArm', sd + 'Hand', 0.62, sd === 'Left' ? 0.09 : 0.06, 0.1);
     out.push(...fit.finish());
-    // peruca de tranças até a nuca, com a testa e o rosto livres; o cabelo moderno fica por baixo
+    // lenço de linho listrado na cabeça (o khat dos soldados), caindo atrás até a nuca; o cabelo moderno fica por baixo
     for (const me of meshes) if (/Graft_Hair/.test(me.name)) me.visible = false;
     const fitH = fitterFor(ctx, /Graft_Body/);
-    const wig = M(0xffffff, { map: wigTex(), roughness: 0.75, side: THREE.DoubleSide });
-    const top = ctx.headFit().top, brow = top - 0.075; // a peruca começa na testa, acima das sobrancelhas
-    fitH.shell(wig, { y0: head.y + 0.03, y1: top + 0.01, rows: 22, cols: 48, off: 0.026, hang: { rows: 5, depth: 0.12, flare: 0.012 }, r0: 0.2, cx: head.x, cz: head.z + 0.01, uvScale: [6, 1], top: { from: 0.75, angle: 1.35, y: head.y + 0.04 }, mask: (a, y) => !(Math.abs(a) < 1.05 && y < brow) });
-    fitH.band(goldM, ring(V3(head.x, brow + 0.012, head.z + 0.005), V3(0, 1, 0), 0.2, 16), { w: 0.016, th: 0.004, off: 0.022, n: 40, closed: true }); // diadema
+    const khat = M(0xffffff, { map: clothTex('#efe6d0', { weave: 0.06, stripes: [[0.1, 0.16, '#b8a07a'], [0.42, 0.48, '#b8a07a'], [0.74, 0.8, '#b8a07a']] }), roughness: 0.9, side: THREE.DoubleSide });
+    const top = ctx.headFit().top, brow = top - 0.07;
+    fitH.shell(khat, { y0: head.y + 0.02, y1: top + 0.015, rows: 20, cols: 48, off: 0.022, hang: { rows: 4, depth: 0.1, flare: 0.02 }, r0: 0.2, cx: head.x, cz: head.z + 0.01, uvScale: [5, 1], top: { from: 0.7, angle: 1.62, y: head.y + 0.04 }, mask: (a, y) => !(Math.abs(a) < 1.15 && y < brow) }); /* (o ângulo fecha o alto da cabeça: com 1,35 o couro cabeludo aparecia por um buraco) */
+    fitH.band(M(0xffffff, { map: clothTex('#b8402c', { weave: 0.05 }), roughness: 0.8 }), ring(V3(head.x, brow + 0.01, head.z + 0.005), V3(0, 1, 0), 0.2, 16), { w: 0.018, th: 0.004, off: 0.026, n: 40, closed: true }); // a fita que prende o lenço
     out.push(...fitH.finish());
   }
   if (id === 'grecia') {

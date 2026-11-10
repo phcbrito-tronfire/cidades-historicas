@@ -89,7 +89,16 @@ export function waterLevelAt(x, z) {
 }
 
 // altura do chão para andar: o terreno, mas logo abaixo das lajes de piso
-export function groundHeight(x, z) { return Math.min(terrainHeight(x, z), pressAt(x, z) + 0.05); }
+// os diques dos canais de irrigação (o mesmo perfil desenhado em buildTerrain): sobe-se neles, não se atravessa
+function dikeProfile(d, h) { if (d < h) return 0; if (d < h + 0.2) return (d - h) / 0.2 * 0.4; if (d < h + 0.55) return 0.4 - (d - h - 0.2) / 0.35 * 0.04; if (d < h + 1.3) return Math.max(0, 0.36 - (d - h - 0.55) / 0.75 * 0.51); return 0; }
+export function dikeAt(x, z) {
+  let add = 0;
+  if (Math.abs(z) <= 300) { const d = Math.abs(x - (riverX(z) + 53)); if (d < 2.5) add = dikeProfile(d, 1.1); }
+  const k = Math.round((z + 270) / 68), zc = -270 + 68 * k;
+  if (k >= 0 && k <= 7 && Math.abs(z - zc) < 2.1) { const rx = riverX(zc); if (x > rx + 55.5 && x < rx + 140) add = Math.max(add, dikeProfile(Math.abs(z - zc), 0.7)); }
+  return add;
+}
+export function groundHeight(x, z) { return Math.min(terrainHeight(x, z) + dikeAt(x, z), pressAt(x, z) + 0.05); }
 setTerrain(groundHeight);
 setWater(waterLevelAt);
 
@@ -249,33 +258,37 @@ normal = normalize( tbn * mapN );
   lake.receiveShadow = true;
   scene.add(lake);
 
-  // canal paralelo ao rio na margem leste + canais transversais
-  const canalGeos = [];
-  const strip = (pts, w) => {
-    const verts = [], idx = [];
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], q = pts[Math.min(i + 1, pts.length - 1)], o = pts[Math.max(i - 1, 0)];
-      let tx = q.x - o.x, tz = q.z - o.z; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
-      const nx = -tz * w / 2, nz = tx * w / 2;
-      verts.push(p.x + nx, terrainHeight(p.x + nx, p.z + nz) + 0.06, p.z + nz, p.x - nx, terrainHeight(p.x - nx, p.z - nz) + 0.06, p.z - nz);
-      if (i < pts.length - 1) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } // (faces para cima: na ordem antiga a água dos canais ficava virada para baixo e não aparecia)
+  // canais de irrigação na margem leste: um paralelo ao rio e os transversais que levam a água às roças. Como os de
+  // verdade, correm entre diques de terra batida (a água fica abaixo das margens, com a beira molhada e escura), e a
+  // água é a do Nilo: barrenta, esverdeada, com ondinhas e o céu refletido (antes era uma faixa azul lisa no chão)
+  const canalWater = new THREE.MeshStandardMaterial({ color: 0x1d3a2e, roughness: 0.05, metalness: 0, envMapIntensity: 0.55, normalMap: tex.waterNormals.clone(), normalScale: new THREE.Vector2(0.35, 0.35) });
+  canalWater.normalMap.repeat.set(2, 2); canalWater.userData.keepEnv = true; stillWater(canalWater, { scale: 1.1, strength: 0.85 });
+  const dikeMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: tex.sandDetail, roughness: 0.97, metalness: 0 });
+  const canalGeos = [], dikeGeos = [];
+  const path = (pts) => pts.map((p, i) => { const q = pts[Math.min(i + 1, pts.length - 1)], o = pts[Math.max(i - 1, 0)]; let tx = q.x - o.x, tz = q.z - o.z; const l = Math.hypot(tx, tz) || 1; return { ...p, nx: -tz / l, nz: tx / l }; });
+  const ribbon = (P, prof, colors) => { // faixa ao longo do caminho com um perfil transversal [deslocamento, altura acima do chão]
+    const verts = [], cols = [], uvs = [], idx = [], n = prof.length;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      for (let j = 0; j < n; j++) { const [o, hh] = prof[j], x = p.x + p.nx * o, z = p.z + p.nz * o; verts.push(x, p.base + hh, z); cols.push(...colors[j]); uvs.push(x / 4, z / 4); }
+      if (i < P.length - 1) for (let j = 0; j < n - 1; j++) { const a = i * n + j, b = a + n; idx.push(a, b, a + 1, a + 1, b, b + 1); }
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-    g.setIndex(idx); g.computeVertexNormals();
-    const uvs = []; for (let i = 0; i < verts.length / 3; i++) uvs.push(verts[i * 3] / 8, verts[i * 3 + 2] / 8);
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    return g;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  };
+  const canal = (pts, w) => {
+    // nível de cada trecho: o chão mais alto entre as duas beiras (a água nunca fica enterrada no terreno)
+    const P = path(pts).map((p) => ({ ...p, base: Math.max(terrainHeight(p.x + p.nx * (w / 2 + 0.9), p.z + p.nz * (w / 2 + 0.9)), terrainHeight(p.x - p.nx * (w / 2 + 0.9), p.z - p.nz * (w / 2 + 0.9)), terrainHeight(p.x, p.z)) }));
+    const h = w / 2, dry = [0.2, 0.13, 0.075], top = [0.24, 0.16, 0.09], wet = [0.07, 0.05, 0.035]; // (cores lineares: terra batida, crista seca e a beira molhada)
+    canalGeos.push(ribbon(P, [[h + 0.05, 0.1], [-h - 0.05, 0.1]], [[1, 1, 1], [1, 1, 1]])); /* (do lado + para o -: a face fica para cima) */
+    // os dois diques: pé de fora (no chão), crista, e a parede de dentro descendo até a água (molhada, mais escura)
+    dikeGeos.push(ribbon(P, [[h + 1.3, -0.15], [h + 0.55, 0.36], [h + 0.2, 0.4], [h, 0.05]], [dry, top, top, wet]));
+    dikeGeos.push(ribbon(P, [[-h, 0.05], [-h - 0.2, 0.4], [-h - 0.55, 0.36], [-h - 1.3, -0.15]], [wet, top, top, dry]));
   };
   const main = []; for (let z = -300; z <= 300; z += 3) main.push({ x: riverX(z) + 53, z });
-  canalGeos.push(strip(main, 2.2));
-  for (let z = -270; z <= 270; z += 68) {
-    const pts = []; for (let d = 53; d <= 140; d += 3) pts.push({ x: riverX(z) + d, z });
-    canalGeos.push(strip(pts, 1.4));
-  }
-  const canals = new THREE.Mesh(mergeGeometries(canalGeos), calmWater);
-  canals.receiveShadow = true;
-  scene.add(canals);
+  canal(main, 2.2);
+  for (let z = -270; z <= 270; z += 68) { const pts = []; for (let d = 55.5; d <= 140; d += 3) pts.push({ x: riverX(z) + d, z }); canal(pts, 1.4); }
+  const canals = new THREE.Mesh(mergeGeometries(canalGeos), canalWater); canals.receiveShadow = true; scene.add(canals);
+  const dikes = new THREE.Mesh(mergeGeometries(dikeGeos), dikeMat); dikes.receiveShadow = true; dikes.castShadow = true; scene.add(dikes);
 
   return { terrain: mesh, water, calmWater };
 }

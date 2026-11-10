@@ -6,9 +6,9 @@
 //   Q ou botão direito (segurar) — defesa: o escudo na frente (com espada só, apara metade; no soco, a guarda)
 //   Espaço — esquiva (com a arma na mão; sem ela, o pulo de sempre) · G — arremessa a lança ou o gládio · P — pega a arma do chão
 import * as THREE from 'three';
-import { playOnce, hasClip, loadAnims } from '../comum/mixamo.js';
-import { groundAt } from '../comum/collision.js';
-import { rand, rr, clamp } from '../comum/util.js';
+import { playOnce, hasClip, loadAnims } from './mixamo.js';
+import { groundAt } from './collision.js';
+import { rand, rr, clamp } from './util.js';
 
 // golpes do pacote "Sword And Shield" do Mixamo (já usados pelos gladiadores do Coliseu) e, quando chegarem, os de soco
 const BASE_CLIPS = ['gl_guarda', 'gl_lado', 'gl_alto', 'gl_baixo', 'gl_desce', 'gl_combo', 'gl_forte', 'gl_cabo', 'gl_chute', 'gl_bloqueio', 'gl_impacto', 'gl_cabeca', 'gl_morte_f', 'gl_morte_t', 'gl_vitoria'];
@@ -22,6 +22,7 @@ const CLIP_END = { lanca: 0.6 };
 export const WEAPONS = {
   gladio: { name: 'o gládio', reach: 1.85, arc: 1.0, dmg: [13, 19], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 24 },
   lanca: { name: 'a lança', reach: 2.6, arc: 0.7, dmg: [14, 20], chain: ['lanca', 'lanca', 'lanca'], rates: [1.6, 1.95, 1.75], heavy: 'lanca', heavyRate: 1.3, thrown: 34 }, /* (só estocadas: golpe de espada com lança apontava a ponta para o céu) */
+  khopesh: { name: 'a khopesh', reach: 1.95, arc: 1.15, dmg: [14, 20], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 22 }, /* (a espada curva de bronze do Egito: o gancho corta de cima para baixo) */
   punhos: { name: 'os punhos', reach: 1.3, arc: 0.9, dmg: [5, 8], chain: ['so_jab', 'so_direto', 'so_gancho', 'so_uppercut'], heavy: 'so_soco_forte' },
 };
 const RATE = 1.15; // (os golpes um pouco mais rápidos que o original: lutando, o jogador não pode esperar)
@@ -30,6 +31,14 @@ const V = () => new THREE.Vector3();
 // ---- as armas (as mesmas formas das dos gladiadores do Coliseu, em mixamo.js)
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
 const at = (geo, m, x, y, z, r) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); if (r) me.rotation.set(...r); me.castShadow = true; return me; };
+// couro de boi malhado (o forro dos escudos egípcios): fundo claro com manchas castanhas e pretas
+let COW = null;
+function cowhide() {
+  if (COW) return COW; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#e8dcc4'; x.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 9; i++) { x.fillStyle = i % 3 ? '#6a4024' : '#241812'; x.beginPath(); const cx = Math.random() * 128, cy = Math.random() * 128; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, r = 10 + Math.random() * 16; x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 1.3); } x.fill(); }
+  COW = new THREE.CanvasTexture(c); COW.colorSpace = THREE.SRGBColorSpace; return COW;
+}
 export function makeWeapon(kind, color = 0xa8261e) {
   const g = new THREE.Group(); g.userData.kind = kind;
   if (kind === 'gladio') {
@@ -48,6 +57,21 @@ export function makeWeapon(kind, color = 0xa8261e) {
     // a lança aponta para a frente, um pouco para baixo, com a ponta a 2,5 m à frente na altura do peito)
     g.userData.qCarry = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI * 0.45, 0, 0));
     g.userData.qThrust = new THREE.Quaternion().setFromEuler(new THREE.Euler(2.253, -0.827, -0.412));
+  } else if (kind === 'khopesh') { // a khopesh: cabo de madeira com pomo, haste reta de bronze e a lâmina em gancho (meia-lua)
+    const bronze = mat(0xb9793c, { metalness: 0.9, roughness: 0.3 }), wood = mat(0x4a2c16);
+    g.add(at(new THREE.CylinderGeometry(0.017, 0.019, 0.13, 8), wood, 0, 0, 0));
+    g.add(at(new THREE.SphereGeometry(0.024, 8, 6), bronze, 0, -0.075, 0));
+    g.add(at(new THREE.BoxGeometry(0.03, 0.2, 0.012), bronze, 0, 0.16, 0));
+    const hook = new THREE.TorusGeometry(0.15, 0.022, 6, 22, 2.4); hook.scale(1, 1, 0.32); hook.rotateZ(0.74); hook.translate(0.14, 0.27, 0);
+    g.add(at(hook, bronze, 0, 0, 0));
+    g.userData.hand = { rot: [Math.PI * 0.45, 0, 0], pos: [0, 0, 0] }; g.userData.len = 0.5;
+  } else if (kind === 'escudo_eg') { // o escudo egípcio: alto, de topo redondo, armação de madeira forrada de couro de boi malhado
+    const sh = new THREE.Shape(); const W = 0.25, H0 = -0.42, H1 = 0.22; sh.moveTo(-W, H0); sh.lineTo(W, H0); sh.lineTo(W, H1); sh.absarc(0, H1, W, 0, Math.PI, false); sh.lineTo(-W, H0);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.012, bevelSegments: 1, curveSegments: 16 }); geo.translate(0, 0, 0.005);
+    const uv = geo.attributes.uv, ps = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (ps.getX(i) + W) / (2 * W), (ps.getY(i) - H0) / (H1 + W - H0));
+    const face = new THREE.Mesh(geo, [mat(0xffffff, { map: cowhide(), roughness: 0.85 }), mat(0x5a3a1e, { roughness: 0.8 })]); face.castShadow = true; g.add(face);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(W, 0.012, 6, 16, Math.PI), mat(0x5a3a1e)); rim.position.set(0, H1, 0.04); g.add(rim);
+    g.userData.hand = { rot: [0, Math.PI / 2, 0], pos: [0.02, 0.05, 0.1] };
   } else if (kind === 'escudo') { // o scutum: curvo, retangular, com o umbo de bronze e as faixas
     const w = 0.66, hgt = 1.05;
     const face = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, hgt, 18, 1, true, -w / 1.24, w / 0.62), mat(color, { side: THREE.DoubleSide })); face.position.z = -0.6; face.castShadow = true; g.add(face);
@@ -60,7 +84,8 @@ export function makeWeapon(kind, color = 0xa8261e) {
 // deitada no chão (para pegar), girada ao acaso
 function lying(kind, color) {
   const w = makeWeapon(kind, color), g = new THREE.Group(); g.add(w);
-  if (kind === 'escudo') { w.rotation.set(-Math.PI / 2, 0, 0); w.position.y = 0.62; } // (de face para cima, apoiado na curva)
+  if (kind === 'escudo_eg') { w.rotation.set(-Math.PI / 2, 0, 0); w.position.y = 0.05; }
+  else if (kind === 'escudo') { w.rotation.set(-Math.PI / 2, 0, 0); w.position.y = 0.62; } // (de face para cima, apoiado na curva)
   else { w.rotation.set(0, 0, Math.PI / 2); w.position.y = 0.03; }
   g.rotation.y = rand() * Math.PI * 2; g.userData.kind = kind; return g;
 }
@@ -85,7 +110,7 @@ export class Melee {
   }
 
   // a luta vale com a roupa de legionário ou de gladiador (ou quando a arena entrega as armas)
-  get active() { const p = this.player; return !!this.forced || p.look === 'roma' || p.look === 'gladiador'; }
+  get active() { const p = this.player; return !!this.forced || p.look === 'roma' || p.look === 'gladiador' || p.look === 'egito'; }
   get weapon() { return WEAPONS[this.right || 'punhos']; }
 
   bind() {
@@ -121,7 +146,7 @@ export class Melee {
     P.push = null; P.hitStop = 0; P.shake = 0; P.rig.once = null; P.speed = 0;
   }
   // as armas que a roupa traz
-  defaults() { const L = this.player.look; if (this.forced) return; this.right = 'gladio'; this.left = 'escudo'; this.shieldColor = L === 'gladiador' ? 0x9a2a1e : 0xa8261e; }
+  defaults() { const L = this.player.look; if (this.forced) return; if (L === 'egito') { this.right = 'khopesh'; this.left = 'escudo_eg'; return; } this.right = 'gladio'; this.left = 'escudo'; this.shieldColor = L === 'gladiador' ? 0x9a2a1e : 0xa8261e; }
 
   // as peças nas mãos do corpo atual (o corpo muda ao trocar de roupa)
   dress() {
@@ -205,7 +230,7 @@ export class Melee {
     } else if (this.drawDelay > 0) { this.drawDelay -= dt; if (this.drawDelay <= 0) this.next(this.heavyNext); }
     else if (this.queued && this.stun <= 0 && !(this.rolling > 0)) {
       this.queued = false;
-      if (!this.drawn) { this.drawn = true; this.dress(); if (hasClip('gl_saca') && this.right === 'gladio') { playOnce(P.rig, 'gl_saca', 0.42); this.drawDelay = 0.3; this.heavyNext = speed > 5.5; this.combo = -1; } }
+      if (!this.drawn) { this.drawn = true; this.dress(); if (hasClip('gl_saca') && (this.right === 'gladio' || this.right === 'khopesh')) { playOnce(P.rig, 'gl_saca', 0.42); this.drawDelay = 0.3; this.heavyNext = speed > 5.5; this.combo = -1; } }
       if (!(this.drawDelay > 0)) { this.combo = -1; this.next(speed > 5.5); }
     }
     this.updateFlying(dt);
@@ -298,7 +323,7 @@ export class Melee {
     const dx = from.x - P.pos.x, dz = from.z - P.pos.z, d = Math.hypot(dx, dz) || 1;
     const front = (dx * Math.sin(P.facing) + dz * Math.cos(P.facing)) / d > 0.3;
     if (this.block && front && !unblockable) {
-      if (this.left === 'escudo') { playOnce(P.rig, 'gl_bloqueio', 0.32); P.lunge(-1.6 * knock, 0.12, dx / d, dz / d); this.audio?.clang?.(); P.shake = 0.05; if (heavy && rand() < 0.12) this.lose('left', from); return 'blocked'; }
+      if (this.left === 'escudo' || this.left === 'escudo_eg') { playOnce(P.rig, 'gl_bloqueio', 0.32); P.lunge(-1.6 * knock, 0.12, dx / d, dz / d); this.audio?.clang?.(); P.shake = 0.05; if (heavy && rand() < 0.12) this.lose('left', from); return 'blocked'; }
       dmg *= this.right ? 0.45 : 0.6; // (apara com a espada, ou a guarda dos punhos: tira só parte)
     }
     this.health?.damage(Math.round(dmg));
@@ -332,12 +357,12 @@ export class Melee {
   pickUp() {
     const P = this.player, it = this.nearestGround(P.pos); if (!it) return false;
     this.ground.splice(this.ground.indexOf(it), 1); this.scene.remove(it.g);
-    const side = it.kind === 'escudo' ? 'left' : 'right';
+    const side = /^escudo/.test(it.kind) ? 'left' : 'right';
     if (this[side]) this.drop(this[side], P.pos.x + Math.sin(P.facing + 2.4) * 0.8, P.pos.z + Math.cos(P.facing + 2.4) * 0.8); // (troca: a que estava na mão fica no chão)
     if (it.kind === 'escudo') this.shieldColor = it.color;
     this[side] = it.kind; this.drawn = true; this.dress();
     playOnce(P.rig, 'pegar', 0.55);
-    this.toast?.(`Você pegou ${it.kind === 'escudo' ? 'o escudo' : WEAPONS[it.kind].name}.`, '', 2200);
+    this.toast?.(`Você pegou ${/^escudo/.test(it.kind) ? 'o escudo' : WEAPONS[it.kind].name}.`, '', 2200);
     return true;
   }
 
@@ -374,7 +399,7 @@ export class Melee {
     const d = from.distanceTo(to), tt = Math.max(0.12, d / sp);
     const v = to.clone().sub(from).divideScalar(tt); v.y += 0.5 * 9.8 * tt; // (cai um pouco: sobe antes)
     holder.position.copy(from); holder.lookAt(from.clone().add(v));
-    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' ? 18 : 0, prev: from.clone() });
+    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' || kind === 'khopesh' ? 18 : 0, prev: from.clone() });
     this.audio?.swoosh?.();
   }
   updateFlying(dt) {
@@ -414,7 +439,7 @@ export class Melee {
     const parts = [`<kbd>F</kbd> Golpe (${this.right ? WEAPONS[this.right].name.replace(/^o |^a /, '') : 'soco'})`, `<kbd>Q</kbd> ${this.left ? 'Escudo' : 'Defesa'}`];
     if (this.drawn) parts.push('<kbd>Espaço</kbd> Esquiva');
     if (this.right && (this.forced || this.ground.length)) parts.push('<kbd>G</kbd> Arremessar');
-    if (it) parts.unshift(`<kbd>P</kbd> Pegar ${it.kind === 'escudo' ? 'o escudo' : WEAPONS[it.kind].name}`);
+    if (it) parts.unshift(`<kbd>P</kbd> Pegar ${/^escudo/.test(it.kind) ? 'o escudo' : WEAPONS[it.kind].name}`);
     return parts.join(' &nbsp;·&nbsp; ');
   }
 }

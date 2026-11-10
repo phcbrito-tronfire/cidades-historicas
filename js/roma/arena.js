@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce, hasClip } from '../comum/mixamo.js';
 import { groundAt } from '../comum/collision.js';
 import { COL } from './coliseu.js';
-import { HIT_AT, makeWeapon } from './luta.js';
+import { HIT_AT, makeWeapon } from '../comum/luta.js';
 import { rr, rand, pick, lerp, clamp, angleLerp } from '../comum/util.js';
 
 const Y = COL.y;

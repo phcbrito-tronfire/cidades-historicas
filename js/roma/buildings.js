@@ -32,6 +32,8 @@ export function createMaterials(tex) {
   M.colMarble = std({ map: T.plainMarble, color: 0xfff8ee, roughness: 0.5 }); M.colMarble.userData.uv = { s: 2 };
   M.granite = std({ color: 0x8a5a4c, roughness: 0.45 });
   M.water = stillWater(std({ color: 0x2a7f96, roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.88 }), { scale: 0.35, strength: 0.75 });
+  // água de tanque grande (a bacia da Meta Sudans): mais funda e escura, refletindo o céu, com ondinhas miúdas que se mexem
+  M.poolWater = stillWater(std({ color: 0x0f3540, roughness: 0.05, metalness: 0 }), { scale: 0.55, strength: 0.8 }); M.poolWater.envMapIntensity = 0.75; M.poolWater.userData.keepEnv = true; M.poolWater.userData.noMacro = M.water.userData.noMacro = true; /* (a mancha de variação das pedras não vale para a água) */
   M.brick = std({ ...pbrSet(P.medieval_red_brick, 1), color: 0xf0b090 }); M.brick.userData.uv = { s: 1.6 }; // tijolo romano (opus latericium): fino, alaranjado, argamassa grossa
   M.brickY = std({ ...pbrSet(P.brown_brick_02, 1), color: 0xf4d0a8 }); M.brickY.userData.uv = { s: 1.6 }; // tijolo amarelado (outra olaria)
   M.brickPl = std({ ...pbrSet(P.rough_plaster_brick, 1), color: 0xd89070 }); M.brickPl.userData.uv = { s: 2.2 }; // reboco gasto sobre tijolo

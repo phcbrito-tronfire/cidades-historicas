@@ -166,7 +166,7 @@ export function buildForum(B, M, out) {
   S.clivus = new V3(CLIVUS[0][0], terrainHeight(CLIVUS[0][0], CLIVUS[0][1]), CLIVUS[0][1]);
   S.capitol = new V3(CAPITOL.x, CAPITOL.top, CAPITOL.z + 22);
   // Meta Sudans: a fonte cônica entre o Coliseu e o Arco de Tito
-  { const x = -86, z = 6, y = terrainHeight(x, z) - 0.2; B.geo(new THREE.CylinderGeometry(8, 8, 0.8, 32), M.marbleWall, x, y + 0.4, z); B.geo(new THREE.CylinderGeometry(7.4, 7.4, 0.2, 32), M.water || M.marble, x, y + 0.75, z); B.geo(new THREE.ConeGeometry(2.2, 12, 20), M.brick, x, y + 6.4, z); addCircle(x, z, 8, y - 1, y + 1); S.metaSudans = new V3(x + 10, y, z); }
+  { const x = -86, z = 6, y = terrainHeight(x, z) - 0.2; B.geo(new THREE.CylinderGeometry(8, 8, 0.8, 48), M.marbleWall, x, y + 0.4, z); /* a bacia: mureta de mármore em volta e a água abaixo da borda (antes a água ficava por cima de tudo, um prato azul-claro) */ B.geo(new THREE.CylinderGeometry(8, 8, 0.55, 48, 1, true), M.marbleWall, x, y + 1.07, z); B.geo(new THREE.CylinderGeometry(7.55, 7.55, 0.55, 48, 1, true), M.marbleWall, x, y + 1.07, z); B.geo(new THREE.RingGeometry(7.55, 8, 48, 1), M.marble, x, y + 1.345, z, { rx: -Math.PI / 2 }); B.geo(new THREE.CircleGeometry(7.55, 48), M.poolWater || M.water || M.marble, x, y + 1.08, z, { rx: -Math.PI / 2 }); B.geo(new THREE.ConeGeometry(2.2, 12, 20), M.brick, x, y + 6.4, z); addCircle(x, z, 8, y - 1, y + 1); S.metaSudans = new V3(x + 10, y, z); }
   // Circo Máximo: a pista de areia, a spina no meio com o obelisco e as metas, arquibancadas nos lados
   {
     const C = CIRCUS, y = terrainHeight(C.x, C.z) - 0.15;

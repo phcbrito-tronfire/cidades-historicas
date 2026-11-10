@@ -871,9 +871,13 @@ export function buildCity(scene, tex) {
   addBox(sx, fz - 12, 0.6, 1.6, -5, sy + 2.6);
   // vilarejo de cabanas ao sul da fazenda
   for (let i = 0; i < 9; i++) {
-    const z = -90 - i * 14 + rr(-3, 3), x = riverX(z) + rr(48, 62), y = G(x, z);
-    const w = rr(3.5, 5);
-    B.box(M.mud, w, rr(2.4, 3), w, x, y - 0.2, z, { ry: rr(-0.3, 0.3) });
+    let z = -90 - i * 14 + rr(-3, 3); if (Math.abs(((z + 270) % 68 + 68) % 68) < 6 || Math.abs(((z + 270) % 68 + 68) % 68 - 68) < 6) z += 9; // (fora dos canais transversais)
+    const x = riverX(z) + rr(59, 66), y = G(x, z); // (a leste do canal grande, que corre a 53 m do rio: antes as cabanas caíam em cima dele)
+    const w = rr(3.5, 5), hh = rr(2.4, 3), ry = rr(-0.3, 0.3), c = Math.cos(ry), sn = Math.sin(ry);
+    B.box(M.mud, w, hh, w, x, y - 0.2, z, { ry });
+    // a porta virada para o rio e o teto de esteira de junco por cima (a cabana era só um cubo de barro)
+    B.box(M.dark, 0.08, 1.7, 0.9, x - c * (w / 2 + 0.03), y - 0.2, z + sn * (w / 2 + 0.03), { ry, uv: false });
+    B.box(M.reed, w + 0.4, 0.12, w + 0.4, x, y - 0.2 + hh, z, { ry });
     addBox(x, z, w * 1.1, w * 1.1, -5, y + 3);
     out.exclusions.push([x - 4, x + 4, z - 4, z + 4]);
   }

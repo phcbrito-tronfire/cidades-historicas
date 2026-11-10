@@ -38,7 +38,7 @@ import { Games } from './jogos.js';
 import { Legion } from './legiao.js';
 import { buildNaumachia } from './naumaquia.js';
 import { Races } from './circo.js';
-import { Melee } from './luta.js';
+import { Melee } from '../comum/luta.js';
 import { Arena } from './arena.js';
 import { Daily } from './cotidiano.js';
 import { MARKET } from './mercado.js';
