@@ -96,6 +96,10 @@ function cloudMaterial(oct) {
         vec3 d = normalize(vD);
         if (d.y < 0.012) discard;
         vec2 uv = d.xz / (d.y + 0.11) * 0.85 + vec2(uTime * 0.005, uTime * 0.0018);
+        // perto do horizonte o ruído fica mais fino que o pixel: ali ele piscava (acendia e apagava com a câmera andando, e o
+        // brilho do bloom virava clarão). Onde o pixel cobre mais de ~meia célula do ruído, a nuvem some aos poucos
+        float aa = fwidth(uv.x) + fwidth(uv.y);
+        if (aa > 1.1) discard;
         vec2 w = vec2(fbm(uv * 0.55 + 3.7), fbm(uv * 0.55 + 11.3)) - 0.5;
         float c = fbm(uv + w * 1.1);
         float lo = 1.0 - uCover;
@@ -114,7 +118,9 @@ function cloudMaterial(oct) {
         col = mix(uLight * uBright * 0.92, col, smoothstep(0.0, 0.5, a));
         float hz = smoothstep(0.012, 0.26, d.y);
         col = mix(uHorizon, col, hz * 0.9 + 0.1);
-        gl_FragColor = vec4(col, al * hz * uOpacity);
+        // nunca acima do limite do bloom (0,92): nuvem clara ao sol é branca, não acesa
+        col = min(col, vec3(0.86));
+        gl_FragColor = vec4(col, al * hz * uOpacity * (1.0 - smoothstep(0.3, 1.1, aa)));
       }`,
   });
 }

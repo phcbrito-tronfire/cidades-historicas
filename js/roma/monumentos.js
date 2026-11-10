@@ -19,25 +19,46 @@ function archShape(w, h, ow, oh) {
 export function buildMonuments(B, M, out) {
   const S = out.spots;
   // ---- aqueduto: do leste (borda do mapa) até o Célio, com o canal (specus) a altura constante
+  // Vai da caixa d'água (castellum, no Célio) para o leste, vão por vão, até o canal entrar no morro: os aquedutos
+  // corriam enterrados quase todo o caminho e só subiam em arcos para atravessar os vales. Onde o vale é fundo, arcos
+  // (dá para passar por baixo de todos); onde é raso, muro cheio; onde o chão passa da altura do canal, ele some na
+  // encosta. O canal (specus) era coberto com lajes, para a água não esquentar nem sujar: por isso não se vê água em cima.
   {
-    const pts = [[520, 330], [380, 300], [250, 255], [150, 215]], top = 30, span = 6.2;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const [ax, az] = pts[i], [bx, bz] = pts[i + 1], L = Math.hypot(bx - ax, bz - az), n = Math.floor(L / span), ry = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
+    const route = [[150, 215], [250, 255], [380, 300], [520, 330]], top = 30, span = 6.2, depth = 2.6, pier = 2.2, ow = span - pier, SP = 1.8;
+    const aq = (window.__aqueduct = { arches: [], walls: 0 });
+    const cap = (x, z, ry, w) => { // o canal coberto por cima de cada trecho, com a cornija de pedra embaixo
+      B.box(M.travertine, w, 0.3, depth + 0.5, x, top - 0.3, z, { ry, noGround: true });
+      B.box(M.travertine2 || M.travertine, w, SP, depth + 0.2, x, top, z, { ry, noGround: true });
+    };
+    let done = false;
+    for (let i = 0; i < route.length - 1 && !done; i++) {
+      const [ax, az] = route[i], [bx, bz] = route[i + 1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / span)), w = L / n;
+      const ry = Math.atan2(bx - ax, bz - az) + Math.PI / 2, ux = Math.cos(ry), uz = -Math.sin(ry); // (ux, uz): o eixo do aqueduto
+      // o pilar de canto, onde o aqueduto muda de direção (cobre a emenda dos dois trechos)
+      if (i > 0) { const g = terrainHeight(ax, az) - 0.4; if (top - g > -SP) { B.box(M.brick, 3.4, top - g, 3.4, ax, g, az, { ry }); B.box(M.travertine2 || M.travertine, 3.6, SP, 3.6, ax, top, az, { ry, noGround: true }); addRotBox(ax, az, 3.4, 3.4, ry, g - 1, top + SP); } }
       for (let k = 0; k < n; k++) {
-        const t = (k + 0.5) / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, g = terrainHeight(x, z) - 0.5, h = top - g;
-        if (h < 3) continue;
-        const shape = archShape(span + 0.02, h, span * 0.62, Math.min(h - 2.5, h * 0.8));
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: 2.6, bevelEnabled: false, curveSegments: 8 }); geo.translate(0, 0, -1.3);
-        B.geo(geo, M.brick, x, g, z, { ry });
-        addCircle(x + Math.sin(ry) * span / 2, z + Math.cos(ry) * span / 2, 1.2, g - 1, top);
+        const t = (k + 0.5) / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+        // o chão mais baixo debaixo do vão (encosta: nada pode ficar no ar)
+        const g = Math.min(terrainHeight(x, z), terrainHeight(x + ux * w / 2, z + uz * w / 2), terrainHeight(x - ux * w / 2, z - uz * w / 2)) - 0.4, h = top - g;
+        if (h < -SP) { done = true; break; } // o canal já está dentro do morro
+        if (h >= 5) {
+          const oh = Math.min(h - 2.2, h * 0.84), shape = archShape(w + 0.02, h, w - pier, oh);
+          const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 10 }); geo.translate(0, 0, -depth / 2);
+          B.geo(geo, M.brick, x, g, z, { ry });
+          // só os pilares barram: o vão fica livre
+          for (const sd of [-1, 1]) { const o = sd * (w / 2 - pier / 4); addRotBox(x + ux * o, z + uz * o, pier / 2, depth, ry, g - 1, top + SP); }
+          aq.arches.push({ x, z, ry, g, h });
+        } else if (h > 0) {
+          B.box(M.brick, w + 0.02, h, depth, x, g, z, { ry }); addRotBox(x, z, w, depth, ry, g - 1, top + SP); aq.walls++;
+        }
+        cap(x, z, ry, w + 0.04);
       }
-      // o canal no alto (com a água)
-      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
-      B.box(M.travertine, 3, 1.4, L, mx, top, mz, { ry: ry - Math.PI / 2 });
-      B.box(M.dark, 1.2, 0.05, L, mx, top + 1.36, mz, { ry: ry - Math.PI / 2 });
     }
-    // a caixa d'água no fim (castellum) que distribui para as fontes e termas
-    { const [x, z] = pts[pts.length - 1], g = terrainHeight(x, z) - 0.5; B.box(M.brick, 10, 31 - g, 10, x, g, z); addBox(x, z, 10, 10, g - 1, 31); }
+    // a caixa d'água (castellum): o canal chega no alto e dali a água desce em canos de chumbo para fontes e termas
+    { const [x, z] = route[0], g = terrainHeight(x, z) - 0.5, ry = Math.atan2(route[1][0] - x, route[1][1] - z) + Math.PI / 2;
+      B.box(M.brick, 10, top + SP - g, 10, x, g, z, { ry }); addRotBox(x, z, 10, 10, ry, g - 1, top + SP + 0.6);
+      B.box(M.travertine, 10.8, 0.5, 10.8, x, top + SP, z, { ry, noGround: true });
+      B.box(M.travertine, 10.8, 0.5, 10.8, x, g + 0.2, z, { ry }); }
     out.exclusions.push([140, 530, 200, 345]);
     S.aqueduct = new V3(250, terrainHeight(250, 262), 262);
   }

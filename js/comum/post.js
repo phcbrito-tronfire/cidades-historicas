@@ -19,7 +19,7 @@ class ScenePass extends Pass {
     this.copy = new FullScreenQuad(new THREE.ShaderMaterial({
       uniforms: { t: { value: null } }, depthTest: false, depthWrite: false,
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ gl_FragColor = texture2D(t, vUv); }',
+      fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec4 c = texture2D(t, vUv); /* um brilho de sol muito forte (ou um valor inválido) num pixel só virava um clarão no bloom */ c.rgb = (c.r == c.r && c.g == c.g && c.b == c.b) ? clamp(c.rgb, 0.0, 12.0) : vec3(0.0); gl_FragColor = c; }',
     }));
   }
   setSamples(n) {
