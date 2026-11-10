@@ -254,8 +254,9 @@ export class Arena {
 
   get running() { return !!this.mode; }
   say(m, ms = 3800) { this.toast(m, 'quest', ms); }
-  // o guarda só aparece para quem pode lutar: Roma inteira conhecida e a roupa de gladiador
-  guardHere(night) { return this.eligible() && this.player.look === 'gladiador' && !night && !this.mode; }
+  // o guarda aparece para quem conhece Roma inteira (de dia); para descer à arena, ele exige a roupa de gladiador
+  // (antes ele só aparecia com a roupa vestida, e quem estava de legionário não achava ninguém na porta)
+  guardHere(night) { return this.eligible() && !night && !this.mode; }
   nearGuard(p, night) { return this.guardHere(night) && Math.hypot(p.x - GUARD.x, p.z - GUARD.z) < 3.2 && Math.abs(p.y - this.guardPos.y) < 3; }
 
   talk(night) {
@@ -263,6 +264,7 @@ export class Arena {
     P.locked = true; ui.openDialog({ name: 'Guarda do Coliseu', title: 'à porta dos gladiadores' }); this.audio?.talk?.();
     const close = () => { ui.closeDialog(); P.locked = false; };
     const wins = prizesGot().vitorias || 0;
+    if (P.look !== 'gladiador') return ui.say('Pela porta dos gladiadores só passa quem está pronto para a arena. Vista-se de gladiador — elmo, manica, escudo e gládio — e volte aqui. (Aperte V para trocar de roupa.)', [{ label: '(Seguir caminho)', cb: close }]);
     if (ev === 'naumachia') return ui.say('Hoje a arena fica vazia: o povo foi ver a batalha naval na Naumaquia, do outro lado do Tibre. Volte amanhã.', [{ label: '(Seguir caminho)', cb: close }]);
     if (ev === 'venatio') return ui.say(`Hoje é dia de caçada. As feras já estão no hipogeu: leões da África, um urso, um touro. Quer descer com os venatores? Você entra de lança${wins ? '' : '; a armadura não serve contra garra e chifre'}.`, [{ label: 'Quero enfrentar as feras.', cb: () => { close(); this.start('venatio'); } }, { label: 'Hoje não.', cb: close }]);
     ui.say(`${wins ? `Você de novo! O povo ainda fala das suas ${wins} vitória${wins > 1 ? 's' : ''}.` : 'Você está vestido como mirmilão, mas não é do ludus.'} Quer descer à arena? Serão três combates: o trácio, o reciário e, se ainda estiver de pé, dois de uma vez. Quem cai pede clemência, e a plateia decide.`,

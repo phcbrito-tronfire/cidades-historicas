@@ -138,7 +138,7 @@ export class Games {
     this.excite = Math.max(0, this.excite - dt * 0.35); this.uExcite.value = this.excite;
     // cartaz ao entrar no Coliseu (uma vez por dia)
     const dIn = Math.hypot(p.x / (C.A), p.z / (C.B)) < 1; this.watching = dIn;
-    if (dIn && this.seenDay !== this.day) { this.seenDay = this.day; this.info({ tag: 'Programa do dia', name: night > 0.5 ? 'Noite no Coliseu' : this.event.name, era: `Dia ${this.day + 1} dos jogos · Roma, 117 d.C.`, story: night > 0.5 ? 'À noite não há espetáculo: os escravos limpam as arquibancadas e trocam a areia da arena. Volte de manhã (ou aperte C para passar o tempo).' : this.event.desc, foot: 'A cada novo dia o programa muda: gladiadores, caçada, desfile, batalha naval.' }); }
+    if (dIn && this.seenDay !== this.day) { this.seenDay = this.day; this.info({ tag: 'Programa do dia', name: night > 0.5 ? 'Noite no Coliseu' : this.event.name, era: `Dia ${this.day + 1} dos jogos · Roma, 117 d.C.`, story: night > 0.5 ? 'À noite não há espetáculo: os escravos limpam as arquibancadas e trocam a areia da arena. Volte de manhã (ou aperte C para passar o tempo).' : this.event.desc, foot: 'A cada novo dia o programa muda: gladiadores, caçada, desfile, batalha naval.' + (this.canFight?.() ? ' Para descer à arena: vestido de gladiador, fale com o guarda do lado de fora da entrada oeste.' : '') }); }
     const vis = (arr, on) => arr.forEach((f) => { f.r.root.visible = on; });
     const busy = !!this.playerEvent; // (o explorador está lutando na arena: as lutas e a caçada de sempre param, a plateia fica)
     const fightOn = show && (ev.id === 'munus' || ev.id === 'pompa') && !busy;

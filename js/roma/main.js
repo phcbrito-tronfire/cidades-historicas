@@ -170,6 +170,7 @@ async function main() {
   races.onWin = () => quests.complete('circo');
   // os jogos de Roma (lutar no Coliseu, caçar na arena, correr no Circo) só se abrem para quem concluiu a cidade inteira
   const romeDone = () => OBJECTIVES.every((o) => quests.isDone(o.id)) && artifacts.count >= artifacts.total;
+  games.canFight = romeDone;
   // a luta (legionário e gladiador) e a arena do Coliseu: o guarda, os combates, a caçada e os prêmios
   const melee = new Melee(scene, player, { health, audio, toast: (m, k, ms) => ui.toast(m, k, ms), blood: games.blood });
   const arena = new Arena(scene, { games, player, melee, health, ui, audio, artifacts, toast: (m, k, ms) => ui.toast(m, k, ms), eligible: romeDone, faint });
@@ -293,7 +294,9 @@ async function main() {
     }
     if (act === 'reset') { if (confirm('Apagar o progresso e recomeçar a jornada?')) { quests.reset(); travel.reset(); location.reload(); } }
   });
-  const hints = () => { const h = []; for (const o of OBJECTIVES) { if (quests.isDone(o.id)) continue; const hh = quests.hintFor(o); if (hh) h.push(hh); if (h.length >= 3) break; } return h; };
+  const hints = () => { const h = []; for (const o of OBJECTIVES) { if (quests.isDone(o.id)) continue; const hh = quests.hintFor(o); if (hh) h.push(hh); if (h.length >= 3) break; }
+    if (!h.length && romeDone()) { h.push([arena.guardPos.x, arena.guardPos.z]); if (races.org) h.push([races.org.rig.root.position.x, races.org.rig.root.position.z]); } // (Roma concluída: os pontos amarelos levam ao guarda do Coliseu e ao organizador das corridas)
+    return h; };
 
   // ---------------- nome do lugar ----------------
   const placeName = () => {
