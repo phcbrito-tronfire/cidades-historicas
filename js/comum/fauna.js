@@ -17,7 +17,13 @@ const DEFS = {
   tartaruga: { yaw: -Math.PI / 2 },
   aguaviva: { fit: 'y' },
   jacare: { yaw: 0, base: true, keep: true },
-  leao: { yaw: 0, base: true, keep: true }, urso: { yaw: 0, base: true, keep: true }, touro: { yaw: -Math.PI / 2, base: true, keep: true }, /* (com yaw = π o touro andava de lado em Mênfis, Atenas e Roma: a cabeça do modelo fica em +x) */ // feras da venatio (Coliseu) // animado (andar): a animação é controlada pela velocidade
+  urso: { yaw: 0, base: true, keep: true }, touro: { yaw: -Math.PI / 2, base: true, keep: true }, /* (com yaw = π o touro andava de lado em Mênfis, Atenas e Roma: a cabeça do modelo fica em +x) */ // feras da venatio (Coliseu) // animado (andar): a animação é controlada pela velocidade
+  // as feras novas (com andar, correr, atacar, rugir, apanhar e morrer): medidas já na pose da animação 'pose' — em
+  // alguns modelos a animação muda a escala do esqueleto, e a pose de ligação dava um elefante do tamanho de um gato
+  leao: { yaw: 1.03, base: true, keep: true, pose: 'walk' }, tigre: { yaw: Math.PI / 2, base: true, keep: true, pose: 'walk' },
+  javali: { yaw: 0.7, base: true, keep: true, pose: 'walk' }, elefante: { yaw: 0, base: true, keep: true, pose: 'walk' },
+  rino: { yaw: 0, base: true, keep: true, pose: 'walk' }, hipo: { yaw: 0, base: true, keep: true, pose: 'walk' },
+  crocodilo: { yaw: 0, base: true, keep: true, pose: 'walk' },
   anfora_mar: { fit: 'y', base: true },
   estrela: { rot: [-Math.PI / 2, 0, 0], base: true },
   cavalo: { base: true, keep: true }, jumento: { base: true, keep: true },
@@ -31,7 +37,9 @@ function unit(name) {
     const inner = g.scene; if (d.rot) inner.rotation.set(...d.rot);
     const turn = new THREE.Group(); turn.rotation.y = d.yaw || 0; turn.add(inner);
     const norm = new THREE.Group(); norm.add(turn); norm.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(norm), s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    let mx = null; if (d.pose) { const cl = g.animations.find((a) => a.name === d.pose) || g.animations[0]; if (cl) { mx = new THREE.AnimationMixer(inner); mx.clipAction(cl).play(); mx.setTime(0); norm.updateMatrixWorld(true); } }
+    const box = new THREE.Box3().setFromObject(norm, !!mx), s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    if (mx) { mx.stopAllAction(); mx.uncacheRoot(inner); }
     turn.position.set(-c.x, d.base ? -box.min.y : -c.y, -c.z);
     const k = 1 / (d.fit === 'y' ? s.y : Math.max(s.x, s.z));
     const u = new THREE.Group(); u.scale.setScalar(k); u.add(norm);
@@ -148,64 +156,62 @@ export class SeaLife {
 }
 
 // ------------------------------------------------------------------------------------------------------------
-// Crocodilos do Nilo: tomam sol na margem (meio dentro d'água, só as costas e os olhos de fora). Se o explorador
-// nada ou anda perto da água, um deles vem deslizando, dá o bote e morde; depois volta para o seu lugar.
+// Crocodilos do Nilo: tomam sol na margem, de boca escancarada (é assim que se refrescam), ou boiam com só as costas e
+// os olhos de fora. Se o explorador nada ou anda perto da água, um deles vem nadando, dá o bote e morde; depois volta
+// para o seu lugar. O modelo tem nado, andar, corrida, mordida, golpe e morte de verdade (antes era uma animação só,
+// e o bicho deslizava de boca fechada).
 export class Crocodiles {
-  // opts: { waterY, floorAt(x,z), inRiver(x,z), homes: [{x,z,ry}], onBite(), onWarn() }
+  // opts: { waterY, floorAt(x,z), inRiver(x,z), homes: [{x,z,ry}], onBite(), onWarn(), sons }
   constructor(scene, opts) { this.scene = scene; this.o = opts; this.list = []; this.warned = false; }
   async populate() {
+    const { Fera } = await import('./feras.js');
     for (const h of this.o.homes) {
-      const c = await creature('jacare', 3.6 + Math.random() * 1.2, { still: true }); if (!c) return;
-      const k = { ...c, home: h, x: h.x, z: h.z, h: h.ry, state: 'bask', cd: 0, lunge: 0, t: Math.random() * 10, v: 0 };
-      if (c.mixer && c.clips[0]) { k.walk = c.mixer.clipAction(c.clips[0]); k.walk.play(); k.walk.time = Math.random() * c.clips[0].duration; }
-      // a origem do modelo (pose de ligação) fica bem abaixo das patas: mede o corpo já animado e assenta no chão
-      c.mixer?.update(0.01); c.holder.updateMatrixWorld(true);
-      let lo = 1e9, hi = -1e9; const v = new THREE.Vector3();
-      c.holder.traverse((m) => { if (!m.isSkinnedMesh) return; const p = m.geometry.attributes.position; for (let i = 0; i < p.count; i += 9) { m.getVertexPosition(i, v); m.localToWorld(v); lo = Math.min(lo, v.y); hi = Math.max(hi, v.y); } });
-      if (lo < 1e8) { c.o.position.y -= lo - c.holder.position.y; k.bodyH = hi - lo; }
-      this.scene.add(c.holder); this.list.push(k);
+      const f = await Fera.criar('crocodilo', null, { size: 3.6 + Math.random() * 1.2 }); if (!f) return;
+      const k = { f, holder: f.holder, home: h, x: h.x, z: h.z, h: h.ry, state: 'bask', cd: 0, lunge: 0, t: Math.random() * 10, v: 0, gape: Math.random() * 12, pos: { x: h.x, z: h.z } };
+      this.scene.add(f.holder); this.list.push(k);
     }
   }
   reset() { for (const k of this.list) { k.x = k.home.x; k.z = k.home.z; k.h = k.home.ry; k.state = 'bask'; k.cd = 0; } }
   update(dt, t, player) {
     const P = player.pos, W = this.o.waterY;
     for (const k of this.list) {
-      const dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz);
+      const f = k.f, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz);
       const vis = d < 140; k.holder.visible = vis; if (!vis) continue;
       k.cd -= dt;
       const exposed = player.swimming || player.wading || this.o.inRiver(P.x, P.z, 3);
       const fromHome = Math.hypot(P.x - k.home.x, P.z - k.home.z);
-      if (k.state === 'bask' && exposed && d < 16 && k.cd <= 0) { k.state = 'hunt'; if (!this.warned) { this.warned = true; this.o.onWarn?.(); } }
+      if (k.state === 'bask' && exposed && d < 16 && k.cd <= 0) { k.state = 'hunt'; this.closeMouth(k); this.o.sons?.voz('crocodilo', k.pos, { quem: k, gap: 4 }); if (!this.warned) { this.warned = true; this.o.onWarn?.(); } }
       if (k.state === 'hunt' && (fromHome > 34 || !exposed && d > 6)) k.state = 'back';
       let sp = 0, want = k.h;
       if (k.state === 'hunt') {
         want = Math.atan2(dx, dz); sp = player.swimming ? 3.4 : 2.6;
-        if (d < 2.6 && k.cd <= 0) { k.lunge = 0.35; k.cd = 2.2; }
-        if (k.lunge > 0) { sp = d > 1.4 ? 9 : 0; k.lunge -= dt; if (k.lunge <= 0 && d < 3.2) { this.o.onBite?.(k); k.state = 'back'; k.cd = 5; } }
+        if (d < 2.8 && k.cd <= 0) { k.lunge = 0.45; k.cd = 2.4; f.play(f.has('botecorrendo') && d > 1.8 ? 'botecorrendo' : 'atk', { rate: 1.1 }); this.o.sons?.voz('crocodilo', k.pos, { quem: k, gap: 1.5, rate: 1.1 }); }
+        if (k.lunge > 0) { sp = d > 1.4 ? 8 : 0; k.lunge -= dt; if (k.lunge <= 0 && d < 3.2) { this.o.onBite?.(k); k.state = 'back'; k.cd = 5; } }
       } else if (k.state === 'back') {
         const hx = k.home.x - k.x, hz = k.home.z - k.z, hd = Math.hypot(hx, hz);
-        if (hd < 0.8) { k.state = 'bask'; want = k.home.ry; } else { want = Math.atan2(hx, hz); sp = 1.6; }
-      } else want = k.home.ry;
+        if (hd < 0.8) { k.state = 'bask'; want = k.home.ry; } else { want = Math.atan2(hx, hz); sp = 1.4; }
+      } else {
+        want = k.home.ry;
+        // tomando sol: de vez em quando abre a boca e fica assim um tempo (e fecha de novo)
+        k.gape -= dt;
+        if (k.gape <= 0 && !k.open && !f.busy && d < 90) { k.open = { t: 0, hold: 4 + Math.random() * 6 }; f.play('atk2', { rate: 0.35 }); }
+        if (k.open) { k.open.t += dt; const a = f.one?.a; if (a && k.open.t > 0.9 && k.open.t < 0.9 + k.open.hold) a.timeScale = 0; else if (a && k.open.t >= 0.9 + k.open.hold) { a.timeScale = 0.35; } if (!f.busy && k.open.t > 1.5) { k.open = null; k.gape = 8 + Math.random() * 14; } }
+      }
       k.h = angleLerp(k.h, want, Math.min(1, dt * (k.lunge > 0 ? 8 : 2.2)));
-      // velocidade com inércia: o bicho pesado arranca devagar e desliza ao parar (o bote é a exceção)
+      // velocidade com inércia: o bicho pesado arranca devagar (o bote é a exceção)
       k.v = lerp(k.v, sp, Math.min(1, dt * (k.lunge > 0 ? 10 : sp > k.v ? 1.4 : 2.5)));
       const nx = k.x + Math.sin(k.h) * k.v * dt, nz = k.z + Math.cos(k.h) * k.v * dt;
       if (this.o.inRiver(nx, nz, 2)) { k.x = nx; k.z = nz; }
-      const floor = this.o.floorAt(k.x, k.z), depth = W - floor;
-      // na água: só as costas e os olhos de fora (como os de verdade); na margem: deitado no chão
-      const y = depth > 0.7 ? W - (k.bodyH || 1) * 0.78 : floor - 0.04;
+      k.pos.x = k.x; k.pos.z = k.z;
+      const floor = this.o.floorAt(k.x, k.z), depth = W - floor, swim = depth > f.height * 0.9;
+      // na água (mesmo no raso): só as costas e os olhos de fora, como os de verdade; em terra: deitado no chão
+      const y = Math.max(floor - 0.04, W - f.height * 0.42);
       k.holder.position.set(k.x, lerp(k.holder.position.y || y, y, Math.min(1, dt * 4)), k.z);
-      // patas e cauda: a caminhada do modelo no ritmo da velocidade (parado, congela numa pose de descanso; na água,
-      // a cauda segue balançando devagar, como quem se mantém no lugar)
-      if (k.walk) {
-        const swim = depth > 0.7;
-        k.walk.timeScale = k.v > 0.15 ? Math.min(3, 0.35 + k.v * 0.55) : swim ? 0.18 : 0;
-        k.mixer.update(dt);
-      }
-      // nadando, o corpo ondula um pouco de lado; parado na margem, respira
-      const sw = k.v > 0.3 && depth > 0.7 ? Math.sin(t * (3 + k.v)) * 0.05 : 0;
+      f.swimming = swim;
+      const sw = k.v > 0.3 && swim ? Math.sin(t * (3 + k.v)) * 0.04 : 0;
       k.holder.rotation.set(0, k.h + sw, 0);
-      k.o.scale.y = k.o.scale.x * (1 + (k.v < 0.1 ? Math.sin(t * 1.3 + k.t) * 0.012 : 0));
+      f.update(dt, k.v);
     }
   }
+  closeMouth(k) { if (k.open) { const a = k.f.one?.a; if (a) a.timeScale = 1.5; k.open = null; k.gape = 10; } }
 }

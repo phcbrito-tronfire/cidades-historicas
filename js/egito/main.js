@@ -42,6 +42,7 @@ import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { GUARD_LINES } from './dialogues.js';
 import { buildNile } from './nilo.js';
+import { SonsFeras } from '../comum/sons-feras.js';
 import { buildNileRuins } from './ruinas.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
@@ -134,6 +135,9 @@ async function main() {
   const nile = await buildNile(scene, city, {
     onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
     onBite: () => { health.damage(24); audio.splash(); ui.toast('O crocodilo mordeu! Fuja para longe do rio.'); },
+    onHippoWarn: () => ui.toast('Um hipopótamo! Ele defende o seu pedaço do rio — saia de perto.', 'quest', 5000),
+    onHippo: () => { health.damage(30); audio.splash(); ui.toast('O hipopótamo investiu! Nade para longe dele.'); },
+    sons: new SonsFeras(audio, () => ({ pos: player.pos, yaw: player.camYawW })),
   });
 
   await step(0.68, 'Chamando o povo de Mênfis...');

@@ -10,22 +10,27 @@ import { Bout, Blood, GATE } from './combate.js';
 import { Hunt } from './caca.js';
 import { COL, rowCutNS } from './coliseu.js';
 import { makeHumanoid, animateHumanoid, playOnce, loadAnims, rigDetail } from '../comum/mixamo.js';
-import { creature } from '../comum/fauna.js';
+import { SonsFeras } from '../comum/sons-feras.js';
 import { rr, rand, pick, angleLerp, lerp } from '../comum/util.js';
 
 export const PROGRAM = [
   { id: 'munus', name: 'Munus — combates de gladiadores', desc: 'Hoje há combates de gladiadores: o mirmilão, com o escudo grande e o elmo de peixe, contra o trácio, de espada curva. O juiz (summa rudis) separa quando é preciso.' },
-  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas de todo o império — crocodilos do Nilo (como nos jogos de Augusto), leões da África, ursos das montanhas ou touros bravos. As feras sobem do hipogeu pelos elevadores.' },
+  { id: 'venatio', name: 'Venatio — caçada na arena', desc: 'Hoje há caçada: os venatores enfrentam feras trazidas de todo o império — leões da África, tigres da Hircânia, ursos das montanhas, touros e javalis, crocodilos do Nilo (como nos jogos de Augusto) e, nos dias grandes, o elefante e o rinoceronte. As feras sobem do hipogeu pelos elevadores, várias de uma vez.' },
   { id: 'pompa', name: 'Pompa — o desfile de abertura', desc: 'Hoje abre um novo ciclo de jogos: o desfile dos gladiadores, com trompas e o organizador, e depois o primeiro combate.' },
   { id: 'naumachia', name: 'Naumaquia — batalha naval', desc: 'Hoje não há jogos no Coliseu: a batalha naval é na Naumaquia de Trajano, o lago artificial do outro lado do Tibre.' },
 ];
+
+// a fera do dia de caçada, ciclo após ciclo
+const BEAST_DAYS = ['tigre', 'urso', 'crocodilo', 'touro', 'javali', 'elefante', 'rino'];
 
 export class Games {
   constructor(scene, city, { toast, info, audio, quality, renderer }) {
     this.scene = scene; this.city = city; this.info = info; this.audio = audio;
     this.watching = false; this.toast = (m, k, ms) => { if (this.watching) toast(m, k, ms); }; // (os avisos do que acontece na arena só aparecem para quem está lá dentro assistindo)
     this.day = 0; this.lastPhase = null; this.event = PROGRAM[0]; this.seenDay = -1;
-    this.excite = 0; this.t = 0;
+    this.excite = 0; this.t = 0; this.quality = quality;
+    // a voz das feras (vem do lugar do bicho, mais baixa de longe)
+    this.sons = new SonsFeras(audio, () => ({ pos: this.lastP?.pos || new THREE.Vector3(), yaw: this.lastP?.camYawW || 0 }));
     // ---- plateia
     const C = COL, Y = C.y, TAU = Math.PI * 2, step = TAU / C.aisles, seats = [];
     const fill = quality === 'alto' ? 0.62 : quality === 'leve' ? 0.4 : 0.22;
@@ -97,24 +102,9 @@ export class Games {
     this.carry = (bout, body) => this.bodies.push({ bout, body });
     this.parade = [fighter('murmillo'), fighter('thraex'), fighter('musician'), fighter('musician'), fighter('venator'), fighter('legion'), fighter('legion')];
     this.venatores = []; for (let i = 0, n = quality === 'alto' ? 7 : quality === 'leve' ? 5 : 3; i < n; i++) this.venatores.push(fighter('venator'));
-    this.huntSys = new Hunt(this, this.venatores);
-    // feras: cada dia de caçada traz uma (crocodilos do Nilo, leões da África, ursos da Dalmácia)
-    this.beasts = []; this.beastKind = 'jacare';
-    const q3 = quality === 'alto' ? 0 : quality === 'leve' ? 1 : 2;
-    const BEASTS = { leao: [2.4, [4, 3, 2][q3]], urso: [2.1, [3, 2, 1][q3]], touro: [2.7, [3, 2, 1][q3]], jacare: [3.2, [3, 2, 1][q3]] }; // leões em toda caçada, e a fera do dia
-    for (const [kind, [size, n]] of Object.entries(BEASTS)) for (let i = 0; i < n; i++) creature(kind, size, { still: true }).then((c) => {
-      if (!c) return;
-      const b = { ...c, kind, size, pos: new THREE.Vector3(rr(-10, 10), Y, rr(-6, 6)), h: rand() * 6, v: 0, acts: {} };
-      if (c.mixer) for (const cl of c.clips) b.acts[cl.name] = c.mixer.clipAction(cl);
-      const pickA = (...names) => names.map((n) => b.acts[n] || Object.entries(b.acts).find(([k]) => k.toLowerCase().endsWith('_' + n.toLowerCase()))?.[1]).find(Boolean) || Object.values(b.acts)[0];
-      b.aWalk = pickA('Walk', 'Play', 'Unreal Take'); b.aRun = pickA('Run', 'Trot', 'Walk', 'Play', 'Unreal Take'); b.aIdle = pickA('Stand_Idle_01', 'Idle'); b.aAtk = pickA('Attack_StandAngry_01_High');
-      for (const ac of new Set([b.aWalk, b.aRun, b.aIdle, b.aAtk])) if (ac) { ac.play(); ac.setEffectiveWeight(0); }
-      c.mixer?.update(0.01); c.holder.updateMatrixWorld(true);
-      let lo = 1e9; const v = new THREE.Vector3();
-      c.holder.traverse((m) => { if (!m.isSkinnedMesh) return; const p = m.geometry.attributes.position; for (let j = 0; j < p.count; j += 9) { m.getVertexPosition(j, v); m.localToWorld(v); lo = Math.min(lo, v.y); } });
-      if (lo < 1e8) c.o.position.y -= lo - c.holder.position.y;
-      c.holder.visible = false; c.holder.userData.cullFar = 200; scene.add(c.holder); this.beasts.push(b);
-    });
+    this.huntSys = new Hunt(this, this.venatores, scene, this.sons);
+    // a fera do dia (além dos leões, que vêm sempre): muda a cada ciclo de jogos
+    this.beastKind = 'tigre';
   }
 
   // fim de uma luta: entram dois novos (os mesmos lutadores, outra luta), depois de um respiro
@@ -122,12 +112,12 @@ export class Games {
 
   // dia de jogo: muda quando chega uma manhã nova
   onTime(phase) {
-    if (this.lastPhase === 'noite' && phase === 'manha') { this.blood.clear(); this.huntSys.wave = 0; this.huntSys.active = []; this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = ['jacare', 'leao', 'urso', 'touro'][Math.floor(this.day / PROGRAM.length) % 4]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
+    if (this.lastPhase === 'noite' && phase === 'manha') { this.blood.clear(); if (!this.playerEvent) { this.huntSys.hideAll(); this.huntSys.wave = 0; } this.day++; this.event = PROGRAM[this.day % PROGRAM.length]; this.beastKind = BEAST_DAYS[Math.floor(this.day / PROGRAM.length) % BEAST_DAYS.length]; this.toast(`Novo dia em Roma — no programa: ${this.event.name}.`, 'quest', 6000); }
     this.lastPhase = phase;
   }
 
   update(dt, t, player, night) {
-    this.t = t;
+    this.t = t; this.lastP = player;
     const C = COL, Y = C.y, p = player.pos;
     const near = Math.hypot(p.x - C.x, p.z - C.z) < 260;
     const ev = night > 0.5 ? null : this.event;
@@ -145,15 +135,15 @@ export class Games {
     this.bouts.forEach((b, i) => { b.visible = fightOn && (ev.id === 'munus' || i === 0); });
     this.blood.update(dt, !!show);
     vis(this.parade, show && ev.id === 'pompa' && !busy);
-    vis(this.venatores, show && ev.id === 'venatio' && !busy);
-    this.beasts.forEach((b) => { b.holder.visible = show && ev.id === 'venatio' && !busy && this.huntSys.active.includes(b); });
+    const huntOn = !!show && ev.id === 'venatio' && (!busy || this.playerEvent === 'venatio'); // (quando o explorador desce à caçada, ele entra no meio dela)
+    vis(this.venatores, huntOn); this.huntSys.setVisible(huntOn);
     vis(this.bearers, show && fightOn);
     if (!show) return;
     { const cam = p; for (const r of this.rigs) if (r.root.visible) rigDetail(r, (r.root.position.x - cam.x) ** 2 + (r.root.position.z - cam.z) ** 2 + (r.root.position.y - cam.y) ** 2); } // (de longe, a malha simplificada)
     if (fightOn) this.carryBodies(dt, t);
     if (fightOn) this.bouts.forEach((b, i) => { if (ev.id === 'munus' || i === 0) b.update(dt, t); });
     if (ev.id === 'pompa' && !busy) this.procession(dt, t);
-    if (ev.id === 'venatio' && !busy) this.huntSys.update(dt, t);
+    if (huntOn) this.huntSys.update(dt, t);
   }
 
   // a gente de verdade nos degraus perto de quem está na arquibancada

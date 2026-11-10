@@ -75,6 +75,7 @@ export class Melee {
     this.targets = () => []; // a arena dá os alvos: { pos, rad, alive, hit(dmg, dir, how) }
     this.ground = []; // armas no chão: { g, kind, color }
     this.flying = []; // armas arremessadas, em voo
+    this.tvel = new WeakMap(); // velocidade de cada alvo (a mira do arremesso vai na frente dele)
     this.meshes = { right: null, left: null, model: null };
     this.shieldColor = 0xa8261e;
     loadAnims(BASE_CLIPS);
@@ -340,35 +341,60 @@ export class Melee {
     return true;
   }
 
-  // arremesso: a lança (ou o gládio) voa para o adversário mais perto à frente
+  // arremesso: a lança (ou o gládio) voa para o alvo que a câmera está mirando (ou, sem câmera apontada, o mais perto
+  // à frente). Mira no ponto onde o alvo VAI estar quando a arma chegar (as feras e os gladiadores não param quieto: a
+  // mira no lugar de agora errava quase sempre), e no voo a arma corrige um pouco o rumo, como quem acerta a mão.
+  aimTarget() {
+    const P = this.player, cf = { x: -Math.sin(P.camYawW), z: -Math.cos(P.camYawW) }; let best = null, bs = 1e9;
+    for (const T of this.targets()) {
+      if (!T.alive) continue;
+      const dx = T.pos.x - P.pos.x, dz = T.pos.z - P.pos.z, d = Math.hypot(dx, dz); if (d > 32 || d < 0.3) continue;
+      const ang = Math.acos(clamp((dx * cf.x + dz * cf.z) / d, -1, 1)); if (ang > 0.55) continue;
+      const s = ang * 14 + d; if (s < bs) { bs = s; best = T; }
+    }
+    return best || this.nearestTarget(28, 0.6);
+  }
   throwIt() {
     const P = this.player, kind = this.right;
-    const tg = this.nearestTarget(28, 0.45);
+    const tg = this.aimTarget();
     if (tg) P.facing = Math.atan2(tg.pos.x - P.pos.x, tg.pos.z - P.pos.z);
+    else if (Math.abs(((P.camYawW + Math.PI - P.facing) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) < 1.6) P.facing = P.camYawW + Math.PI; // (sem alvo: para onde a câmera olha)
     const clip = hasClip('gl_alto') ? 'gl_alto' : 'espada';
     playOnce(P.rig, clip, 0.55); { const a = P.rig.act(clip); if (a) a.timeScale = 1.6; }
     this.right = null; this.dress();
     const g = makeWeapon(kind); g.rotation.set(Math.PI / 2, 0, 0); // (a ponta para a frente)
     const holder = new THREE.Group(); holder.add(g); this.scene.add(holder);
-    const from = P.pos.clone().add(new THREE.Vector3(Math.sin(P.facing) * 0.6, 1.55, Math.cos(P.facing) * 0.6));
-    const to = tg ? tg.pos.clone().setY((tg.aimY ?? tg.pos.y + 1.0)) : from.clone().add(new THREE.Vector3(Math.sin(P.facing) * 18, -0.6, Math.cos(P.facing) * 18));
-    const sp = kind === 'lanca' ? 24 : 18, d = from.distanceTo(to), tt = Math.max(0.15, d / sp);
+    const from = P.pos.clone().add(new THREE.Vector3(Math.sin(P.facing) * 0.6, 1.6, Math.cos(P.facing) * 0.6));
+    const sp = kind === 'lanca' ? 26 : 20;
+    let to;
+    if (tg) { // onde o alvo vai estar (duas voltas: o tempo de voo depende do ponto, e o ponto do tempo)
+      const vel = this.tvel.get(tg)?.v || new THREE.Vector3(); to = tg.pos.clone().setY(tg.aimY ?? tg.pos.y + 1.0);
+      for (let k = 0; k < 3; k++) { const tt = from.distanceTo(to) / sp; to = tg.pos.clone().addScaledVector(vel, Math.min(tt, 1.2)).setY(tg.aimY ?? tg.pos.y + 1.0); }
+    } else to = from.clone().add(new THREE.Vector3(Math.sin(P.facing) * 22, -0.4, Math.cos(P.facing) * 22));
+    const d = from.distanceTo(to), tt = Math.max(0.12, d / sp);
     const v = to.clone().sub(from).divideScalar(tt); v.y += 0.5 * 9.8 * tt; // (cai um pouco: sobe antes)
-    holder.position.copy(from);
-    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' ? 18 : 0 });
+    holder.position.copy(from); holder.lookAt(from.clone().add(v));
+    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' ? 18 : 0, prev: from.clone() });
     this.audio?.swoosh?.();
   }
   updateFlying(dt) {
+    // a velocidade de cada alvo (para a mira na frente dele)
+    if (dt > 0) for (const T of this.targets()) { const r = this.tvel.get(T); if (!r) { this.tvel.set(T, { p: T.pos.clone(), v: new THREE.Vector3() }); continue; } const nv = T.pos.clone().sub(r.p).divideScalar(dt); if (nv.lengthSq() < 400) r.v.lerp(nv, Math.min(1, dt * 8)); r.p.copy(T.pos); }
     for (let i = this.flying.length - 1; i >= 0; i--) {
       const f = this.flying[i], g = f.g; f.life -= dt;
-      f.v.y -= 9.8 * dt; g.position.addScaledVector(f.v, dt);
+      // no voo, a arma corrige o rumo para o alvo (pouco: quem mirou errado ainda erra)
+      const T0 = f.target;
+      if (T0?.alive) { const aim = T0.pos.clone().setY(T0.aimY ?? T0.pos.y + 1); const to = aim.sub(g.position); const dist = to.length(); if (dist > 0.8) { const spd = f.v.length(); const want = to.normalize().multiplyScalar(spd); want.y += 9.8 * Math.min(0.5, dist / spd) * 0.5; f.v.lerp(want, Math.min(1, dt * 3.5)); } }
+      f.v.y -= 9.8 * dt; f.prev.copy(g.position); g.position.addScaledVector(f.v, dt);
       g.lookAt(g.position.clone().add(f.v)); if (f.spin) g.children[0].rotation.x += f.spin * dt;
-      // acerta quem estiver no caminho
+      // acerta quem estiver no caminho (o trecho inteiro do quadro, não só o ponto: a lança é rápida)
       let done = false;
       for (const T of this.targets()) {
         if (!T.alive) continue;
-        const dx = T.pos.x - g.position.x, dz = T.pos.z - g.position.z, dy = (T.aimY ?? T.pos.y + 1) - g.position.y;
-        if (Math.hypot(dx, dz) < (T.rad ?? 0.5) + 0.35 && Math.abs(dy) < 1.1) { T.hit(WEAPONS[f.kind].thrown * rr(0.85, 1.15), f.v.clone().setY(0).normalize(), { heavy: true, thrown: true, weapon: f.kind, from: g.position.clone() }); done = true; this.player.hitStop = 0.08; break; }
+        const c = new THREE.Vector3(T.pos.x, T.aimY ?? T.pos.y + 1, T.pos.z), seg = g.position.clone().sub(f.prev), L2 = seg.lengthSq();
+        const u = L2 > 1e-6 ? clamp(c.clone().sub(f.prev).dot(seg) / L2, 0, 1) : 1, q = f.prev.clone().addScaledVector(seg, u);
+        const hx = Math.hypot(c.x - q.x, c.z - q.z), dy = c.y - q.y;
+        if (hx < (T.rad ?? 0.5) + 0.4 && Math.abs(dy) < 1.15) { g.position.copy(q); T.hit(WEAPONS[f.kind].thrown * rr(0.85, 1.15), f.v.clone().setY(0).normalize(), { heavy: true, thrown: true, weapon: f.kind, from: q.clone() }); done = true; this.player.hitStop = 0.08; break; }
       }
       const gy = groundAt(g.position.x, g.position.z, g.position.y + 0.5);
       if (done || g.position.y <= gy + 0.05 || f.life <= 0) { this.scene.remove(g); this.flying.splice(i, 1); this.drop(f.kind, g.position.x, g.position.z, Math.max(gy, g.position.y)); }

@@ -52,6 +52,7 @@ artefatos**. Cada etapa é publicada e conferida antes da próxima.
 - Teclas: F ou clique golpeia (emenda); correndo, o golpe forte. Q ou botão direito segura o escudo. Espaço esquiva. G arremessa a lança ou o gládio. P pega a arma do chão. No celular, botões Golpe, Escudo e Arremessar.
 - Golpe forte pode arrancar a arma da mão (do explorador e dos adversários): luta-se no soco ou pega-se outra. Os adversários também vão buscar armas no chão.
 - Munus: trácio → reciário → secutor e hoplômaco juntos. Quem apanha 3 vezes seguidas apara ou devolve na hora. De joelhos: E poupa, F golpe final; a plateia grita missio ou iugula. Prêmios: palma, bolsa; com 3 vitórias, a rudis.
-- Venatio: de lança, leão → urso → touro e leão (investidas e botes; Espaço para sair de lado). Prêmio: áureo de Trajano.
+- Venatio (refeita em 10/11): uma confusão só — o explorador desce no meio dos venatores (3 a 7, conforme os gráficos), e as feras sobem em três levas de quatro: leões e javalis → urso, tigre, touro e leão → elefante, rinoceronte, tigre e leão. Cada fera escolhe o caçador mais perto; rondam, rugem, investem, saltam e mordem com as animações do próprio modelo (as patas no ritmo da velocidade), e cada espécie tem a sua voz (gravações reais). Venatores feridos caem e se levantam depois. Prêmio: áureo de Trajano.
+- Arremesso (G): vai no alvo que a câmera mira, no ponto onde ele vai estar, e corrige um pouco o rumo no voo (12 de 14 acertos no teste, de 8 a 22 m).
 - Bigas: 3 voltas; ↑ soltar, ↓ segurar, ← → raia, Shift chicote, E desistir; derrapa e naufraga na meta se entrar rápido demais. 1º lugar: palma e coroa do auriga.
 - Roupa nova: Gladiador (mirmilão), ganha com todos os objetivos E todos os artefatos de Roma. Os prêmios aparecem na coleção (K).

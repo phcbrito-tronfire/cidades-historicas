@@ -2,6 +2,8 @@
 // verdade matavam pescadores e lavadeiras) e peixes — tilápias e percas — passando no fundo do rio.
 import { riverX, RIVER_HALF, terrainHeight, WATER_Y } from './terrain.js';
 import { Crocodiles, SeaLife } from '../comum/fauna.js';
+import { Fera } from '../comum/feras.js';
+import { lerp, angleLerp } from '../comum/util.js';
 
 const inRiver = (x, z, margin = 0) => Math.abs(x - riverX(z)) < RIVER_HALF + margin;
 
@@ -15,17 +17,66 @@ function bankSpot(z, side) {
   return null;
 }
 
-export async function buildNile(scene, city, { onBite, onWarn }) {
+// Hipopótamos: passam o dia dentro do rio, andando no fundo com só as costas, as orelhas e os olhos de fora. De vez
+// em quando escancaram a boca (o 'bocejo' que é aviso: estou aqui) e bufam. Quem nada perto demais leva uma investida
+// — no Nilo o hipopótamo matava mais gente que o crocodilo, e os barqueiros tinham amuletos contra ele.
+class Hippos {
+  constructor(scene, o) { this.scene = scene; this.o = o; this.list = []; }
+  async populate() {
+    for (const h of this.o.homes) {
+      const f = await Fera.criar('hipo', null, { size: 3.6 + Math.random() * 0.7 }); if (!f) return;
+      f.swimming = false; this.scene.add(f.holder);
+      this.list.push({ f, home: h, x: h.x, z: h.z, h: Math.random() * 6, v: 0, wx: h.x, wz: h.z, wait: Math.random() * 5, yawn: 3 + Math.random() * 10, cd: 0, st: 'wander', pos: { x: h.x, z: h.z } });
+    }
+  }
+  update(dt, t, player) {
+    const P = player.pos, W = WATER_Y;
+    for (const k of this.list) {
+      const f = k.f, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz);
+      const vis = d < 160; f.holder.visible = vis; if (!vis) continue;
+      k.cd -= dt; k.yawn -= dt;
+      const near = (player.swimming || player.wading) && d < 9;
+      let sp = 0, want = k.h;
+      if (k.st === 'wander' && near && k.cd <= 0) { k.st = 'charge'; this.o.sons?.voz('hipo', k.pos, { quem: k, gap: 2 }); if (!this.warned) { this.warned = true; this.o.onWarn?.(); } }
+      if (k.st === 'charge') {
+        want = Math.atan2(dx, dz); sp = 3.6;
+        if (d < 3.2 && !f.busy) { f.play('atk', { rate: 1.2 }); k.biteT = 0.45; }
+        if (k.biteT > 0 && (k.biteT -= dt) <= 0 && d < 3.8) { this.o.onBite?.(k); k.st = 'back'; k.cd = 6; }
+        if (!near && d > 14) k.st = 'back';
+      } else if (k.st === 'back') { const hx = k.home.x - k.x, hz = k.home.z - k.z; want = Math.atan2(hx, hz); sp = 1.2; if (Math.hypot(hx, hz) < 3) k.st = 'wander'; }
+      else { // passeia devagar pelo fundo, perto de casa
+        const wx = k.wx - k.x, wz = k.wz - k.z, wd = Math.hypot(wx, wz);
+        if (wd < 1.2) { if ((k.wait -= dt) <= 0) { const a = Math.random() * 6.28, r = Math.random() * 10; const nx = k.home.x + Math.cos(a) * r, nz = k.home.z + Math.sin(a) * r; if (inRiver(nx, nz, -8) && W - terrainHeight(nx, nz) > 1.4) { k.wx = nx; k.wz = nz; } k.wait = 4 + Math.random() * 8; } }
+        else { want = Math.atan2(wx, wz); sp = 0.6; }
+        if (k.yawn <= 0 && !f.busy && d < 110) { k.yawn = 10 + Math.random() * 16; f.play('rugir'); this.o.sons?.voz('hipo', k.pos, { quem: k, gap: 3 }); }
+      }
+      k.h = angleLerp(k.h, want, Math.min(1, dt * 1.6));
+      k.v = lerp(k.v, sp, Math.min(1, dt * (sp > k.v ? 1.2 : 2)));
+      const nx = k.x + Math.sin(k.h) * k.v * dt, nz = k.z + Math.cos(k.h) * k.v * dt;
+      if (inRiver(nx, nz, -4)) { k.x = nx; k.z = nz; } k.pos.x = k.x; k.pos.z = k.z;
+      // dentro d'água: só o alto da cabeça e as costas de fora; no bocejo e na investida, a cabeça sobe
+      const up = f.one && (f.one.k === 'rugir' || f.one.k === 'atk') ? 0.3 : 0;
+      const y = Math.max(terrainHeight(k.x, k.z), W - f.height * (0.78 - up));
+      f.holder.position.set(k.x, lerp(f.holder.position.y || y, y, Math.min(1, dt * 2)), k.z); f.holder.rotation.set(0, k.h, 0);
+      f.update(dt, k.v);
+    }
+  }
+}
+
+export async function buildNile(scene, city, { onBite, onWarn, onHippo, onHippoWarn, sons }) {
   // margem leste (a de lá, longe da cidade) e as pontas da margem oeste, longe dos cais e de onde se lava roupa
   const homes = [];
   for (const z of [-340, -230, -120, 10, 130, 250, 345]) { const h = bankSpot(z, 1); if (h) homes.push(h); }
   for (const z of [-330, 335]) { if (Math.abs(z - city.pierZ) < 60 || Math.abs(z - city.pier2Z) < 60) continue; const h = bankSpot(z, -1); if (h) homes.push(h); }
-  const crocs = new Crocodiles(scene, { waterY: WATER_Y, floorAt: terrainHeight, inRiver, homes, onBite, onWarn });
+  const crocs = new Crocodiles(scene, { waterY: WATER_Y, floorAt: terrainHeight, inRiver, homes, onBite, onWarn, sons });
   crocs.populate();
+  // hipopótamos no meio do rio, onde é fundo (longe dos cais)
+  const hHomes = []; for (const z of [-70, 60, 190]) { for (const off of [12, 0, -12]) { const x = riverX(z) + off; if (WATER_Y - terrainHeight(x, z) > 1.8) { hHomes.push({ x, z }); break; } } }
+  const hippos = new Hippos(scene, { homes: hHomes, sons, onBite: onHippo, onWarn: onHippoWarn }); hippos.populate();
   const fish = new SeaLife(scene, {
     waterY: WATER_Y, floorAt: terrainHeight,
     seaPoint: (r) => { for (let i = 0; i < 30; i++) { const z = (r() - 0.5) * 700, x = riverX(z) + (r() - 0.5) * 50; if (WATER_Y - terrainHeight(x, z) > 2) return { x, z }; } return null; },
   });
   fish.populate([['pargo', 9, 0.4, 'fish']]);
-  return { crocs, update(dt, t, player) { crocs.update(dt, t, player); fish.update(dt, t, player); } };
+  return { crocs, hippos, update(dt, t, player) { crocs.update(dt, t, player); hippos.update(dt, t, player); fish.update(dt, t, player); } };
 }

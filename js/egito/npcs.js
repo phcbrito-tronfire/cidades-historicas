@@ -217,10 +217,8 @@ export class Actors {
     add('donkey', F.x + 2, F.z + 2, { radius: 5 });
     // íbis nas margens
     for (let i = 0; i < 10; i++) { const z = rr(-250, 250), side = rand() < 0.5 ? -1 : 1; const x = riverX(z) + side * 41; add('ibis', x, z, { radius: 6, bank: true }); }
-    // crocodilos tomando sol na margem leste
-    for (const z of [128, -168, 240]) { const x = riverX(z) + 41.5; add('croc', x, z, { radius: 4, speedMul: 1, bank: true }).a.g.rotation.y = -Math.PI / 2 + rr(-0.5, 0.5); }
-    // hipopótamos e patos no rio
-    for (const z of [-70, 190]) { const o = add('hippo', riverX(z) + 12, z, { y: -0.5, static: true }); o.water = true; }
+    // (os crocodilos e os hipopótamos de verdade, com animação, ficam em nilo.js)
+    // patos no rio
     for (let i = 0; i < 14; i++) { const z = rr(-200, 220); add('duck', riverX(z) + rr(-30, 30), z, { y: 0, water: true, radius: 10 }); }
     // bandos de pássaros
     for (let f = 0; f < 4; f++) {

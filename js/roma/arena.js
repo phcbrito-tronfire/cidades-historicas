@@ -4,13 +4,13 @@
 //     o hoplômaco juntos. Cada um luta do seu jeito (o trácio é rápido e baixo, o reciário mantém distância com o
 //     tridente, o secutor avança atrás do escudo). Quem não aguenta mais cai de joelhos e pede clemência: a plateia
 //     grita, e o explorador poupa (E) ou dá o golpe final (F). Se o explorador cai, a plateia decide por ele.
-//   venatio (dia da caçada) — de lança na mão, contra as feras: o leão, o urso e, por fim, o touro.
+//   venatio (dia da caçada) — de lança na mão, no meio dos venatores, contra várias feras de uma vez (caca.js): três
+//     levas, dos leões e javalis até o elefante e o rinoceronte.
 // Na areia ficam armas largadas (gládios, lanças, escudos): perdeu a sua, pega outra (P) ou arremessa (G).
 // O vencedor recebe o que os gladiadores de fato recebiam: a folha de palmeira, o dinheiro e, depois de várias
 // vitórias, a rudis — a espada de madeira que dava a liberdade.
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, playOnce, hasClip } from '../comum/mixamo.js';
-import { creature } from '../comum/fauna.js';
 import { groundAt } from '../comum/collision.js';
 import { COL } from './coliseu.js';
 import { HIT_AT, makeWeapon } from './luta.js';
@@ -165,84 +165,18 @@ class Foe {
   }
 }
 
-// ---- as feras da caçada
-const BEASTS = { leao: { name: 'o leão', size: 2.4, hp: 85, speed: 3.2, charge: 10, dmg: [14, 20], reach: 2.0 }, urso: { name: 'o urso', size: 2.1, hp: 125, speed: 2.6, charge: 8, dmg: [18, 26], reach: 2.0 }, touro: { name: 'o touro', size: 2.7, hp: 115, speed: 2.8, charge: 12, dmg: [20, 28], reach: 2.3, horns: true } };
-const HUNT = [['leao'], ['urso'], ['touro', 'leao']];
-class Beast {
-  constructor(A, kind) { this.A = A; this.kind = kind; this.K = BEASTS[kind]; this.pos = new THREE.Vector3(); this.h = Math.PI; this.hp = this.K.hp; this.maxHp = this.K.hp; this.st = 'loading'; this.rad = 0.9; this.cd = rr(1.5, 3); this.ready = this.load(); }
-  async load() {
-    const c = await creature(this.kind, this.K.size, { still: true }); if (!c) { this.st = 'gone'; return; }
-    Object.assign(this, c); this.acts = {};
-    if (c.mixer) for (const cl of c.clips) this.acts[cl.name] = c.mixer.clipAction(cl);
-    const pickA = (...names) => names.map((n) => this.acts[n] || Object.entries(this.acts).find(([k]) => k.toLowerCase().endsWith('_' + n.toLowerCase()) || k.toLowerCase().includes(n.toLowerCase()))?.[1]).find(Boolean) || Object.values(this.acts)[0];
-    this.aWalk = pickA('Walk', 'Play', 'Unreal Take'); this.aRun = pickA('Run', 'Gallop', 'Trot', 'Walk'); this.aIdle = pickA('Stand_Idle_01', 'Idle'); this.aAtk = pickA('Attack', 'Attack_StandAngry_01_High');
-    for (const a of new Set([this.aWalk, this.aRun, this.aIdle, this.aAtk])) if (a) { a.play(); a.setEffectiveWeight(0); }
-    c.mixer?.update(0.01); c.holder.updateMatrixWorld(true);
-    let lo = 1e9; const v = new THREE.Vector3();
-    c.holder.traverse((m) => { if (!m.isSkinnedMesh) return; const p = m.geometry.attributes.position; for (let j = 0; j < p.count; j += 9) { m.getVertexPosition(j, v); m.localToWorld(v); lo = Math.min(lo, v.y); } });
-    if (lo < 1e8) c.o.position.y -= lo - c.holder.position.y;
-    c.holder.userData.cullFar = 200; this.A.scene.add(c.holder); this.st = 'enter';
-  }
-  get alive() { return this.st !== 'dead' && this.st !== 'gone' && this.st !== 'loading'; }
-  get aimY() { return Y + this.K.size * 0.35; }
-  hit(dmg, dir, how = {}) {
-    if (!this.alive) return 'none';
-    this.hp -= dmg; this.stagger = how.heavy ? 0.6 : 0.35; this.knock = 0.18; this.kdir = dir; if (this.st === 'charge') { this.st = 'prowl'; this.cd = rr(1, 2); }
-    this.A.blood?.spray(this.pos.clone().setY(this.aimY), dir, 14);
-    this.A.games.excite = Math.max(this.A.games.excite, 0.7);
-    if (this.hp <= 0) { this.st = 'dead'; this.deadT = 0; this.A.beastDown(this); }
-    return 'hit';
-  }
-  weights(w) { for (const [a, k] of [[this.aIdle, w.idle || 0], [this.aWalk, w.walk || 0], [this.aRun, w.run || 0], [this.aAtk, w.atk || 0]]) if (a) a.setEffectiveWeight(k); }
-  update(dt, t) {
-    if (this.st === 'loading' || this.st === 'gone') return;
-    const A = this.A, P = A.player, me = this.pos, K = this.K;
-    if (this.st === 'dead') { this.deadT += dt; this.holder.rotation.z = lerp(this.holder.rotation.z, Math.PI / 2, Math.min(1, dt * 4)); this.holder.position.y = Y + Math.min(1, this.deadT * 3) * K.size * 0.12; this.weights({ idle: 1 }); return; }
-    const dx = P.pos.x - me.x, dz = P.pos.z - me.z, d = Math.hypot(dx, dz) || 1;
-    let sp = 0, wantH = Math.atan2(dx, dz);
-    if (this.stagger > 0) this.stagger -= dt;
-    if (this.knock > 0) { const k = Math.min(dt, this.knock); this.knock -= dt; me.x += this.kdir.x * 4 * k; me.z += this.kdir.z * 4 * k; }
-    if (this.st === 'enter') { sp = K.speed; if (d < 14) this.st = 'prowl'; }
-    else if (this.st === 'prowl') { // rodeia, medindo; de tempos em tempos investe
-      const ring = K.horns ? 11 : 7; wantH = Math.atan2(dx, dz) + (d > ring ? 0.35 : 1.35) * (this.side ||= rand() < 0.5 ? 1 : -1);
-      sp = d > ring + 2 ? K.speed * 1.3 : K.speed * 0.8;
-      this.cd -= dt * A.diff;
-      if (this.cd <= 0 && this.stagger <= 0) { this.st = 'charge'; this.chargeDir = new THREE.Vector3(dx / d, 0, dz / d); this.chargeT = 2.2; this.hitDone = false; if (!this.warned) { this.warned = true; A.say(`${K.name[0].toUpperCase() + K.name.slice(1)} baixa a cabeça e avança! Saia de lado (Espaço).`); } }
-      if (d < K.reach && this.stagger <= 0 && !K.horns && this.cd < 1.2) { this.st = 'bite'; this.atkT = 0; }
-    } else if (this.st === 'charge') { // investida em linha reta (dá para sair de lado no último instante)
-      wantH = Math.atan2(this.chargeDir.x, this.chargeDir.z); sp = K.charge; this.chargeT -= dt;
-      if (!this.hitDone && d < K.reach) { this.hitDone = true; if (A.melee.receive(rr(K.dmg[0], K.dmg[1]), me, { heavy: true, knock: K.horns ? 2.2 : 1.4 }) !== 'dodged') A.games.excite = 1; }
-      if (this.chargeT <= 0 || (this.hitDone && d > 4)) { this.st = 'prowl'; this.cd = rr(2, 4); }
-    } else if (this.st === 'bite') { // o bote: patada e mordida
-      this.atkT += dt; sp = 0;
-      if (!this.hitDone && this.atkT > 0.45) { this.hitDone = true; if (d < K.reach + 0.5) A.melee.receive(rr(K.dmg[0], K.dmg[1]) * 0.8, me, { heavy: rand() < 0.4 }); }
-      if (this.atkT > 1.1) { this.st = 'prowl'; this.cd = rr(1.5, 3); this.hitDone = false; }
-    }
-    if (this.stagger > 0) sp *= 0.2;
-    this.h = angleLerp(this.h, wantH, Math.min(1, dt * (this.st === 'charge' ? 2 : 5)));
-    me.x += Math.sin(this.h) * sp * dt; me.z += Math.cos(this.h) * sp * dt;
-    // (a fera não atravessa o explorador)
-    { const ox = me.x - P.pos.x, oz = me.z - P.pos.z, od = Math.hypot(ox, oz); if (od < 1.1 && od > 1e-3) { me.x += (ox / od) * (1.1 - od); me.z += (oz / od) * (1.1 - od); } }
-    clampArena(me, 1.6); if (inHole(me.x, me.z)) me.z = Math.sign(me.z || 1) * 2.4;
-    me.y = Y; this.holder.position.copy(me); this.holder.rotation.set(0, this.h, 0);
-    this.weights(this.st === 'bite' ? { atk: 1 } : sp > 5 ? { run: 1 } : sp > 0.3 ? { walk: 1 } : { idle: 1 });
-    if (this.aRun) this.aRun.timeScale = clamp(sp / 8, 0.7, 1.5); if (this.aWalk) this.aWalk.timeScale = clamp(sp / 2.4, 0.6, 1.4);
-    this.mixer?.update(dt);
-  }
-}
-
 export class Arena {
   constructor(scene, { games, player, melee, health, ui, audio, artifacts, toast, eligible, faint, onEnd }) {
     Object.assign(this, { scene, games, player, melee, health, ui, audio, artifacts, toast, eligible, faint, onEnd });
     this.blood = games.blood; melee.blood = games.blood;
     artifacts.prizes = () => { const g = prizesGot(); return Object.keys(PRIZES).filter((id) => g[id]).map((id) => PRIZES[id]); }; // (a coleção, K, mostra os prêmios)
-    this.mode = null; this.foes = []; this.beasts = []; this.diff = 1; this.round = 0;
+    this.mode = null; this.foes = []; this.diff = 1; this.round = 0;
     // o guarda: legionário de serviço na entrada oeste, de lança e escudo
     this.guard = makeHumanoid({ outfit: 'chiton', cloth: 0xb0402c, border: 0xd8b45a, beard: 'short', extras: ['lorica', 'galea', 'spear', 'scutum'], shieldColor: 0xa8261e });
     const gy = groundAt(GUARD.x, GUARD.z, Y + 4);
     this.guard.root.position.set(GUARD.x, gy, GUARD.z); this.guard.root.rotation.y = -Math.PI / 2; this.guard.root.visible = false; scene.add(this.guard.root);
     this.guardPos = this.guard.root.position;
-    melee.targets = () => (this.mode === 'munus' ? this.foes : this.mode === 'venatio' ? this.beasts : []);
+    melee.targets = () => (this.mode === 'munus' ? this.foes : this.mode === 'venatio' ? this.games.huntSys.targets() : []);
     melee.onSwing = () => { if (this.mode === 'munus') for (const f of this.foes) f.react(); };
     // escolha diante de quem pede clemência: E poupa, F dá o golpe final
     addEventListener('keydown', (e) => {
@@ -266,7 +200,7 @@ export class Arena {
     const wins = prizesGot().vitorias || 0;
     if (P.look !== 'gladiador') return ui.say('Pela porta dos gladiadores só passa quem está pronto para a arena. Vista-se de gladiador — elmo, manica, escudo e gládio — e volte aqui. (Aperte V para trocar de roupa.)', [{ label: '(Seguir caminho)', cb: close }]);
     if (ev === 'naumachia') return ui.say('Hoje a arena fica vazia: o povo foi ver a batalha naval na Naumaquia, do outro lado do Tibre. Volte amanhã.', [{ label: '(Seguir caminho)', cb: close }]);
-    if (ev === 'venatio') return ui.say(`Hoje é dia de caçada. As feras já estão no hipogeu: leões da África, um urso, um touro. Quer descer com os venatores? Você entra de lança${wins ? '' : '; a armadura não serve contra garra e chifre'}.`, [{ label: 'Quero enfrentar as feras.', cb: () => { close(); this.start('venatio'); } }, { label: 'Hoje não.', cb: close }]);
+    if (ev === 'venatio') return ui.say(`Hoje é dia de caçada. As feras já estão no hipogeu: leões, javalis, um urso, um tigre, um touro — e, no fim, o elefante e o rinoceronte. Quer descer com os venatores? Você entra de lança${wins ? '' : '; a armadura não serve contra garra e chifre'}.`, [{ label: 'Quero enfrentar as feras.', cb: () => { close(); this.start('venatio'); } }, { label: 'Hoje não.', cb: close }]);
     ui.say(`${wins ? `Você de novo! O povo ainda fala das suas ${wins} vitória${wins > 1 ? 's' : ''}.` : 'Você está vestido como mirmilão, mas não é do ludus.'} Quer descer à arena? Serão três combates: o trácio, o reciário e, se ainda estiver de pé, dois de uma vez. Quem cai pede clemência, e a plateia decide.`,
       [{ label: 'Quero lutar.', cb: () => { close(); this.start('munus'); } }, { label: 'Ainda não.', cb: close }]);
   }
@@ -289,17 +223,21 @@ export class Arena {
   }
 
   nextRound() {
-    const list = this.mode === 'munus' ? ROUNDS[this.round] : HUNT[this.round];
+    if (this.mode === 'venatio') { // a caçada toda é uma confusão só: as levas sobem uma atrás da outra
+      this.state = 'fight'; const H = this.games.huntSys;
+      H.begin({ player: this.player, melee: this.melee, health: this.health, warn: (m) => this.say(m),
+        onWave: (i, n, m) => { if (i) { this.health.hp = Math.min(100, this.health.hp + 20); this.health.render(); } this.say(m, 5000); },
+        onBeastDown: (b) => { this.games.excite = 1; if (b.byPlayer) this.say(`${b.K.name[0].toUpperCase() + b.K.name.slice(1)} tomba na areia. A plateia grita o seu nome!`); },
+        onDone: () => { if (this.state === 'fight') this.victory(); } });
+      return;
+    }
+    const list = ROUNDS[this.round];
     if (!list) return this.victory();
     this.state = 'fight';
     if (this.mode === 'munus') {
       for (const f of this.foes) this.scene.remove(f.r.root);
       this.foes = list.map((k, i) => { const f = new Foe(this, k, this.scene); f.pos.set(IN_EAST.x, Y, (i - (list.length - 1) / 2) * 1.6); f.h = -Math.PI / 2; f.place(); return f; });
       this.say(this.round === 0 ? `Entra ${KINDS[list[0]].name}, de escudo pequeno e espada curva. A luta começa!` : this.round === 1 ? 'Entra o reciário: sem escudo nem elmo, com o tridente e a rede. Rápido e traiçoeiro.' : 'Os dois últimos entram juntos: o secutor, atrás do escudo grande, e o hoplômaco, de lança. A plateia fica de pé!', 5000);
-    } else {
-      for (const b of this.beasts) if (b.holder) this.scene.remove(b.holder);
-      this.beasts = list.map((k, i) => { const b = new Beast(this, k); b.pos.set(IN_EAST.x - 2, Y, (i - (list.length - 1) / 2) * 3); b.h = -Math.PI / 2; return b; });
-      this.say(this.round === 0 ? 'Um alçapão se abre e o leão sobe para a areia!' : this.round === 1 ? 'Agora um urso, enorme, sacudindo a cabeça.' : 'Por último, o touro — e mais um leão. Cuidado com os chifres!', 4500);
     }
   }
 
@@ -319,7 +257,6 @@ export class Arena {
     this.games.excite = 1;
   }
   kill(f) { f.st = 'dead'; f.r.once = null; const c = hasClip('gl_morte_f') && rand() < 0.5 ? 'gl_morte_f' : hasClip('gl_morte_t') ? 'gl_morte_t' : 'desmaiar'; playOnce(f.r, c, 9999); this.blood?.spray(f.pos.clone().setY(Y + 0.8), new THREE.Vector3(), 26); for (let i = 0; i < 3; i++) this.blood?.stain(f.pos.x + rr(-0.6, 0.6), f.pos.z + rr(-0.6, 0.6), rr(0.25, 0.45)); }
-  beastDown(b) { this.games.excite = 1; this.say(`${b.K.name[0].toUpperCase() + b.K.name.slice(1)} tomba na areia. A plateia grita o seu nome!`); }
 
   // o explorador caiu: a plateia decide (quase sempre missio, como era de fato)
   playerDown() {
@@ -351,8 +288,8 @@ export class Arena {
 
   finish(won) {
     const P = this.player;
-    for (const f of this.foes) this.scene.remove(f.r.root); for (const b of this.beasts) if (b.holder) this.scene.remove(b.holder);
-    this.foes = []; this.beasts = []; this.kneeling = null; this.melee.clearGround(); this.melee.reset(); this.melee.equip(null, null, false); this.melee.lookSeen = null;
+    for (const f of this.foes) this.scene.remove(f.r.root); if (this.mode === 'venatio') this.games.huntSys.end();
+    this.foes = []; this.kneeling = null; this.melee.clearGround(); this.melee.reset(); this.melee.equip(null, null, false); this.melee.lookSeen = null;
     this.games.playerEvent = null; this.mode = null; this.state = null;
     P.place(GUARD.x - 2.5, GUARD.z - 1.5, -Math.PI / 2);
     if (won && this.pending?.length) { const list = this.pending; this.pending = null; list.forEach((id, i) => setTimeout(() => this.award(id), 600 + i * 300)); }
@@ -368,11 +305,10 @@ export class Arena {
     clampArena(P.pos, 0.9); if (inHole(P.pos.x, P.pos.z) && P.pos.y < Y + 0.5) P.pos.z = Math.sign(P.pos.z || 1) * 2.4;
     if (this.state === 'intro') { this.introT -= dt; if (this.introT <= 0) this.nextRound(); }
     for (const f of this.foes) f.update(dt, t);
-    for (const b of this.beasts) b.update(dt, t);
-    if (this.state === 'fight') {
-      const list = this.mode === 'munus' ? this.foes : this.beasts;
+    if (this.state === 'fight' && this.mode === 'munus') {
+      const list = this.foes;
       const done = list.length && list.every((x) => x.st === 'dead' || x.st === 'gone' || (x.st === 'exit'));
-      if (done && !this.kneeling) { this.state = 'between'; this.betweenT = 4.5; this.round++; this.health.hp = Math.min(100, this.health.hp + 25); this.health.render(); if ((this.mode === 'munus' ? ROUNDS : HUNT)[this.round]) this.say('A plateia aplaude. Um respiro — e o próximo entra pela porta leste.'); }
+      if (done && !this.kneeling) { this.state = 'between'; this.betweenT = 4.5; this.round++; this.health.hp = Math.min(100, this.health.hp + 25); this.health.render(); if (ROUNDS[this.round]) this.say('A plateia aplaude. Um respiro — e o próximo entra pela porta leste.'); }
     } else if (this.state === 'between') { this.betweenT -= dt; if (this.betweenT <= 0) this.nextRound(); }
     else if (this.state === 'won') { this.endT -= dt; if (this.endT <= 0) this.finish(true); }
   }
@@ -380,7 +316,7 @@ export class Arena {
   hint() {
     if (!this.mode) return '';
     if (this.kneeling) return this.kneelNear() ? '<kbd>E</kbd> Poupar &nbsp;·&nbsp; <kbd>F</kbd> Golpe final' : '<kbd>E</kbd> Poupar &nbsp;·&nbsp; chegue perto para o golpe final';
-    const list = this.mode === 'munus' ? this.foes : this.beasts, alive = list.filter((x) => x.alive);
+    const list = this.mode === 'munus' ? this.foes : this.games.huntSys.targets(), alive = list.filter((x) => x.alive);
     return alive.map((x) => `${(x.K.name).replace(/^o /, '')}: ${Math.max(0, Math.round((x.hp / (x.maxHp || x.K.hp)) * 100))}%`).join(' · ');
   }
 }
