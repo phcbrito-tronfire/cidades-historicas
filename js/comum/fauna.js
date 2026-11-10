@@ -59,6 +59,9 @@ export async function creature(name, size, { speed = 1, tint = null, still = fal
   let mixer = null;
   if (U.clips.length) { mixer = new THREE.AnimationMixer(o); if (!still) { const a = mixer.clipAction(U.clips[0]); a.time = Math.random() * U.clips[0].duration; a.timeScale = speed; a.play(); } }
   const holder = new THREE.Group(); holder.add(o);
+  // o recorte por distância (desempenho.js) mede o bicho pelo holder, que anda com ele: medido pela malha, o crocodilo
+  // (cuja malha fica longe do corpo desenhado, por causa da escala do esqueleto) era tido como longe e sumia — mordia invisível
+  holder.userData.rig = true;
   return { holder, o, mixer, clips: U.clips };
 }
 

@@ -48,7 +48,8 @@ class Hippos {
         const deep = W - terrainHeight(k.x, k.z) > f.height * 0.6;
         want = Math.atan2(dx, dz); sp = deep ? 3.4 : 6.0;
         if (k.recoil > 0) { k.recoil -= dt; want += Math.PI * 0.6 * (k.side || 1); sp = 1.5; }
-        if (d < 3.2 && !f.busy) { f.play('atk', { rate: 1.2 }); k.biteT = 0.45; }
+        k.biteCd = (k.biteCd || 0) - dt;
+        if (d < 3.2 && !f.busy && k.biteCd <= 0) { f.play('atk', { rate: 1.2 }); k.biteT = 0.45; k.biteCd = 2.4; } // (entre uma mordida e outra, um respiro: antes mordia três vezes seguidas)
         if (k.biteT > 0 && (k.biteT -= dt) <= 0 && d < 3.8) { this.o.onBite?.(k); k.recoil = 1.4; k.side = Math.random() < 0.5 ? 1 : -1; }
         if (d > 16) k.lost = (k.lost || 0) + dt; else k.lost = 0;
         if (k.lost > 2 || Math.hypot(k.x - k.home.x, k.z - k.home.z) > 45) { k.st = 'back'; k.cd = 8; k.lost = 0; k.angry = 0; }

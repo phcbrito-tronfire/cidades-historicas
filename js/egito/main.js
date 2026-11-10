@@ -134,12 +134,15 @@ async function main() {
   // montaria (H): jumento — o animal de montaria e de carga do Egito do Novo Império (o camelo só se espalha no Egito séculos depois)
   const mount = new Mount(scene, 'jumento', { toast: (m) => ui.toast(m) });
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
+  // sem a khopesh: correr (Shift) é a saída; quem já ganhou a roupa de soldado é lembrado de vesti-la (V)
+  const semArma = (m) => { let has = false; try { has = JSON.parse(localStorage.getItem('cidades-historicas:roupas') || '[]').includes('egito'); } catch (e) { /* */ } return `${m} ${has ? 'Para lutar, vista a roupa de soldado (V): com a khopesh dá para enfrentar e vencer o bicho. Agora, corra (Shift)!' : 'Sem arma, o jeito é correr (Shift) para longe da água.'}`; };
   const nile = await buildNile(scene, city, {
     onWarn: () => ui.toast('Um crocodilo! Saia da água — e fique longe da margem.', 'quest', 5000),
     // vestido de soldado (khopesh e escudo), a mordida pode ser aparada no escudo ou esquivada (Espaço); senão, dói inteira
-    onBite: (k) => { const r = melee.active ? melee.receive(24, k.pos, { heavy: true, knock: 1.6 }) : (health.damage(24), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O crocodilo mordeu! Golpeie (F) ou erga o escudo (Q).' : 'O crocodilo mordeu! Fuja para longe do rio.'); },
+    // sem a roupa de soldado não há arma: o jeito é fugir (correndo, Shift); com ela, dá para lutar e matar o bicho
+    onBite: (k) => { const r = melee.active ? melee.receive(20, k.pos, { heavy: true, knock: 1.6 }) : (health.damage(20), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O crocodilo mordeu! Golpeie (F), erga o escudo (Q) ou esquive (Espaço).' : semArma('O crocodilo mordeu!')); },
     onHippoWarn: () => ui.toast('Um hipopótamo! Ele defende o seu pedaço do rio — saia de perto.', 'quest', 5000),
-    onHippo: (k) => { const r = melee.active ? melee.receive(30, k.pos, { heavy: true, knock: 2.4 }) : (health.damage(30), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O hipopótamo investiu! Saia de lado (Espaço) e golpeie (F).' : 'O hipopótamo investiu! Corra para longe dele.'); },
+    onHippo: (k) => { const r = melee.active ? melee.receive(22, k.pos, { heavy: true, knock: 2.4 }) : (health.damage(22), 'hit'); audio.splash(); if (r === 'hit') ui.toast(melee.active ? 'O hipopótamo mordeu! Saia de lado (Espaço) e golpeie (F).' : semArma('O hipopótamo mordeu!')); },
     sons: new SonsFeras(audio, () => ({ pos: player.pos, yaw: player.camYawW })),
   });
 
