@@ -119,7 +119,7 @@ export class Melee {
   // as peças nas mãos do corpo atual (o corpo muda ao trocar de roupa)
   dress() {
     const P = this.player, M = this.meshes, r = P.rig;
-    if (M.model !== r.model) { M.model = r.model; M.right = M.left = null; M.rk = M.lk = null; }
+    if (M.model !== r.model) { M.right?.parent?.remove(M.right); M.left?.parent?.remove(M.left); M.model = r.model; M.right = M.left = null; M.rk = M.lk = null; }
     const want = (side, kind, hand) => {
       const key = side === 'right' ? 'rk' : 'lk';
       const show = this.drawn && kind;
@@ -161,9 +161,11 @@ export class Melee {
   tick() {
     const P = this.player, on = this.active && !P.swimming && !P.riding;
     this.touchButtons(on);
-    if (on && this.lookSeen !== P.look) { this.lookSeen = P.look; if (!this.forced) this.defaults(); this.drawn = P.look === 'gladiador'; this.dress(); }
+    if (on && this.lookSeen !== P.look) { this.lookSeen = P.look; if (!this.forced) this.defaults(); this.drawn = true; this.dress(); } /* (legionário e gladiador andam sempre com as armas na mão) */
     if (!on) { if (P.combat === this) { P.combat = null; this.drawn = false; this.clip = null; this.dress(); } this.lookSeen = null; return; }
     P.combat = this;
+    // o corpo foi refeito (troca de roupa, modelo que terminou de carregar): as armas voltam para a mão nova
+    { const r = P.rig, Me = this.meshes; if (Me.model !== r.model || (Me.right && Me.right.parent !== r.handR) || (Me.left && Me.left.parent !== r.handL)) { if (Me.model === r.model) Me.model = null; this.dress(); } }
     this.space = this.drawn && P.onGround ? () => this.dodge() : null;
     this.moveScale = this.clip ? (this.hitI >= this.hits.length ? 0.6 : this.heavy ? 0.5 : 0.32) : this.block ? 0.45 : this.stun > 0 ? 0.15 : undefined;
   }
@@ -171,6 +173,8 @@ export class Melee {
   // ---- dentro do update do explorador (depois do movimento, antes da animação)
   update(dt, speed, t) {
     const P = this.player;
+    // caído (desmaio, derrota na arena): a luta não mexe no corpo; o golpe em curso some sem apagar a queda
+    if (P.locked || this.health?.dead) { this.clip = null; this.queued = false; this.block = false; this.drawDelay = 0; this.updateFlying(dt); return; }
     if (this.stun > 0) this.stun -= dt;
     if (this.rolling > 0) { this.rolling -= dt; this.queued = false; }
     if (this.invuln > 0) this.invuln -= dt;
@@ -190,15 +194,13 @@ export class Melee {
       const hk = this.hits[this.hitI];
       if (hk !== undefined && f >= hk) { this.hitI++; this.strikeLands(); }
       if (this.queued && this.hitI >= this.hits.length && f > Math.max(0.5, this.hits[this.hits.length - 1] + 0.1)) { this.queued = false; this.next(); }
-      else if (this.t >= this.dur) { this.clip = null; P.rig.once = null; }
+      else if (this.t >= this.dur) { if (P.rig.once?.name === this.clip) P.rig.once = null; this.clip = null; }
     } else if (this.drawDelay > 0) { this.drawDelay -= dt; if (this.drawDelay <= 0) this.next(this.heavyNext); }
     else if (this.queued && this.stun <= 0 && !(this.rolling > 0)) {
       this.queued = false;
       if (!this.drawn) { this.drawn = true; this.dress(); if (hasClip('gl_saca') && this.right === 'gladio') { playOnce(P.rig, 'gl_saca', 0.42); this.drawDelay = 0.3; this.heavyNext = speed > 5.5; this.combo = -1; } }
       if (!(this.drawDelay > 0)) { this.combo = -1; this.next(speed > 5.5); }
     }
-    // arma guardada depois de um tempo parado (o legionário; o gladiador anda sempre armado)
-    if (this.drawn && !this.forced && P.look === 'roma') { this.idle = speed < 0.2 && !this.clip && !this.block ? this.idle + dt : 0; if (this.idle > 8) { this.drawn = false; this.dress(); } }
     this.updateFlying(dt);
     this.stance();
   }
@@ -289,6 +291,7 @@ export class Melee {
       dmg *= this.right ? 0.45 : 0.6; // (apara com a espada, ou a guarda dos punhos: tira só parte)
     }
     this.health?.damage(Math.round(dmg));
+    if (this.health?.dead || P.locked) { this.clip = null; this.queued = false; return 'hit'; } // (o golpe que derruba: fica a queda, sem o tranco por cima)
     this.clip = null; this.queued = false; this.stun = heavy ? 0.45 : 0.25;
     playOnce(P.rig, heavy && hasClip('gl_cabeca') ? 'gl_cabeca' : hasClip('gl_impacto') ? 'gl_impacto' : 'golpe', heavy ? 0.6 : 0.42);
     P.lunge(-(heavy ? 3.4 : 2.0) * knock, 0.16, dx / d, dz / d); P.shake = heavy ? 0.14 : 0.08;

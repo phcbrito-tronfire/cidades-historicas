@@ -999,6 +999,9 @@ export function playOnce(r, name, duration) {
   const a = r.act(name); if (!a) return;
   a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.timeScale = 1; a.enabled = true; a.play();
   r.once = { name, t: duration ?? a.getClip().duration * 0.9 };
+  // entra já na conta dos pesos: se outro código apagar r.once antes do próximo quadro, a animação sai suave e para,
+  // em vez de ficar ligada e congelada no último quadro, misturada com tudo (o explorador "torto" depois de desmaiar)
+  (r.w ||= {}); if (!(name in r.w)) r.w[name] = 0;
 }
 
 export function animateHumanoid(r, dt, speed, mode, t) {
