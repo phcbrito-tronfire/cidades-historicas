@@ -32,6 +32,8 @@ import { AudioFX } from './audio.js';
 import { Health, faint } from '../comum/vida.js';
 import { Mount } from '../comum/montaria.js';
 import { nextFrame } from '../comum/util.js';
+import { Melee } from '../comum/luta.js';
+import { Duels } from './duelo.js';
 
 const ui = new UI();
 const audio = new AudioFX();
@@ -136,6 +138,11 @@ async function main() {
   sky.bakeEnvironments();
   const quests = new Quests(scene, city, tex.glow, ui, audio);
   const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
+  // a luta de katana (a mesma de Roma e do Egito: golpes que emendam, aparar, esquivar, arremessar e buscar a katana,
+  // os punhos sem ela) e os duelos no dōjō da residência
+  const melee = new Melee(scene, player, { health, audio, toast: (m, k, ms) => ui.toast(m, k, ms) });
+  const duels = new Duels(scene, { city, player, melee, health, ui, audio, toast: (m, k, ms) => ui.toast(m, k, ms), artifacts, actors, faint });
+  melee.targets = () => duels.targets(); melee.onSwing = () => duels.onSwing();
   quests.artifactCount = artifacts.count;
   const festas = new Festas(scene, city, { toast: (m, k, ms) => ui.toast(m, k, ms), glow: tex.glow, audio });
   festas.onSeen = (id) => quests.complete(id);
@@ -215,6 +222,7 @@ async function main() {
     };
     const menu = (first) => {
       const opts = def.topics.map((tp, i) => ({ label: tp.q, read: k.read.has(i), cb: () => topic(i, 0) }));
+      if (def.id === 'sensei' && !duels.on) opts.push({ label: 'Quero duelar com os da casa.', special: true, cb: () => { close(); duels.talk(); } }); // (os duelos do dōjō, duelo.js)
       opts.push({ label: 'Até logo.', cb: () => ui.say(def.bye, [{ label: '(Despedir-se com uma reverência)', cb: close }]) });
       ui.say(first ? def.greet : ['O que mais quer saber?', 'Pergunte, viajante.', 'Mais alguma curiosidade?'][Math.floor(Math.random() * 3)], opts);
     };
@@ -234,7 +242,7 @@ async function main() {
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
-      case 'KeyE': { const tgt = actors.nearestInteractable(player.pos); if (tgt) talkTo(tgt); break; }
+      case 'KeyE': { if (duels.on) break; const tgt = actors.nearestInteractable(player.pos); if (tgt) talkTo(tgt); break; }
       case 'KeyC': { const p = sky.next(); festas.onTime(sky.current); if (sky.current === 'manha') seasons.onDay(); ui.setTime(timeLabel()); ui.toast(p.msg); break; }
       case 'KeyT': seasons.next(); ui.setTime(timeLabel()); break;
       case 'KeyJ': ui.toggleJournal(); break;
@@ -280,6 +288,7 @@ async function main() {
 
   // ---------------- vida ----------------
   const onDeath = () => {
+    if (duels.playerDown()) return; // (caiu num duelo: o mestre encerra, e ele acorda no dōjō)
     player.locked = true; player.collapse();
     faint('Você desmaiou... e acordou na vila, numa hospedaria de peregrinos.', () => {
       player.diving = false; player.swimming = false; player.breath = 60;
@@ -287,7 +296,7 @@ async function main() {
     });
   };
 
-  window.__game = { cull, artifacts, seasons, mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { melee, duels, cull, artifacts, seasons, mount, festas, actors, player, quests, sky, post, renderer, scene, camera, city, health, nature, world, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -326,9 +335,10 @@ async function main() {
     player.night = sky.state.night;
     travel.update(dt, started && !paused); // (a viagem, e os lugares que se liberam ao chegar)
     if (mount.state === 'riding') mount.update(dt, t, player);
-    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player);
+    else { if (started) melee.tick(); /* (liga a luta antes do explorador se mexer) */ if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player);
       { const p = player.pos, inH = city.houses.some((h) => { const c = Math.cos(h.ry), s = Math.sin(h.ry), dx = p.x - h.x, dz = p.z - h.z; return Math.abs(dx * c - dz * s) < h.w / 2 + 0.6 && Math.abs(dx * s + dz * c) < h.d / 2 + 0.6; }), op = inH ? 0.18 : 1; for (const m of city.M.noren) m.opacity += (op - m.opacity) * Math.min(1, dt * 6); } /* dentro de casa, o noren da porta quase some: ele cobria a câmera */ }
     actors.update(dt, t, player, quests, sky.state.night);
+    duels.update(dt, t);
     festas.update(dt, t, player, sky.state.night);
     seasons.update(dt, t, camera, sky.current === 'tarde');
     if (started) health.update(dt, player);
@@ -345,7 +355,8 @@ async function main() {
     { const riding = mount.state === 'riding', p = riding ? mount.pos : player.pos, sp = riding ? Math.abs(mount.v || 0) : player.speed || 0, w = city.paddies?.wade(p, sp, dt, riding); // pisando no arrozal alagado
       if (w) { fx.ripple(w.at, w.s); if (w.splash) { fx.splash(w.at, w.s * 0.18); audio.burst(0.16, 900 + Math.random() * 500, 0.06 * w.s); } } }
     if (started) {
-      { const tgt = !ui.dialogOpen && actors.nearestInteractable(player.pos); const parts = []; if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : (NAMES[tgt.type] || 'morador').toLowerCase()}`);
+      { const tgt = !ui.dialogOpen && !duels.on && actors.nearestInteractable(player.pos); const parts = []; if (tgt) parts.push(`<kbd>E</kbd> Falar com ${tgt.type === 'npc' ? tgt.o.def.name : (NAMES[tgt.type] || 'morador').toLowerCase()}`);
+        { const dh = !ui.dialogOpen && duels.hint(); if (dh) parts.unshift(dh); const mh = mount.state !== 'riding' && melee.hint(); if (mh) parts.push(mh); }
         if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Galopar · <kbd>H</kbd> Desmontar'); else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar no cavalo');
         ui.prompt(parts.join(' &nbsp;·&nbsp; ')); }
       ui.setPlace(placeName());

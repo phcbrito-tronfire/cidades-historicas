@@ -127,6 +127,7 @@ export class Player {
     // a dica da tecla, só com a armadura
     const keys = document.getElementById('keys'); if (keys) { const has = / · F katana/.test(keys.textContent); if (this.look === 'japao' && !has) keys.textContent = keys.textContent.replace(' · V roupas', ' · F katana · V roupas'); else if (this.look !== 'japao' && has) keys.textContent = keys.textContent.replace(' · F katana', ''); }
     if (this.look !== 'japao' || !P) { this.katReq = false; this.trail.update(null, null, false); return; }
+    if (this.combat) { this.katReq = false; if (K.drawn || K.clip) { K.drawn = false; K.clip = null; } return; } // (a luta comum, luta.js, cuida da katana: golpes, defesa, soco, esquiva, arremesso)
     const can = !this.swimming && !this.climb && !this.locked && !this.riding && !this.holding;
     if (!can && (K.drawn || K.clip)) this.sheathe();
     if (this.katReq) { this.katReq = false; if (can) K.queued = true; }

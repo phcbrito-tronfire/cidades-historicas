@@ -158,3 +158,14 @@ Mapa-base navegável: o Fuji (1:5, cume 780 m acima do vale, cratera), o lago Ka
 - **Raposa, cervo-sika, macaco, tanuki e faisão:** precisam de modelos de verdade do Sketchfab, com o login do Pedro. Não foram feitos de caixinhas.
 - **Teste num PC fraco:** no PC de desenvolvimento roda a ~78 fps na rua, com resolução adaptativa a 0,7.
 - **Refinos possíveis:** a forma das árvores, a água do lago, a sombra das mangas dos quimonos e mais interiores mobiliados.
+
+## Luta de katana e duelos do dōjō (10/11/2026)
+- A katana passou para a luta comum (js/comum/luta.js, a mesma de Roma e do Egito): F golpeia e emenda os cortes
+  (mais ágeis: o golpe termina quando a lâmina volta à guarda), correndo o golpe saltado, Q apara com a lâmina
+  (kt_defesa), Espaço esquiva, G arremessa a katana — não há outras espalhadas: é preciso ir buscá-la (P), e até lá se
+  luta no soco. O rastro de luz e o corte do bambu e da palha continuam.
+- Duelos (js/japao/duelo.js): conversando com Kurosawa Jinnai, o mestre do dōjō, "Quero duelar com os da casa". Quatro
+  duelos seguidos — Kenta (o aluno mais novo), Tadashi (o veterano, que apara muito), Sasaki (um rōnin que salta de
+  lado) e o próprio Kurosawa. Reverência no começo; quem não aguenta se ajoelha e se rende. Os alunos saem do tatame e
+  o mestre assiste do canto. Cair encerra o duelo (acorda no dōjō). Prêmios na coleção (K): o menkyo kaiden (vencendo
+  os quatro) e o bokken do dōjō (na segunda vez). Sem a armadura de samurai, o mestre empresta uma katana.

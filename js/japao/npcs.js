@@ -277,7 +277,7 @@ export class Actors {
     const near = (o, r) => (o.pos.x - pp.x) ** 2 + (o.pos.z - pp.z) ** 2 < r * r;
     const face = (o, target, k) => { if (!target) return; const ang = Math.atan2(target.x - o.pos.x, target.z - o.pos.z); o.rig.root.rotation.y = angleLerp(o.rig.root.rotation.y, ang, Math.min(1, dt * k)); };
     for (const k of this.key) {
-      const vis = near(k, this.viewR + 15); k.rig.root.visible = vis; if (!vis) continue;
+      const vis = near(k, this.viewR + 15) && !k.rig.root.userData.off; k.rig.root.visible = vis; if (!vis) continue; // (off: fora de cena — o mestre do dōjō quando ele mesmo duela)
       const close = near(k, 5), seated = (k.mode === 'sit' || k.mode === 'work') && !k.talking;
       if (k.talking || (close && !seated)) face(k, pp, 5); else k.rig.root.rotation.y = angleLerp(k.rig.root.rotation.y, k.ry, dt * 2);
       this.anim(k.rig, dt, 0, k.talking ? 'talk' : k.mode, t);

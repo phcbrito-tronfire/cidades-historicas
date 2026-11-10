@@ -9,19 +9,24 @@ import * as THREE from 'three';
 import { playOnce, hasClip, loadAnims } from './mixamo.js';
 import { groundAt } from './collision.js';
 import { rand, rr, clamp } from './util.js';
+import { swordParts } from './katana.js';
 
 // golpes do pacote "Sword And Shield" do Mixamo (já usados pelos gladiadores do Coliseu) e, quando chegarem, os de soco
 const BASE_CLIPS = ['gl_guarda', 'gl_lado', 'gl_alto', 'gl_baixo', 'gl_desce', 'gl_combo', 'gl_forte', 'gl_cabo', 'gl_chute', 'gl_bloqueio', 'gl_impacto', 'gl_cabeca', 'gl_morte_f', 'gl_morte_t', 'gl_vitoria'];
-const EXTRA_CLIPS = ['so_guarda', 'so_jab', 'so_direto', 'so_gancho', 'so_uppercut', 'so_soco_forte', 'es_rola', 'es_esquiva', 'gl_defesa', 'gl_saca', 'lanca'];
+const EXTRA_CLIPS = ['kt_defesa', 'kg_reverencia', 'so_guarda', 'so_jab', 'so_direto', 'so_gancho', 'so_uppercut', 'so_soco_forte', 'es_rola', 'es_esquiva', 'gl_defesa', 'gl_saca', 'lanca'];
 // em que fração do clipe o golpe chega (mais de um número: uma sequência de golpes no mesmo clipe)
-export const HIT_AT = { gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.55], so_direto: [0.48], so_gancho: [0.5], so_uppercut: [0.4], so_soco_forte: [0.28, 0.4, 0.52, 0.62], lanca: [0.24] }; /* (a estocada: o braço já está todo esticado aos 24%) */ // (medido: o quadro em que a mão vai mais longe à frente)
+// a katana (Japão): os cortes do Mixamo de katana; o golpe acerta no meio da janela do corte
+export const KT_CUT = { kt_desce: [0.18, 0.5], kt_forte: [0.25, 0.55], kt_baixo: [0.3, 0.55], kt_giro: [0.25, 0.65], kt_salto: [0.35, 0.65] };
+export const KT_LOCO = { idle: 'kt_guarda', andar: 'kt_andar', andar_f: 'kt_andar', trotar: 'kt_correr', correr: 'kt_correr' };
+export const HIT_AT = { kt_desce: [0.33], kt_forte: [0.4], kt_baixo: [0.42], kt_giro: [0.36, 0.56], kt_salto: [0.5], gl_alto: [0.42], gl_baixo: [0.4], gl_desce: [0.48], gl_combo: [0.2, 0.47, 0.74], gl_forte: [0.45], gl_cabo: [0.45], gl_chute: [0.38], espada: [0.45], so_jab: [0.55], so_direto: [0.48], so_gancho: [0.5], so_uppercut: [0.4], so_soco_forte: [0.28, 0.4, 0.52, 0.62], lanca: [0.24] }; /* (a estocada: o braço já está todo esticado aos 24%) */ // (medido: o quadro em que a mão vai mais longe à frente)
 // ritmo de cada clipe (a estocada do Mixamo é lenta para a lança: acelerada; o resto, um pouco mais rápido que o original)
-const CLIP_RATE = { lanca: 1.6, so_soco_forte: 1.25, so_uppercut: 1.2 };
+const CLIP_RATE = { kt_desce: 1.3, kt_forte: 1.25, kt_baixo: 1.3, kt_giro: 1.2, kt_salto: 1.15, lanca: 1.6, so_soco_forte: 1.25, so_uppercut: 1.2 };
 // onde o golpe termina (fração do clipe): a estocada recolhe o braço aos 55%; o resto é só a volta ao parado
-const CLIP_END = { lanca: 0.6 };
+const CLIP_END = { lanca: 0.6, kt_desce: 0.78, kt_forte: 0.8, kt_baixo: 0.78, kt_giro: 0.85, kt_salto: 0.85 }; /* (a katana: o golpe termina quando a lâmina volta à guarda; a volta inteira deixava o combate travado) */
 export const WEAPONS = {
   gladio: { name: 'o gládio', reach: 1.85, arc: 1.0, dmg: [13, 19], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 24 },
   lanca: { name: 'a lança', reach: 2.6, arc: 0.7, dmg: [14, 20], chain: ['lanca', 'lanca', 'lanca'], rates: [1.6, 1.95, 1.75], heavy: 'lanca', heavyRate: 1.3, thrown: 34 }, /* (só estocadas: golpe de espada com lança apontava a ponta para o céu) */
+  katana: { name: 'a katana', reach: 2.15, arc: 1.2, dmg: [16, 24], chain: ['kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro'], heavy: 'kt_salto', thrown: 28 },
   khopesh: { name: 'a khopesh', reach: 1.95, arc: 1.15, dmg: [14, 20], chain: ['gl_alto', 'gl_desce', 'gl_baixo', 'gl_combo'], heavy: 'gl_forte', thrown: 22 }, /* (a espada curva de bronze do Egito: o gancho corta de cima para baixo) */
   punhos: { name: 'os punhos', reach: 1.3, arc: 0.9, dmg: [5, 8], chain: ['so_jab', 'so_direto', 'so_gancho', 'so_uppercut'], heavy: 'so_soco_forte' },
 };
@@ -57,6 +62,9 @@ export function makeWeapon(kind, color = 0xa8261e) {
     // a lança aponta para a frente, um pouco para baixo, com a ponta a 2,5 m à frente na altura do peito)
     g.userData.qCarry = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI * 0.45, 0, 0));
     g.userData.qThrust = new THREE.Quaternion().setFromEuler(new THREE.Euler(2.253, -0.827, -0.412));
+  } else if (kind === 'katana') { // a katana (a mesma da armadura de samurai), para arremessar, deixar no chão ou emprestar
+    const { sword } = swordParts(); g.add(sword);
+    g.userData.hand = { rot: [Math.PI * 0.45, 0, 0], pos: [0, 0, 0] }; g.userData.len = 1.0;
   } else if (kind === 'khopesh') { // a khopesh: cabo de madeira com pomo, haste reta de bronze e a lâmina em gancho (meia-lua)
     const bronze = mat(0xb9793c, { metalness: 0.9, roughness: 0.3 }), wood = mat(0x4a2c16);
     g.add(at(new THREE.CylinderGeometry(0.017, 0.019, 0.13, 8), wood, 0, 0, 0));
@@ -110,7 +118,7 @@ export class Melee {
   }
 
   // a luta vale com a roupa de legionário ou de gladiador (ou quando a arena entrega as armas)
-  get active() { const p = this.player; return !!this.forced || p.look === 'roma' || p.look === 'gladiador' || p.look === 'egito'; }
+  get active() { const p = this.player; return !!this.forced || p.look === 'roma' || p.look === 'gladiador' || p.look === 'egito' || p.look === 'japao'; }
   get weapon() { return WEAPONS[this.right || 'punhos']; }
 
   bind() {
@@ -146,7 +154,7 @@ export class Melee {
     P.push = null; P.hitStop = 0; P.shake = 0; P.rig.once = null; P.speed = 0;
   }
   // as armas que a roupa traz
-  defaults() { const L = this.player.look; if (this.forced) return; if (L === 'egito') { this.right = 'khopesh'; this.left = 'escudo_eg'; return; } this.right = 'gladio'; this.left = 'escudo'; this.shieldColor = L === 'gladiador' ? 0x9a2a1e : 0xa8261e; }
+  defaults() { const L = this.player.look; if (this.forced) return; if (L === 'egito') { this.right = 'khopesh'; this.left = 'escudo_eg'; return; } if (L === 'japao') { this.right = 'katana'; this.left = null; return; } this.right = 'gladio'; this.left = 'escudo'; this.shieldColor = L === 'gladiador' ? 0x9a2a1e : 0xa8261e; }
 
   // as peças nas mãos do corpo atual (o corpo muda ao trocar de roupa)
   dress() {
@@ -161,13 +169,19 @@ export class Melee {
         M[key] = show ? kind : null;
       }
     };
-    want('right', this.right, r.handR); want('left', this.left, r.handL);
+    const KP = P.look === 'japao' && P.katParts?.();
+    if (KP) { // a katana da própria armadura: na mão (desembainhada), na cintura (embainhada) ou em lugar nenhum (arremessada)
+      if (M.right && M.rk !== 'katana-armadura') { M.right.parent?.remove(M.right); M.right = null; }
+      KP.hand.visible = this.drawn && this.right === 'katana'; KP.sheathed.visible = !this.drawn && this.right === 'katana'; M.rk = 'katana-armadura'; this.kp = KP;
+    } else { this.kp = null; want('right', this.right, r.handR); }
+    want('left', this.left, r.handL);
     this.stance();
   }
   // a postura de guarda (agachado, a arma à frente) só na arena ou logo depois de lutar; fora disso, de pé, relaxado
   // (antes o gladiador andava sempre curvado em guarda, e parecia estar levando um golpe)
   stance() {
     const r = this.player.rig, guard = this.drawn && (!!this.forced || performance.now() - (this.lastAct || 0) < 6000);
+    if (this.right === 'katana') { const on = this.drawn && hasClip('kt_guarda'); if ((r.locoSet === KT_LOCO) !== on) r.locoSet = on ? KT_LOCO : null; return; }
     const want = guard ? (this.right ? 'gl_guarda' : hasClip('so_guarda') ? 'so_guarda' : 'gl_guarda') : null;
     if ((r.locoSet?.idle || null) !== want) r.locoSet = want ? { idle: want } : null;
   }
@@ -193,11 +207,12 @@ export class Melee {
   tick() {
     const P = this.player, on = this.active && !P.swimming && !P.riding;
     this.touchButtons(on);
-    if (on && this.lookSeen !== P.look) { this.lookSeen = P.look; if (!this.forced) this.defaults(); this.drawn = true; this.dress(); } /* (legionário e gladiador andam sempre com as armas na mão) */
+    if (on && this.lookSeen !== P.look) { this.lookSeen = P.look; if (!this.forced) this.defaults(); this.drawn = this.right !== 'katana' || !!this.forced; this.dress(); }
+    if (on && this.right === 'katana' && this.drawn && !this.forced && !this.clip && !this.block && performance.now() - (this.lastAct || 0) > 9000) { this.drawn = false; this.dress(); } // (samurai parado: embainha) /* (legionário e gladiador andam sempre com as armas na mão) */
     if (!on) { if (P.combat === this) { P.combat = null; this.drawn = false; this.clip = null; this.dress(); } this.lookSeen = null; return; }
     P.combat = this;
     // o corpo foi refeito (troca de roupa, modelo que terminou de carregar): as armas voltam para a mão nova
-    { const r = P.rig, Me = this.meshes; if (Me.model !== r.model || (Me.right && Me.right.parent !== r.handR) || (Me.left && Me.left.parent !== r.handL)) { if (Me.model === r.model) Me.model = null; this.dress(); } }
+    { const r = P.rig, Me = this.meshes; if (Me.model !== r.model || (Me.right && Me.rk !== 'katana-armadura' && Me.right.parent !== r.handR) || (Me.left && Me.left.parent !== r.handL) || (Me.rk === 'katana-armadura' && this.kp && this.kp !== P.katParts?.())) { if (Me.model === r.model) Me.model = null; this.dress(); } }
     this.space = this.drawn && P.onGround ? () => this.dodge() : null;
     this.moveScale = this.clip ? (this.hitI >= this.hits.length ? 0.6 : this.heavy ? 0.5 : 0.32) : this.block ? 0.45 : this.stun > 0 ? 0.15 : undefined;
   }
@@ -215,7 +230,7 @@ export class Melee {
     const blk = this.blockHeld && !this.clip && P.onGround && this.stun <= 0;
     if (blk) this.lastAct = performance.now();
     if (blk && !this.drawn) { this.drawn = true; this.dress(); }
-    if (blk !== this.block) { this.block = blk; if (!blk && P.rig.once && /gl_defesa|gl_bloqueio|so_guarda/.test(P.rig.once.name)) P.rig.once = null; }
+    if (blk !== this.block) { this.block = blk; if (!blk && P.rig.once && /gl_defesa|gl_bloqueio|so_guarda|kt_defesa/.test(P.rig.once.name)) P.rig.once = null; }
     if (this.block) this.holdPose();
     // arremessar e pegar
     if (this.throwReq) { this.throwReq = false; if (!this.clip && this.right && this.stun <= 0) this.throwIt(); }
@@ -233,6 +248,7 @@ export class Melee {
       if (!this.drawn) { this.drawn = true; this.dress(); if (hasClip('gl_saca') && (this.right === 'gladio' || this.right === 'khopesh')) { playOnce(P.rig, 'gl_saca', 0.42); this.drawDelay = 0.3; this.heavyNext = speed > 5.5; this.combo = -1; } }
       if (!(this.drawDelay > 0)) { this.combo = -1; this.next(speed > 5.5); }
     }
+    if (this.right === 'katana' && P.trail) { const kp = this.kp, cut = KT_CUT[this.clip], f = this.clip ? this.t / this.full : 0, cutting = !!cut && f > cut[0] && f < cut[1]; P.trail.update(kp?.tip, kp?.mid, cutting && !!kp); if (cutting && kp) P.events?.cut?.(this.clip, this.swingN, kp); }
     this.updateFlying(dt);
     this.stance();
     // a lança gira na mão: pegada de estocada no golpe e parado em guarda; de carregar andando, parado e no escudo
@@ -241,7 +257,7 @@ export class Melee {
   }
 
   holdPose() { // escudo erguido (ou a guarda dos punhos), parado no quadro certo enquanto se segura a tecla
-    const r = this.player.rig, clip = hasClip('gl_defesa') ? 'gl_defesa' : this.right || this.left ? 'gl_bloqueio' : hasClip('so_guarda') ? 'so_guarda' : 'gl_bloqueio';
+    const r = this.player.rig, clip = this.right === 'katana' && hasClip('kt_defesa') ? 'kt_defesa' : hasClip('gl_defesa') ? 'gl_defesa' : this.right || this.left ? 'gl_bloqueio' : hasClip('so_guarda') ? 'so_guarda' : 'gl_bloqueio';
     if (!r.once || r.once.name !== clip) { playOnce(r, clip, 0.3); const a = r.act(clip); if (a && clip === 'gl_bloqueio') { a.time = a.getClip().duration * 0.22; a.timeScale = 0; } else if (a) a.setLoop(THREE.LoopRepeat, Infinity); }
     if (r.once) r.once.t = 0.3;
   }
@@ -260,7 +276,7 @@ export class Melee {
     const rate = isHeavy && W.heavyRate ? W.heavyRate : (!isHeavy && W.rates ? W.rates[this.combo] : 0) || CLIP_RATE[name] || RATE;
     this.clip = name; this.t = 0; this.full = a.getClip().duration / rate; this.dur = this.full * (CLIP_END[name] || 0.94); this.hits = HIT_AT[name] || [0.45]; this.hitI = 0; this.idle = 0; this.heavy = isHeavy;
     playOnce(P.rig, name, this.dur); a.timeScale = rate;
-    this.swingAt = this.lastAct = performance.now(); this.onSwing?.(this);
+    this.swingAt = this.lastAct = performance.now(); this.swingN = (this.swingN || 0) + 1; this.onSwing?.(this);
     if (this.right) this.audio?.swoosh?.();
     if (name !== 'gl_chute') P.lunge(this.heavy ? 3.2 : 2.0, 0.18);
   }
@@ -324,6 +340,7 @@ export class Melee {
     const front = (dx * Math.sin(P.facing) + dz * Math.cos(P.facing)) / d > 0.3;
     if (this.block && front && !unblockable) {
       if (this.left === 'escudo' || this.left === 'escudo_eg') { playOnce(P.rig, 'gl_bloqueio', 0.32); P.lunge(-1.6 * knock, 0.12, dx / d, dz / d); this.audio?.clang?.(); P.shake = 0.05; if (heavy && rand() < 0.12) this.lose('left', from); return 'blocked'; }
+      if (this.right === 'katana') { this.audio?.clang?.(); P.lunge(-1.4 * knock, 0.12, dx / d, dz / d); P.shake = 0.05; this.lastAct = performance.now(); const rest = Math.round(dmg * (heavy ? 0.2 : 0.1)); if (rest > 0) this.health?.damage(rest); return 'blocked'; } // (a katana apara o golpe: lâmina contra lâmina)
       dmg *= this.right ? 0.45 : 0.6; // (apara com a espada, ou a guarda dos punhos: tira só parte)
     }
     this.health?.damage(Math.round(dmg));
@@ -399,7 +416,7 @@ export class Melee {
     const d = from.distanceTo(to), tt = Math.max(0.12, d / sp);
     const v = to.clone().sub(from).divideScalar(tt); v.y += 0.5 * 9.8 * tt; // (cai um pouco: sobe antes)
     holder.position.copy(from); holder.lookAt(from.clone().add(v));
-    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' || kind === 'khopesh' ? 18 : 0, prev: from.clone() });
+    this.flying.push({ g: holder, kind, v, life: 3, target: tg, spin: kind === 'gladio' || kind === 'khopesh' ? 18 : kind === 'katana' ? 15 : 0, prev: from.clone() });
     this.audio?.swoosh?.();
   }
   updateFlying(dt) {
