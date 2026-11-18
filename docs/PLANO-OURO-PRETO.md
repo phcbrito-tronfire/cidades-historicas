@@ -421,3 +421,43 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
 - **Fica para a Etapa 6:** os personagens com conversa longa (Aleijadinho, Gonzaga, Cláudio, Tiradentes, Macedo...) e
   os dias que mudam a gente da rua; cenas da escravidão com a violência (pelourinho, capitão do mato, tronco).
 
+
+## Etapa 6 — Histórias e os dias (18/11/2026)
+
+- **Os 14 dias (C passa o dia; T muda a hora):** cada dia tem a sua hora, a data no canto da tela e um cartão contando o
+  que acontece e onde. O dia fica salvo. Depois do dia 14, o cartão de 1792 (a sentença, Tiradentes enforcado no Rio em
+  21 de abril de 1792, Gonzaga degredado para Moçambique, Maria Doroteia que nunca se casou), e os dias recomeçam.
+  Os avisos de acontecimento só aparecem para quem está no lugar (regra do jogo). Módulo `js/ouropreto/dias.js`.
+- **O que muda na vila, dia a dia:**
+  - dia 1: Tiradentes falando alto na porta da venda (Rua Direita);
+  - dia 2: igrejas cheias na Quarta de Cinzas;
+  - dia 3: a tropa entra; o capitão do mato traz um fugitivo amarrado pela estrada do Rio;
+  - dia 4: o alferes desce para o Rio levando o cavalo, e a tropa volta com ele;
+  - dia 5, à noite: a reunião ouvida à porta de uma casa da Rua de São José ("tal dia é o batizado"; "E os escravos?" —
+    silêncio) e a noite de comédia na Casa da Ópera (plateia e atores);
+  - dia 6: o bando na praça, com tambor, suspendendo a derrama;
+  - dia 7: mais dragões, boatos de denúncia (Silvério); o pelourinho;
+  - dia 8, à noite: a procissão da Semana Santa (opas roxas, velas, a cruz com o sudário, matracas);
+  - dia 9: o tronco e a gargalheira na lavra, e o desabamento da galeria (o corpo sai na rede; a Irmandade do Rosário
+    paga o enterro);
+  - dia 10: notícia da prisão do alferes; papel queimando nos quintais;
+  - dia 11: Gonzaga levado preso pela Rua do Ouvidor entre os dragões, a vila nas portas;
+  - dia 12: a devassa (casa de Cláudio revistada), a Casa dos Contos com guarda, o pelourinho, a procissão de Corpus
+    Christi (pálio, custódia, opas vermelhas);
+  - dia 13: o povo diante dos Contos e o dobre dos sinos pela morte de Cláudio;
+  - dia 14: a rotina, com medo.
+  As falas da rua mudam com o assunto do dia (derrama, alívio, traição, medo, devassa, Cláudio, depois).
+- **Pessoas com conversa longa (14, `personagens.js`):** o Aleijadinho (no adro de São Francisco), Tomás Antônio Gonzaga,
+  Maria Doroteia, Cláudio Manuel da Costa, Tiradentes (até partir), o contratador Macedo (no escritório dos Contos), o juiz
+  da Irmandade do Rosário (é ele quem diz que a liberdade dos doutores não incluía os escravizados), Bento, o faiscador
+  forro (e os quilombos), Inácia, a quitandeira forra, Gonçalo, minerador de nação mina, o padre do Pilar, o cabo dos
+  dragões, o ensaiador da Casa da Ópera e o tropeiro. Cada um aparece só nos dias em que está na vila, com etiqueta, "!"
+  até a conversa e um ponto no mapa; alguns cumprimentam diferente em certos dias. Fato e lenda separados na própria
+  fala ("contam", "dizem", "papel não tem").
+- **As cenas da escravidão (decisão D):** mostradas como parte do sistema, sem espetáculo; a câmera nunca é levada; o
+  explorador pode ficar ou ir embora; o aviso só aparece no lugar; depois, alguém da vila conta o que aquilo significava
+  (a quitandeira no pelourinho, o faiscador sobre os quilombos, Gonçalo e o juiz sobre a galeria).
+- **Objetivos:** 14 conversas e 6 acontecimentos (36 no total na cidade).
+- **Testado:** os 14 dias sem erro; cada acontecimento fotografado no lugar; conversas longas com as teclas (tópicos,
+  páginas, objetivo cumprido); as velas e a fumaça como pontos de luz (o sprite comum virava um quadrado preto na passada
+  da sombra de contato). PC fraco: 25,1 quadros/s (Japão, na mesma rodada, 17,9).

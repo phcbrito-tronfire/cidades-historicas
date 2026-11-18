@@ -47,7 +47,7 @@ export function look(kind) {
 export class Gente {
   constructor(scene, city) {
     this.scene = scene; this.city = city; this.viewR = 50; this.agents = []; this.animals = []; this.props = new THREE.Group(); scene.add(this.props);
-    this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new V3(); this.t = 0; this.night = 0;
+    this.day = 1; this.key = []; this.boato = null; this.camera = null; this._fr = new THREE.Frustum(); this._pv = new THREE.Matrix4(); this._s = new THREE.Sphere(); this.pp = new V3(); this.t = 0; this.night = 0;
   }
   addHuman(lk, x, z, ry = 0, y) {
     const rig = makeHumanoid(lk);
@@ -87,6 +87,8 @@ export class Gente {
     }
     // os mineradores descendo e subindo o caminho da Queimada, de almocafre na mão
     for (let i = 0; i < 3; i++) { const rt = this.route('queimada', rr(-1.2, 1.2)), ri = Math.floor(rand() * rt.length), lk = look('minerador'); lk.extras = ['almocafre']; this.add('minerador', lk, rt[ri].x, rt[ri].z, 0, { extra: { route: rt, ri, dir: 1, speed: rr(0.85, 1.05), wait: rr(0, 4) } }); }
+    // a guarda dobrada depois dos boatos de denúncia (do dia 7 em diante): mais dragões de patrulha nas ruas
+    for (const [id, n] of [['direita', 2], ['saojose', 1], ['claudio', 1], ['antoniodias', 1], ['opera', 1]]) for (let i = 0; i < n; i++) { const rt = this.route(id, i ? -0.8 : 0.8), ri = Math.floor(rand() * rt.length); this.add('dragao', look('dragao'), rt[ri].x, rt[ri].z, 0, { night: true, extra: { route: rt, ri, dir: 1, speed: 1.0, wait: 0, when: (d) => d >= 7 } }); }
     // os dragões de patrulha (também de noite)
     for (const [id, n] of [['direita', 2], ['claudio', 1]]) for (let i = 0; i < n; i++) { const rt = this.route(id, i ? 0.8 : -0.8), ri = Math.floor(rand() * rt.length); this.add('dragao', look('dragao'), rt[ri].x, rt[ri].z, 0, { night: true, extra: { route: rt, ri, dir: 1, speed: 1.0, wait: 0 } }); }
 
@@ -105,6 +107,7 @@ export class Gente {
     // ---- as igrejas: os fiéis ajoelhados na nave; o padre e as senhoras na porta das matrizes
     for (const ch of C.churches || []) { if (ch.obra || !ch.door) continue; const ix = -Math.sin(ch.ry), iz = -Math.cos(ch.ry), lx = -iz, lz = ix;
       for (let i = 0; i < 3; i++) { const d = rr(7, 13), l = (i % 2 ? 1 : -1) * rr(1.2, 3.0), x = ch.door[0] + ix * d + lx * l, z = ch.door[1] + iz * d + lz * l, lk = look(pick(['senhora', 'mulher', 'escrava', 'homem'])); this.add('fiel', lk, x, z, Math.atan2(ix, iz), { mode: 'idle', y: ch.y, extra: { static: true } }); }
+      for (let i = 0; i < 6; i++) { const d = rr(6, 14), l = (i % 2 ? 1 : -1) * rr(0.6, 3.2), x = ch.door[0] + ix * d + lx * l, z = ch.door[1] + iz * d + lz * l; this.add('fiel', look(pick(['senhora', 'mulher', 'escrava', 'homem', 'senhora'])), x, z, Math.atan2(ix, iz), { mode: 'idle', y: ch.y, extra: { static: true, when: (dd) => dd === 2 || dd === 8 } }); } // (Quarta-feira de Cinzas e Semana Santa: a igreja cheia)
       if (ch.id === 'pilar' || ch.id === 'antoniodias') { const x = ch.door[0] - ix * 1.5, z = ch.door[1] - iz * 1.5; this.add('padre', look('padre'), x, z, Math.atan2(-ix, -iz), { mode: 'talk', extra: { static: true } }); for (const sd of [-1, 1]) this.add('senhora', look('senhora'), x - ix * 1.4 + lx * sd * 0.8, z - iz * 1.4 + lz * sd * 0.8, Math.atan2(ix, iz), { extra: { static: true } }); }
     }
 
@@ -186,10 +189,11 @@ export class Gente {
 
   nearestInteractable(p, max = 2.8) {
     let best = null, bd = max * max;
+    for (const k of this.key) { if (!k.rig.root.visible) continue; const d = (k.pos.x - p.x) ** 2 + (k.pos.z - p.z) ** 2; if (d < bd && Math.abs(k.pos.y - p.y) < 2) { bd = d; best = { type: 'npc', o: k }; } }
     for (const a of this.agents) { if (!a.rig.root.visible) continue; const d = (a.pos.x - p.x) ** 2 + (a.pos.z - p.z) ** 2; if (d < bd && Math.abs(a.pos.y - p.y) < 2) { bd = d; best = { type: a.kind, o: a }; } }
     return best;
   }
-  titulo(o) { return TITULOS[o.kind] || 'Morador'; }
+  titulo(o) { return o.def ? o.def.name : TITULOS[o.kind] || 'Morador'; }
   anim(rig, dt, speed, mode, t) {
     rig._acc = (rig._acc || 0) + dt;
     const p = rig.root.position, d2 = (p.x - this.pp.x) ** 2 + (p.z - this.pp.z) ** 2;
@@ -231,9 +235,9 @@ export class Gente {
     const face = (o, target, k) => { if (!target) return; const ang = Math.atan2(target.x - o.pos.x, target.z - o.pos.z); o.rig.root.rotation.y = angleLerp(o.rig.root.rotation.y, ang, Math.min(1, dt * k)); };
     const dark = night > 0.55;
     for (const a of this.agents) {
-      let vis = near(a, this.viewR) && !(dark && !a.night) && !a.hidden;
+      let vis = near(a, this.viewR) && !(dark && !a.night) && !a.hidden && (!a.when || a.when(this.day));
       if (vis && this.camera && !near(a, 6)) { this._s.center.set(a.pos.x, a.pos.y + 0.95, a.pos.z); this._s.radius = 1.3; vis = this._fr.intersectsSphere(this._s); } // (fora da tela não se desenha nem se calcula o esqueleto)
-      a.rig.root.visible = vis; if (!vis) { if (!a.static && !a.tropa && !a.talking) this.walk(a, dt); continue; }
+      a.rig.root.visible = vis; if (!vis) { if (!a.static && !a.tropa && !a.talking) { a._w = (a._w || 0) + dt; if (a._w > 0.25) { this.walk(a, a._w); a._w = 0; } } continue; } // (fora da tela, o passo é dado de quatro em quatro quadros)
       if (a.talking) { face(a, pp, 6); this.anim(a.rig, dt, 0, 'talk', t); continue; }
       if (a.tropa) { this.anim(a.rig, dt, a.tropaMoving ? 1.15 : 0, a.tropaMoving ? 'walk' : 'idle', t); continue; }
       if (a.static) { if (a.mode !== 'work' && a.mode !== '@pegar') a.rig.root.rotation.y = angleLerp(a.rig.root.rotation.y, a.ry, dt * 2); this.anim(a.rig, dt, 0, a.mode, t); continue; }

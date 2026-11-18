@@ -277,7 +277,8 @@ export function teatro(f, M, out, g) {
   f.box(M.marmoreado, bw, top - ph - bh - 0.2, 0.3, 0, ph + bh, bz, { noGround: true }); f.box(M.veludo, bw, 0.8, 0.12, 0, ph + bh - 0.75, bz - 0.25, { noGround: true });
   f.box(M.ouro, bw + 0.4, 0.3, 0.36, 0, ph + bh, bz + 0.02, { noGround: true }); for (const s of [-1, 1]) f.box(M.ouro, 0.3, bh, 0.36, s * (bw / 2 + 0.1), ph, bz + 0.02, { noGround: true });
   // a plateia: bancos corridos de tábua
-  for (let z = bz + 2.2; z < zf - T - 2.6; z += 1.1) for (const s of [-1, 1]) { const x = s * (iw / 4 + 0.15); f.box(M.madeira, iw / 2 - 1.6, 0.05, 0.32, x, 0.44, z, { noGround: true }); for (const b of [-1, 1]) f.box(M.madeira, 0.05, 0.44, 0.3, x + b * (iw / 4 - 1.0), 0, z, { noGround: true }); f.solid(x, z, iw / 2 - 1.6, 0.35, -0.5, 0.48); }
+  for (let z = bz + 2.2; z < zf - T - 2.6; z += 1.1) for (const s of [-1, 1]) { const x = s * (iw / 4 + 0.15); f.box(M.madeira, iw / 2 - 1.6, 0.05, 0.32, x, 0.44, z, { noGround: true }); for (const b of [-1, 1]) f.box(M.madeira, 0.05, 0.44, 0.3, x + b * (iw / 4 - 1.0), 0, z, { noGround: true }); f.solid(x, z, iw / 2 - 1.6, 0.35, -0.5, 0.48); for (const k of [-1.1, 0, 1.1]) { const [wx, wz] = f.W(x + k, z - 0.06); (out.spots.operaSeats ||= []).push([wx, f.y + 0.48, wz, f.ry + Math.PI]); } } // (os lugares da plateia: as noites de comédia, dias.js)
+  { const st = []; for (const k of [-1.3, 1.3]) { const [wx, wz] = f.W(k, z0 + sd - 1.6); st.push([wx, f.y + ph, wz, f.ry]); } out.spots.operaStage = st; } // (onde ficam os atores)
   // os camarotes: dois andares de cada lado, com o parapeito pintado e as divisórias
   for (const s of [-1, 1]) for (const [cy, k] of [[2.3, 0], [4.4, 1]]) {
     if (cy + 2 > top) continue;

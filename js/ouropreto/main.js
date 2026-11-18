@@ -24,6 +24,7 @@ import { buildBridges } from './pontes.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
 import { Gente } from './gente.js';
+import { Dias } from './dias.js';
 import { Quests, OBJECTIVES } from './quests.js';
 import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
@@ -134,6 +135,8 @@ async function main() {
   await step(0.93, 'Pondo a gente na rua...');
   const gente = new Gente(scene, city); gente.camera = camera; gente.viewR = PROFILE[quality].npcR; gente.shadowR = PROFILE[quality].npcShadow; gente.spawn(); gente.spawnTropa(); // (até onde a gente aparece e faz sombra: pelo nível de gráfico)
 
+  const dias = new Dias({ scene, city, gente, sky, ui, audio, quests, glow: tex.glow }); quests.spots = city.spots; dias.start();
+
   await step(0.96, 'Desenhando o mapa da vila...');
   const P = PLACES, B0 = BRIDGES.find((b) => b.stream === 'funil');
   const mapJob = ui.buildMapBackground([
@@ -184,21 +187,36 @@ async function main() {
 
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
-    if (!started || e.repeat) return;
+    if (!started || e.repeat || dias.cardOpen) return;
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
-      case 'KeyE': { const tg = gente.nearestInteractable(player.pos); if (tg) falar(tg.o); break; }
-      case 'KeyC': { const p = sky.next(); ui.setTime(`${p.label} · Fevereiro de 1789`); ui.toast(p.msg); break; }
+      case 'KeyE': { const tg = gente.nearestInteractable(player.pos); if (tg) (tg.type === 'npc' ? conversa(tg.o) : falar(tg.o)); break; }
+      case 'KeyC': dias.next(); break; // (o próximo dia marcado)
+      case 'KeyT': { const p = sky.next(); ui.setTime(dias.label()); ui.toast(p.msg); break; } // (a hora: manhã, tarde, noite)
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
     }
   });
   // a fala curta de quem está por perto (cada um diz uma coisa da sua vida, sorteada entre as suas)
+  const RUA = new Set(['homem', 'mulher', 'senhor', 'senhora', 'quitandeira', 'escravo', 'aguadeira', 'tropeiro', 'pedreiro', 'canteiro', 'dragao']);
   const falar = (o) => {
     o.talking = true; player.locked = true; ui.openDialog({ name: gente.titulo(o), title: '' }); audio.talk();
     o.fi = ((o.fi ?? Math.floor(Math.random() * o.lines.length)) + 1) % o.lines.length;
-    ui.say(o.lines[o.fi], [{ label: '(Seguir caminho)', cb: () => { ui.closeDialog(); o.talking = false; player.locked = false; } }]);
+    const txt = gente.boato && RUA.has(o.kind) && Math.random() < 0.5 ? gente.boato[Math.floor(Math.random() * gente.boato.length)] : o.lines[o.fi]; // (metade das vezes, o assunto do dia)
+    ui.say(txt, [{ label: '(Seguir caminho)', cb: () => { ui.closeDialog(); o.talking = false; player.locked = false; } }]);
+  };
+  // a conversa longa: os assuntos de cada pessoa, um por um
+  const conversa = (k) => {
+    const def = k.def; k.talking = true; player.locked = true; k.read = k.read || new Set();
+    ui.openDialog({ name: def.name, title: def.title }); audio.talk();
+    const close = () => { ui.closeDialog(); k.talking = false; player.locked = false; };
+    const topic = (i, page) => { const tp = def.topics[i]; k.read.add(i); quests.complete(def.objective); const last = page >= tp.a.length - 1;
+      ui.say(tp.a[page], [{ label: last ? 'Voltar às perguntas' : 'Continuar...', cb: () => (last ? menu(false) : topic(i, page + 1)) }]); };
+    const menu = (first) => { const opts = def.topics.map((tp, i) => ({ label: tp.q, read: k.read.has(i), cb: () => topic(i, 0) }));
+      opts.push({ label: 'Até logo.', cb: () => ui.say(def.bye, [{ label: '(Despedir-se)', cb: close }]) });
+      ui.say(first ? (def.greetDay?.[dias.day] || def.greet) : ['O que mais quer saber?', 'Pergunte.', 'Mais alguma coisa?'][Math.floor(Math.random() * 3)], opts); };
+    menu(true);
   };
   const pauseEl = document.getElementById('pause');
   document.getElementById('btn-quiz-end')?.addEventListener('click', () => { const en = document.getElementById('ending'); if (en) en.hidden = true; openQuiz('ouropreto', () => { if (en) en.hidden = false; }); });
@@ -228,7 +246,7 @@ async function main() {
     });
   };
 
-  window.__game = { city, gente, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { city, gente, dias, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -271,14 +289,14 @@ async function main() {
     sky.update(dt, t, player.pos);
     nature.update(dt); nature.cull(camera, dt);
     interiorLight(dt, player.pos);
-    gente.update(dt, t, player, sky.state.night);
+    gente.update(dt, t, player, sky.state.night); dias.update(dt, t, player);
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {
       { const tg = !ui.dialogOpen && gente.nearestInteractable(player.pos); ui.prompt(tg ? `<kbd>E</kbd> Falar com ${gente.titulo(tg.o).toLowerCase()}` : ''); }
       ui.setPlace(placeName(player.pos.x, player.pos.z, player.pos.y));
       miniT -= dt;
-      if (miniT <= 0) { ui.drawMinimap(player, [], hints()); miniT = 0.1; }
+      if (miniT <= 0) { ui.drawMinimap(player, dias.key.filter((k) => !k.rig.root.userData.off).map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) })), hints()); miniT = 0.1; }
       let nw = 0; for (const C of Object.values(STREAMS)) { const q = polyDist(C.pts, player.pos.x, player.pos.z); nw = Math.max(nw, Math.max(0, 1 - q.d / (C.hw > 2 ? 40 : 22))); }
       audio.update(dt, { nearWater: nw * 0.7, night: sky.state.night > 0.5, market: 0, sea: 0 });
       audio.windGain && (audio.windGain.gain.value = 0.05 + Math.min(0.12, Math.max(0, player.pos.y - 60) / 500)); // (venta mais no alto dos morros)

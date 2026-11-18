@@ -20,6 +20,28 @@ export const OBJECTIVES = [
   { id: 'ribeirao', text: 'Desça até a beira do ribeirão, no fundo do vale' },
   { id: 'itacolomi', text: 'Do alto, ache o pico do Itacolomi no horizonte, a sudoeste' },
   { id: 'estrada', text: 'Siga uma das estradas que saem da vila: a do Rio de Janeiro ou a de Mariana' },
+  // (Etapa 6) as pessoas com conversa longa
+  { id: 'c_aleijadinho', text: 'Converse com o mestre Antônio Francisco Lisboa, o Aleijadinho, no adro de São Francisco' },
+  { id: 'c_tiradentes', text: 'Converse com o alferes Tiradentes na Rua Direita (até ele partir para o Rio)' },
+  { id: 'c_gonzaga', text: 'Converse com Tomás Antônio Gonzaga, na Rua do Ouvidor' },
+  { id: 'c_marilia', text: 'Visite Maria Doroteia, a Marília, perto da matriz de Antônio Dias' },
+  { id: 'c_claudio', text: 'Converse com o poeta Cláudio Manuel da Costa, na Rua de São José' },
+  { id: 'c_macedo', text: 'Converse com o contratador João Rodrigues de Macedo, na Casa dos Contos' },
+  { id: 'c_juiz', text: 'Converse com o juiz da Irmandade do Rosário, na igreja em obra' },
+  { id: 'c_faiscador', text: 'Converse com o faiscador forro na beira do ribeirão' },
+  { id: 'c_quitandeira', text: 'Converse com Inácia, a quitandeira da praça' },
+  { id: 'c_minerador', text: 'Converse com Gonçalo, minerador, nas lavras da Queimada' },
+  { id: 'c_padre', text: 'Converse com o padre na porta da matriz do Pilar' },
+  { id: 'c_dragao', text: 'Converse com o cabo dos dragões na guarda do Palácio' },
+  { id: 'c_opera', text: 'Converse com o ensaiador na porta da Casa da Ópera' },
+  { id: 'c_tropeiro', text: 'Converse com o tropeiro no Largo dos Contos' },
+  // (Etapa 6) os acontecimentos dos dias (C passa o dia)
+  { id: 'reuniao', text: 'Numa noite de março, ouça a conversa baixa à porta de uma casa da Rua de São José' },
+  { id: 'teatro', text: 'Assista a uma noite de comédia na Casa da Ópera' },
+  { id: 'bando', text: 'Ouça, na praça, o bando que suspende a derrama' },
+  { id: 'procissao', text: 'Acompanhe uma procissão pelas ladeiras' },
+  { id: 'prisao', text: 'Veja a prisão de Gonzaga, em 23 de maio' },
+  { id: 'sinos', text: 'Em 4 de julho, vá à Casa dos Contos quando os sinos dobram' },
 ];
 const SAVE = 'cidades-historicas:ouropreto:v1';
 
@@ -38,7 +60,8 @@ export class Quests {
   }
   isDone(id) { return !id || this.done.has(id); }
   count() { return this.done.size; }
-  hintFor(o) { return this.hints[o.id] || null; }
+  hintFor(o) { const S = this.spots || {}; if (o.id.startsWith('c_')) { const id = { c_aleijadinho: 'aleijadinho', c_tiradentes: 'tiradentes', c_gonzaga: 'gonzaga', c_marilia: 'marilia', c_claudio: 'claudio', c_macedo: 'macedo', c_juiz: 'juiz', c_faiscador: 'faiscador_bento', c_quitandeira: 'quitandeira_inacia', c_minerador: 'minerador_goncalo', c_padre: 'vigario', c_dragao: 'cabo', c_opera: 'ensaiador', c_tropeiro: 'tropeiro_joaquim' }[o.id]; return S['npc_' + id] || null; }
+    const E = { reuniao: S.npc_claudio, teatro: S.npc_ensaiador, bando: S.pelourinho, procissao: [-245, 26], prisao: S.npc_gonzaga, sinos: [-277, 14] }; return E[o.id] || this.hints[o.id] || null; }
   complete(id) {
     if (this.done.has(id) || !OBJECTIVES.find((x) => x.id === id)) return false;
     this.done.add(id);
