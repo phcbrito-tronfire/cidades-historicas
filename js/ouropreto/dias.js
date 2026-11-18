@@ -27,7 +27,7 @@ export const DIAS = [
   { n: 11, fase: 'manha', data: '23 de maio de 1789', nome: 'A prisão de Gonzaga', desc: 'Antes do sol, os dragões entram na casa do Doutor Tomás Antônio Gonzaga, na Rua do Ouvidor, poucos dias antes do casamento dele com Maria Doroteia. Levam-no preso pela rua, e a vila sai às portas para ver.' },
   { n: 12, fase: 'tarde', data: 'Junho de 1789', nome: 'A devassa', desc: 'A devassa está aberta: casas revistadas, papéis apreendidos, gente chamada a depor. A Casa dos Contos virou prisão, com guarda à porta. E a procissão de Corpus Christi passa no meio de tudo, com o pálio e a custódia.' },
   { n: 13, fase: 'manha', data: '4 de julho de 1789', nome: 'A morte de Cláudio', desc: 'Cláudio Manuel da Costa é achado morto no cubículo debaixo da escada da Casa dos Contos. A versão oficial diz que ele se matou; o povo murmura outra coisa. Os sinos dobram.' },
-  { n: 14, fase: 'tarde', data: 'Depois, 1789', nome: 'A vila volta à rotina, com medo', desc: 'Os presos foram levados para o Rio. As lavras trabalham, as quitandeiras vendem, os sinos tocam as horas. Mas fala-se baixo, e ninguém confia em ninguém.' },
+  { n: 14, fase: 'tarde', data: 'Outubro de 1789', nome: 'A festa do Rosário — e a vila com medo', desc: 'Os presos foram levados para o Rio, e fala-se baixo na vila. Mas outubro é mês de Nossa Senhora do Rosário: no adro da igreja em obra, a irmandade dos pretos coroa o seu rei e a sua rainha, com a bandeira, os tambores, o canto e a roda de dança. É a festa que nem o medo cancela.' },
 ];
 const FIM = { tag: 'Depois de 1789', name: 'A sentença', era: 'Rio de Janeiro, abril de 1792', story: 'A devassa durou três anos. Em abril de 1792 saiu a sentença: os principais conjurados foram condenados à morte; a rainha Dona Maria I trocou a pena de quase todos por degredo na África. Só o alferes Joaquim José da Silva Xavier, o Tiradentes — o único que assumiu tudo —, foi enforcado no Rio de Janeiro, em 21 de abril de 1792. Tomás Antônio Gonzaga foi degredado para Moçambique, e Maria Doroteia nunca se casou.', foot: 'Aperte C para recomeçar os dias, desde fevereiro de 1789.' };
 const SAVE = 'cidades-historicas:ouropreto:dia';
@@ -130,7 +130,7 @@ export class Dias {
   // ---------------- os acontecimentos de cada dia ----------------
   rig(kind, lk, x, z, ry, y) { const r = makeHumanoid(lk || look(kind)); const p = new V3(x, y ?? groundAt(x, z, terrainAt(x, z) + 1.6), z); r.root.position.copy(p); r.root.rotation.y = ry; this.scene.add(r.root); const e = { r, pos: p, ry, mode: 'idle' }; this.ev.push(e); return e; }
   mesh(obj) { this.scene.add(obj); this.ev.push({ obj }); return obj; }
-  clearEvents() { this.pelo = null; this.capitao = null; this.galeria = null; for (const e of this.ev) { if (e.r) this.scene.remove(e.r.root); if (e.obj) this.scene.remove(e.obj); if (e.c) this.scene.remove(e.c.holder); } this.ev = []; this.proc = null; this.escolta = null; this.partida = null; this.bando = null; this.dobre = null; this.fogos = null; }
+  clearEvents() { this.levantar(); this.tiraVela(); this.festa = null; this.pelo = null; this.capitao = null; this.galeria = null; for (const e of this.ev) { if (e.r) this.scene.remove(e.r.root); if (e.obj) this.scene.remove(e.obj); if (e.c) this.scene.remove(e.c.holder); } this.ev = []; this.proc = null; this.escolta = null; this.partida = null; this.bando = null; this.dobre = null; this.fogos = null; }
   // um caminho (polilinha de pontos [x,z]) com a posição de quem está a s metros dele
   path(pts) { const P = pts.map(([x, z]) => new V3(x, 0, z)), cum = [0]; for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + P[i].distanceTo(P[i - 1])); return { P, cum, L: cum[cum.length - 1] }; }
   at(pa, s) { s = Math.max(0, Math.min(pa.L, s)); let i = 1; while (i < pa.cum.length - 1 && pa.cum[i] < s) i++; const a = pa.P[i - 1], b = pa.P[i], t = (s - pa.cum[i - 1]) / (pa.cum[i] - pa.cum[i - 1] || 1); return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, h: Math.atan2(b.x - a.x, b.z - a.z) }; }
@@ -153,8 +153,8 @@ export class Dias {
     // ---- dia 5: a reunião ouvida à porta (Rua de São José) e a noite de comédia na Casa da Ópera
     if (n === 5) {
       this.reuniao = { h: this.casaClaudio, i: -1, t: 0 };
-      const seats = (S.operaSeats || []).slice().sort(() => rand() - 0.5).slice(0, 18);
-      for (const [x, y, z, ry] of seats) { const k = pick(['senhor', 'senhor', 'senhora', 'homem', 'senhora']); const e = this.rig(k, null, x, z, ry, y - 0.46); e.mode = 'sit'; if (e.r.skirt) e.r.skirt.visible = false; }
+      const all = S.operaSeats || [], idx = all.map((_, i) => i).sort(() => rand() - 0.5).slice(0, 18); this.ocupados = new Set(idx); // (os lugares que sobram ficam para o explorador)
+      for (const [x, y, z, ry] of idx.map((i) => all[i])) { const k = pick(['senhor', 'senhor', 'senhora', 'homem', 'senhora']); const e = this.rig(k, null, x, z, ry, y - 0.46); e.mode = 'sit'; if (e.r.skirt) e.r.skirt.visible = false; }
       for (const [x, y, z, ry] of S.operaStage || []) { const e = this.rig('ator', { outfit: 'casaca', coat: pick([0x8a2a2a, 0x2a3a6a]), vest: 0xe0c060, legs: 0x2a2228, stockings: 0xf0ece2, hair: 'rabicho', skin: 0xa87652 }, x, z, ry, y); e.mode = 'talk'; }
     }
     // ---- dia 6: o bando na praça — o tambor, o oficial lendo, o povo em volta
@@ -172,6 +172,7 @@ export class Dias {
     if (n === 3) this.capitaoDoMato();
     if (n === 7 || n === 12) this.pelourinho();
     if (n === 9) this.lavra();
+    if (n === 14) this.festaRosario();
     // ---- dia 8 e dia 12: as procissões
     if (n === 8 || n === 12) this.procissao(n === 8);
     // ---- dia 10: papel queimando nos quintais
@@ -194,6 +195,65 @@ export class Dias {
       if (n === 13) { for (let i = 0; i < 12; i++) { const a = h.ry + rr(-0.9, 0.9), d = rr(5, 10), x = h.door[0] + Math.sin(a) * d, z = h.door[1] + Math.cos(a) * d; const e = this.rig(pick(['homem', 'mulher', 'senhora', 'escravo', 'escrava', 'senhor', 'quitandeira']), null, x, z, Math.atan2(h.door[0] - x, h.door[1] - z)); e.mode = rand() < 0.5 ? 'talk' : 'idle'; } this.dobre = { x: h.door[0], z: h.door[1], t: 0 }; } }
       if (n === 12 && this.casaClaudio) { const hh = this.casaClaudio; for (const sd of [-1, 1]) { const e = this.rig('dragao', null, hh.door[0] + Math.cos(hh.ry) * sd * 1.3, hh.door[1] - Math.sin(hh.ry) * sd * 1.3, hh.ry + Math.PI); e.mode = sd > 0 ? 'talk' : 'idle'; } } } // (a casa de Cláudio, revistada)
   }
+  // ---------------- as atividades ----------------
+  // a peça da noite (dia 5): um entremez, a comédia curta que se encenava entre as óperas
+  static PECA = ['(O pano sobe. Entra o velho Dom Pança, avarento, contando moedas.) — Uma, duas, três oitavas… e o rato ainda me come o queijo!',
+    '(Entra o criado Lobato.) — Patrão, o alfaiate quer o pagamento da casaca. — Diz-lhe que a casaca ainda não está velha o bastante para ser paga!',
+    '— E o padeiro, patrão? — O padeiro que espere. Pão bom é pão que cresce devagar.',
+    '(Entra a sobrinha, Florinda.) — Titio, quero casar! — Com quem, menina? — Com quem tiver dote, titio, que é o que o senhor mais ama.',
+    '(A plateia ri. Nos camarotes, os leques abanam.)',
+    '— Lobato, esconde o meu baú, que vem visita! — Já escondi, patrão: debaixo da sua cama. — É o primeiro lugar onde procuram, animal!',
+    '(O pano desce. Aplausos, assobios e risadas na plateia.)'];
+  get assentos() { return (this.city.spots?.operaSeats || []).filter((s, i) => !this.ocupados?.has(i)); }
+  // o que dá para fazer aqui (para o aviso na tela e para o E)
+  acao(pp) {
+    if (this.sentado) return { txt: 'Levantar-se', fn: () => this.levantar() };
+    if (this.day === 5) { const s = this.assentos.find((q) => Math.hypot(q[0] - pp.x, q[2] - pp.z) < 1.8 && Math.abs(q[1] - pp.y) < 1.5); if (s) return { txt: 'Sentar na plateia', fn: () => this.sentar(s) }; }
+    if (this.proc && !this.velaP) { const m = this.proc.m.find((e) => e.r.root.visible && Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z) < 3.5); if (m) return { txt: 'Pegar uma vela e seguir a procissão', fn: () => this.daVela() }; }
+    return null;
+  }
+  sentar(s) { this.sentado = { s, i: -1, t: 2 }; this.player.locked = true; this.player.boardCam(0.12); this.quests.complete('teatro'); }
+  levantar() { if (!this.sentado) return; const [x, y, z, ry] = this.sentado.s; this.sentado = null; this.player.leaveCam(); this.player.locked = false; this.player.place(x + Math.sin(ry) * 0.9, z + Math.cos(ry) * 0.9, ry); }
+  // sentado: o explorador fica no banco, a peça corre (uma fala a cada seis segundos)
+  sentadoUpdate(dt, t, player) {
+    const S = this.sentado, [x, y, z, ry] = S.s; player.ride(dt, t, new V3(x, y - 0.46, z), ry, 'sit', 0, null, ry);
+    S.t -= dt; if (S.t <= 0 && S.i < Dias.PECA.length - 1) { S.i++; S.t = 6.5; this.ui.toast(Dias.PECA[S.i], 'quest', 6500); if (S.i === Dias.PECA.length - 1) for (let k = 0; k < 30; k++) setTimeout(() => this.audio.burst(0.04, 1800 + Math.random() * 2000, 0.08), k * 60 + Math.random() * 400); }
+  }
+  daVela() { const r = this.player.rig, c = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0xf4ecd8, roughness: 0.6 })), f = this.flame(0.28); c.position.y = 0.08; f.position.set(0, 0.25, 0.05); r.handR.add(c, f); this.velaP = [c, f]; this.quests.complete('vela');
+    this.ui.toast(this.proc.santa ? 'Um irmão de opa roxa acende uma vela na dele e passa a você. Siga devagar, no passo da procissão.' : 'Um irmão de opa vermelha lhe dá uma vela acesa. A procissão segue para o Carmo.', 'quest', 7000); }
+  tiraVela() { if (this.velaP) { for (const o of this.velaP) o.parent?.remove(o); this.velaP = null; } }
+
+  // a festa do Rosário (dia 14): o rei e a rainha coroados debaixo do guarda-sol, a corte, a bandeira, os tambores e a
+  // roda de dança (o congado) girando em volta; o povo olhando
+  festaRosario() {
+    const P = PLACES.rosario, cx = P.x + 2, cz = P.z - P.d / 2 + 5, gold = new THREE.MeshStandardMaterial({ color: 0xe0b04a, metalness: 0.85, roughness: 0.3 });
+    const coroa = (e) => { const head = e.r.bones?.Head; if (!head) return; e.r.root.updateMatrixWorld(true); const ws = new V3(); head.getWorldScale(ws); const k = 1 / ws.x, g = new THREE.Group();
+      const aro = new THREE.Mesh(new THREE.CylinderGeometry(0.105 * k, 0.095 * k, 0.07 * k, 16, 1, true), gold); g.add(aro); for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, p = new THREE.Mesh(new THREE.ConeGeometry(0.018 * k, 0.07 * k, 4), gold); p.position.set(Math.cos(a) * 0.1 * k, 0.06 * k, Math.sin(a) * 0.1 * k); g.add(p); }
+      const cruz = new THREE.Mesh(new THREE.BoxGeometry(0.012 * k, 0.07 * k, 0.012 * k), gold); cruz.position.y = 0.11 * k; g.add(cruz); g.position.y = 0.19 * k; head.add(g); };
+    const rei = this.rig('rei', { outfit: 'casaca', coat: 0x8a1a1e, vest: 0xe0c060, legs: 0xf0ece2, stockings: 0xf0ece2, hair: 'natural', skin: 0x4e301e, extras: ['bengala'] }, cx - 0.6, cz, Math.PI); coroa(rei);
+    const rainha = this.rig('rainha', { outfit: 'saia', skirt: 0x2a3a8a, top: 0xf2ece0, pano: 0xe0c060, panoAccent: '#8a1a1e', hair: 'torco', headColor: 0xf2ece0, skin: 0x4e301e }, cx + 0.6, cz, Math.PI); coroa(rainha);
+    // o guarda-sol vermelho por cima deles, numa vara segurada por um pajem
+    { const pj = this.rig('pajem', { outfit: 'colono', top: 0xf2ece0, legs: 0x8a1a1e, hair: 'natural', skin: 0x5e3a26, barefoot: false }, cx, cz + 1.0, Math.PI); void pj;
+      const g = new THREE.Group(), vara = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.6, 6), new THREE.MeshStandardMaterial({ color: 0x5a3a22 })); vara.position.y = 1.3; g.add(vara);
+      const sol = new THREE.Mesh(new THREE.ConeGeometry(1.25, 0.45, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0xa82a22, roughness: 0.8, side: THREE.DoubleSide })); sol.position.y = 2.55; g.add(sol);
+      const franja = new THREE.Mesh(new THREE.CylinderGeometry(1.26, 1.26, 0.12, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0xe0c060, roughness: 0.7, side: THREE.DoubleSide })); franja.position.y = 2.3; g.add(franja);
+      g.position.set(cx, this.yAt(cx, cz + 0.4), cz + 0.4); this.mesh(g); }
+    // a bandeira da irmandade e os tambores
+    { const e = this.rig('bandeira', { outfit: 'colono', top: 0xf2ece0, legs: 0x2a3a6a, hair: 'natural', skin: 0x5e3a26 }, cx - 3.2, cz - 1.5, Math.PI); const g = new THREE.Group(), vara = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.8, 6), new THREE.MeshStandardMaterial({ color: 0x5a3a22 })); vara.position.y = 1.4; g.add(vara);
+      const pano = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.7), new THREE.MeshStandardMaterial({ map: this.bandeiraTex(), side: THREE.DoubleSide, roughness: 0.9 })); pano.position.set(0.47, 2.4, 0); g.add(pano); g.position.set(cx - 3.0, this.yAt(cx - 3, cz - 1.5), cz - 1.5); this.mesh(g); void e; }
+    this.tambores = [];
+    for (let i = 0; i < 3; i++) { const x = cx + 3 + i * 0.9, z = cz - 1.2 - (i % 2) * 0.5, e = this.rig('tamborzeiro', { outfit: 'colono', top: 0xf2ece0, legs: 0xf2ece0, hair: 'natural', skin: pick([0x4e301e, 0x5e3a26]), barefoot: true }, x, z, Math.PI * 0.9);
+      const d = new THREE.Group(), pele = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.17, 0.6, 14), new THREE.MeshStandardMaterial({ color: 0x8a5a32, roughness: 0.7 })); d.add(pele); d.position.set(0, 0.7, 0.3); d.rotation.x = 0.35; e.r.root.add(d); this.tambores.push(e); }
+    // a roda: o congado, de branco com as fitas, girando em volta do rei e da rainha
+    const roda = []; for (let i = 0; i < 12; i++) { const e = this.rig('congado', { outfit: i % 2 ? 'colono' : 'saia', top: 0xf2ece0, legs: 0xf2ece0, skirt: 0xf2ece0, pano: i % 3 ? 0x2a4a8a : 0xa82a22, hair: i % 2 ? 'natural' : 'torco', headColor: 0xf2ece0, skin: pick([0x4e301e, 0x5e3a26, 0x6e4630]), barefoot: true }, cx, cz, 0); e.moving = true; roda.push(e); }
+    for (let i = 0; i < 14; i++) { const a = rr(-1.4, 1.4) + Math.PI, d = rr(8, 12), x = cx + Math.sin(a) * d, z = cz - 2 + Math.cos(a) * d; const e = this.rig(pick(['homem', 'mulher', 'escrava', 'escravo', 'crianca', 'senhor', 'quitandeira']), null, x, z, Math.atan2(cx - x, cz - z)); e.mode = rand() < 0.3 ? 'talk' : 'idle'; }
+    this.festa = { cx, cz, roda, t: 0 };
+  }
+  bandeiraTex() { const c = document.createElement('canvas'); c.width = 128; c.height = 100; const x = c.getContext('2d'); x.fillStyle = '#f2ece0'; x.fillRect(0, 0, 128, 100); x.fillStyle = '#2a4a8a'; x.fillRect(0, 0, 128, 14); x.fillRect(0, 86, 128, 14);
+    x.fillStyle = '#c8a040'; x.beginPath(); x.arc(64, 50, 22, 0, 7); x.fill(); x.fillStyle = '#2a4a8a'; x.beginPath(); x.moveTo(64, 30); x.lineTo(76, 70); x.lineTo(52, 70); x.fill(); x.fillStyle = '#e8d8c0'; x.beginPath(); x.arc(64, 36, 6, 0, 7); x.fill(); // (Nossa Senhora do Rosário, à moda dos estandartes)
+    x.strokeStyle = '#8a1a1e'; x.lineWidth = 2; for (let i = 0; i < 18; i++) { x.beginPath(); x.arc(64 + Math.cos(i / 18 * 6.28) * 30, 50 + Math.sin(i / 18 * 6.28) * 30, 1.5, 0, 7); x.stroke(); } // (as contas do rosário em volta)
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+
   // ---------------- as cenas da escravidão ----------------
   // o pelourinho (dias 7 e 12): a justiça da vila manda açoitar um homem que tinha fugido, à vista do povo. O oficial lê
   // a sentença; o açoite; depois os companheiros o desamarram e o levam. Uma quitandeira, ao lado, explica.
@@ -227,14 +287,9 @@ export class Dias {
     { const x = Q.x + 8, z = Q.z - 6, e = this.rig('escravo', { outfit: 'escravo', top: 0xb8ac90, legs: 0x8a7a60, shorts: true, barefoot: true, hair: 'natural', skin: 0x5e3a26 }, x, z, 2.2); e.mode = '@pegar';
       const neck = e.r.bones?.Neck; if (neck) { e.r.root.updateMatrixWorld(true); const ws = new V3(); neck.getWorldScale(ws); const k = 1 / ws.x; // (a escala do osso no mundo: o tamanho da argola é medido em metros)
         const col = new THREE.Mesh(new THREE.TorusGeometry(0.068 * k, 0.012 * k, 6, 20), iron); col.rotation.x = Math.PI / 2; col.position.y = 0.035 * k; neck.add(col); const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.006 * k, 0.006 * k, 0.11 * k, 5), iron); hook.position.set(0, 0.07 * k, -0.08 * k); hook.rotation.x = 0.4; neck.add(hook); } } // (a argola de ferro e a haste que sobe atrás)
-    // a boca da galeria: o rombo no barranco, escorado com madeira
-    { const x = Q.x + 22, z = Q.z - 16, y = terrainHeight(x, z), g = new THREE.Group(), face = Math.atan2(Q.x - x, Q.z - z);
-      const hole = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.9), new THREE.MeshBasicMaterial({ color: 0x050403 })); hole.position.set(0, 0.85, -0.38); g.add(hole);
-      for (const sx of [-0.85, 0.85]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.1, 0.2), wood); p.position.set(sx, 0.9, 0.08); g.add(p); } const v = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.22, 0.24), wood); v.position.set(0, 1.95, 0.08); g.add(v);
-      const monte = new THREE.Mesh(new THREE.SphereGeometry(1.6, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8a5a36, roughness: 1 })); monte.scale.set(1.4, 0.5, 1); monte.position.set(1.8, -0.1, 1.2); g.add(monte); // (o cascalho tirado)
-      const morro = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7a5236, roughness: 1 })); morro.scale.set(3.6, 2.6, 3.4); morro.position.set(0, -0.15, -3.1); g.add(morro); // (o barranco onde a galeria entra: a boca fica cavada na frente dele)
-      g.position.set(x, y - 0.1, z); g.rotation.y = face; this.mesh(g);
-      this.galeria = { x, z, y, face, fase: 'espera', t: 0, levam: null }; }
+    // a galeria: a boca permanente das lavras (mina.js)
+    { const Bc = this.city.minaBoca; if (Bc) { const { x, z, y, face } = Bc;
+      this.galeria = { x, z, y, face, fase: 'espera', t: 0, levam: null }; } }
   }
   // a rede: o corpo enrolado no pano branco, pendurado no varal que dois carregam no ombro
   rede() { const g = new THREE.Group(), pano = new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 1 }); const vara = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.2, 6), new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 })); vara.rotation.x = Math.PI / 2; vara.position.y = 1.5; g.add(vara);
@@ -262,7 +317,7 @@ export class Dias {
   }
 
   update(dt, t, player) {
-    this.t += dt; const pp = (this.pp = player.pos);
+    this.t += dt; const pp = (this.pp = player.pos); this.player = player;
     // as pessoas com conversa longa: olham para quem chega, a etiqueta de perto, o "!" enquanto não conversou
     const G = this.gente, near = (o, r) => (o.pos.x - pp.x) ** 2 + (o.pos.z - pp.z) ** 2 < r * r;
     for (const k of this.key) {
@@ -334,6 +389,11 @@ export class Dias {
       if (Gl.levam) { const Lv = Gl.levam; Lv.s = Math.min(Lv.pa.L, Lv.s + dt * 0.7); const p = this.at(Lv.pa, Lv.s), fx = Math.sin(p.h), fz = Math.cos(p.h);
         Lv.m.forEach((e, k) => { const off = k < 2 ? (k ? 1.25 : -1.25) : 0, s = k < 2 ? Lv.s : Lv.s - 3 - k * 1.2, q = this.at(Lv.pa, s), x = q.x + (k < 2 ? 0 : (k === 2 ? 0.6 : -0.6) * Math.cos(q.h)), z = q.z - (k < 2 ? 0 : (k === 2 ? 0.6 : -0.6) * Math.sin(q.h)); e.moving = true; e.pos.set(x + (k < 2 ? fx * off : 0), 0, z + (k < 2 ? fz * off : 0)); e.pos.y = this.yAt(e.pos.x, e.pos.z); e.r.root.visible = near(e, 70) && Lv.s < Lv.pa.L; if (!e.r.root.visible) return; e.r.root.position.copy(e.pos); e.r.root.rotation.y = q.h; G.anim(e.r, dt, 0.7, 'walk', t); });
         Lv.rede.position.set(p.x, this.yAt(p.x, p.z), p.z); Lv.rede.rotation.y = p.h; Lv.rede.visible = Lv.m[0].r.root.visible; } }
+    // dia 14: a festa do Rosário
+    if (this.festa) { const F = this.festa; F.t += dt; const d = Math.hypot(pp.x - F.cx, pp.z - F.cz);
+      F.roda.forEach((e, i) => { const a = F.t * 0.32 + (i / F.roda.length) * Math.PI * 2, x = F.cx + Math.cos(a) * 4.2, z = F.cz - 0.5 + Math.sin(a) * 3.4; e.pos.set(x, this.yAt(x, z), z); e.r.root.visible = near(e, 70); if (!e.r.root.visible) return; e.r.root.position.copy(e.pos); e.r.root.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + Math.PI; G.anim(e.r, dt, 0.9, 'walk', t); });
+      if (d < 45) { F.b = (F.b || 0) - dt; if (F.b <= 0) { F.b = 0.42; const k = Math.floor(F.t / 0.42) % 4; this.audio.burst(0.07, k === 0 ? 110 : 170, Math.max(0.04, 0.24 - d / 220)); } }
+      this.note('festa', F.cx, F.cz, 30, 'No adro do Rosário, a irmandade coroou o rei e a rainha: debaixo do guarda-sol vermelho, com a bandeira de Nossa Senhora e os tambores, a roda do congado gira e canta. É a festa dos pretos da vila — escravizados e forros juntos.', 'festa_rosario'); }
     // dia 13: o dobre de finados, lento
     if (this.dobre) { const D = this.dobre; D.t -= dt; if (D.t <= 0) { D.t = 4.5; const d = Math.hypot(pp.x - D.x, pp.z - D.z); this.audio.bell(Math.max(0.02, 0.09 - d / 4000), 147); }
       this.note('sinos', D.x, D.z, 30, 'Diante da Casa dos Contos, o povo se junta em silêncio. Os sinos dobram por Cláudio Manuel da Costa.', 'sinos'); }

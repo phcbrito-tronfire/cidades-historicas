@@ -42,6 +42,12 @@ export const OBJECTIVES = [
   { id: 'procissao', text: 'Acompanhe uma procissão pelas ladeiras' },
   { id: 'prisao', text: 'Veja a prisão de Gonzaga, em 23 de maio' },
   { id: 'sinos', text: 'Em 4 de julho, vá à Casa dos Contos quando os sinos dobram' },
+  // (Etapa 7) as atividades
+  { id: 'bateia', text: 'Na beira de um córrego, cate ouro com a bateia (B)' },
+  { id: 'mina', text: 'Entre na galeria da mina, nas lavras da Queimada, e chegue à frente de trabalho' },
+  { id: 'mula', text: 'Monte na mula do tropeiro (H)' },
+  { id: 'vela', text: 'Pegue uma vela e siga uma procissão' },
+  { id: 'festa_rosario', text: 'Em outubro, veja a coroação do rei e da rainha na festa do Rosário' },
 ];
 const SAVE = 'cidades-historicas:ouropreto:v1';
 
@@ -60,8 +66,8 @@ export class Quests {
   }
   isDone(id) { return !id || this.done.has(id); }
   count() { return this.done.size; }
-  hintFor(o) { const S = this.spots || {}; if (o.id.startsWith('c_')) { const id = { c_aleijadinho: 'aleijadinho', c_tiradentes: 'tiradentes', c_gonzaga: 'gonzaga', c_marilia: 'marilia', c_claudio: 'claudio', c_macedo: 'macedo', c_juiz: 'juiz', c_faiscador: 'faiscador_bento', c_quitandeira: 'quitandeira_inacia', c_minerador: 'minerador_goncalo', c_padre: 'vigario', c_dragao: 'cabo', c_opera: 'ensaiador', c_tropeiro: 'tropeiro_joaquim' }[o.id]; return S['npc_' + id] || null; }
-    const E = { reuniao: S.npc_claudio, teatro: S.npc_ensaiador, bando: S.pelourinho, procissao: [-245, 26], prisao: S.npc_gonzaga, sinos: [-277, 14] }; return E[o.id] || this.hints[o.id] || null; }
+  hintFor(o) { const S = this.spots || {}, P2 = PLACES; if (o.id.startsWith('c_')) { const id = { c_aleijadinho: 'aleijadinho', c_tiradentes: 'tiradentes', c_gonzaga: 'gonzaga', c_marilia: 'marilia', c_claudio: 'claudio', c_macedo: 'macedo', c_juiz: 'juiz', c_faiscador: 'faiscador_bento', c_quitandeira: 'quitandeira_inacia', c_minerador: 'minerador_goncalo', c_padre: 'vigario', c_dragao: 'cabo', c_opera: 'ensaiador', c_tropeiro: 'tropeiro_joaquim' }[o.id]; return S['npc_' + id] || null; }
+    const E = { reuniao: S.npc_claudio, teatro: S.npc_ensaiador, bando: S.pelourinho, procissao: [-245, 26], prisao: S.npc_gonzaga, sinos: [-277, 14], bateia: [0, 186], mina: this.minaBoca ? [this.minaBoca.x, this.minaBoca.z] : null, vela: [-245, 26], festa_rosario: [P2.rosario.x, P2.rosario.z] }; return E[o.id] || this.hints[o.id] || null; }
   complete(id) {
     if (this.done.has(id) || !OBJECTIVES.find((x) => x.id === id)) return false;
     this.done.add(id);

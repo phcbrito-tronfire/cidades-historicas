@@ -23,8 +23,11 @@ import { buildNature } from './natureza.js';
 import { buildBridges } from './pontes.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
-import { Gente } from './gente.js';
+import { Gente, look } from './gente.js';
 import { Dias } from './dias.js';
+import { buildMina, MINA } from './mina.js';
+import { Bateia } from './bateia.js';
+import { Mount } from '../comum/montaria.js';
 import { Quests, OBJECTIVES } from './quests.js';
 import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
@@ -115,6 +118,7 @@ async function main() {
   player.events.step = (jump, run, built) => audio.step(jump, run, built || streetAt(player.pos.x, player.pos.z) ? 'stone' : 'earth'); // (no pé de moleque e nas pontes, o passo estala na pedra)
   player.events.wadeStep = (p, run) => { fx.ripple(p, run ? 1.1 : 0.8); fx.splash(p, run ? 0.22 : 0.14); audio.wade(run); };
 
+  buildMina(scene, tex, city.M, city);
   await step(0.9, 'Acendendo as lamparinas...');
   const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: null, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: [] });
   sky.horizon = horizon; upgradeSky(sky, { cover: 0.55, haze: [30, 360, 0.9], leve: quality !== 'alto' }); sky.apply(sky.state);
@@ -135,7 +139,18 @@ async function main() {
   await step(0.93, 'Pondo a gente na rua...');
   const gente = new Gente(scene, city); gente.camera = camera; gente.viewR = PROFILE[quality].npcR; gente.shadowR = PROFILE[quality].npcShadow; gente.spawn(); gente.spawnTropa(); // (até onde a gente aparece e faz sombra: pelo nível de gráfico)
 
-  const dias = new Dias({ scene, city, gente, sky, ui, audio, quests, glow: tex.glow }); quests.spots = city.spots; dias.start();
+  const dias = new Dias({ scene, city, gente, sky, ui, audio, quests, glow: tex.glow }); quests.spots = city.spots; quests.minaBoca = city.minaBoca; dias.start();
+  for (const [x, z, ry] of city.minaGente || []) { const lk = look('minerador'); lk.extras = ['almocafre']; gente.add('minerador', lk, x, z, ry, { y: MINA.y, mode: '@pegar', night: true, extra: { static: true } }); } // (os mineradores lá dentro da galeria)
+  const bateia = new Bateia({ ui, audio, quests, toast: (m, k, ms) => ui.toast(m, k, ms) });
+  const mount = new Mount(scene, 'mula', { toast: (m) => ui.toast(m) });
+  // a galeria: entrar pela boca das lavras, sair pela luz do fim do primeiro lanço
+  const naMina = () => player.pos.x > MINA.box[0] && player.pos.x < MINA.box[1] && player.pos.z > MINA.box[2] && player.pos.z < MINA.box[3];
+  const bocaDe = () => { const b = city.minaBoca; return b && [b.x + Math.sin(b.face) * 1.6, b.z + Math.cos(b.face) * 1.6]; };
+  const minaAcao = () => {
+    if (naMina()) { const e = city.mina.entra; if (Math.hypot(player.pos.x - e[0], player.pos.z - e[1]) < 3) return { txt: 'Sair da galeria', fn: () => { const b = city.minaBoca; player.bounds = BOUNDS; player.place(b.x + Math.sin(b.face) * 2.6, b.z + Math.cos(b.face) * 2.6, b.face); } }; return null; }
+    const p = bocaDe(); if (p && Math.hypot(player.pos.x - p[0], player.pos.z - p[1]) < 2.6 && mount.state !== 'riding') return { txt: 'Entrar na galeria (com a lamparina)', fn: () => { const e = city.mina.entra; player.bounds = MINA.box; player.place(e[0], e[1], e[2]); ui.toast('A galeria é baixa e molhada. A lamparina mostra os quadros de madeira que seguram o teto. Lá no fundo, o barulho do almocafre na pedra.', 'quest', 8000); } };
+    return null; };
+  const perto = () => dias.acao(player.pos) || minaAcao();
 
   await step(0.96, 'Desenhando o mapa da vila...');
   const P = PLACES, B0 = BRIDGES.find((b) => b.stream === 'funil');
@@ -187,11 +202,13 @@ async function main() {
 
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
-    if (!started || e.repeat || dias.cardOpen) return;
+    if (!started || e.repeat || dias.cardOpen || bateia.open) return;
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
-      case 'KeyE': { const tg = gente.nearestInteractable(player.pos); if (tg) (tg.type === 'npc' ? conversa(tg.o) : falar(tg.o)); break; }
+      case 'KeyE': { const ac = perto(); if (ac) { ac.fn(); break; } if (dias.sentado) break; const tg = gente.nearestInteractable(player.pos); if (tg) (tg.type === 'npc' ? conversa(tg.o) : falar(tg.o)); break; }
+      case 'KeyB': { if (dias.sentado || mount.state === 'riding') break; let ok = false; for (const C of Object.values(STREAMS)) { const q = polyDist(C.pts, player.pos.x, player.pos.z); if (q.d < C.hw * 1.6 + 3) ok = true; /* (a água desenhada é mais larga que o eixo do leito) */ } if (ok) bateia.start(); else ui.toast('A bateia se usa na beira de um córrego: o ribeirão, lá embaixo, ou os córregos do Funil e de Antônio Dias.'); break; } // (catar ouro)
+      case 'KeyH': { if (naMina()) { ui.toast('A mula não entra na galeria.'); break; } if (!dias.sentado) mount.key(player); if (mount.state === 'riding') quests.complete('mula'); break; } // (a mula do tropeiro)
       case 'KeyC': dias.next(); break; // (o próximo dia marcado)
       case 'KeyT': { const p = sky.next(); ui.setTime(dias.label()); ui.toast(p.msg); break; } // (a hora: manhã, tarde, noite)
       case 'KeyJ': ui.toggleJournal(); break;
@@ -283,7 +300,11 @@ async function main() {
     t += dt;
     player.night = sky.state.night;
     travel.update(dt, started && !paused);
-    if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt);
+    if (naMina()) player.night = 1; // (lá dentro é sempre noite: a lamparina acende)
+    if (dias.sentado) dias.sentadoUpdate(dt, t, player); // (sentado na plateia da comédia)
+    else if (mount.state === 'riding') mount.update(dt, t, player);
+    else { if (started && !mapOpen) player.update(dt, t); else player.updateCamera(dt); mount.update(dt, t, player); }
+    if (naMina()) { const f = city.mina.fim; if (Math.hypot(player.pos.x - f[0], player.pos.z - f[1]) < 3.5) quests.complete('mina'); } // (chegou à frente de trabalho)
     if (started) health.update(dt, player);
     quests.update(dt, t, player, camera);
     sky.update(dt, t, player.pos);
@@ -293,8 +314,11 @@ async function main() {
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {
-      { const tg = !ui.dialogOpen && gente.nearestInteractable(player.pos); ui.prompt(tg ? `<kbd>E</kbd> Falar com ${gente.titulo(tg.o).toLowerCase()}` : ''); }
-      ui.setPlace(placeName(player.pos.x, player.pos.z, player.pos.y));
+      { const ac = !ui.dialogOpen && perto(), tg = !ac && !ui.dialogOpen && !dias.sentado && gente.nearestInteractable(player.pos), parts = [];
+        if (ac) parts.push(`<kbd>E</kbd> ${ac.txt}`); else if (tg) parts.push(`<kbd>E</kbd> Falar com ${tg.type === 'npc' ? gente.titulo(tg.o) : gente.titulo(tg.o).toLowerCase()}`);
+        if (!naMina()) { if (mount.state === 'riding') parts.push('<kbd>Shift</kbd> Trotar · <kbd>H</kbd> Desmontar'); else if (mount.state !== 'none' && mount.pos.distanceTo(player.pos) < 3.2) parts.push('<kbd>H</kbd> Montar na mula'); }
+        ui.prompt(parts.join(' &nbsp;·&nbsp; ')); }
+      ui.setPlace(naMina() ? 'Galeria da mina — Morro da Queimada' : placeName(player.pos.x, player.pos.z, player.pos.y));
       miniT -= dt;
       if (miniT <= 0) { ui.drawMinimap(player, dias.key.filter((k) => !k.rig.root.userData.off).map((k) => ({ x: k.pos.x, z: k.pos.z, done: quests.isDone(k.def.objective) })), hints()); miniT = 0.1; }
       let nw = 0; for (const C of Object.values(STREAMS)) { const q = polyDist(C.pts, player.pos.x, player.pos.z); nw = Math.max(nw, Math.max(0, 1 - q.d / (C.hw > 2 ? 40 : 22))); }

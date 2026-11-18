@@ -291,5 +291,5 @@ export function teatro(f, M, out, g) {
   // os lustres de velas pendurados sobre a plateia
   for (const z of [bz + 3.5, (bz + zf) / 2 + 1.5]) { const ly = top - 1.6; f.geo(new THREE.TorusGeometry(0.55, 0.04, 4, 16), M.ouroLiso, 0, ly, z, { rx: Math.PI / 2, uv: false }); f.box(M.ferro, 0.03, 1.4, 0.03, 0, ly, z, { noGround: true });
     for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2, x = Math.cos(a) * 0.55, zz = z + Math.sin(a) * 0.55; f.geo(new THREE.CylinderGeometry(0.02, 0.02, 0.18, 6), M.vela, x, ly + 0.1, zz, { uv: false }); const [wx, wz] = f.W(x, zz); out.candles.push(new THREE.Vector3(wx, f.y + ly + 0.24, wz)); } }
-  out.interiors.push({ id: 'opera', at: f.W(0, 0), y: f.y, light: [f.W(0, bz - 2), f.y + 3.5], light2: [f.W(0, (bz + zf) / 2), f.y + top - 2] });
+  out.interiors.push({ id: 'opera', at: f.W(0, 0), y: f.y, light: [f.W(0, bz - 2), f.y + 3.5], light2: [f.W(0, (bz + zf) / 2), f.y + top - 0.4] }); // (a luz alta, perto do forro: embaixo dela a plateia estourava de branco)
 }

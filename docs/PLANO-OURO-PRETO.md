@@ -461,3 +461,30 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
 - **Testado:** os 14 dias sem erro; cada acontecimento fotografado no lugar; conversas longas com as teclas (tópicos,
   páginas, objetivo cumprido); as velas e a fumaça como pontos de luz (o sprite comum virava um quadrado preto na passada
   da sombra de contato). PC fraco: 25,1 quadros/s (Japão, na mesma rodada, 17,9).
+
+## Etapa 7 — Atividades (18/11/2026)
+
+- **A bateia (B, na beira de um córrego):** a gamela de madeira vista de cima, com o cascalho e a água. Girando em
+  círculos (mouse, ou ← → alternados), a areia sobe para a beira e sai com a água; o ouro, mais pesado, desce para o
+  fundo. Devagar não limpa; depressa demais joga o ouro fora. O que sobra é contado em grãos (72 grãos fazem uma
+  oitava). Dura uns 15 segundos. Módulo `js/ouropreto/bateia.js`.
+- **A mina por dentro (E na boca da galeria das lavras da Queimada):** a boca escorada, cavada num barranco de terra
+  com o cascalho tirado ao lado (fica lá todos os dias; no dia 9 é dela que sai o corpo do desabamento). Dentro: a galeria
+  baixa e molhada, com os quadros de madeira a cada dois metros, as poças, as câmaras nas dobras, as lamparinas de sebo e
+  a luz quente; no fim, a frente de trabalho com o veio de quartzo e as pintas de ouro, a canoa de lavar, o carumbé e três
+  mineradores. Lá dentro a lamparina do explorador acende sozinha. Sai-se pela luz do primeiro lanço. A galeria é
+  montada à parte, abaixo da vila, com o chão só dela. Módulo `js/ouropreto/mina.js`.
+- **A mula do tropeiro (H):** chama, monta e desmonta (a montaria comum, com a mula castanha e a manta de baeta).
+- **O teatro (dia 5, à noite):** E num banco livre da plateia da Casa da Ópera: o explorador senta e assiste a um
+  entremez (o velho avarento Dom Pança, o criado Lobato e a sobrinha Florinda), fala por fala, até o pano descer e os
+  aplausos. E levanta.
+- **A procissão (dias 8 e 12):** E perto dos irmãos: o explorador recebe uma vela acesa e segue com eles.
+- **A festa do Rosário (dia 14, agora outubro de 1789):** no adro do Rosário, o rei e a rainha coroados debaixo do
+  guarda-sol vermelho, o pajem, a bandeira com Nossa Senhora do Rosário, três tambores no compasso e a roda do congado
+  de branco girando em volta; o povo olhando.
+- **Objetivos:** 5 novos (bateia, mina, mula, vela, festa do Rosário): 41 na cidade.
+- **Testado:** a bateia com o mouse; a mina de ponta a ponta (entrar, andar até a frente de trabalho, sair); a mula; o
+  teatro sentado; a vela; a festa; as outras quatro cidades sem erro. PC fraco: 22 quadros/s (o Japão, na mesma rodada,
+  14). Ajustes no caminho: a galeria estava funda demais (abaixo de −100 m o jogo entende que é debaixo d'água) e as
+  paredes das curvas se cruzavam; a luz da plateia da Ópera foi para perto do forro (estourava de branco quem estava
+  embaixo).

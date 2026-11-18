@@ -20,6 +20,8 @@ const KINDS = {
   cavalo: { len: 2.45, back: 1.42, seat: 0.12, belly: 0.34, shin: 0.22, walk: 2.2, run: 14.5, trot: 6.8, wade: 0.75, r: 0.55, name: 'cavalo', blanket: 0x8e2c22, border: 0xe8c060 },
   // cavalo japonês (raça nativa, como o kiso): baixo e robusto, ~1,3 m na cernelha — os cavalos do Japão de Edo eram pequenos
   uma: { len: 2.25, back: 1.3, seat: 0.1, belly: 0.32, shin: 0.24, walk: 2.0, run: 12.5, trot: 6.2, wade: 0.7, r: 0.5, name: 'cavalo', model: 'cavalo', blanket: 0x2a2a3a, border: 0xb8261e },
+  // a mula do tropeiro (Minas): o modelo do jumento, maior e castanho, com a manta de baeta
+  mula: { len: 2.05, back: 1.16, seat: -0.04, belly: 0.29, shin: 0.75, walk: 1.9, run: 9.8, trot: 5.6, wade: 0.6, r: 0.48, name: 'mula', art: 'A', model: 'jumento', blanket: 0x7a2a22, border: 0xd8c8a0, tint: [1.15, 0.85, 0.62] },
   jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.8, run: 9.2, trot: 5.4, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
 };
 
@@ -31,7 +33,7 @@ export class Mount {
   }
   async load() {
     if (this.obj) return true;
-    this.loading ??= creature(this.kindName, this.K.len, { still: true }).then((c) => {
+    this.loading ??= creature(this.kindName, this.K.len, { still: true, tint: this.K.tint || null }).then((c) => {
       if (!c) return false;
       this.obj = c; this.scene.add(c.holder); c.holder.visible = false;
       const acts = {}; for (const cl of c.clips) acts[cl.name.replace(/^.*\|/, '')] = c.mixer.clipAction(cl);
@@ -73,7 +75,7 @@ export class Mount {
   // H: chama (aparece a uns metros, em chão seco, e vem trotando), monta quando está perto, desmonta montado
   async key(player) {
     if (this.state === 'riding') return this.dismount(player);
-    if (player.swimming || player.diving || player.climb) { this.toast(`O ${this.K.name} não vem até a água funda.`); return; }
+    if (player.swimming || player.diving || player.climb) { this.toast(`${this.K.art || 'O'} ${this.K.name} não vem até a água funda.`); return; }
     if (this.state === 'waiting' || this.state === 'coming') {
       if (this.pos.distanceTo(player.pos) < 3.2) return this.mount(player);
     }
@@ -88,7 +90,7 @@ export class Mount {
     if (!spot) { const a = player.facing + Math.PI; spot = new V3(P.x + Math.sin(a) * 2.5, P.y, P.z + Math.cos(a) * 2.5); }
     this.pos.copy(spot); this.h = Math.atan2(P.x - spot.x, P.z - spot.z); this.v = 0;
     this.state = 'coming'; this.obj.holder.visible = true;
-    this.toast(`O ${this.K.name} vem vindo. Chegue perto e aperte H para montar.`);
+    this.toast(`${this.K.art || 'O'} ${this.K.name} vem vindo. Chegue perto e aperte H para montar.`);
   }
   mount(player) {
     this.state = 'riding'; this.mountT = 0; this.v = 0;
@@ -132,7 +134,7 @@ export class Mount {
   step(dt, dir) {
     const K = this.K, nx = this.pos.x + dir.x * this.v * dt, nz = this.pos.z + dir.z * this.v * dt;
     const g = groundAt(nx, nz, this.pos.y + 0.5), w = waterAt(nx, nz);
-    if (w - g > K.wade) { if (Math.abs(this.v) > 1 && !(this.refuseT > 0)) { this.toast(`O ${K.name} bufa e se recusa a entrar na água funda.`); this.refuseT = 4; } this.v *= 0.2; return; }
+    if (w - g > K.wade) { if (Math.abs(this.v) > 1 && !(this.refuseT > 0)) { this.toast(`${K.art || 'O'} ${K.name} bufa e se recusa a entrar na água funda.`); this.refuseT = 4; } this.v *= 0.2; return; }
     const before = this.pos.clone();
     moveWithCollision(this.pos, dir.x * this.v * dt, dir.z * this.v * dt, K.r, 2);
     const ng = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6);
