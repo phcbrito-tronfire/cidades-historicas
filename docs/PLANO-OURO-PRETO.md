@@ -151,3 +151,149 @@ entra como **lenda** contada pelo povo, não como fato.
 sinos das igrejas marcando as horas.
 
 **F. Montaria.** Proposta: a mula do tropeiro (mais certa para Minas que o cavalo), com cangalha.
+
+---
+
+## Decisões do Pedro (18/11/2026)
+- **A. Momento: os dois, com a passagem dos dias.** A cidade começa antes da denúncia e, dia a dia (tecla C), vai
+  mudando: a derrama ameaçada, a suspensão, os boatos, a denúncia, as prisões e um certo caos — a cidade "viva", com
+  acontecimentos que se sucedem ao longo de semanas.
+- **B. Combate:** nenhum.
+- **C. Roupa de prêmio:** uniforme de alferes dos dragões (aprovado).
+- **D. Escravidão: mostrar também a violência**, pensando em alunos do ensino médio (o jogo já tem sangue e morte em
+  Roma) — muito bem projetado, sem gratuidade, mas sem esconder.
+- **E e F:** seguir o plano (música leve de viola e órgão com os sinos; a mula do tropeiro).
+- **Qualidade acima de tudo, mais ainda que nas outras cidades:** nenhuma parede aberta, nada solto ou flutuando; casas
+  condizentes com a época sem ficar caricatas; monumentos da época baixados em 3D quando houver bons modelos (o login do
+  Sketchfab fica no Chrome); tudo bem projetado.
+- **Permissão:** só para o que for realmente relevante; o resto segue este plano.
+
+---
+
+## Etapa 1 — Pesquisa (18/11/2026)
+
+### Datas de 1789 conferidas
+| Data | O que aconteceu | Confiança |
+|---|---|---|
+| 25 fev (Quarta de Cinzas) | Começa a Quaresma. A derrama era esperada para fevereiro, e com ela o levante | Calendário calculado; o mês da derrama é consenso |
+| começo de março | Tiradentes sai de Vila Rica para o Rio | (a confirmar o dia) |
+| 14–15 mar | O Visconde de Barbacena suspende a derrama; Joaquim Silvério denuncia de viva voz (15 de março, em várias fontes) | Boa para a denúncia; a data da suspensão é a confirmar |
+| 5–12 abr | Semana Santa (Páscoa em 12 de abril de 1789) | Calendário calculado |
+| 11 abr | Denúncia de Silvério por escrito | (a confirmar) |
+| 10 mai | Tiradentes é preso no Rio | Só o mês está confirmado |
+| fim de maio | Data marcada para o casamento de Gonzaga e Maria Doroteia | Confirmada (Wikipédia: "final do mês de maio de 1789") |
+| 23 mai | Gonzaga preso em Vila Rica, dias antes do casamento | Está na descrição da Casa de Gonzaga; a Wikipédia dá a mesma data para Cláudio, que outras fontes põem em junho |
+| junho | Abertura oficial da devassa em Vila Rica | Confirmada |
+| 11 jun | Corpus Christi (procissão grande) | Calendário calculado |
+| 4 jul | Cláudio Manuel da Costa achado morto na cela da Casa dos Contos (oficialmente suicídio, discutido até hoje) | Confirmada |
+
+**Igreja de São Francisco em 1789** (Wikipédia, com base no Iphan): desenho das torres mudado em 1787, telhado posto em
+1788, alvenaria só termina em 1794, altar-mor de 1790–94, forro de Ataíde de 1801–1812. Ou seja: em 1789 a igreja está
+**coberta, mas em obra** — torres subindo, frontispício sem acabar, andaimes. É assim que ela entra no jogo.
+
+**A praça** se chamava Morro de Santa Quitéria; o Palácio dos Governadores funciona ali desde ~1748; a Câmara e Cadeia
+está em obra desde 1784–85; o pelourinho ficava junto da Câmara, símbolo da justiça da vila. A forma exata do pelourinho
+de Vila Rica não achei: será feito no tipo comum mineiro (coluna de pedra sobre degraus, com remate e argolas de
+ferro), e quem falar dele no jogo não vai inventar detalhe.
+
+### Planta da cidade (comprimida)
+A vila é uma fileira de arraiais ao longo do **Caminho Tronco**, de oeste para leste. No jogo, ~1,3 km nesse eixo:
+
+```
+ oeste                                                                                    leste
+ Rosário ─ Pilar (matriz, no fundo do vale) ─ Contos (ponte, chafariz, Casa dos Contos)
+          └ Rua São José ─ ladeira ─ PRAÇA (Palácio ao sul, Câmara em obra ao norte, pelourinho)
+                                       ├ Carmo e Casa da Ópera (logo abaixo, a oeste)
+                                       └ Rua Direita desce ─ Largo de Coimbra ─ São Francisco (em obra)
+                                                          └ Antônio Dias (matriz, no vale) ─ subida ─ Santa Efigênia (Alto da Cruz) ─ Padre Faria
+ Norte: Morro da Queimada (ruínas de 1720, lavras e a boca da mina)      Sul/sudoeste: o Itacolomi, no horizonte
+```
+- Alturas: a praça num espigão uns 40 m acima dos dois vales (Pilar e Antônio Dias); Santa Efigênia no alto do morro
+  leste; o Morro da Queimada sobe atrás, ao norte. Córregos nos fundos dos vales, com pontes de pedra.
+- Fontes: dissertações da UFMG e da UFJF sobre o "Mappa de Villa Rica" (1786–87) e a "Planta de Villa Rica de N.ª S.
+  do Pilar" (c. 1800); o eixo Pilar–Antônio Dias pela Rua Direita e o centro que passa para a praça do Palácio na
+  segunda metade do século XVIII.
+
+### Casas (para não ficar caricato)
+O que vale para 1789, segundo os estudos de arquitetura mineira (Sylvio de Vasconcellos e trabalhos do IFMG Ouro Preto):
+- **Corpo:** casas coladas umas nas outras, no alinhamento da rua, acompanhando a ladeira em degraus. Embaixo,
+  alvenaria de pedra (que resolve o desnível: porão de um lado, rua do outro); em cima, estrutura de madeira com pau a
+  pique ou adobe, tudo **caiado de branco**.
+- **Molduras:** cunhais, cimalhas e enquadramentos de madeira pintada; de pedra nas casas ricas (Casa dos Contos,
+  Palácio). Cores de esquadria comedidas: almagre (vermelho-terra), verde, azul, ocre. Nada das cores fortes de hoje.
+- **Janelas:** verga reta ou em arco abatido; folhas cegas de madeira e **rótulas/gelosias** (treliça) na maioria;
+  guilhotina com vidro **só nas casas ricas** (a Casa dos Contos é o exemplo citado). Sacadas de madeira com
+  balaústres; grade de ferro só em poucas fachadas nobres.
+- **Telhado:** telha capa e canal; beiral de cachorros (pontas das vigas à vista) ou beira-seveira nas casas simples;
+  cimalha nas ricas.
+- **Rua:** calçamento de pedra irregular (pé de moleque) com a água correndo pelo meio. As lajes centrais
+  ("capistrana") são do século XIX: não entram.
+- **Tipos no jogo:** casa térrea de porta e janela; sobrado de dois pisos (loja embaixo, família em cima); sobrado
+  nobre de esquina; casebre de pau a pique coberto de capim na periferia e nas lavras; senzala junto à casa de
+  mineração.
+- Referência real baixada: a fachada de um sobrado da Rua do Pilar (fotogrametria), só para proporção — as casas são
+  feitas em código, como o Pedro pediu.
+
+### Modelos 3D (Sketchfab, CC BY salvo indicação; originais em `_arquivos/originais/ouro-preto/sketchfab/`)
+| Modelo | Autor | Decisão |
+|---|---|---|
+| Igreja de São Francisco de Assis 2.0 (fotogrametria, 700 mil faces) | Celso.Constancio | **Usar**, recortada só na igreja e reduzida; torres cortadas na altura que tinham e andaimes em volta (1789 = em obra) |
+| Mina do Bijoca (galeria do séc. XVIII aberta por escravizados, Ouro Preto) | rollingdrone | **Usar** como a galeria da mina, por dentro, com lamparina. Reduzir de 1,9 milhão para ~200 mil faces |
+| Lavabo de pedra-sabão ("Aleijadinho 01") | fnery99 | **Usar** na sacristia (Etapa 4), se a conferência confirmar que é o de São Francisco |
+| Oratório de madeira mineiro | pucmuseo | **Usar** nos interiores das casas |
+| Imagem barroca de N. S. do Carmo (alabastro, CC0) | carpetudo | Talvez, num oratório |
+| Fachada de sobrado da Rua do Pilar | rollingdrone | Só referência de proporção |
+| Jardim da Casa de Gonzaga (quintal de pedra) | rollingdrone | Talvez, nos fundos da casa de Gonzaga |
+| Chafariz do pátio do Museu da Inconfidência | rollingdrone | **Não**: a placa é do tempo de D. Pedro II. Os chafarizes serão feitos em código, no tipo do Chafariz dos Contos |
+| Pelourinho de Mariana | rollingdrone | **Não**: é uma reconstrução dos anos 1970. Só referência |
+| Bica do chafariz de São Francisco (Mariana) | rollingdrone | Talvez, como carranca de chafariz (conferir a data) |
+| Oratório com N. S. Aparecida | pucmuseo | **Não**: essa devoção se espalha no séc. XIX |
+| Igreja dos Prazeres (Lavras Novas), retábulos portugueses, maquetes de Ouro Preto | vários | Não: outra vila, outro estilo ou cidade de hoje |
+
+As outras igrejas (Pilar, Antônio Dias, Carmo, Rosário, Santa Efigênia), o Palácio, a Câmara em obra, a Casa dos
+Contos, a Casa da Ópera, pontes e chafarizes não têm modelo bom e livre: vão ser feitos em código, com o mesmo cuidado.
+
+### Os dias (tecla C): a cidade que muda
+Cada C passa para o próximo dia **marcado** (não um dia de calendário): a cidade anda de fevereiro a julho de 1789 em
+14 dias jogáveis. Em cada um, o que muda está na rua, não num texto: gente, soldados, sinos, portas fechadas.
+
+| # | Dia | O que se vê |
+|---|---|---|
+| 1 | Fevereiro, dia comum | A vida normal; a derrama na boca de todos. Tiradentes fala alto demais na venda |
+| 2 | Quarta de Cinzas | Igrejas cheias; Aleijadinho no canteiro de São Francisco |
+| 3 | Chega a tropa | Fila de mulas pela estrada; sal, ferro, tecido; o pouso dos tropeiros |
+| 4 | Começo de março | Tiradentes parte para o Rio, a cavalo, com a tropa |
+| 5 | Março, à noite | Reunião discreta numa casa (dá para ouvir à porta); noite de teatro na Casa da Ópera |
+| 6 | Meados de março | O **bando**: com tambor, um oficial lê na praça a suspensão da derrama. Alívio no povo; os conjurados preocupados |
+| 7 | Fim de março | Boatos de traição; mais dragões nas ruas |
+| 8 | Semana Santa | Procissões, matracas, igrejas iluminadas à noite |
+| 9 | Abril, dia de lavra | O trabalho na mina e no córrego; acidente na galeria (ver abaixo) |
+| 10 | Meados de maio | Chega a notícia: Tiradentes preso no Rio. Medo; papéis queimados nos quintais |
+| 11 | 23 de maio | **Gonzaga é preso** em casa, às vésperas do casamento; soldados, gente olhando, Maria Doroteia |
+| 12 | Junho | Devassa aberta; casas revistadas; a Casa dos Contos vira prisão com guarda à porta; a procissão de Corpus Christi passa no meio de tudo |
+| 13 | 4 de julho | Cláudio Manuel da Costa achado morto na cela; sinos; a versão oficial e o que o povo murmura |
+| 14 | Depois | A cidade volta à rotina, com medo. O cartão final conta 1792 (a sentença; Tiradentes enforcado no Rio) |
+
+Depois do 14 os dias recomeçam (como as estações do Egito), para quem quiser rever.
+
+### A escravidão, com a violência (decisão D)
+Princípios: cada pessoa tem **nome, ofício e voz**; a violência aparece **como parte do sistema** (lei, costume,
+lucro), não como espetáculo; a câmera nunca se aproxima sozinha; o jogador pode ficar ou ir embora; depois de cada
+cena alguém conta o que aquilo significava. Os avisos só aparecem para quem está no lugar (regra do jogo).
+1. **O pelourinho** (dias 7 e 12): um homem escravizado é açoitado em público por ordem da justiça da vila, com um
+   oficial lendo a sentença e soldados em volta. Som do açoite, gente que para e gente que desvia. Depois ele é
+   desamarrado e levado pelos companheiros, com as costas marcadas. Uma quitandeira conta por quê (ele tinha fugido) e
+   o que era o pelourinho.
+2. **O capitão do mato** (dia 3): chega pela estrada trazendo um fugitivo amarrado, para cobrar a recompensa. Um
+   forro fala dos quilombos das serras em volta.
+3. **O tronco e a gargalheira** (dias de lavra): na casa de mineração, um homem preso no tronco de madeira; outro com
+   a gargalheira de ferro no pescoço. O feitor com o chicote vigia a lavra.
+4. **A mina** (dia 9): a galeria desaba num trecho; um homem morre. O corpo sai carregado, e é a **Irmandade do
+   Rosário** que paga o enterro — mostrando para que serviam as irmandades.
+5. **O outro lado**: um faiscador forro que comprou a liberdade com o ouro da bateia; a irmandade juntando dinheiro
+   para uma alforria; uma quitandeira com a própria venda. A violência aparece junto da resistência e da vida, nunca
+   sozinha.
+- **Honestidade dentro do mundo:** os inconfidentes, quase todos donos de escravizados, não falavam em abolição; isso
+  é dito por um personagem negro, não por um texto.
+- Fica de fora: a máscara de flandres (as imagens que circulam são quase todas do séc. XIX e cercadas de lenda) e
+  qualquer cena de tortura prolongada.
