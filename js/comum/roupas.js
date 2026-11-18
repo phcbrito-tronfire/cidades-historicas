@@ -534,7 +534,7 @@ function strapsTex(leather, edge) { // tiras de couro (ptéryges) com franja e b
 // O guarda-roupa: as roupas de explorador valem desde o começo; a de cada cidade é ganha ao concluir todos os
 // objetivos dela e fica para sempre (vale nas outras cidades também). V abre o guarda-roupa (ou o botão na pausa).
 const KEY = 'cidades-historicas:roupas', WEAR = 'cidades-historicas:roupa';
-const CITY_NAME = { egito: 'Mênfis', atenas: 'Atenas', roma: 'Roma', japao: 'o Japão' };
+const CITY_NAME = { egito: 'Mênfis', atenas: 'Atenas', roma: 'Roma', japao: 'o Japão', ouropreto: 'Vila Rica' };
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } } };
 export const isUnlocked = (id) => { const L = LOOKS[id]; return !!L && (!L.unlock || store.get(KEY, []).includes(id)); };
 export function wornLook() { const id = store.get(WEAR, 'explorer'); return isUnlocked(id) ? id : 'explorer'; }

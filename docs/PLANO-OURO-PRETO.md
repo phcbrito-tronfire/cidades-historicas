@@ -297,3 +297,25 @@ cena alguém conta o que aquilo significava. Os avisos só aparecem para quem es
   é dito por um personagem negro, não por um texto.
 - Fica de fora: a máscara de flandres (as imagens que circulam são quase todas do séc. XIX e cercadas de lenda) e
   qualquer cena de tortura prolongada.
+
+---
+
+## Etapa 2 — Terreno e mapa-base (18/11/2026)
+Página `ouropreto.html`, código em `js/ouropreto/` (terreno, natureza, pontes, céu, interface, som, objetivos).
+- **Relevo:** o vale do ribeirão ao sul (corre de oeste para leste), os vales do córrego do Funil (Pilar e Contos) e do
+  córrego de Antônio Dias descendo do norte, o espigão da praça entre eles (~45 m acima dos vales), o Alto da Cruz de
+  Santa Efigênia a leste, o Morro da Queimada ao norte (~110 m) e a serrinha do sul. O Itacolomi é um maciço a
+  sudoeste com as duas pedras no alto (a "pedra-menino" e a menor), visível da praça, de Santa Efigênia e da Queimada.
+- **Ruas:** 11 ruas e estradas cortadas no terreno com perfil alisado e rampa máxima de ~23–26% (as ladeiras de Ouro
+  Preto são assim; a de Santa Efigênia é a mais íngreme). Largura de 5 a 7 m. Calçamento de pé de moleque feito no
+  próprio chão (pedras irregulares, terra entre elas, o meio da rua um pouco mais fundo para a água correr).
+- **Pontes:** a dos Contos e a de Antônio Dias, de cantaria, com um arco abatido, aduelas, parapeitos e a corcova da
+  rua; dá para passar por cima e por baixo, dentro do córrego.
+- **Córregos:** encaixados em barrancos de ~1,5 m, água barrenta e com ondinhas (nada de faixa azul).
+- **Paisagem de 1789:** morros quase pelados (capim, candeias, macaúbas e pedras de quartzito), capões de mata só nas
+  grotas e as lavras de terra vermelha no Morro da Queimada.
+- **Largos e adros:** por enquanto só os planos de terra (praça, Palácio, Pilar, Rosário, Contos, Carmo, Coimbra, São
+  Francisco, Antônio Dias, Santa Efigênia, Queimada); muros de arrimo, adros e calçamento entram com a arquitetura.
+- **Testado:** carrega em ~6 s no PC de desenvolvimento; caminhada automática por todas as ruas, pelas duas pontes e
+  pelo leito dos córregos sem travar nem flutuar; 127 quadros/s no perfil de computador fraco.
+- **Escala:** distâncias encurtadas ~2,2× e desníveis ~0,6× (dito na tela de abertura).

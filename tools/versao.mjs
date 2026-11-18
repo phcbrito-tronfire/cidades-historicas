@@ -54,7 +54,7 @@ async function preloads(entry) {
   return out;
 }
 
-for (const page of ['egito.html', 'atenas.html', 'roma.html', 'japao.html']) {
+for (const page of ['egito.html', 'atenas.html', 'roma.html', 'japao.html', 'ouropreto.html']) {
   if (!existsSync(page)) continue;
   let html = readFileSync(page, 'utf8');
   html = html.replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">\n  ${JSON.stringify({ imports }, null, 2).replace(/\n/g, '\n  ')}\n  </script>`);

@@ -4,6 +4,7 @@ const CITIES = [
   { id: 'atenas', name: 'Atenas', era: 'Grécia Clássica · 432 a.C.', desc: 'O Parthenon recém-terminado, a ágora de Sócrates, o mar do Falero e as trirremes de Péricles.', open: true, href: 'atenas.html', art: 'athens' },
   { id: 'roma', name: 'Roma', era: 'Império Romano · c. 117 d.C.', desc: 'O Coliseu inteiro para explorar, com jogos diferentes a cada dia, o Fórum, a legião em marcha e a Naumaquia de Trajano, as termas, o aqueduto e o porto de Óstia.', open: true, href: 'roma.html', art: 'rome' },
   { id: 'japao', name: 'Japão — aos pés do Fuji', era: 'Período Edo · c. 1790', desc: 'A vila dos guias de peregrinos, o santuário Sengen, samurais, monges e peregrinos, as quatro estações e a trilha até a cratera do Monte Fuji.', open: true, href: 'japao.html', art: 'fuji' },
+  { id: 'ouropreto', name: 'Vila Rica — Ouro Preto', era: 'Brasil colônia · 1789', desc: 'Em construção: por enquanto, a paisagem — a praça no alto do morro, as ladeiras de pedra, as pontes dos córregos, as lavras e o Itacolomi. Depois virão as igrejas, o povo e os meses da Inconfidência.', open: true, href: 'ouropreto.html', art: 'vilarica' },
   { id: 'tenochtitlan', name: 'Tenochtitlan', era: 'Império Asteca · c. 1500', desc: 'A cidade sobre o lago Texcoco, com o Templo Mayor e os jardins flutuantes.', art: 'aztec' },
   { id: 'babilonia', name: 'Babilônia', era: 'Mesopotâmia · c. 570 a.C.', desc: 'A Porta de Ishtar, o zigurate Etemenanki e a corte de Nabucodonosor II.', art: 'babylon' },
   { id: 'cusco', name: 'Cusco', era: 'Império Inca · c. 1500', desc: 'O umbigo do mundo andino, o Coricancha dourado e a estrada para Machu Picchu.', art: 'inca' },
@@ -30,6 +31,13 @@ const ART = {
     <path d="M175 88 Q190 70 200 72 Q212 70 226 88 L236 104 Q222 96 214 108 Q205 96 196 110 Q186 98 166 106Z" fill="#f4f6fa"/>
     <path d="M0 210 V178 Q100 168 200 176 T400 174 V210Z" fill="#3a5a3a"/><path d="M0 196 Q120 188 220 196 T400 192 V210 H0Z" fill="#5a8aa0" opacity="0.9"/>
     <g fill="#b8382a"><rect x="60" y="150" width="5" height="30"/><rect x="95" y="150" width="5" height="30"/><rect x="52" y="146" width="56" height="6"/><rect x="57" y="156" width="46" height="4"/></g>`,
+  vilarica: `${sky('#3a5a8c', '#e8b08a', '#f6dcc0')}<path d="M0 150 Q60 120 120 128 Q170 92 200 98 Q260 118 300 104 Q340 90 400 112 V210 H0Z" fill="#6a7a4a"/>
+    <path d="M300 104 q4 -22 12 -24 q8 2 10 24Z" fill="#8a8274"/>
+    <path d="M0 210 V168 Q90 150 200 150 T400 164 V210Z" fill="#9a6a44"/>
+    <g fill="#f2ead8"><rect x="150" y="104" width="64" height="46"/><rect x="146" y="78" width="16" height="30"/><rect x="202" y="78" width="16" height="30"/><path d="M150 104 Q182 84 214 104Z"/></g>
+    <g fill="#6a5a48"><path d="M144 78 Q154 64 164 78Z"/><path d="M200 78 Q210 64 220 78Z"/><rect x="176" y="122" width="12" height="28" rx="6"/></g>
+    <g fill="#e8dcc4"><rect x="40" y="150" width="34" height="22"/><rect x="250" y="146" width="40" height="26"/><rect x="300" y="152" width="30" height="20"/></g>
+    <g fill="#a8482e"><path d="M36 150 L57 138 L78 150Z"/><path d="M246 146 L270 133 L294 146Z"/><path d="M296 152 L315 141 L334 152Z"/></g>`,
   aztec: `${sky('#1e4a6a', '#e89a5a', '#f4c88a')}<rect x="0" y="170" width="400" height="40" fill="#2f7a78"/>
     <g fill="#b89a74"><path d="M110 170 L130 140 H270 L290 170Z"/><path d="M135 140 L150 115 H250 L265 140Z"/><path d="M155 115 L168 92 H232 L245 115Z"/></g>
     <rect x="172" y="70" width="24" height="22" fill="#2c5d9c"/><rect x="204" y="70" width="24" height="22" fill="#a8392a"/>
