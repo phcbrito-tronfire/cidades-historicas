@@ -9,7 +9,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { rr, rand, pick, ver } from './util.js';
 import { mergeSiblings } from './merge.js';
-import { dress, graftHead, LOOKS } from './roupas.js';
+import { dress, graftHead, LOOKS, dressMinas } from './roupas.js';
+import { clothTex } from './vestir.js';
 
 const BASES = {};
 export const _BASES = BASES; // (depuração)
@@ -171,7 +172,31 @@ function clothGeometry(key, prof, pleats = 26, depth = 0.86) {
 const GREEK = new Set(['chiton', 'himation', 'peplos', 'exomis', 'hoplite']);
 // Japão, período Edo: quimono (homem e mulher), samurai de hakama, lavrador, peregrino do Fuji, monge, sacerdote xintoísta e mercador
 const JP = new Set(['kimono', 'kimono_f', 'samurai', 'farmer', 'pilgrim', 'monk', 'kannushi', 'merchant']);
+// Minas Gerais, 1789: homem livre (camisa, colete, calção ou calça), homem de posses (casaca, colete, calção, meias e
+// tricórnio), trabalhador escravizado (algodão cru, descalço — o sapato era sinal de liberdade), padre de batina, dragão
+// (farda azul com as vistas amarelas, botas), tropeiro (colete de couro, botas, chapéu de aba larga) e mulher de saia
+// comprida (camisa, xale ou pano da costa, torço ou mantilha)
+const BR = new Set(['colono', 'casaca', 'escravo', 'padre', 'dragao', 'tropeiro', 'saia']);
+const SAIA = [[0.158, 0.09], [0.172, 0], [0.205, -0.14], [0.238, -0.36], [0.268, -0.6], [0.29, -0.82], [0.3, -0.93]];
+const COAT = [[0.17, 0.05], [0.182, 0], [0.205, -0.12], [0.228, -0.3], [0.246, -0.46], [0.254, -0.55]];
+const APRON = [[0.19, 0.05], [0.198, 0], [0.222, -0.14], [0.252, -0.34], [0.272, -0.52], [0.28, -0.62]];
+// tecido de torno aberto (a aba da casaca abre na frente; o avental só cobre a frente): de phiStart, por phiLength
+function clothSeg(key, prof, phiStart, phiLength, pleats = 24, depth = 0.86) {
+  if (clothCache.has(key)) return clothCache.get(key);
+  const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 40, phiStart, phiLength), p = g.attributes.position, yEnd = prof[prof.length - 1][1];
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), t = Math.min(1, Math.max(0, y / yEnd)), a = Math.atan2(z, x), k = 1 + 0.02 * Math.sqrt(t) * Math.sin(a * pleats); p.setX(i, x * k); p.setZ(i, z * k * depth + (z > 0 ? 0.02 * t : 0)); }
+  g.computeVertexNormals(); clothCache.set(key, g); return g;
+}
 const KTEX = new Map();
+// o algodão e a lã de Minas: a cor lisa com o fio miúdo e um pouco de variação (listras opcionais, no sentido do fio)
+const FIO = new Map();
+function fioTex(base, stripes = null) {
+  const key = base + JSON.stringify(stripes); if (FIO.has(key)) return FIO.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, 128, 128); if (stripes) for (const [a, b, col] of stripes) { x.fillStyle = col; x.fillRect(Math.round(a * 128), 0, Math.max(1, Math.round((b - a) * 128)), 128); }
+  const d = x.getImageData(0, 0, 128, 128), p = d.data; for (let i = 0; i < p.length; i += 4) { const px = (i / 4) % 128, n = (Math.random() - 0.5) * 10 + (px % 2 ? -3 : 3); p[i] += n; p[i + 1] += n; p[i + 2] += n; } x.putImageData(d, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.repeat.set(4, 4); FIO.set(key, t); return t;
+}
 // tecido de quimono: liso, listrado (shima), salpicado (kasuri), xadrez (kōshi) ou ondas, com a trama do algodão
 function kimonoTex(color, pattern = 'plain', accent = '#1a1a22') {
   const key = color + pattern + accent; if (KTEX.has(key)) return KTEX.get(key);
@@ -317,9 +342,10 @@ export function makeHumanoid(o = {}) {
   const isExp = outfit === 'explorer';
   const isLook = !!(look && !LK.npc); // (o dress() de roupas.js só para as roupas feitas sobre o traje do explorador)
   const greek = GREEK.has(outfit), jp = JP.has(outfit);
-  const female = outfit === 'dress' || outfit === 'peplos' || outfit === 'kimono_f' || (jp && !!o.female);
+  const br = BR.has(outfit);
+  const female = outfit === 'dress' || outfit === 'peplos' || outfit === 'kimono_f' || outfit === 'saia' || (jp && !!o.female);
   // roupas gregas curtas usam o Bryce (de bermuda: as pernas do modelo já são pele); as longas, qualquer um
-  const baseName = isExp ? (LK?.base || 'explorador') : o.base || (outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : jp ? (outfit === 'farmer' || outfit === 'pilgrim' ? 'brian' : pick(['bryce', 'brian'])) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
+  const baseName = isExp ? (LK?.base || 'explorador') : o.base || (br ? (female ? pick(WOMEN) : outfit === 'escravo' && o.shorts ? 'bryce' : 'brian') : outfit === 'priest' ? 'brian' : female ? pick(WOMEN) : jp ? (outfit === 'farmer' || outfit === 'pilgrim' ? 'brian' : pick(['bryce', 'brian'])) : greek && outfit !== 'himation' ? 'bryce' : pick(['bryce', 'bryce', 'brian']));
   const root = new THREE.Group(); root.userData.rig = true; // (o boneco inteiro: o corte por distância esconde tudo junto)
   // escondido (longe do jogador) = fora do cálculo de matrizes: ~70 ossos e as peças presas a eles
   root.updateMatrixWorld = function (force) { if (this.visible) THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
@@ -345,7 +371,7 @@ export function makeHumanoid(o = {}) {
   // tom médio da textura de pele do Mixamo (linear): peças repintadas de "pele" ficam iguais aos braços
   const SKIN_TINT = new THREE.Color().setRGB(0.62, 0.42, 0.36);
   const clothColor = o.cloth ?? 0xe8e0cc;
-  const hairStyle = o.hair || (isExp ? 'fedora' : jp ? (female ? 'shimada' : outfit === 'monk' ? 'bald' : 'chonmage') : greek ? (female ? 'up' : baseName === 'bryce' ? 'natural' : 'short') : 'short');
+  const hairStyle = o.hair || (isExp ? 'fedora' : br ? 'natural' : jp ? (female ? 'shimada' : outfit === 'monk' ? 'bald' : 'chonmage') : greek ? (female ? 'up' : baseName === 'bryce' ? 'natural' : 'short') : 'short');
   const fold = (mat, color, rough = 0.95) => { const c = mat.clone(); c.map = null; c.color.set(color); c.roughness = rough; c.metalness = 0; c.side = THREE.DoubleSide; c.transparent = false; c.opacity = 1; c.alphaTest = 0; return c; };
   // pele: o material do Mixamo vem como metal (metalness 1), o que embranquece o rosto sob luz pontual (tochas)
   const skinMat = (mat) => { const c = mat.clone(); c.metalness = 0; c.roughness = 0.62; return c; };
@@ -361,6 +387,15 @@ export function makeHumanoid(o = {}) {
       if (/Shirt|Tops/.test(p)) { const c = fold(mat, 0xffffff); c.map = kimonoTex('#' + new THREE.Color(clothColor).getHexString(), o.pattern || 'plain', o.accent || '#1a1a22'); me.material = c; continue; }
       if (/Pants|Shorts|Bottoms/.test(p)) { me.material = fold(mat, o.legColor ?? (outfit === 'farmer' ? 0x2a3450 : outfit === 'pilgrim' ? 0xf2efe6 : outfit === 'samurai' ? (o.hakama ?? 0x4a4a56) : outfit === 'kannushi' ? (o.hakama ?? 0x8aa0c8) : clothColor)); continue; } // (debaixo da hakama, a calça na cor dela: nada de mancha clara vazando)
       if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; }
+      continue;
+    }
+    if (br) {
+      if (/Hair/.test(p)) { const keep = female ? hairStyle === 'natural' : !['barrete', 'lenco', 'bald'].includes(hairStyle); me.visible = keep; if (keep) { const c = mat.clone(); c.color.set(o.hairColor ?? 0x1e1712); c.metalness = 0; c.roughness = 0.8; me.material = c; } continue; }
+      if (/Suit|Tie|Belt/.test(p)) { me.visible = false; continue; }
+      if (/Eyelash/.test(p)) continue;
+      if (/Shirt|Tops/.test(p)) { if (o.bare) me.material = fold(mat, new THREE.Color(skin).multiply(SKIN_TINT), 0.6); continue; } // (tingidas sobre o próprio tecido em dressMinas)
+      if (/Pants|Shorts|Bottoms/.test(p)) continue;
+      if (/Shoes|Sneakers|Heels/.test(p)) { if (o.barefoot) me.visible = false; else me.material = fold(mat, o.shoeColor ?? 0x1c1410, 0.5); continue; }
       continue;
     }
     if (greek) {
@@ -390,6 +425,7 @@ export function makeHumanoid(o = {}) {
     if (/Shoes|Sneakers|Heels/.test(p)) { me.visible = false; continue; } // trocados por pés com sandália (abaixo)
   }
 
+  const hasHair = meshes.some((me) => /Hair/.test(me.name) && me.visible);
   // prende um objeto a um osso, a partir de posição/rotação no espaço do modelo (pose T)
   const attach = (bone, obj, pos, rot = [0, 0, 0], scale = [1, 1, 1]) => {
     const b = bones[bone]; if (!b) return obj;
@@ -426,6 +462,8 @@ export function makeHumanoid(o = {}) {
     return { top, rx: (x1 - x0) / 2, rz: (z1 - z0) / 2, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
   };
   const hair = hairStyle;
+  // o cabelo curto feito na medida real da cabeça (no Brian o osso do alto da cabeça fica abaixo do crânio: a calota pelo osso sumia dentro)
+  const hairCap = (mat, h = 0.115, grow = 0.01) => { const fit = headFit(0.1), g = new THREE.Mesh(new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.56), mat); attach('Head', g, new THREE.Vector3(fit.cx, fit.top - 0.1, fit.cz - 0.012), [-0.3, 0, 0], [fit.rx + grow, h, fit.rz + grow + 0.002]); return fit; };
   const black = m(0x15100c, { roughness: 0.85 });
   switch (hair) {
     case 'short': cap(black, [1.06, 1, 1.06]); break;
@@ -510,7 +548,41 @@ export function makeHumanoid(o = {}) {
       // o pano cai pela nuca até os ombros, rente à cabeça (antes era um tubo largo e reto em volta da cabeça: parecia um balde)
       headPart(new THREE.CylinderGeometry(R * 1.08, R * 1.55, R * 2.0, 24, 1, true, Math.PI * 0.6, Math.PI * 0.8), vm, [0, -R * 0.65, -R * 0.42], [-0.3, 0, 0], [1, 1, 0.85]); // (inclinado para trás: deita sobre a nuca e os ombros)
     } break;
-    case 'natural': case 'bald': break;
+    case 'natural': case 'bald': if (br && hair === "natural" && (!hasHair || !female)) hairCap(m(o.hairColor ?? 0x15100c, { roughness: 0.85 })); break;
+    case 'tricorne': case 'chapeu': case 'palha': case 'rabicho': { // o cabelo preso atrás com a fita (rabicho) e, por cima, o chapéu
+      const hc = m(o.hairColor ?? 0x15100c, { roughness: 0.85 }); if (!hasHair || (br && !female)) hairCap(hc); // (o cabelo do modelo, ou o feito por cima quando o corpo é careca; o rabicho preso com a fita)
+      headPart(new THREE.CylinderGeometry(0.012, 0.016, 0.1, 6), hc, [0, -R * 0.55, -R * 0.98], [0.35, 0, 0]); headPart(new THREE.BoxGeometry(0.05, 0.02, 0.01), m(0x0e0c0c), [0, -R * 0.42, -R * 1.0], [0.3, 0, 0]);
+      if (hair === 'rabicho') break;
+      const fit = headFit(0.13), rx = fit.rx + 0.012, rz = fit.rz + 0.012, yB = fit.top - 0.1, hat = new THREE.Group();
+      if (hair === 'tricorne') { // tricórnio: a copa e a aba virada para cima em três lados, com a ponta para a frente
+        const felt = m(o.hatColor ?? 0x15120f, { roughness: 0.85, side: THREE.DoubleSide });
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(rx * 0.9, rx, 0.11, 22), felt); crown.position.y = 0.055; crown.scale.z = rz / rx; hat.add(crown);
+        const wall = new THREE.Mesh(new THREE.CylinderGeometry(rx * 2.45, rx * 2.15, 0.085, 3, 1, true), felt); wall.position.y = 0.035; hat.add(wall);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(rx * 2.15, rx * 2.15, 0.012, 3), felt); base.position.y = -0.004; hat.add(base);
+        if (o.trim) { const tr = new THREE.Mesh(new THREE.CylinderGeometry(rx * 2.47, rx * 2.45, 0.014, 3, 1, true), m(o.trim, { metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide })); tr.position.y = 0.08; hat.add(tr); } // (o galão da beira, nos oficiais)
+        hat.scale.set(0.82, 1, 0.82 * rz / rx);
+      } else { // chapéu de feltro de aba larga (tropeiros, padres, gente da roça) ou de palha
+        const straw = hair === 'palha', mat2 = m(straw ? 0xc8a868 : o.hatColor ?? 0x3a2a1e, { roughness: straw ? 1 : 0.85, side: THREE.DoubleSide });
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(rx * 0.86, rx, straw ? 0.1 : 0.12, 22), mat2); crown.position.y = straw ? 0.05 : 0.06; crown.scale.z = rz / rx; hat.add(crown);
+        const top = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat2); top.scale.set(rx * 0.86, 0.025, rz * 0.86); top.position.y = straw ? 0.1 : 0.12; hat.add(top);
+        const brim = new THREE.Mesh(straw ? new THREE.CylinderGeometry(rx * 1.05, rx * 2.4, 0.08, 26, 1, true) : new THREE.CylinderGeometry(rx * 2.3, rx * 2.3, 0.012, 28), mat2); brim.position.y = straw ? -0.02 : 0.004; brim.scale.z = rz / rx; hat.add(brim);
+        if (!straw) { const band = new THREE.Mesh(new THREE.CylinderGeometry(rx * 1.01, rx * 1.02, 0.026, 22, 1, true), m(0x120e0a)); band.position.y = 0.02; band.scale.z = rz / rx; hat.add(band); }
+      }
+      attach('Head', hat, new THREE.Vector3(fit.cx, yB, fit.cz), [0.04, 0, 0]);
+    } break;
+    case 'barrete': case 'lenco': { // o barrete de lã dos trabalhadores e o lenço amarrado na cabeça
+      const cm = m(o.hatColor ?? 0x8a2a20, { roughness: 0.95 });
+      if (hair === 'barrete') { const fit = hairCap(cm, 0.15, 0.02); attach('Head', new THREE.Mesh(new THREE.TorusGeometry(1, 0.11, 6, 22), cm), new THREE.Vector3(fit.cx, fit.top - 0.085, fit.cz - 0.014), [Math.PI / 2 - 0.3, 0, 0], [fit.rx + 0.024, fit.rz + 0.026, 0.2]); }
+      else { const fit = hairCap(cm, 0.12, 0.016); attach('Head', new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), cm), new THREE.Vector3(fit.cx, fit.top - 0.11, fit.cz - fit.rz - 0.01)); for (const s of [-1, 1]) attach('Head', new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.012), cm), new THREE.Vector3(fit.cx + s * 0.025, fit.top - 0.16, fit.cz - fit.rz - 0.012), [0.2, 0, s * 0.3]); }
+    } break;
+    case 'torco': case 'mantilha': { // o torço (o pano enrolado, com a volta na testa e o nó no alto) e a mantilha (cai pela nuca até os ombros)
+      const fit = headFit(0.09), rx = fit.rx + 0.022, rz = fit.rz + 0.022, yb = fit.top - 0.085, tor = hair === 'torco', ac = o.headAccent || '#2a3a7a';
+      const mat = tor ? m(0xffffff, { map: fioTex('#' + new THREE.Color(o.headColor ?? 0xf2ece0).getHexString(), o.headPattern === 'shima' ? [[0, 0.12, ac], [0.5, 0.62, ac]] : null), roughness: 0.95, side: THREE.DoubleSide }) : m(0x1a161a, { roughness: 0.7, side: THREE.DoubleSide });
+      const g = new THREE.Group(), dome = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.56), mat); dome.scale.set(rx * (tor ? 1.06 : 1), tor ? 0.13 : 0.128, rz * (tor ? 1.06 : 1)); g.add(dome);
+      if (tor) { const w = new THREE.Mesh(new THREE.TorusGeometry(rx, 0.02, 8, 28), mat); w.rotation.x = Math.PI / 2; w.scale.set(1, rz / rx, 1); w.position.y = 0.012; g.add(w); const k = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), mat); k.position.set(0, 0.12, 0.035); k.scale.set(1.3, 0.75, 1); g.add(k); }
+      else { const d = new THREE.Mesh(new THREE.CylinderGeometry(rx * 1.0, rx * 1.55, 0.3, 26, 1, true, 0.8, Math.PI * 2 - 1.6), mat); d.position.set(0, -0.15, -0.008); d.scale.z = rz / rx; g.add(d); }
+      attach('Head', g, new THREE.Vector3(fit.cx, yb, fit.cz - 0.01), [-0.22, 0, 0]); // (inclinado para trás: a testa e os olhos livres)
+    } break;
     case 'chonmage': case 'ronin': { // o alto da cabeça raspado (sakayaki) com o cabelo dos lados e o topete dobrado para a frente (no rōnin, a cabeça não é raspada)
       const hc = m(o.hairColor ?? 0x120e0c, { roughness: 0.7 });
       if (hair === 'ronin') cap(hc, [1.05, 1, 1.06]);
@@ -655,6 +727,22 @@ export function makeHumanoid(o = {}) {
     if (outfit === 'monk') { const kesa = m(o.kesa ?? 0x8a6a2a, { roughness: 0.9, side: THREE.DoubleSide }); attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.182, 0.19, 0.12, 30, 1, true), kesa), new THREE.Vector3(0, ch.y - 0.06, ch.z + 0.004), [0, 0, 0.62 * xL], [1, 1, 0.84]); attach('Spine2', new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.01), kesa), new THREE.Vector3(-xL * 0.06, ch.y - 0.14, ch.z + 0.15)); } // o kesa: a faixa do ombro esquerdo ao quadril e o painel (rakusu) no peito
     if (outfit === 'pilgrim') hipsPart(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 30, 1, true), m(0xf6f2ea, { roughness: 0.9, side: THREE.DoubleSide }), 0.06, [0, 0, 0], [1, 1, 0.86]);
   }
+  if (br) { // o que é de torno ou de tubo: as abas da casaca, a batina, a saia e o avental; as meias e o cano das botas
+    // (o que segue o corpo — colete, gola, talabarte, pano da costa, torço, mantilha — é moldado em roupas.js, dressMinas)
+    const wm = (c, stripes = null) => m(0xffffff, { map: fioTex('#' + new THREE.Color(c).getHexString(), stripes), roughness: 0.94, side: THREE.DoubleSide });
+    const along = (a, b) => { const d = new THREE.Vector3().subVectors(b, a), L = d.length(); const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()); const e = new THREE.Euler().setFromQuaternion(q); return { mid: a.clone().add(b).multiplyScalar(0.5), L, rot: [e.x, e.y, e.z] }; };
+    // tubo na canela (meias ou cano da bota): do joelho (t0) ao tornozelo (t1); rA no tornozelo, rK no joelho
+    const shin = (mat, rA, rK, t0, t1, cuff) => { for (const sd of ['Left', 'Right']) { const k = sd + 'Leg', f = sd + 'Foot'; if (!bones[k] || !bones[f]) continue; const a = bonePos(k), b = bonePos(f), u = along(a.clone().lerp(b, t0), a.clone().lerp(b, t1));
+      attach(k, new THREE.Mesh(new THREE.CylinderGeometry(rA, rK, u.L, 14, 1, true), mat), u.mid, u.rot, [1, 1, 0.92]);
+      if (cuff) { const c = along(a.clone().lerp(b, t0 - 0.06), a.clone().lerp(b, t0 + 0.08)); attach(k, new THREE.Mesh(new THREE.CylinderGeometry(rK + 0.008, rK + 0.012, c.L, 14, 1, true), cuff), c.mid, c.rot, [1, 1, 0.92]); } } };
+    if ((outfit === 'casaca' || outfit === 'dragao') && useCloth) cloth(clothSeg('casaca', COAT, 0.62, Math.PI * 2 - 1.24), wm(o.coat ?? 0x2a2a38), -0.02, 0.5); // as abas da casaca até o joelho, abertas na frente
+    if (o.stockings) shin(m(o.stockings, { roughness: 0.85, side: THREE.DoubleSide }), 0.046, 0.064, -0.06, 0.96); // as meias até acima do joelho (o calção acaba ali)
+    if (o.boots) shin(m(o.boots, { roughness: 0.55, side: THREE.DoubleSide }), 0.06, 0.074, -0.04, 1.0, m(o.boots, { roughness: 0.55, side: THREE.DoubleSide })); // as botas de cano alto
+    if (outfit === 'padre' && useCloth) skirt = cloth(clothGeometry('batina', LONGROBE, 30), wm(0x141214), -0.04, 0.72); // a batina até os pés
+    if (outfit === 'saia') { const ac = o.accent || '#2a2a3a', sm = wm(o.skirt ?? 0x6a4a3a, o.pattern === 'shima' ? [[0, 0.08, ac], [0.25, 0.33, ac], [0.5, 0.58, ac], [0.75, 0.83, ac]] : null);
+      if (useCloth) skirt = cloth(clothGeometry('saia', SAIA, 30), sm, -0.04, 0.76); else hipsPart(clothGeometry('saia', SAIA, 30), sm, -0.04); // a saia comprida, rodada
+      if (o.apron && useCloth) cloth(clothSeg('avental', APRON, -0.7, 1.4), wm(o.apron), -0.03, 0.7); } // o avental de algodão, só na frente
+  }
   let tail = null; // cauda de touro cerimonial (some quando o rei está sentado)
   if (outfit === 'pharaoh') {
     // avental de ouro plissado na frente do saiote, cauda de touro cerimonial atrás e braceletes
@@ -679,13 +767,13 @@ export function makeHumanoid(o = {}) {
   // pele de leopardo do sacerdote: envolve o tronco em diagonal, junto ao corpo (antes era uma placa que o cajado atravessava)
   if (outfit === 'priest') attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.19, 0.42, 36, 1, true), m(0xffffff, { map: TEX.leopard, roughness: 0.9, side: THREE.DoubleSide })), new THREE.Vector3(0, chest.y - 0.1, chest.z + 0.005), [0, 0, 0.22], [1, 1, 0.78]);
   const collar = o.collar === 'royal' || outfit === 'pharaoh' ? 'royal' : o.collar ?? (female && !greek ? pick([0x2f7f8a, 0xa8402c, 0x3a5fa8, 0xc9963a]) : undefined); // mulheres: colar largo de contas por cima da gola da blusa do modelo
-  if (collar && !isExp) {
+  if (collar && !isExp && !br) {
     const c = attach('Spine2', new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.175, 0.1, 28, 1, true), collar === 'royal' ? m(0xffffff, { map: stripeTex('collar'), metalness: 0.75, roughness: 0.32, side: THREE.DoubleSide }) : m(collar, { side: THREE.DoubleSide, roughness: 0.5 })), new THREE.Vector3(0, neckY - 0.02, chest.z - 0.005), [0.08, 0, 0], [1.12, 1, 0.78]);
     void c;
   }
 
   // ---- pés descalços com sandália de couro (no lugar dos tênis do Mixamo, que escondem pés só esboçados)
-  if (!isExp || LK?.sandals) {
+  if ((!isExp && !(br && !o.barefoot)) || LK?.sandals) {
     const skinFlat = m(LK ? 0x5e3622 : new THREE.Color(skin).multiply(SKIN_TINT).getHex(), { roughness: 0.6 }); // (o explorador: no tom da pele dele)
     const sandal = m(outfit === 'pharaoh' ? 0xd9a23e : LK ? 0x5a3a22 : 0x8a6a42, { roughness: outfit === 'pharaoh' ? 0.35 : 0.85, metalness: outfit === 'pharaoh' ? 0.8 : 0 });
     for (const side of ['Left', 'Right']) {
@@ -711,9 +799,9 @@ export function makeHumanoid(o = {}) {
       const ah = Math.max(0.07, ank.y + 0.04);
       f.add(meshAt(new THREE.CylinderGeometry(0.03, 0.04, ah, 16), skinFlat, 0, ah / 2 + 0.012, -0.012, [0, 0, 0]));
       // sola, tira sobre o peito do pé e tira do calcanhar
-      f.add(meshAt(new THREE.BoxGeometry(LK ? 0.078 : 0.1, 0.012, L + 0.012), sandal, 0, 0.006, heelZ + L / 2));
+      if (!br) { f.add(meshAt(new THREE.BoxGeometry(LK ? 0.078 : 0.1, 0.012, L + 0.012), sandal, 0, 0.006, heelZ + L / 2));
       f.add(meshAt(new THREE.TorusGeometry(0.042, 0.007, 5, 16, Math.PI), sandal, 0, 0.012, heelZ + L * 0.6, [0, 0, 0]));
-      f.add(meshAt(new THREE.TorusGeometry(0.036, 0.006, 5, 14, Math.PI), sandal, 0, 0.03, -0.02, [0, 0, 0]));
+      f.add(meshAt(new THREE.TorusGeometry(0.036, 0.006, 5, 14, Math.PI), sandal, 0, 0.03, -0.02, [0, 0, 0])); } // (em Minas, o pé descalço: sem sandália)
       g.traverse((n) => { if (n.material === skinFlat) n.userData.skinPart = true; });
       attach(side + 'Foot', g, new THREE.Vector3(0, 0, 0));
     }
@@ -920,10 +1008,28 @@ export function makeHumanoid(o = {}) {
     if (e === 'scroll') handL.add(meshAt(new THREE.CylinderGeometry(0.028, 0.028, 0.2, 8), m(0xe9dcb4), 0, 0.0, 0.04, [0, 0, Math.PI / 2]));
     if (e === 'basket') { headPart(new THREE.CylinderGeometry(0.19, 0.14, 0.15, 12), m(0xb79c5c, { roughness: 1 }), [0, R * 1.4, 0]); for (let i = 0; i < 5; i++) headPart(new THREE.SphereGeometry(0.055, 7, 5), pick([m(0xa82030), m(0xc88a48), m(0x6d9a3a)]), [rr(-0.09, 0.09), R * 1.4 + 0.09, rr(-0.09, 0.09)]); }
     if (e === 'jar') { const pts = []; for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push(new THREE.Vector2(0.03 + Math.sin(t * Math.PI) * 0.12, t * 0.32)); } headPart(new THREE.LatheGeometry(pts, 12), m(0xa4552f), [0, R * 1.0, 0]); }
+    if (e === 'tabuleiro') { const y = headFitOnce().top - HC.y + (o.hair === 'torco' ? 0.085 : 0.03), wood = m(0x7a5a3a, { roughness: 0.85 });
+      headPart(new THREE.TorusGeometry(R * 0.55, R * 0.14, 6, 14), m(0xe8e0cc, { roughness: 1 }), [0, y - 0.03, 0], [Math.PI / 2, 0, 0]); // (a rodilha de pano)
+      headPart(new THREE.BoxGeometry(0.52, 0.025, 0.4), wood, [0, y, 0]); for (const [w, d, x, z] of [[0.52, 0.025, 0, 0.19], [0.52, 0.025, 0, -0.19], [0.025, 0.4, 0.25, 0], [0.025, 0.4, -0.25, 0]]) headPart(new THREE.BoxGeometry(w, 0.05, d), wood, [x, y + 0.03, z]);
+      headPart(new THREE.BoxGeometry(0.46, 0.008, 0.34), m(0xf2ece0, { roughness: 1 }), [0, y + 0.017, 0]);
+      const goods = [m(0xc89a58, { roughness: 0.8 }), m(0xe8d8a8, { roughness: 0.8 }), m(0x8a5a2a, { roughness: 0.8 }), m(0xd8a03a, { roughness: 0.7 }), m(0x7a9a3a, { roughness: 0.7 })];
+      for (let i = 0; i < 9; i++) headPart(new THREE.SphereGeometry(0.035, 8, 5), goods[i % goods.length], [-0.16 + (i % 3) * 0.16, y + 0.035, -0.11 + Math.floor(i / 3) * 0.11], [0, 0, 0], [1.2, 0.6, 1.2]); } // (os bolos, as cocadas, os pés de moleque, as frutas)
+    if (e === 'pote') { const y = headFitOnce().top - HC.y + (o.hair === 'torco' ? 0.075 : 0.02); headPart(new THREE.TorusGeometry(R * 0.45, R * 0.12, 6, 14), m(0xe8e0cc, { roughness: 1 }), [0, y - 0.01, 0], [Math.PI / 2, 0, 0]); const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(t < 0.88 ? 0.045 + Math.sin(t * Math.PI * 1.05) * 0.11 : 0.055, t * 0.32)); } headPart(new THREE.LatheGeometry(pts, 14), m(0xa4552f, { roughness: 0.85 }), [0, y, 0]); }
+    if (e === 'feixe') { const y = R * 1.4; for (let i = 0; i < 8; i++) headPart(new THREE.CylinderGeometry(0.022, 0.028, 1.0, 6), m(i % 2 ? 0x6a4a2a : 0x7a5a36, { roughness: 1 }), [((i % 4) - 1.5) * 0.045, y + Math.floor(i / 4) * 0.045, 0], [0, 0, Math.PI / 2]); headPart(new THREE.TorusGeometry(0.1, 0.008, 4, 10), m(0x8a7a50), [0.3, y + 0.02, 0], [0, Math.PI / 2, 0]); }
+    if (e === 'trouxa') headPart(new THREE.SphereGeometry(0.2, 12, 8), m(0xf0ece2, { roughness: 1 }), [0, R * 1.5, 0], [0, 0, 0], [1.2, 0.55, 1]);
+    if (e === 'bateia') handL.add(meshAt(new THREE.ConeGeometry(0.26, 0.08, 18, 1, true), m(0x5a3a22, { roughness: 0.7, side: THREE.DoubleSide }), 0, -0.02, 0.18, [Math.PI, 0, 0])); // a bateia: a gamela rasa de madeira, de bico
+    if (e === 'almocafre') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.016, 0.018, 0.9, 6), m(0x7a5a3a), 0, 0.2, 0)); g.add(meshAt(new THREE.ConeGeometry(0.07, 0.24, 4), m(0x4a4644, { metalness: 0.6, roughness: 0.5 }), 0, 0.66, 0.1, [1.3, 0, 0])); handR.add(g); }
+    if (e === 'chicote') { handR.add(meshAt(new THREE.CylinderGeometry(0.012, 0.016, 0.38, 6), m(0x3a2414), 0, 0.12, 0)); handR.add(meshAt(new THREE.TorusGeometry(0.11, 0.008, 4, 16), m(0x4a2e1a), 0, -0.1, 0.04, [0.3, 0, 0])); } // (o chicote do feitor, enrolado na mão)
+    if (e === 'bengala') handR.add(meshAt(new THREE.CylinderGeometry(0.012, 0.014, 0.92, 6), m(0x2a1a10, { roughness: 0.5 }), 0, -0.38, 0.02));
+    if (e === 'livro') handL.add(meshAt(new THREE.BoxGeometry(0.11, 0.16, 0.035), m(0x2a1a14, { roughness: 0.7 }), 0, 0.02, 0.05));
+    if (e === 'espingarda') { const g = new THREE.Group(); g.add(meshAt(new THREE.CylinderGeometry(0.012, 0.012, 1.15, 6), m(0x3a3a3c, { metalness: 0.7, roughness: 0.45 }), 0, 0.35, 0)); g.add(meshAt(new THREE.BoxGeometry(0.04, 0.95, 0.06), m(0x5a3a22, { roughness: 0.6 }), 0, -0.05, -0.012)); g.add(meshAt(new THREE.BoxGeometry(0.045, 0.28, 0.1), m(0x5a3a22, { roughness: 0.6 }), 0, -0.6, -0.03)); attach('Spine2', g, new THREE.Vector3(0, chest.y - 0.02, chest.z - 0.18), [0, 0, 0.42 * xL]); } // a espingarda de pederneira a tiracolo, nas costas
+    if (e === 'pedra') { const y = headFitOnce().top - HC.y + 0.02; headPart(new THREE.TorusGeometry(R * 0.5, R * 0.14, 6, 14), m(0xe8e0cc, { roughness: 1 }), [0, y - 0.02, 0], [Math.PI / 2, 0, 0]); headPart(new THREE.BoxGeometry(0.34, 0.2, 0.26), m(0xb8aa8a, { roughness: 0.95 }), [0, y + 0.1, 0]); } // (o bloco de cantaria na rodilha, para o andaime)
+    if (e === 'saco_costas') attach('Spine2', meshAt(new THREE.SphereGeometry(0.2, 10, 8), m(0xc8b890, { roughness: 1 }), 0, 0, 0, [0, 0, 0]), new THREE.Vector3(0, chest.y - 0.05, chest.z - 0.24), [0, 0, 0], [1.1, 1.4, 0.8]);
     if (e === 'khopesh') { const k = new THREE.Group(); k.add(meshAt(new THREE.CylinderGeometry(0.017, 0.017, 0.14, 6), m(0x3a2414), 0, 0.02, 0)); const bl = meshAt(new THREE.TorusGeometry(0.18, 0.016, 4, 12, Math.PI * 0.8), bronze(), 0.16, 0.25, 0); bl.rotation.z = 0.5; bl.scale.z = 0.4; k.add(bl); handR.add(k); }
   }
 
   // o traje do explorador (e as outras roupas dele): moldado sobre o corpo, em roupas.js
+  if (br) dressMinas({ meshes, rootInv, bones, bonePos, hips, attach, headFit: headFitOnce, base: baseName }, o, outfit); // a roupa de Minas que segue o corpo
   if (isLook) dress({ meshes, rootInv, bones, bonePos, hips, chest, neckY, attach, headFit: headFitOnce, cloth: useCloth ? cloth : null, clothGeometry, PROF: { KILT, LONGKILT, CHITON, LONGROBE }, stripeTex, gold, katana: KATANA, gear: (name, opt) => gearOn(name, opt, headFitOnce, attach) }, look);
 
   const h = o.height || (female ? rr(1.58, 1.7) : rr(1.66, 1.8));

@@ -584,3 +584,55 @@ export function setupWardrobe({ player, city, quests, objectives, toast, extra =
   }, true);
   return { open, close, check };
 }
+
+// ---------------------------------------------------------------------------
+// Minas, 1789: a roupa do povo de Vila Rica sobre os corpos do Mixamo (o resto do conjunto de Minas está em mixamo.js:
+// as abas da casaca, a saia, o avental, a batina, as meias, as botas e os chapéus). Aqui, o que precisa seguir o corpo:
+// a camisa e a calça tingidas sobre o tecido do próprio modelo (com as dobras dele), o colete, as lapelas, a gravata, a
+// gola e os canhões da farda, o talabarte, a faixa do padre, o pano da costa, o torço e a mantilha.
+// Cada peça moldada é calculada uma vez por corpo (o Brian, a Kate...) e reaproveitada nos outros bonecos do mesmo corpo.
+const FITC = new Map(), MATC = new Map(), FITTERS = new Map();
+const mcache = (key, mk) => { if (!MATC.has(key)) MATC.set(key, mk()); return MATC.get(key); };
+const hexOf = (c) => '#' + new THREE.Color(c).getHexString();
+const wool = (c, stripes = null, rough = 0.95) => mcache('w' + c + JSON.stringify(stripes), () => M(0xffffff, { map: clothTex(hexOf(c), { weave: 0.07, stripes }), roughness: rough }));
+function piece(ctx, key, re, mat, build) {
+  const ck = ctx.base + '|' + key; const c = FITC.get(ck);
+  if (c === undefined) {
+    const ms = ctx.meshes.filter((me) => me.visible !== false && re.test(me.name)); if (!ms.length) { FITC.set(ck, null); return null; }
+    const ref = ms.reduce((a, b) => (b.skeleton.bones.length > a.skeleton.bones.length ? b : a), ms[0]);
+    const fk = ctx.base + '|' + re.source; let fit = FITTERS.get(fk); if (!fit) { fit = makeFitter({ meshes: ms, rootInv: ctx.rootInv, ref }); FITTERS.set(fk, fit); } // (o molde de cada corpo é feito uma vez)
+    build(fit, mat); const out = fit.finish();
+    FITC.set(ck, out.length ? { geo: out[0].geometry, ref: ref.name } : null); return out[0] || null;
+  }
+  if (!c) return null;
+  const ref = ctx.meshes.find((me) => me.name === c.ref); if (!ref) return null;
+  const sm = new THREE.SkinnedMesh(c.geo, mat); sm.castShadow = true; sm.receiveShadow = true;
+  sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix); return sm;
+}
+export function dressMinas(ctx, o, outfit) {
+  const { meshes, bonePos, hips } = ctx;
+  const byPart = (re) => meshes.find((me) => re.test(me.name));
+  const shirt = byPart(/Shirt|Tops/), pants = byPart(/Pants|Shorts|Bottoms/);
+  const neck = bonePos('Neck'), ch = bonePos('Spine2'), hy = hips.y, head = bonePos('Head');
+  const grain = mcache('grain', () => clothTex('#8a8a8a', { weave: 0.12 })), female = outfit === 'saia';
+  if (shirt && !o.bare) retint(shirt, o.coat ?? o.top ?? 0xe8e0cc, { rough: 0.95, detail: 0.6, lo: 0.75, hi: 1.2, grain, grainScale: 8 });
+  if (pants) retint(pants, female ? (o.skirt ?? 0x6a4a3a) : (o.legs ?? 0x4a3e30), { rough: 0.95, detail: 0.55, lo: 0.78, hi: 1.18, grain, grainScale: 8 });
+  const TORSO = /Shirt|Tops|Body/;
+  const armpit = (a, y) => !(y > ch.y - 0.03 && Math.abs(Math.sin(a)) > 0.7); // (a cava do braço fica aberta)
+  const torso = (key, mat, a0, a1, off, y0 = hy + 0.02, y1 = neck.y - 0.05) => piece(ctx, key, TORSO, mat, (fit, m) => fit.shell(m, { y0, y1, rows: 18, cols: 44, a0, a1, off, r0: 0.34, cx: hips.x, cz: hips.z, uvScale: [3, 2], mask: armpit }));
+  const gola = (key, mat, y0, y1, off = 0.016) => piece(ctx, key, TORSO, mat, (fit, m) => fit.shell(m, { y0: neck.y + y0, y1: neck.y + y1, rows: 6, cols: 32, off, r0: 0.12, cx: neck.x, cz: neck.z + 0.01 }));
+  const punho = (key, mat) => { for (const sd of ['Left', 'Right']) { const a = bonePos(sd + 'ForeArm'), b = bonePos(sd + 'Hand'); piece(ctx, key + sd, TORSO, mat, (fit, m) => fit.band(m, ring(a.clone().lerp(b, 0.8), b.clone().sub(a), 0.1), { w: 0.07, th: 0.006, off: 0.004, n: 28, closed: true })); } };
+  const faixa = (key, mat, w, z, off = 0.014) => piece(ctx, key, TORSO, mat, (fit, m) => fit.band(m, [{ p: V3(0.16, neck.y + 0.02, z), c: V3(0.1, neck.y - 0.05, 0) }, { p: V3(0, ch.y - 0.04, z), c: V3(0, ch.y - 0.04, 0) }, { p: V3(-0.16, hy + 0.04, z), c: V3(-0.08, hy + 0.04, 0) }], { w, th: 0.006, off, n: 20 }));
+  if (outfit === 'casaca' || outfit === 'dragao') { // o colete na abertura da casaca, as bordas da casaca por cima, a gravata
+    torso('colete', wool(o.vest ?? 0xc8b890), -0.5, 0.5, 0.012, hy - 0.04);
+    
+    gola('gravata', wool(outfit === 'dragao' ? 0x161212 : 0xf0ece2), -0.035, 0.045);
+    if (o.facing) { gola('gola', wool(o.facing), -0.055, -0.01, 0.026); punho('canhao', wool(o.facing)); }
+    if (outfit === 'dragao') { const branco = wool(0xeae4d4, null, 0.8); faixa('talabarte', branco, 0.05, 0.5, 0.026); } // o talabarte branco a tiracolo
+  }
+  if ((outfit === 'colono' || outfit === 'tropeiro') && o.vest) torso('coleteAberto', outfit === 'tropeiro' ? mcache('couro', () => M(0xffffff, { map: leatherTex('#5a3a22', false), roughness: 0.7 })) : wool(o.vest), 0.28, Math.PI * 2 - 0.28, 0.012);
+  if (outfit === 'tropeiro' || o.boots) piece(ctx, 'cinto', TORSO, mcache('cinto', () => M(0xffffff, { map: leatherTex('#3a2414'), roughness: 0.6 })), (fit, m) => fit.band(m, waist(hy + 0.05), { w: 0.05, th: 0.006, off: 0.012, n: 60, closed: true }));
+  if (outfit === 'padre') { gola('volta', wool(0xf6f4ee), -0.015, 0.03, 0.018); piece(ctx, 'faixa', TORSO, wool(0x0e0c0c), (fit, m) => fit.band(m, waist(hy + 0.06), { w: 0.07, th: 0.006, off: 0.016, n: 60, closed: true })); }
+  if (female && o.pano) { const ac = o.panoAccent || '#1a2a5a', st = wool(o.pano, [[0, 0.12, ac], [0.44, 0.56, ac], [0.88, 1, ac]]); faixa('pano', st, 0.17, 0.5, 0.012); } // o pano da costa, de um ombro à ilharga
+  // (o torço e a mantilha: feitos na medida da cabeça em mixamo.js)
+}

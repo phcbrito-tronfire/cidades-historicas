@@ -392,3 +392,32 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   entradas; 45,7 quadros/s no PC fraco. (A Casa dos Contos continua "gastando" o sorteio da mobília comum, para as
   outras casas da cidade não mudarem.)
 - **Falta:** lavabo de pedra-sabão na sacristia de São Francisco.
+
+## Etapa 5 — Gente e trabalho (18/11/2026)
+
+- **Roupas de 1789** (conjunto de Minas, em mixamo.js e roupas.js, só em Vila Rica): camisa e calça tingidas sobre o
+  tecido do próprio modelo (com as dobras), colete, gola, canhões e talabarte moldados sobre o corpo (calculados uma vez
+  por corpo e reaproveitados); casaca com as abas abertas na frente, colete e gravata; calção com meias até o joelho;
+  botas; batina com a volta e a faixa; saia comprida, avental, pano da costa listrado; torço feito na medida da cabeça
+  (a testa e os olhos livres) e mantilha preta; tricórnio, chapéu de aba larga, de palha, barrete e lenço.
+  **Escravizados descalços** (o sapato era sinal de liberdade); forros e livres de sapato.
+- **Quem está na vila (125 pessoas):** carregadores, moradores, senhoras de mantilha, padres, crianças e quitandeiras
+  de tabuleiro na cabeça subindo e descendo as ladeiras (pelo traçado de cada rua, sem empacar); a fila das
+  escravizadas com o pote nos chafarizes dos Contos e de Antônio Dias; quitandeiras na praça e nos largos; rodas de
+  conversa; a guarda de dragões no portão do Palácio e no corpo da guarda; dragões de patrulha (também de noite); fiéis
+  nas quatro igrejas; padre e senhoras na porta das matrizes; canteiros lavrando pedra-sabão no adro de São Francisco;
+  pedreiros da Câmara (aparelhando e levando pedra na rodilha até o andaime); mineradores nas lavras da Queimada com o
+  feitor; faiscadores de bateia na beira do ribeirão e do Funil; moradores na porta de casa.
+- **A tropa:** a madrinha com o cincerro e o penacho, seis mulas com a cangalha, as bruacas de couro e a carga, dois
+  tropeiros; vem pelo Caminho do Rio até o Largo dos Contos, descansa e volta.
+- **Falas (E):** cada um diz uma coisa da própria vida; os escravizados com nome e nação (ou crioulos), na própria voz
+  (a alforria em prestações, o aluguel do jornal, a lavra que mata, o tabuleiro proibido nas lavras). Nada fora do
+  mundo de 1789. Cães e gatos nas ruas. De noite a vila esvazia; ficam os dragões.
+- **Testado:** roupas conferidas de perto, tipo por tipo (frente e costas); 42 andantes sem empacar (quem nasce na rua
+  nasce em cima da ponte, não no leito); nenhum parado dentro de parede, fora do chão ou na água funda; as conversas;
+  as outras quatro cidades carregam sem erro. PC fraco: **28,9 quadros/s** (sem a gente eram 45; o Japão, com
+  multidão parecida, dá 16,9 no mesmo teste) — quem está fora da tela não é desenhado nem tem o esqueleto calculado, e
+  a distância de aparecer/fazer sombra segue o nível de gráfico.
+- **Fica para a Etapa 6:** os personagens com conversa longa (Aleijadinho, Gonzaga, Cláudio, Tiradentes, Macedo...) e
+  os dias que mudam a gente da rua; cenas da escravidão com a violência (pelourinho, capitão do mato, tronco).
+

@@ -2,7 +2,8 @@
 // Etapa 2 do plano (docs/PLANO-OURO-PRETO.md): o terreno e o mapa-base — o vale do ribeirão, os dois vales que descem
 // do norte, a praça no espigão, as ruas em ladeira calçadas de pé de moleque, as pontes de pedra, os córregos, os
 // morros quase pelados pela mineração, as lavras do Morro da Queimada e o Itacolomi no horizonte. Casas, igrejas,
-// gente e os dias da Inconfidência vêm nas próximas etapas.
+// Etapas 3 e 4: casas, igrejas, interiores. Etapa 5 (gente.js): o povo da vila, com ofício, roupa de 1789 e voz.
+// Os dias da Inconfidência vêm na Etapa 6.
 import * as THREE from 'three';
 import { openQuiz } from '../comum/quiz.js';
 const FRAME = { n: 0 };
@@ -22,6 +23,7 @@ import { buildNature } from './natureza.js';
 import { buildBridges } from './pontes.js';
 import { loadHumanModel } from '../comum/mixamo.js';
 import { Player } from '../comum/player.js';
+import { Gente } from './gente.js';
 import { Quests, OBJECTIVES } from './quests.js';
 import { setupWardrobe } from '../comum/roupas.js';
 import { TimeOfDay } from './sky.js';
@@ -129,6 +131,9 @@ async function main() {
   const quests = new Quests(ui, audio);
   setupWardrobe({ player, city: 'ouropreto', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 
+  await step(0.93, 'Pondo a gente na rua...');
+  const gente = new Gente(scene, city); gente.camera = camera; gente.viewR = PROFILE[quality].npcR; gente.shadowR = PROFILE[quality].npcShadow; gente.spawn(); gente.spawnTropa(); // (até onde a gente aparece e faz sombra: pelo nível de gráfico)
+
   await step(0.96, 'Desenhando o mapa da vila...');
   const P = PLACES, B0 = BRIDGES.find((b) => b.stream === 'funil');
   const mapJob = ui.buildMapBackground([
@@ -183,11 +188,18 @@ async function main() {
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
+      case 'KeyE': { const tg = gente.nearestInteractable(player.pos); if (tg) falar(tg.o); break; }
       case 'KeyC': { const p = sky.next(); ui.setTime(`${p.label} · Fevereiro de 1789`); ui.toast(p.msg); break; }
       case 'KeyJ': ui.toggleJournal(); break;
       case 'KeyM': mapOpen = ui.toggleBigMap(player, hints()); break;
     }
   });
+  // a fala curta de quem está por perto (cada um diz uma coisa da sua vida, sorteada entre as suas)
+  const falar = (o) => {
+    o.talking = true; player.locked = true; ui.openDialog({ name: gente.titulo(o), title: '' }); audio.talk();
+    o.fi = ((o.fi ?? Math.floor(Math.random() * o.lines.length)) + 1) % o.lines.length;
+    ui.say(o.lines[o.fi], [{ label: '(Seguir caminho)', cb: () => { ui.closeDialog(); o.talking = false; player.locked = false; } }]);
+  };
   const pauseEl = document.getElementById('pause');
   document.getElementById('btn-quiz-end')?.addEventListener('click', () => { const en = document.getElementById('ending'); if (en) en.hidden = true; openQuiz('ouropreto', () => { if (en) en.hidden = false; }); });
   const togglePause = () => { paused = !paused; pauseEl.hidden = !paused; player.keys.clear(); };
@@ -199,7 +211,7 @@ async function main() {
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {
       quality = LEVELS[(LEVELS.indexOf(quality) + 1) % LEVELS.length]; saveQuality(quality, true);
-      applyQuality(quality, { renderer, sun, post, cull });
+      applyQuality(quality, { renderer, sun, post, actors: gente, cull });
       prMax = renderer.getPixelRatio(); prMin = prFloor(prMax);
       e.target.textContent = `Gráficos: ${qualityLabel(quality)}`;
     }
@@ -216,7 +228,7 @@ async function main() {
     });
   };
 
-  window.__game = { city, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { city, gente, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -234,7 +246,7 @@ async function main() {
   };
   const slow = slowWatch(() => {
     const i = LEVELS.indexOf(quality); if (i >= LEVELS.length - 1) return;
-    quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, cull });
+    quality = LEVELS[i + 1]; saveQuality(quality); applyQuality(quality, { renderer, sun, post, actors: gente, cull });
     prMax = renderer.getPixelRatio(); prMin = prFloor(prMax);
     const qb = document.querySelector('#pause [data-act=quality]'); if (qb) qb.textContent = `Gráficos: ${qualityLabel(quality)}`;
     ui.toast(`O jogo estava pesado neste computador: gráficos no modo ${qualityLabel(quality)}. Dá para trocar no menu (Esc).`, 'quest', 7000);
@@ -259,10 +271,11 @@ async function main() {
     sky.update(dt, t, player.pos);
     nature.update(dt); nature.cull(camera, dt);
     interiorLight(dt, player.pos);
+    gente.update(dt, t, player, sky.state.night);
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {
-      ui.prompt('');
+      { const tg = !ui.dialogOpen && gente.nearestInteractable(player.pos); ui.prompt(tg ? `<kbd>E</kbd> Falar com ${gente.titulo(tg.o).toLowerCase()}` : ''); }
       ui.setPlace(placeName(player.pos.x, player.pos.z, player.pos.y));
       miniT -= dt;
       if (miniT <= 0) { ui.drawMinimap(player, [], hints()); miniT = 0.1; }
