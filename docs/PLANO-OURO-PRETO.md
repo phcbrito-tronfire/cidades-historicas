@@ -509,3 +509,25 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   os dias), perguntas para conversar em sala e o aviso das cenas de violência da escravidão (prevenir a turma antes).
 - **Testado:** os 20 artefatos no chão (nenhum flutuando nem dentro de parede) e todos pegos a pé; contador 20/20 e
   objetivo cumprido; ficha, coleção e quiz abrindo; a página dos professores com a seção nova.
+
+## Etapa 9 — Testes finais (18/11/2026)
+
+- **Varreduras:** peças soltas (só as pedras do alto das torres de São Francisco, que se apoiam no modelo escaneado:
+  a varredura não enxerga o apoio); paredes vistas pelo avesso, conferidas foto a foto; gente andando (48, nenhuma
+  presa nem fora do chão) e gente parada (3 encostadas em algo, corrigidas).
+- **Corrigido:** (1) uma fresta escura entre os retábulos colaterais e a pilastra do arco-cruzeiro, nas quatro
+  igrejas: os retábulos ganharam as **ilhargas** (os lados fechados de talha) e os colaterais encostam na pilastra;
+  (2) um fiel colado num altar, uma quitandeira meio dentro de uma casa e um minerador na parede da galeria: quem fica
+  parado e nasce encostado em algo vai para o ponto livre mais perto (até 1,2 m); (3) o contador da bateia aparecia
+  cortado (o nome da classe era o mesmo da barra de vida).
+- **Celular** (telefone deitado, toque de verdade): os botões de cima são os de Vila Rica (Próximo dia, Hora, Diário,
+  Artefatos, Mapa, Menu) e os redondos, Bateia, Mula e Falar (`setupTouch` aceita os botões de cada cidade; as outras
+  ficam como eram). A bateia gira com o dedo, cabe na tela deitada e tem os botões Terminar e Desistir. Os botões de
+  cima se sobrepunham ao "← Cidades" no meio da tela: no celular esse atalho some (volta-se pelo Menu), em todas as
+  cidades. Testado: andar com o joystick, passar o dia, a bateia, a mula, a coleção, sem erros.
+- **Lavabo de pedra-sabão:** fica de fora. São Francisco é o modelo escaneado por fora, fechado e em obra, sem
+  sacristia por dentro; e o modelo baixado ("Aleijadinho 01") não diz de onde é o lavabo.
+- **Números:** PC fraco 23,1 quadros/s (o Japão, na mesma rodada, 21,2); primeira visita com internet de 20 Mbps em
+  23,9 s e 28 MB (Japão: 31 s); as outras quatro cidades sem erro; a página dos professores sem rolagem lateral no
+  celular.
+- O cartão de Vila Rica na tela de entrada deixou de dizer "em construção".

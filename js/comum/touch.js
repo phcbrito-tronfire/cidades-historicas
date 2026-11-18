@@ -13,7 +13,11 @@ const press = (code, key) => dispatchEvent(new KeyboardEvent('keydown', { code, 
 const release = (code, key) => dispatchEvent(new KeyboardEvent('keyup', { code, key: key || code }));
 const tap = (code, key) => { press(code, key); setTimeout(() => release(code, key), 120); };
 
-export function setupTouch(player) {
+// opts.top / opts.btns: os botões de cima e os três redondos da direita, como [tecla, rótulo] (cada cidade pode trocar
+// os seus: em Vila Rica, C é o próximo dia, e há bateia e mula). Sem opts, ficam os de sempre.
+const TOP = [['KeyC', 'Clima'], ['KeyJ', 'Diário'], ['KeyK', 'Artefatos'], ['KeyM', 'Mapa'], ['Escape', 'Menu']];
+const BTNS = [['KeyR', 'Usar'], ['KeyP', 'Pegar'], ['KeyE', 'Falar']];
+export function setupTouch(player, opts = {}) {
   const css = document.createElement('style');
   css.textContent = `
     html, body, #game, #game canvas { touch-action: none; -webkit-user-select: none; user-select: none; overscroll-behavior: none; }
@@ -24,16 +28,17 @@ export function setupTouch(player) {
     #touch .knob { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
       background: radial-gradient(circle at 35% 30%, #ffe39a, #c8902e); box-shadow: 0 3px 10px rgba(0,0,0,.5); }
     #touch .btns { position: absolute; right: 3vw; bottom: 4vh; display: grid; grid-template-columns: repeat(3, 64px); gap: 10px; pointer-events: auto; }
-    #touch .top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; }
+    #touch .top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: max-content; max-width: 94vw; pointer-events: auto; }
     #touch button { border: 1px solid rgba(232,184,74,.7); color: #ffe7b0; background: rgba(28,18,8,.62); font-family: Cinzel, Georgia, serif;
       font-weight: 700; border-radius: 50%; width: 64px; height: 64px; font-size: .72rem; line-height: 1.05; padding: 0; backdrop-filter: blur(3px); }
-    #touch .top button { border-radius: 10px; width: auto; height: 38px; padding: 0 10px; font-size: .7rem; }
+    #touch .top button { border-radius: 10px; width: auto; height: 38px; padding: 0 10px; font-size: .7rem; flex: none; white-space: nowrap; }
     #touch button.on, #touch button:active { background: rgba(200,140,40,.85); color: #2a1806; }
     #touch .big { width: 76px; height: 76px; font-size: .8rem; }
     #rotate-hint { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; text-align: center; padding: 24px;
       background: rgba(10,7,4,.92); color: #ffe3a0; font-family: Cinzel, Georgia, serif; font-size: 1.2rem; }
     @media (orientation: portrait) { body.touch-on #rotate-hint { display: grid; } }
     body.touch-on #keys { display: none; }
+    body.touch-on #btn-home { display: none; } /* (fica debaixo da barra de botões; no celular, volta-se pelo Menu) */
     body.touch-on #journal { top: 56px; width: 230px; max-height: 40vh; font-size: .85rem; }
     body.touch-on #mini-wrap { width: 110px; height: 110px; top: 56px; bottom: auto; right: 10px; }
     body.touch-on #loc { top: 52px; }
@@ -55,11 +60,10 @@ export function setupTouch(player) {
     <div class="cam"></div>
     <div class="stick"><div class="knob"></div></div>
     <div class="top">
-      <button data-k="KeyC">Clima</button><button data-k="KeyJ">Diário</button><button data-k="KeyK">Artefatos</button>
-      <button data-k="KeyM">Mapa</button><button data-k="Escape">Menu</button>
+      ${(opts.top || TOP).map(([k, l]) => `<button data-k="${k}">${l}</button>`).join('')}
     </div>
     <div class="btns">
-      <button data-k="KeyR">Usar</button><button data-k="KeyP">Pegar</button><button data-k="KeyE" class="big">Falar</button>
+      ${(opts.btns || BTNS).map(([k, l], i) => `<button data-k="${k}"${i === 2 ? ' class="big"' : ''}>${l}</button>`).join('')}
       <button data-run>Correr</button><button data-k="Space" class="big" style="grid-column: span 2; border-radius: 40px; width: auto">Pular</button>
     </div>`;
   document.body.appendChild(root);

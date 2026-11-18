@@ -61,6 +61,10 @@ export class Gente {
     return (FALAS[kind] || FALAS.homem).map((s) => s.replace('{n}', nome).replace('{nac}', nacao(nac, female)));
   }
   add(as, lk, x, z, ry, o = {}) {
+    if (o.extra && o.extra.static) { // (quem fica parado e caiu encostado num altar, numa casa, na parede da galeria: o ponto livre mais perto, até 1,2 m)
+      const fy = (xx, zz) => o.y ?? groundAt(xx, zz, terrainAt(xx, zz) + 1.6), free = (xx, zz) => !blocked(xx, zz, fy(xx, zz), 0.25, 1.6);
+      if (!free(x, z)) find: for (const d of [0.3, 0.6, 0.9, 1.2]) for (let k = 0; k < 8; k++) { const a = ry + Math.PI + (k * Math.PI) / 4, nx = x + Math.sin(a) * d, nz = z + Math.cos(a) * d; if (free(nx, nz)) { x = nx; z = nz; break find; } }
+    }
     const st = o.extra && o.extra.route ? streetAt(x, z) : null; // (quem anda pela rua nasce em cima dela: na ponte, no tabuleiro, não no leito do córrego)
     const h = this.addHuman(lk, x, z, ry, o.y ?? (st ? groundAt(x, z, st.y + 0.45) : undefined));
     const a = { ...h, kind: as, ry, mode: o.mode || 'idle', lines: o.lines || this.falas(as, lk.outfit === 'saia'), night: !!o.night, ...o.extra };

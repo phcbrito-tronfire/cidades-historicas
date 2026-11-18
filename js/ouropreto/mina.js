@@ -52,7 +52,7 @@ export function buildMina(scene, tex, M, out) {
   out.candles.push(...lamps);
   out.interiors.push({ id: 'mina', at: [pts[2][0], pts[2][1]], y, light: [[pts[1][0], pts[1][1]], y + 1.6], light2: [[ex, ez], y + 1.6] });
   // os mineradores lá dentro (postos pela gente da vila) e a boca de fora, no barranco das lavras
-  out.minaGente = [[ex - Math.sin(ery) * 0.9, ez - Math.cos(ery) * 0.9, ery], [pts[3][0] + 0.4, pts[3][1] + 2, Math.PI], [pts[2][0] - 0.5, pts[2][1] - 1, 0.4]];
+  out.minaGente = [[ex - Math.sin(ery) * 0.9, ez - Math.cos(ery) * 0.9, ery], [pts[3][0] + 0.4, pts[3][1] + 2, Math.PI], [pts[2][0] - 0.25, pts[2][1] - 0.5, 0.4]]; // (no meio da câmara da dobra, longe da parede)
   out.mina = { entra: [MINA.x, MINA.z - 0.6, Math.PI], fim: [ex, ez], y };
   // a boca de fora: num lugar das lavras onde o morro sobe (o barranco)
   const Q = PLACES.queimada; let best = null;

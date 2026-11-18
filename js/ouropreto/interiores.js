@@ -138,6 +138,7 @@ export function retabulo(f, M, out, x, y, z, ry, w, h, { mor = false, santo = {}
   const hw = w / 2, base = 1.05;
   // o fundo marmoreado, o banco (a base) e a mesa do altar com a toalha e o frontal
   box(M.marmoreado, w - 0.2, h - 0.4, 0.12, 0, 0.2, 0.06);
+  for (const sx of [-1, 1]) box(M.ouro, 0.08, h - 0.2, 0.85, sx * (hw - 0.04), 0, 0.425); // (as ilhargas: os lados fechados de talha, sem fresta para o fundo)
   box(M.ouro, w, base, 0.7, 0, 0, 0.35);
   box(M.ouro, w * 0.55, 1.0, 0.9, 0, 0, 1.1); box(M.marmoreado, w * 0.5, 0.75, 0.04, 0, 0.12, 1.56); box(M.toalha, w * 0.58, 0.04, 0.95, 0, 1.0, 1.1);
   box(M.toalha, w * 0.58, 0.3, 0.02, 0, 0.72, 1.575); // (a renda da toalha caindo na frente)
@@ -197,7 +198,7 @@ export function igrejaInterior(f, M, out, d, o) {
   // os retábulos: o altar-mor no fundo da capela-mor, os dois colaterais junto do arco, dois laterais na nave
   const sm = o.santos || {};
   retabulo(f, M, out, 0, cy, zC + T, 0, ciw - 0.6, Hc - 1.6, { mor: true, santo: sm.mor || {} });
-  for (const sx of [-1, 1]) retabulo(f, M, out, sx * (iw / 2 - (iw / 2 - ciw / 2 - 0.5) / 2 - 0.1), 0, zN + T + 0.02, 0, iw / 2 - ciw / 2 - 1.0, Hn - 4.5, { santo: (sm.col || [])[sx > 0 ? 1 : 0] || {} });
+  for (const sx of [-1, 1]) retabulo(f, M, out, sx * (ciw / 2 + 0.5 + (iw / 2 - ciw / 2 - 1.0) / 2), 0, zN + T + 0.02, 0, iw / 2 - ciw / 2 - 1.0, Hn - 4.5, /* (encostado na pilastra do arco) */ { santo: (sm.col || [])[sx > 0 ? 1 : 0] || {} });
   for (const sx of [-1, 1]) retabulo(f, M, out, sx * (iw / 2), 0, zN + (zF - zN) * 0.45, -sx * Math.PI / 2, 3.2, Hn - 5.5, { santo: (sm.lat || [])[sx > 0 ? 1 : 0] || {} });
   // o lambril: o barrado de madeira pintada na parte de baixo das paredes da nave (protegia o reboco)
   { const dz = zN + (zF - zN) * 0.82, segs = [[zN + T + 0.05, dz - 1.15], [dz + 1.15, zF - T - 0.05]]; // (com o vão da porta lateral)

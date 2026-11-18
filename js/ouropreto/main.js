@@ -196,8 +196,9 @@ async function main() {
   ui.showIntro(() => {
     started = true; health.show(true); health.render();
     if (Q.software) ui.toast('Seu navegador está sem aceleração de vídeo, por isso o jogo fica pesado. No Chrome: Configurações › Sistema › ligue "Usar aceleração de gráficos" e reinicie o navegador.', 'quest', 14000);
-    if (isTouch) { setupTouch(player); ui.toggleJournal(); }
-    else if (canTouch) addEventListener('touchstart', () => setupTouch(player), { once: true, passive: true });
+    const TOQUE = { top: [['KeyC', 'Próximo dia'], ['KeyT', 'Hora'], ['KeyJ', 'Diário'], ['KeyK', 'Artefatos'], ['KeyM', 'Mapa'], ['Escape', 'Menu']], btns: [['KeyB', 'Bateia'], ['KeyH', 'Mula'], ['KeyE', 'Falar']] };
+    if (isTouch) { setupTouch(player, TOQUE); ui.toggleJournal(); }
+    else if (canTouch) addEventListener('touchstart', () => setupTouch(player, TOQUE), { once: true, passive: true });
     audio.start();
     if (quests.done.size === 0) ui.toast('A praça fica no alto do morro. Para um lado a Rua Direita desce ao Pilar; para o outro, a Rua do Ouvidor desce a São Francisco e a Antônio Dias.', 'quest', 8000);
   });

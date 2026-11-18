@@ -10,12 +10,17 @@ export class Bateia {
       #bateia .box{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 22px;border-radius:12px;background:radial-gradient(ellipse at 20% 0%,#f8eed6,#efe0bd 55%,#e2cc9c);border:1px solid #b8914c;color:#2a1a0c;box-shadow:0 30px 80px rgba(0,0,0,.6);max-width:96vw}
       #bateia h2{font-family:Cinzel,serif;margin:0;color:#3a2410;font-size:1.5rem}
       #bateia p{margin:0;font-size:1.08rem;text-align:center;max-width:520px}
-      #bateia canvas{border-radius:50%;cursor:grab;touch-action:none;max-width:86vw;height:auto}
-      #bateia .bar{font-family:Cinzel,serif;font-size:1rem;color:#5a3a14}`;
+      #bateia canvas{border-radius:50%;cursor:grab;touch-action:none;width:min(420px,86vw,52vh);height:auto}
+      @media (max-height:560px){#bateia .box{padding:10px 16px;gap:6px}#bateia h2{font-size:1.1rem}#bateia p{font-size:.86rem;max-width:640px}#bateia button{padding:.4rem 1rem}}
+      #bateia .conta{font-family:Cinzel,serif;font-size:1rem;color:#5a3a14}
+      #bateia .bt{display:flex;gap:10px}
+      #bateia button{padding:.6rem 1.2rem;border-radius:8px;border:1px solid #8a5a14;font-family:Cinzel,serif;font-weight:700;cursor:pointer;background:linear-gradient(180deg,#ffe39a,#e8b84a 60%,#b8832a)}
+      #bateia button.no{background:rgba(255,255,255,.4)}`;
     document.head.appendChild(css);
     const el = (this.el = document.createElement('div')); el.id = 'bateia'; el.hidden = true;
-    el.innerHTML = '<div class="box"><h2>A bateia</h2><p>Gire em círculos com o mouse (ou ← → alternados): a água leva a areia pela beira e o ouro desce para o fundo. Devagar não limpa; depressa demais joga o ouro fora. <b>Espaço</b> termina, <b>Esc</b> desiste.</p><canvas width="420" height="420"></canvas><div class="bar"></div></div>';
-    document.body.appendChild(el); this.cv = el.querySelector('canvas'); this.cx = this.cv.getContext('2d'); this.bar = el.querySelector('.bar');
+    el.innerHTML = '<div class="box"><h2>A bateia</h2><p>Gire em círculos com o mouse ou o dedo (ou ← → alternados): a água leva a areia pela beira e o ouro desce para o fundo. Devagar não limpa; depressa demais joga o ouro fora.</p><canvas width="420" height="420"></canvas><div class="conta"></div><div class="bt"><button class="ok">Terminar (Espaço)</button><button class="no">Desistir (Esc)</button></div></div>';
+    el.querySelector('.ok').onclick = () => this.close(true); el.querySelector('.no').onclick = () => this.close(false);
+    document.body.appendChild(el); this.cv = el.querySelector('canvas'); this.cx = this.cv.getContext('2d'); this.bar = el.querySelector('.conta');
     let last = null;
     const ang = (e) => { const r = this.cv.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
     this.cv.addEventListener('pointermove', (e) => { const a = ang(e); if (last !== null) { let d = a - last; if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.push += d; } last = a; });
