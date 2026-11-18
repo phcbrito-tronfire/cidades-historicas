@@ -27,6 +27,7 @@ import { Gente, look } from './gente.js';
 import { Dias } from './dias.js';
 import { buildMina, MINA } from './mina.js';
 import { Bateia } from './bateia.js';
+import { Artifacts } from './artifacts.js';
 import { Mount } from '../comum/montaria.js';
 import { Quests, OBJECTIVES } from './quests.js';
 import { setupWardrobe } from '../comum/roupas.js';
@@ -141,6 +142,7 @@ async function main() {
 
   const dias = new Dias({ scene, city, gente, sky, ui, audio, quests, glow: tex.glow }); quests.spots = city.spots; quests.minaBoca = city.minaBoca; dias.start();
   for (const [x, z, ry] of city.minaGente || []) { const lk = look('minerador'); lk.extras = ['almocafre']; gente.add('minerador', lk, x, z, ry, { y: MINA.y, mode: '@pegar', night: true, extra: { static: true } }); } // (os mineradores lá dentro da galeria)
+  const artifacts = new Artifacts(scene, city, ui, audio, () => quests.complete('artefatos'));
   const bateia = new Bateia({ ui, audio, quests, toast: (m, k, ms) => ui.toast(m, k, ms) });
   const mount = new Mount(scene, 'mula', { toast: (m) => ui.toast(m) });
   // a galeria: entrar pela boca das lavras, sair pela luz do fim do primeiro lanço
@@ -203,6 +205,7 @@ async function main() {
   // ---------------- teclado ----------------
   addEventListener('keydown', (e) => {
     if (!started || e.repeat || dias.cardOpen || bateia.open) return;
+    if (!ui.dialogOpen && !paused && artifacts.key(e)) return; // (a ficha do artefato e a coleção, K)
     if (e.code === 'Escape') { if (mapOpen) { mapOpen = ui.toggleBigMap(player, hints()); return; } togglePause(); return; }
     if (paused || ui.dialogOpen) return;
     switch (e.code) {
@@ -263,7 +266,7 @@ async function main() {
     });
   };
 
-  window.__game = { city, gente, dias, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { city, gente, dias, artifacts, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
@@ -289,7 +292,7 @@ async function main() {
   const gate = frameGate();
   function loop(now = performance.now()) {
     requestAnimationFrame(loop);
-    const idle = !started || paused || mapOpen;
+    const idle = !started || paused || mapOpen || artifacts.open;
     if (!gate(now, idle)) return;
     const raw = clock.getDelta();
     const dt = Math.min(raw, 0.05);
@@ -311,6 +314,7 @@ async function main() {
     nature.update(dt); nature.cull(camera, dt);
     interiorLight(dt, player.pos);
     gente.update(dt, t, player, sky.state.night); dias.update(dt, t, player);
+    if (started) artifacts.update(dt, t, player);
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {

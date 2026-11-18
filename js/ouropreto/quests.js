@@ -48,6 +48,8 @@ export const OBJECTIVES = [
   { id: 'mula', text: 'Monte na mula do tropeiro (H)' },
   { id: 'vela', text: 'Pegue uma vela e siga uma procissão' },
   { id: 'festa_rosario', text: 'Em outubro, veja a coroação do rei e da rainha na festa do Rosário' },
+  // (Etapa 8)
+  { id: 'artefatos', text: 'Encontre os 20 artefatos espalhados pela vila (a coleção fica na tecla K)' },
 ];
 const SAVE = 'cidades-historicas:ouropreto:v1';
 

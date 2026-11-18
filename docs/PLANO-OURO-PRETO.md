@@ -488,3 +488,24 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   14). Ajustes no caminho: a galeria estava funda demais (abaixo de −100 m o jogo entende que é debaixo d'água) e as
   paredes das curvas se cruzavam; a luz da plateia da Ópera foi para perto do forro (estourava de branco quem estava
   embaixo).
+
+## Etapa 8 — Conteúdo educativo (18/11/2026)
+
+- **20 artefatos espalhados pela vila** (`js/ouropreto/artifacts-data.js` e `artifacts.js`): a bateia, a barra de ouro
+  com o selo da Casa de Fundição, a balança de pesar ouro, o almocafre, a candeia de mina, a imagem de santo em
+  pedra-sabão, o anjo de talha dourada, o oratório doméstico, as liras de Marília de Dirceu copiadas à mão, os Autos da
+  Devassa, a moeda de 6.400 réis, a bruaca de couro, o ex-voto pintado, o rosário de contas de lágrima, a partitura de
+  música sacra, a instrução da Coroa sobre a derrama, o carumbé, o tabuleiro de quitandeira, a panela de pedra-sabão e o
+  mapa da capitania. Cada um onde faria sentido estar (a barra e a balança nos Contos, o santo no canteiro de São
+  Francisco, o anjo dentro do Pilar), no chão, com um brilho discreto para achar.
+- **A ficha de cada um:** o que é, para que servia, quem usava, onde se vê um parecido hoje (Museu da Inconfidência,
+  Museu do Oratório, Casa dos Contos, Museu de Ciência e Técnica da Escola de Minas, Museu de Valores do Banco Central…) e o que é fato, o que é
+  tradição e o que é lenda (as ferramentas amarradas às mãos do Aleijadinho, por exemplo, ficam como o que contou o
+  biógrafo setenta anos depois, sem documento da época).
+- **A coleção (K):** os 20 com o que já foi achado e o que falta. Objetivo novo: achar todos (42 na cidade).
+- **Perguntas sobre a cidade** no menu de pausa: 8 perguntas de Vila Rica (a derrama, a Casa de Fundição, o faiscador,
+  as irmandades, a Inconfidência e a escravidão, Tiradentes, a pedra-sabão, as tropas), cada uma com a explicação.
+- **Página dos professores:** seção de Vila Rica com o roteiro (praça, Rua Direita e Contos, lavras e mina, igrejas,
+  os dias), perguntas para conversar em sala e o aviso das cenas de violência da escravidão (prevenir a turma antes).
+- **Testado:** os 20 artefatos no chão (nenhum flutuando nem dentro de parede) e todos pegos a pé; contador 20/20 e
+  objetivo cumprido; ficha, coleção e quiz abrindo; a página dos professores com a seção nova.
