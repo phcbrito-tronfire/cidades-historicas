@@ -9,7 +9,8 @@
 // divisória da sala e a porta dos fundos fechada. A mobília entra na Etapa 4.
 import * as THREE from 'three';
 import { mulberry32 } from '../comum/util.js';
-import { frame, roofGeo, janela, porta, sacada, cachorrada } from './kit.js';
+import { addRotBox } from '../comum/collision.js';
+import { frame, roofGeo, janela, porta, sacada, cachorrada, arco } from './kit.js';
 import { terrainHeight, STREETS, STREAMS, PLACES, BRIDGES, BOUNDS, RESERVED, polyDist, pointAt, inPlace } from './terrain.js';
 
 const rnd = mulberry32(1711);
@@ -69,8 +70,9 @@ export function casa(B, M, out, o) {
   }
   f.wall(wallM, -hw, zf - T / 2, hw, zf - T / 2, H1, T, g1.map(([c, ww, h, s]) => [c, ww, h, s]));
   for (const [k, cx, ww, h, s] of win1) {
-    if (k === 'porta') porta(f, M, pt, cx, 0, ww, h, zf, T, { open: s, cant });
+    if (k === 'porta') { porta(f, M, pt, cx, 0, ww, h, zf, T, { open: s, cant }); if (rich && M.sabao) { f.box(M.sabao, 1.0, 0.5, 0.14, cx, h + 0.24, zf + 0.07, { noGround: true }); f.box(M.sabao, 0.34, 0.34, 0.16, cx, h + 0.74, zf + 0.07, { noGround: true }); } } // (a cartela de pedra-sabão sobre a porta da casa rica)
     else janela(f, M, pt, k, cx, s, ww, h, zf, T, { cant });
+    if (o.arco && k !== 'porta') arco(f, cant || pt.wood, cx, s + h + 0.16, ww + 0.28, zf + 0.03);
   }
   for (let fl = 1; fl < nF; fl++) {
     const Hb = H1 + (fl - 1) * H2; // (a base deste piso)
@@ -84,6 +86,7 @@ export function casa(B, M, out, o) {
     for (const [k, cx, ww, h, s, ferro] of win2) {
       if (k === 'sacada') { janela(f, M, pt, rich ? 'vidro' : 'cega', cx, Hb + 0.02, ww, h, zf, T, { cant }); sacada(f, M, pt, cx, Hb + 0.02, ww + 0.5, zf, { ferro }); }
       else janela(f, M, pt, k, cx, Hb + s, ww, h, zf, T, { cant });
+      if (o.arco) arco(f, cant || pt.wood, cx, (k === 'sacada' ? Hb + 0.02 : Hb + s) + h + 0.16, ww + 0.28, zf + 0.03);
     }
     // a faixa entre os pisos (no nobre, de cantaria)
     f.box(cant || pt.wood, w, 0.14, 0.1, 0, Hb - 0.08, zf + 0.03, { noGround: true });
@@ -120,8 +123,9 @@ export function casa(B, M, out, o) {
   f.box(o.velha || poor ? M.telhaVelha : M.telha, w + 0.1, 0.16, 0.34, 0, roofY + Hr - 0.1, 0, { noGround: true, uv: { s: 1 } }); // a cumeeira (as telhas de capa emboçadas)
   // ---- os degraus de cada porta (uma escadinha de pedra, se a rua cai) e as portinhas de porão no embasamento
   for (const [k, cx, ww] of win1) {
-    const gap = gapAt(cx);
-    if (k === 'porta' && gap > 0.2) { const n = Math.min(4, Math.ceil(gap / 0.22)), sh = gap / n; for (let j = 0; j < n; j++) { const dz = 0.3 * (n - j); f.box(M.cantaria, ww + 0.5, sh * (j + 1) + 0.3, 0.32, cx, -gap - 0.3, zf + dz - 0.16); f.solid(cx, zf + dz - 0.16, ww + 0.5, 0.32, -gap - 0.6, -gap + sh * (j + 1), true); } }
+    let gap = Math.max(gapAt(cx), y - terrainHeight(...W0(cx, zf + 0.6)));
+    if (k === 'porta' && gap > 0.2) for (let it = 0; it < 3; it++) gap = Math.max(gap, y - terrainHeight(...W0(cx, zf + 0.3 * Math.ceil(gap / 0.22) + 0.25))); // (o chão medido onde cai o primeiro degrau: se ele desce, a escada cresce)
+    if (k === 'porta' && gap > 0.2) { const n = Math.min(6, Math.ceil(gap / 0.22)), sh = gap / n; for (let j = 0; j < n; j++) { const dz = 0.3 * (n - j); f.box(M.cantaria, ww + 0.5, sh * (j + 1) + 0.3, 0.32, cx, -gap - 0.3, zf + dz - 0.16); f.solid(cx, zf + dz - 0.16, ww + 0.5, 0.32, -gap - 0.6, -gap + sh * (j + 1), true); } }
     else if (k !== 'porta' && gap > 1.75 && !poor) { const ph = Math.min(1.9, gap - 0.25); f.box(M.paint.madeira.door, 0.85, ph, 0.08, cx, -gap + 0.02, zf - 0.05, { noGround: true }); f.box(M.cantaria, 1.1, 0.14, 0.12, cx, -gap + ph, zf + 0.02, { noGround: true }); }
   }
   const dcx = bx(doorI);
@@ -148,7 +152,7 @@ const STREET_MIX = {
 
 export function buildHouses(B, M, out) {
   const rects = [];
-  const reserved = RESERVED.map((r) => ({ ...r, w: r.w + 3, d: r.d + 3 }));
+  const reserved = RESERVED.map((r) => ({ ...r, w: r.w + 3, d: r.d + 3 })).concat((out.fountains || []).map((q) => ({ x: q.x, z: q.z, w: 7, d: 7, ry: q.ry }))); // (os chafarizes também)
   const corners = (r, m = 0) => { const c = Math.cos(r.ry), s = Math.sin(r.ry), hw = r.w / 2 + m, hd = r.d / 2 + m; return [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [0, 0], [0, hd], [0, -hd], [hw, 0], [-hw, 0]].map(([u, v]) => [r.x + u * c + v * s, r.z - u * s + v * c]); };
   const inside = (r, x, z, m = 0) => { const c = Math.cos(r.ry), s = Math.sin(r.ry), dx = x - r.x, dz = z - r.z, u = dx * c - dz * s, v = dx * s + dz * c; return Math.abs(u) < r.w / 2 + m && Math.abs(v) < r.d / 2 + m; };
   const ok = (r, own) => {
@@ -172,6 +176,10 @@ export function buildHouses(B, M, out) {
   lines.push(['praca', { pts: [[P.x - P.w / 2, P.z - P.d / 2 + 4], [P.x - P.w / 2, P.z + P.d / 2 - 2]], hw: 0, len: P.d - 6, frontS: 2.6 }, [1], 1.8]);
   lines.push(['praca', { pts: [[P.x + P.w / 2, P.z - P.d / 2 + 4], [P.x + P.w / 2, P.z + P.d / 2 - 2]], hw: 0, len: P.d - 6, frontS: 2.6 }, [-1], 1.8]);
   STREET_MIX.praca = { dens: 1, mix: { sobrado: 4, nobre: 2 } };
+  STREET_MIX.largo = { dens: 1, mix: { sobrado: 4, nobre: 1.2, terrea: 1.5 } };
+  const L = (P0, edge, side) => { const hw = P0.w / 2, hd = P0.d / 2, e = { n: [[P0.x - hw + 2, P0.z - hd], [P0.x + hw - 2, P0.z - hd]], s: [[P0.x - hw + 2, P0.z + hd], [P0.x + hw - 2, P0.z + hd]], w: [[P0.x - hw, P0.z - hd + 2], [P0.x - hw, P0.z + hd - 2]], e: [[P0.x + hw, P0.z - hd + 2], [P0.x + hw, P0.z + hd - 2]] }[edge];
+    lines.push(['largo', { pts: e, hw: 0, len: Math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]), frontS: 2.6 }, [side], 1.8]); };
+  L(PLACES.contos, 'n', -1); L(PLACES.contos, 'e', -1); L(PLACES.coimbra, 's', 1); L(PLACES.coimbra, 'w', 1);
   for (const [sid, S, sides, off0] of lines) {
     const cfg = STREET_MIX[sid]; if (!cfg) continue;
     for (const side of sides) {
@@ -186,11 +194,65 @@ export function buildHouses(B, M, out) {
         if (!ok(r, sid)) { s += 2; continue; }
         // para que lado (no x local da casa) a rua sobe
         const c = Math.cos(r.ry), sn = Math.sin(r.ry), ya = terrainHeight(r.x - c * w / 2 - nx * (d / 2 + 0.7), r.z + sn * w / 2 - nz * (d / 2 + 0.7)), yb = terrainHeight(r.x + c * w / 2 - nx * (d / 2 + 0.7), r.z - sn * w / 2 - nz * (d / 2 + 0.7));
-        casa(B, M, out, { ...r, frontS: S.frontS, kind, paint: pick(paints), open: rnd() < 0.45, upX: yb > ya ? 1 : -1, velha: rnd() < 0.3, sacadas: rnd() < 0.55, caiado: rnd() < 0.4, telha: rnd() < 0.55 });
+        casa(B, M, out, { ...r, frontS: S.frontS, kind, paint: pick(paints), open: rnd() < 0.45, upX: yb > ya ? 1 : -1, velha: rnd() < 0.3, sacadas: rnd() < 0.55, caiado: rnd() < 0.4, telha: rnd() < 0.55, arco: kind !== 'casebre' && rnd() < 0.3 });
         rects.push(r);
         s += w + (rnd() < 0.08 ? rr(1.5, 3) : 0.02); // (de vez em quando um beco entre as casas)
       }
     }
   }
+  buildYards(B, M, out, rects, reserved, inside, corners);
   return rects;
+}
+
+// ---------------- os quintais: atrás de cada casa, o terreiro murado com a bananeira, a laranjeira e a horta ----------------
+// (em Vila Rica, quase toda casa tinha o seu quintal: a água do rego, a horta de couve, as árvores de fruta, as galinhas)
+function buildYards(B, M, out, rects, reserved, inside, corners) {
+  const yards = [];
+  const free = (r) => {
+    const pts = corners(r);
+    for (const [x, z] of pts) {
+      if (x < BOUNDS[0] + 4 || x > BOUNDS[1] - 4 || z < BOUNDS[2] + 4 || z > BOUNDS[3] - 4) return false;
+      for (const S of Object.values(STREETS)) if (polyDist(S.pts, x, z).d < S.hw + 1.0) return false;
+      for (const C of Object.values(STREAMS)) if (polyDist(C.pts, x, z).d < C.bank + 1.5) return false;
+      for (const Pq of Object.values(PLACES)) if (inPlace(x, z, Pq, 2.5)) return false;
+      for (const Bq of BRIDGES) if (Math.hypot(x - Bq.x, z - Bq.z) < 15) return false;
+    }
+    for (const q of reserved.concat(rects, yards)) { if (Math.hypot(q.x - r.x, q.z - r.z) > (q.w + q.d + r.w + r.d) / 2) continue; if (pts.some(([x, z]) => inside(q, x, z, -0.05)) || corners(q).some(([x, z]) => inside(r, x, z, -0.05))) return false; }
+    const hs = pts.map(([x, z]) => terrainHeight(x, z)); return Math.max(...hs) - Math.min(...hs) < 4.5;
+  };
+  for (const h of out.houses) {
+    if (h.kind === 'casebre' || h.yard === false) continue;
+    const s = Math.sin(h.ry), c = Math.cos(h.ry);
+    for (const q of [rr(6, 10), 4.5]) {
+      const back = h.d / 2 + q / 2 + 0.02, r = { x: h.x - s * back, z: h.z - c * back, w: h.w, d: q, ry: h.ry };
+      if (free(r)) { yards.push(r); break; }
+    }
+  }
+  // os muros: os dois lados e o fundo, em lances de 1,5 m que acompanham o chão; caiados com a capa de telha, ou de pedra seca
+  const at = (r, u, v) => [r.x + u * Math.cos(r.ry) + v * Math.sin(r.ry), r.z - u * Math.sin(r.ry) + v * Math.cos(r.ry)];
+  yards.forEach((r, i) => {
+    const cal = rnd() < 0.6, mat = cal ? M.calVelha : M.pedra, hw = r.w / 2, hd = r.d / 2, T = 0.35, H = cal ? 1.9 : 1.6;
+    const sides = [[[-hw, hd], [-hw, -hd], -1], [[hw, hd], [hw, -hd], 1], [[-hw, -hd], [hw, -hd], 0]];
+    for (const [[u0, v0], [u1, v1], side] of sides) {
+      if (side) { const [px, pz] = at(r, side * (hw + 0.4), 0); const j = yards.findIndex((q, k) => k !== i && inside(q, px, pz, 0.1)); if (j >= 0 && j < i) continue; } // (o muro de divisa entre dois quintais: só um deles levanta)
+      const L = Math.hypot(u1 - u0, v1 - v0), n = Math.max(1, Math.round(L / 1.5));
+      for (let k = 0; k < n; k++) {
+        const t0 = k / n, t1 = (k + 1) / n, um = u0 + (u1 - u0) * (t0 + t1) / 2, vm = v0 + (v1 - v0) * (t0 + t1) / 2, len = L / n + 0.02;
+        const [x, z] = at(r, um, vm); let lo = Infinity, hi = -Infinity;
+        for (const tt of [t0, (t0 + t1) / 2, t1]) { const [xx, zz] = at(r, u0 + (u1 - u0) * tt, v0 + (v1 - v0) * tt); const g = terrainHeight(xx, zz); lo = Math.min(lo, g); hi = Math.max(hi, g); }
+        const along = Math.abs(u1 - u0) > Math.abs(v1 - v0), bw = along ? len : T, bd = along ? T : len;
+        if (!side && Math.abs(um) < 0.75 && n > 2) { // (o portão do quintal, no meio do fundo: tábuas entre dois pilares)
+          B.box(M.paint.madeira.door, len - 0.1, 1.75, 0.08, x, lo, z, { ry: r.ry, noGround: true }); B.box(M.pedra, len, 0.3, T, x, lo - 0.3, z, { ry: r.ry, noGround: true }); addRotBox(x, z, bw, bd, r.ry, lo - 1, lo + 1.75); continue; }
+        B.box(mat, bw, hi + H - lo + 0.3, bd, x, lo - 0.3, z, { ry: r.ry, noGround: true });
+        if (cal) B.box(M.telhaVelha, along ? len : 0.5, 0.1, along ? 0.5 : len, x, hi + H, z, { ry: r.ry, noGround: true, uv: { s: 1 } });
+        addRotBox(x, z, bw, bd, r.ry, lo - 1, hi + H);
+      }
+    }
+    // o que se planta: bananeiras no fundo, uma árvore de fruta, a horta de couve em canteiros
+    const plant = (kind, u, v, sc = 1) => { const [x, z] = at(r, u, v); out.yardPlants.push([kind, x, terrainHeight(x, z), z, sc * rr(0.85, 1.15), rnd() * 6]); };
+    const nb = 1 + Math.floor(rnd() * 3); for (let k = 0; k < nb; k++) plant('banana', rr(-hw + 1, hw - 1), -hd + rr(0.8, 1.6));
+    if (rnd() < 0.6 && r.d > 5) plant(rnd() < 0.5 ? 'laranja' : 'jabuticaba', rnd() < 0.5 ? -hw + 1.6 : hw - 1.6, rr(-0.5, 1));
+    if (rnd() < 0.5 && r.d > 6) for (let row = 0; row < 3; row++) for (let k = 0; k < Math.floor(r.w / 0.7) - 2; k++) plant('couve', -hw + 1 + k * 0.7, hd - 1.2 - row * 0.8, 1);
+  });
+  out.yards = yards;
 }

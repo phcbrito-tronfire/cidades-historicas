@@ -50,7 +50,21 @@ function grassTex() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
+// a folha da bananeira: comprida, com a nervura no meio e as bordas rasgadas pelo vento
+function bananaLeafTex() {
+  const W = 64, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  for (let y = 4; y < H - 6; y += 3) { const w = Math.sin((y / H) * Math.PI) * 28 * (0.85 + rnd() * 0.15); const g = 70 + rnd() * 40; x.fillStyle = 'rgb(' + (60 + rnd() * 20) + ',' + (g + 50) + ',' + (30 + rnd() * 15) + ')'; if (rnd() < 0.12) continue; x.fillRect(32 - w, y, w * 2, 3); }
+  x.fillStyle = '#c8d090'; x.fillRect(30, 0, 4, H);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+// a couve: a roseta de folhas largas, verde-azulada
+function couveTex() {
+  const S = 64, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d');
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; x.fillStyle = i % 2 ? '#3e6a4a' : '#4e7a58'; x.beginPath(); x.ellipse(32 + Math.cos(a) * 14, 32 + Math.sin(a) * 14, 14, 9, a, 0, 7); x.fill(); x.strokeStyle = 'rgba(200,220,190,0.6)'; x.beginPath(); x.moveTo(32, 32); x.lineTo(32 + Math.cos(a) * 26, 32 + Math.sin(a) * 26); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+export function buildNature(scene, tex, quality = 'leve', avoid = () => false, yardPlants = []) {
   const dens = quality === 'alto' ? 1 : quality === 'minimo' ? 0.45 : 0.7;
   const farR = quality === 'alto' ? 900 : quality === 'minimo' ? 420 : 620;
   const kinds = { mata: [], alta: [], candeia: [], macauba: [], rock: [], capim: [] };
@@ -122,7 +136,31 @@ export function buildNature(scene, tex, quality = 'leve', avoid = () => false) {
     inst(g, rockM, kinds.rock, (d, [x, y, z, s, r]) => { d.position.set(x, y + s * 0.15, z); d.rotation.set(0.2, r, 0.1); d.scale.setScalar(s); }); }
   inst((() => { const a = new THREE.PlaneGeometry(1.1, 0.9), b = a.clone(); a.translate(0, 0.45, 0); b.translate(0, 0.45, 0); b.rotateY(Math.PI / 2); return mergeGeometries([a, b]); })(), capimM, kinds.capim,
     (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.04, z); d.rotation.set(0, r, 0); d.scale.set(s, s * rr(0.8, 1.3), s); }, false, quality === 'alto' ? 300 : quality === 'minimo' ? 120 : 180);
+  // ---- os quintais (as posições vêm das casas)
+  for (const [k, x, y, z, s, r] of yardPlants) (kinds[k] ||= []).push([x, y, z, s, r]);
+  { // bananeira: o pseudocaule verde-escuro e as folhas grandes arqueadas, umas já secas penduradas
+    const T = new THREE.CylinderGeometry(0.11, 0.16, 2.6, 7); T.translate(0, 1.3, 0);
+    const parts = []; for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + (i % 2) * 0.3, g = new THREE.PlaneGeometry(0.55, 2.0, 1, 6), p = g.attributes.position; for (let k = 0; k < p.count; k++) { const v = (p.getY(k) + 1.0) / 2.0; p.setY(k, v * 1.4 - v * v * 0.9 + (i === 6 ? -v * 1.2 : 0)); p.setZ(k, v * 1.8); } g.rotateY(a); g.translate(0, 2.5, 0); parts.push(g); }
+    const leafM = new THREE.MeshStandardMaterial({ map: bananaLeafTex(), color: 0xc8d8a8, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.75 });
+    const stemM = new THREE.MeshStandardMaterial({ color: 0x5a6a3a, roughness: 0.9 });
+    if (kinds.banana?.length) { inst(T, stemM, kinds.banana, place); inst(mergeGeometries(parts), leafM, kinds.banana, place); }
+  }
+  { // laranjeira (copa redonda, escura, com as laranjas) e jabuticabeira (tronco liso e claro que se divide baixo)
+    const T = mergeGeometries([limb(V(0, 0, 0), V(0.1, 1.3, 0), 0.12, 0.09), limb(V(0.1, 1.2, 0), V(0.7, 2.0, 0.3), 0.07, 0.05), limb(V(0.1, 1.2, 0), V(-0.6, 2.1, -0.2), 0.07, 0.05)]);
+    const C = mergeGeometries([tuft(1.6, 1.3, 1.6, 0, 2.6, 0, 31), tuft(1.1, 0.9, 1.1, 0.8, 2.3, 0.4, 32)]);
+    const orangeTex = leafTex('#2e4a26', ['rgba(16,30,14,0.6)', 'rgba(70,100,50,0.5)', 'rgba(232,140,40,0.95)']);
+    const lm = new THREE.MeshStandardMaterial({ map: orangeTex, color: 0x9ab08a, roughness: 0.85, vertexColors: true });
+    if (kinds.laranja?.length) { inst(T, bark, kinds.laranja, place); inst(C, lm, kinds.laranja, place); }
+    const TJ = mergeGeometries([limb(V(0, 0, 0), V(0.4, 1.6, 0.1), 0.13, 0.08), limb(V(0, 0, 0), V(-0.35, 1.7, -0.2), 0.12, 0.08), limb(V(0, 0, 0), V(0.05, 1.8, 0.45), 0.11, 0.07)]);
+    const jm = new THREE.MeshStandardMaterial({ map: leafTex('#3a5a2e', ['rgba(20,36,16,0.6)', 'rgba(80,110,60,0.5)', 'rgba(30,20,30,0.8)']), color: 0xa8b898, roughness: 0.85, vertexColors: true }); // (as jabuticabas, pretas, grudadas nos galhos)
+    if (kinds.jabuticaba?.length) { inst(TJ, barkPale, kinds.jabuticaba, place); inst(mergeGeometries([tuft(1.7, 1.2, 1.7, 0, 2.5, 0, 41), tuft(1.0, 0.8, 1.0, -0.7, 2.2, 0.5, 42)]), jm, kinds.jabuticaba, place); }
+  }
+  if (kinds.couve?.length) { // couve: as rosetas baixas nos canteiros de terra
+    const g = (() => { const a = new THREE.PlaneGeometry(0.6, 0.6), b = new THREE.PlaneGeometry(0.5, 0.35), c = b.clone(); a.rotateX(-Math.PI / 2); a.translate(0, 0.3, 0); b.translate(0, 0.17, 0); c.rotateY(Math.PI / 2); c.translate(0, 0.17, 0); return mergeGeometries([a, b, c]); })();
+    inst(g, new THREE.MeshStandardMaterial({ map: couveTex(), alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.8, transparent: false }), kinds.couve, (d, [x, y, z, s, r]) => { d.position.set(x, y - 0.02, z); d.rotation.set(0, r, 0); d.scale.setScalar(s); }, false, 160);
+  }
   for (const k of ['mata', 'alta', 'candeia', 'macauba']) for (const [x, y, z, s] of kinds[k]) addCircle(x, z, (k === 'alta' ? 0.5 : 0.28) * s + 0.05, y - 1, y + 6);
+  for (const k of ['banana', 'laranja', 'jabuticaba']) for (const [x, y, z, s] of kinds[k] || []) addCircle(x, z, 0.18 * s, y - 1, y + 3);
   for (const [x, y, z, s] of kinds.rock) addCircle(x, z, s * 1.1, y - 1, y + s * 0.8);
 
   // ---- a água dos córregos e do ribeirão

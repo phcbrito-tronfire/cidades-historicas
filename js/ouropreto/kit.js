@@ -200,6 +200,13 @@ export function sacada(f, M, pt, cx, y0, w, zf, { ferro = false, prof = 0.6 } = 
   if (ferro) { for (let x = cx - w / 2 + 0.12; x < cx + w / 2 - 0.08; x += 0.12) f.box(M.ferro, 0.02, 0.95, 0.02, x, y0, z, { noGround: true }); f.box(M.ferro, w - 0.1, 0.03, 0.03, cx, y0 + 0.12, z, { noGround: true }); }
   else for (let x = cx - w / 2 + 0.16; x < cx + w / 2 - 0.1; x += 0.15) { f.box(pt.wood, 0.055, 0.86, 0.055, x, y0, z, { noGround: true }); f.box(pt.wood, 0.085, 0.22, 0.085, x, y0 + 0.32, z, { noGround: true }); } // (o balaústre com o bojo no meio)
 }
+// verga em arco (canga): uma faixa curva de madeira ou de cantaria coroando o vão (nas casas da segunda metade do século)
+export function arco(f, mat, cx, y, w, zf, rise = 0.24, th = 0.13) {
+  const hs = w / 2, R = (hs * hs + rise * rise) / (2 * rise), a0 = Math.asin(hs / R), cy = rise - R, s = new THREE.Shape(), n = 10;
+  for (let i = 0; i <= n; i++) { const t = -a0 + (2 * a0 * i) / n, p = [Math.sin(t) * (R + th), cy + Math.cos(t) * (R + th)]; if (i === 0) s.moveTo(p[0], p[1]); else s.lineTo(p[0], p[1]); }
+  for (let i = n; i >= 0; i--) { const t = -a0 + (2 * a0 * i) / n; s.lineTo(Math.sin(t) * R, cy + Math.cos(t) * R); }
+  f.geo(new THREE.ExtrudeGeometry(s, { depth: 0.09, bevelEnabled: false }), mat, cx, y - 0.02, zf - 0.02, { uv: false });
+}
 // beiral de cachorros: as pontas das vigas do telhado à vista sob a beira, de 60 em 60 cm
 export function cachorrada(f, mat, x0, x1, y, zf, prof = 0.7) {
   for (let x = x0 + 0.25; x <= x1 - 0.2; x += 0.6) f.box(mat, 0.1, 0.14, prof, x, y, zf + prof / 2 - 0.05, { noGround: true });

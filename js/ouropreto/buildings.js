@@ -12,7 +12,7 @@ export function buildCity(scene, tex) {
   B.yxz = true;
   B.ground = terrainHeight;
   const floors = []; B.onFloor = (r) => floors.push(r);
-  const out = { M, houses: [], press: [], torches: [], lights: [], spots: {} };
+  const out = { M, houses: [], press: [], torches: [], lights: [], spots: {}, yardPlants: [] };
   buildMonuments(B, M, out);
   out.rects = buildHouses(B, M, out);
   B.build(scene);

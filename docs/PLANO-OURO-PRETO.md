@@ -346,5 +346,7 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   São Francisco para o Largo de Coimbra.
 - **Testado:** varredura de peças soltas (sobram só as do alto das torres de São Francisco, que pousam no modelo
   escaneado, que a varredura não enxerga), caminhada por todas as ruas sem travar, 47 quadros/s no perfil de PC fraco.
-- **Falta na Etapa 3:** quintais (muros, bananeiras, hortas), casas viradas para os largos das matrizes, mais variedade
-  nas fachadas (verga em arco abatido, portadas de pedra-sabão nas casas ricas) e acabamento das igrejas por trás.
+- **2ª parte (18/11, noite):** quintais murados atrás das casas (muro caiado com capa de telha ou de pedra seca, em lances que
+  acompanham o chão, portão de tábuas no fundo; bananeiras, laranjeiras, jabuticabeiras e canteiros de couve), casas em volta
+  dos largos dos Contos e de Coimbra, verga em arco em parte dos sobrados, cartela de pedra-sabão na porta das casas nobres,
+  escadinhas medidas onde cai o primeiro degrau. 37 quadros/s no perfil de PC fraco.

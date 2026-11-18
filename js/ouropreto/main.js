@@ -88,7 +88,7 @@ async function main() {
   await step(0.6, 'Deixando a mata só nas grotas...');
   // (nada de árvore nas faixas das casas, nos largos nem nas pontes)
   const avoid = (x, z, m) => houseBand(x, z, m) || bridges.some((b) => Math.hypot(x - b.x, z - b.z) < b.half + 4 + m);
-  const nature = buildNature(scene, tex, quality, avoid);
+  const nature = buildNature(scene, tex, quality, (x, z, m) => avoid(x, z, m) || (city.yards || []).some((r) => Math.hypot(x - r.x, z - r.z) < (r.w + r.d) / 2 + m), city.yardPlants);
   console.info('plantas:', nature.counts, '· pontes:', bridges.length);
   const fx = makeWaterFX(scene);
   const health = new Health({ onDeath: () => onDeath(), onHurt: () => player.hurt() });
