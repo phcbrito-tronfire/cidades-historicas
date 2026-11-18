@@ -1,6 +1,7 @@
 // Roma, c. 117 d.C. (Trajano) — inicialização e laço principal. Primeira etapa: o relevo, o Tibre até o mar e o
 // Coliseu inteiro explorável (arquibancada, arena, hipogeu); a gente, os eventos da arena e o resto da cidade vêm depois.
 import * as THREE from 'three';
+import { openQuiz } from '../comum/quiz.js';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR, retint } from './textures.js';
 import { createPost } from '../comum/post.js';
@@ -280,10 +281,12 @@ async function main() {
     }
   });
   const pauseEl = document.getElementById('pause');
+  document.getElementById('btn-quiz-end')?.addEventListener('click', () => { const en = document.getElementById('ending'); if (en) en.hidden = true; openQuiz('roma', () => { if (en) en.hidden = false; }); });
   const togglePause = () => { paused = !paused; pauseEl.hidden = !paused; player.keys.clear(); };
   pauseEl.addEventListener('click', (e) => {
     const act = e.target.dataset?.act; if (!act) return;
     if (act === 'resume') togglePause();
+    if (act === 'quiz') { pauseEl.hidden = true; openQuiz('roma', () => { pauseEl.hidden = !paused; }); } // (perguntas sobre a cidade, com o jogo parado)
     if (act === 'sound') { audio.setEnabled(!audio.enabled); e.target.textContent = `Som: ${audio.enabled ? 'ligado' : 'desligado'}`; }
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {

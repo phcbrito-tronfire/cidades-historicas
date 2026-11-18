@@ -2,6 +2,7 @@
 // Etapa 2 do plano (docs/PLANO-JAPAO.md): a paisagem — o vale com o lago Kawaguchi, a vila, os arrozais, a floresta,
 // o riacho e a cachoeira, e o Fuji para subir a pé até a cratera. Prédios, gente, eventos e estações vêm depois.
 import * as THREE from 'three';
+import { openQuiz } from '../comum/quiz.js';
 const FRAME = { n: 0 };
 import { getTextures, setAniso, loadPBR } from './textures.js';
 import { createPost } from '../comum/post.js';
@@ -251,10 +252,12 @@ async function main() {
     }
   });
   const pauseEl = document.getElementById('pause');
+  document.getElementById('btn-quiz-end')?.addEventListener('click', () => { const en = document.getElementById('ending'); if (en) en.hidden = true; openQuiz('japao', () => { if (en) en.hidden = false; }); });
   const togglePause = () => { paused = !paused; pauseEl.hidden = !paused; player.keys.clear(); };
   pauseEl.addEventListener('click', (e) => {
     const act = e.target.dataset?.act; if (!act) return;
     if (act === 'resume') togglePause();
+    if (act === 'quiz') { pauseEl.hidden = true; openQuiz('japao', () => { pauseEl.hidden = !paused; }); } // (perguntas sobre a cidade, com o jogo parado)
     if (act === 'sound') { audio.setEnabled(!audio.enabled); e.target.textContent = `Som: ${audio.enabled ? 'ligado' : 'desligado'}`; }
     if (act === 'music') { audio.setMusic(!audio.musicOn); e.target.textContent = `Música: ${audio.musicOn ? 'ligada' : 'desligada'}`; }
     if (act === 'quality') {

@@ -229,7 +229,7 @@ function surface(x, z, h, slope) {
 }
 
 // floresta: onde ficam as árvores (o shader escurece o chão debaixo delas)
-export function meadowAt(x, z) { return inTameike(x, z) > 1.3 && fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25) && !(x > FIELDS.x0 - 3 && x < FIELDS.x1 + 3 && z > FIELDS.z0 - 3 && z < FIELDS.z1 + 3); } // (o capim não nasce dentro dos tabuleiros)
+export function meadowAt(x, z) { return inTameike(x, z) > 1.3 && fbm(x * 0.006 + 77, z * 0.006 - 13, 3) > 0.57 && fujiH(x, z) < 300 && !inLake(x, z, 25) && !(x > FIELDS.x0 - 3 && x < FIELDS.x1 + 3 && z > FIELDS.z0 - 3 && z < FIELDS.z1 + 3) && !(Math.abs(x - STREET.x) < STREET.hw + 2 && z > STREET.z0 - 2 && z < STREET.z1 + 2); } // (o capim não nasce dentro dos tabuleiros nem no meio da rua da vila: ficavam tufos verdes na rua)
 export function forestAt(x, z) {
   const fuji = fujiH(x, z);
   if (fuji > 330) return 0;

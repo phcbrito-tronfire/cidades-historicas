@@ -73,3 +73,7 @@ footer .dedication .ornament { margin-bottom: 0.4rem; }
 footer .dedication .ded-title { font-family: Cinzel, Georgia, serif; font-size: 1.25rem; letter-spacing: 0.06em; color: #e8c57a; }
 footer .dedication p { font-style: italic; line-height: 1.6; }
 footer .dedication .ded-sign { font-style: normal; font-family: Cinzel, Georgia, serif; font-size: 1rem; opacity: 0.85; }
+
+.section-head .teach { margin-top: 0.8rem; font-style: normal; font-size: 1.15rem; }
+.section-head .teach a { color: var(--gold-2); text-decoration: none; border-bottom: 1px solid var(--line); }
+.section-head .teach a:hover { color: var(--gold); }

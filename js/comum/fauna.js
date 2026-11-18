@@ -26,7 +26,7 @@ const DEFS = {
   crocodilo: { yaw: 0, base: true, keep: true, pose: 'walk' },
   anfora_mar: { fit: 'y', base: true },
   estrela: { rot: [-Math.PI / 2, 0, 0], base: true },
-  cavalo: { base: true, keep: true }, jumento: { base: true, keep: true },
+  cavalo: { base: true, keep: true }, jumento: { base: true, keep: true, pelo: [0.74, 0.69, 0.64] }, /* (o modelo é de um jumento quase preto; os do Egito e de Roma eram cinzentos, de barriga e focinho claros) */
   cervo: { base: true, keep: true }, raposa: { base: true, keep: true }, macaco: { base: true, keep: true }, faisao: { base: true, keep: true }, // bichos do Japão // montarias: as animações são escolhidas por nome
 };
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -35,6 +35,7 @@ function unit(name) {
   return (cache[name] ??= track(loader.loadAsync(ver(DIR + name + '.glb'))).then(async (g) => {
     const d = DEFS[name] || {};
     const inner = g.scene; if (d.rot) inner.rotation.set(...d.rot);
+    if (d.pelo) inner.traverse((m) => { if (m.isMesh && m.material?.map?.image && !/hair/i.test(m.material.name)) m.material.map = repaint(m.material.map, d.pelo); });
     const turn = new THREE.Group(); turn.rotation.y = d.yaw || 0; turn.add(inner);
     const norm = new THREE.Group(); norm.add(turn); norm.updateMatrixWorld(true);
     let mx = null; if (d.pose) { const cl = g.animations.find((a) => a.name === d.pose) || g.animations[0]; if (cl) { mx = new THREE.AnimationMixer(inner); mx.clipAction(cl).play(); mx.setTime(0); norm.updateMatrixWorld(true); } }
@@ -48,6 +49,14 @@ function unit(name) {
     await precompile(u); // (os bichos do mar só aparecem perto da água: compilar já, sem travar quando surgem)
     return { u, clips: g.animations, skinned };
   }).catch((e) => { console.warn('fauna', name, e); return null; }));
+}
+
+// repinta a pelagem: clareia os escuros e puxa para a cor pedida, mantendo as manchas claras e o relevo do pelo
+function repaint(tex, [r, g, b]) {
+  const img = tex.image, c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  const D = x.getImageData(0, 0, c.width, c.height), p = D.data;
+  for (let i = 0; i < p.length; i += 4) { const l = (0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2]) / 255, k = 0.56 + 0.44 * Math.pow(l, 0.7), w = Math.max(0, (l - 0.5) / 0.5); p[i] = 255 * Math.min(1, k * (r + (1 - r) * w)); p[i + 1] = 255 * Math.min(1, k * (g + (1 - g) * w)); p[i + 2] = 255 * Math.min(1, k * (b + (1 - b) * w)); }
+  x.putImageData(D, 0, 0); const t = new THREE.CanvasTexture(c); t.flipY = tex.flipY; t.colorSpace = tex.colorSpace; t.wrapS = tex.wrapS; t.wrapT = tex.wrapT; t.channel = tex.channel; return t;
 }
 
 // uma cópia do tamanho pedido, já animando (se o modelo tiver animação)
