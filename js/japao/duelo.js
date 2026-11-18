@@ -99,8 +99,9 @@ export class Duels {
   constructor(scene, { city, player, melee, health, ui, audio, toast, artifacts, actors, faint }) {
     Object.assign(this, { scene, city, player, melee, health, ui, audio, toast, artifacts, actors, faint });
     this.on = false; this.round = 0; this.rival = null; this.state = null;
-    // os golpes de katana para os adversários (e para o explorador com a katana emprestada, sem a armadura)
-    loadAnims(['kt_guarda', 'kt_andar', 'kt_correr', 'kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro', 'kt_salto', 'kt_defesa', 'kg_reverencia']);
+    // os golpes de katana para os adversários (e para o explorador com a katana emprestada): baixados quando ele chega
+    // perto do dōjō (ver update), não na entrada da cidade
+    this.clipsLoaded = false;
     const D = city.dojo; this.ok = !!D; if (!D) return;
     const f = D.f, c = f.W(0, 0), ux = f.W(1, 0), uz = f.W(0, 1);
     this.c = new THREE.Vector3(c[0], D.y + D.FL, c[1]); this.ax = new THREE.Vector2(ux[0] - c[0], ux[1] - c[1]); this.az = new THREE.Vector2(uz[0] - c[0], uz[1] - c[1]); this.hw = D.w / 2 - 0.8; this.hd = D.d / 2 - 0.8;
@@ -132,6 +133,7 @@ export class Duels {
 
   start() {
     const P = this.player, M = this.melee;
+    if (!this.clipsLoaded) { this.clipsLoaded = true; loadAnims(['kt_guarda', 'kt_andar', 'kt_correr', 'kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro', 'kt_salto', 'kt_defesa', 'kg_reverencia']); }
     this.on = true; this.round = 0; this.state = 'intro'; this.introT = 1.2; this.endT = 0;
     this.health.revive(100); M.clearGround(); M.reset(); M.equip('katana', null, true); M.lookSeen = null;
     for (const a of this.actors?.agents || []) if (this.inDojo(a.pos || a.rig.root.position)) a.rig.root.userData.off = true; // (os alunos saem do tatame)
@@ -180,6 +182,7 @@ export class Duels {
   update(dt, t) {
     if (!this.ok) return;
     const P = this.player;
+    if (!this.clipsLoaded && Math.hypot(P.pos.x - this.c.x, P.pos.z - this.c.z) < 90) { this.clipsLoaded = true; loadAnims(['kt_guarda', 'kt_andar', 'kt_correr', 'kt_desce', 'kt_forte', 'kt_baixo', 'kt_giro', 'kt_salto', 'kt_defesa', 'kg_reverencia']); this.melee.loadClips(); }
     { const S = this.sensei; if (S) S.rig.root.userData.off = this.on && this.round === RIVALS.length - 1 && (this.state === 'fight' || this.state === 'between'); }
     if (!this.on) return;
     if (this.state !== 'lost') this.clamp(P.pos);

@@ -111,13 +111,18 @@ export class Melee {
     this.tvel = new WeakMap(); // velocidade de cada alvo (a mira do arremesso vai na frente dele)
     this.meshes = { right: null, left: null, model: null };
     this.shieldColor = 0xa8261e;
-    loadAnims(BASE_CLIPS);
-    // os clipes que podem ainda não existir (socos, rolamento): só os que estão no servidor
-    Promise.all(EXTRA_CLIPS.map(async (n) => { try { const r = await fetch(`assets/models/mixamo/anim/${n}.glb`, { method: 'HEAD' }); return r.ok ? n : null; } catch (e) { return null; } })).then((ok) => loadAnims(ok.filter(Boolean)));
     this.bind();
   }
 
   // a luta vale com a roupa de legionário ou de gladiador (ou quando a arena entrega as armas)
+  // os golpes (mais de 20 animações) só são baixados quando a luta vale pela primeira vez: antes, o Egito e o Japão
+  // baixavam tudo logo na entrada, mesmo de explorador, e num computador fraco isso pesava nos primeiros segundos
+  loadClips() {
+    if (this.clipsLoaded) return; this.clipsLoaded = true;
+    loadAnims(BASE_CLIPS);
+    // os clipes que podem ainda não existir (socos, rolamento): só os que estão no servidor
+    Promise.all(EXTRA_CLIPS.map(async (n) => { try { const r = await fetch(`assets/models/mixamo/anim/${n}.glb`, { method: 'HEAD' }); return r.ok ? n : null; } catch (e) { return null; } })).then((ok) => loadAnims(ok.filter(Boolean)));
+  }
   get active() { const p = this.player; return !!this.forced || p.look === 'roma' || p.look === 'gladiador' || p.look === 'egito' || p.look === 'japao'; }
   get weapon() { return WEAPONS[this.right || 'punhos']; }
 
@@ -146,7 +151,7 @@ export class Melee {
   request() { this.queued = true; }
 
   // a arena entrega um conjunto de armas (ou devolve o controle à roupa, com null)
-  equip(right, left, forced = true) { this.forced = forced ? { right, left } : null; this.right = right; this.left = left; this.drawn = !!forced; this.dress(); }
+  equip(right, left, forced = true) { if (forced) this.loadClips(); this.forced = forced ? { right, left } : null; this.right = right; this.left = left; this.drawn = !!forced; this.dress(); }
   // zera tudo o que é do momento da luta (fim da arena, desmaio): nada de golpe, empurrão ou atordoamento pendurado
   reset() {
     const P = this.player;
@@ -210,7 +215,7 @@ export class Melee {
     if (on && this.lookSeen !== P.look) { this.lookSeen = P.look; if (!this.forced) this.defaults(); this.drawn = this.right !== 'katana' || !!this.forced; this.dress(); }
     if (on && this.right === 'katana' && this.drawn && !this.forced && !this.clip && !this.block && performance.now() - (this.lastAct || 0) > 9000) { this.drawn = false; this.dress(); } // (samurai parado: embainha) /* (legionário e gladiador andam sempre com as armas na mão) */
     if (!on) { if (P.combat === this) { P.combat = null; this.drawn = false; this.clip = null; this.dress(); } this.lookSeen = null; return; }
-    P.combat = this;
+    P.combat = this; this.loadClips();
     // o corpo foi refeito (troca de roupa, modelo que terminou de carregar): as armas voltam para a mão nova
     { const r = P.rig, Me = this.meshes; if (Me.model !== r.model || (Me.right && Me.rk !== 'katana-armadura' && Me.right.parent !== r.handR) || (Me.left && Me.left.parent !== r.handL) || (Me.rk === 'katana-armadura' && this.kp && this.kp !== P.katParts?.())) { if (Me.model === r.model) Me.model = null; this.dress(); } }
     this.space = this.drawn && P.onGround ? () => this.dodge() : null;
