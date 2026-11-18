@@ -319,3 +319,32 @@ Página `ouropreto.html`, código em `js/ouropreto/` (terreno, natureza, pontes,
 - **Testado:** carrega em ~6 s no PC de desenvolvimento; caminhada automática por todas as ruas, pelas duas pontes e
   pelo leito dos córregos sem travar nem flutuar; 127 quadros/s no perfil de computador fraco.
 - **Escala:** distâncias encurtadas ~2,2× e desníveis ~0,6× (dito na tela de abertura).
+
+---
+
+## Etapa 3 — Arquitetura, primeira parte (18/11/2026)
+Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`, `modelos.js`, `buildings.js`.
+- **Casas (312):** fileiras coladas dos dois lados das ruas e nos lados compridos da praça, cada casa no nível da sua
+  porta (em degraus na ladeira, com os oitões aparecendo), embasamento de pedra até o chão mais baixo, escadinha de
+  pedra onde a rua cai e portinha de porão no embasamento alto. Tipos: térrea de porta e janela, sobrado (loja embaixo,
+  rótulas ou sacadas em cima), sobrado nobre (cantaria, vidraças de guilhotina, sacadas no andar nobre, uma de ferro) e
+  casinha de pau a pique nas estradas (barro, telha velha ou capim). Telha capa e canal com contrafeito, beiral de
+  cachorros ou beira-seveira, cunhais e cimalhas pintados, tintas desbotadas (almagre, verde, azul, ocre, madeira).
+  Térreo de entrar: soalho, forro, divisória da sala; 110 de 111 casas abertas testadas a pé, porta adentro.
+- **Igrejas em código:** Matriz do Pilar e Matriz de Antônio Dias (torres quadradas, coruchéus), Carmo (torres
+  redondas, cúpulas de telha), Santa Efigênia — frontispício com portada de cantaria, cartela, frontãozinho, janelas do
+  coro com sacadinhas de balaústres, óculo, frontão de volutas com o nicho e a cruz, sineiras abertas com o sino na
+  travessa, nave, capela-mor, sacristia, adro murado. Portas fechadas por enquanto (os interiores são a Etapa 4).
+- **Em obra em 1789:** São Francisco (modelo escaneado, torres cortadas e andaime no frontispício), o Rosário (paredes
+  elípticas subindo, torres começadas, pedras e o rancho da obra), a Câmara e Cadeia (o térreo de cantaria, andaime,
+  guindaste de madeira, pedras cortadas).
+- **Palácio dos Governadores:** casarão de cantaria de dois pisos com a portada e as armas, muralha com o portão e as
+  quatro guaritas, e a escadaria descendo para a praça.
+- **Casa dos Contos** (três pisos, janelas dos lados), **Casa da Ópera** (sobrado comprido ao lado do Carmo),
+  **chafarizes** dos Contos e de Antônio Dias (espaldar com volutas e cruz, carranca, fio d'água, tanque com água
+  parada), **pelourinho** na praça e **muros de arrimo** de pedra com parapeito em todos os adros; escadaria do adro de
+  São Francisco para o Largo de Coimbra.
+- **Testado:** varredura de peças soltas (sobram só as do alto das torres de São Francisco, que pousam no modelo
+  escaneado, que a varredura não enxerga), caminhada por todas as ruas sem travar, 47 quadros/s no perfil de PC fraco.
+- **Falta na Etapa 3:** quintais (muros, bananeiras, hortas), casas viradas para os largos das matrizes, mais variedade
+  nas fachadas (verga em arco abatido, portadas de pedra-sabão nas casas ricas) e acabamento das igrejas por trás.

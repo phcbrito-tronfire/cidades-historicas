@@ -46,18 +46,26 @@ function ribZ(x) { const P = STREAMS.ribeirao.pts; for (let i = 0; i < P.length 
 // ---- os lugares: largos, adros das igrejas e a praça (planos cortados no morro, com a borda mansa)
 // y: a cota do plano (calculada no relevo, com um ajuste quando o lugar fica cortado ou aterrado no morro)
 export const PLACES = {
-  praca: { name: 'Praça do Palácio', x: 0, z: 0, w: 46, d: 104, edge: 16, dy: -3 },
-  palacio: { name: 'Palácio dos Governadores', x: 0, z: -78, w: 64, d: 46, edge: 12, at: 'praca', dy: 1.5 },
-  pilar: { name: 'Matriz de Nossa Senhora do Pilar', x: -440, z: 90, w: 46, d: 58, edge: 12 },
-  rosario: { name: 'Igreja do Rosário', x: -604, z: 30, w: 36, d: 46, edge: 12 },
-  contos: { name: 'Largo dos Contos', x: -250, z: 24, w: 34, d: 34, edge: 10 },
-  carmo: { name: 'Igreja do Carmo', x: -62, z: 102, w: 34, d: 46, edge: 10, y: 50 },
-  coimbra: { name: 'Largo de Coimbra', x: 118, z: 94, w: 36, d: 30, edge: 10, y: 37 },
-  saofrancisco: { name: 'Igreja de São Francisco de Assis', x: 164, z: 72, w: 32, d: 58, edge: 10, y: 38.5 },
-  antoniodias: { name: 'Matriz de Nossa Senhora da Conceição de Antônio Dias', x: 394, z: 62, w: 42, d: 58, edge: 12 },
-  efigenia: { name: 'Igreja de Santa Efigênia', x: 612, z: -80, w: 38, d: 48, edge: 12 },
+  // (adro: plano de borda firme, que a Etapa 3 cerca com muro de arrimo de pedra; largo: plano de borda mansa)
+  praca: { name: 'Praça do Palácio', x: 0, z: 0, w: 46, d: 104, edge: 3, dy: -1, sz: -0.07 }, // (a praça desce de leve do Palácio para a Câmara, como o espigão)
+  palacio: { name: 'Palácio dos Governadores', x: 0, z: -80, w: 60, d: 44, edge: 2, at: 'praca', dy: 0.2, adro: true },
+  camara: { name: 'Casa de Câmara e Cadeia, em obra', x: 10, z: 70, w: 34, d: 30, edge: 2, at: 'praca', dy: -0.4, adro: true },
+  pilar: { name: 'Matriz de Nossa Senhora do Pilar', x: -442, z: 90, w: 56, d: 50, edge: 2, adro: true },
+  rosario: { name: 'Igreja do Rosário', x: -604, z: 30, w: 36, d: 46, edge: 2, adro: true },
+  contos: { name: 'Largo dos Contos', x: -245, z: 26, w: 34, d: 30, edge: 6 },
+  carmo: { name: 'Igreja do Carmo', x: -62, z: 102, w: 34, d: 46, edge: 2, y: 50, adro: true },
+  coimbra: { name: 'Largo de Coimbra', x: 118, z: 94, w: 36, d: 30, edge: 6, y: 37 },
+  saofrancisco: { name: 'Igreja de São Francisco de Assis', x: 170, z: 72, w: 60, d: 46, edge: 2, y: 38.5, adro: true, stairs: [{ x: 140, z: 72, w: 10, dir: [-1, 0], to: 'coimbra' }] }, // (a escadaria desce do adro para o Largo de Coimbra)
+  antoniodias: { name: 'Matriz de Nossa Senhora da Conceição de Antônio Dias', x: 394, z: 62, w: 46, d: 58, edge: 2, adro: true },
+  efigenia: { name: 'Igreja de Santa Efigênia', x: 612, z: -84, w: 38, d: 52, edge: 2, adro: true },
   queimada: { name: 'Morro da Queimada', x: 112, z: -365, w: 64, d: 54, edge: 18 },
 };
+
+// ---- terrenos reservados para os prédios grandes que não ficam num adro (as casas não entram aqui)
+export const RESERVED = [
+  { id: 'contos', x: -277, z: 14, w: 24, d: 22, ry: 0 }, // a Casa dos Contos, entre a Rua de São José e o córrego
+  { id: 'opera', x: -100, z: 121.5, w: 14, d: 22, ry: Math.PI }, // a Casa da Ópera, ao lado do Carmo
+];
 
 // ---- as ruas: polilinhas com a meia-largura (hw). Cada uma é cortada no terreno com um perfil suave.
 export const STREETS = {
@@ -104,13 +112,15 @@ function baseHeight(x, z) {
 }
 
 // ---- os planos (praça, largos, adros)
-function placeY(P) { if (P.y !== undefined) return P.y; const base = P.at ? placeY(PLACES[P.at]) : baseHeight(P.x, P.z); return (P.y = base + (P.dy || 0)); }
+// a cota do plano num ponto (a praça é um plano inclinado: sz é a queda por metro no sentido de z)
+export const planeY = (P, x, z) => P.y + (P.sz || 0) * (z - P.z);
+function placeY(P) { if (P.y !== undefined) return P.y; const at = P.at && PLACES[P.at]; const base = at ? (placeY(at), planeY(at, P.x, P.z)) : baseHeight(P.x, P.z); return (P.y = base + (P.dy || 0)); }
 for (const P of Object.values(PLACES)) placeY(P);
 function rectD(x, z, P) { return Math.max(Math.abs(x - P.x) - P.w / 2, Math.abs(z - P.z) - P.d / 2, 0); }
 export function inPlace(x, z, P, m = 0) { return Math.abs(x - P.x) < P.w / 2 + m && Math.abs(z - P.z) < P.d / 2 + m; }
 function withPlaces(x, z) {
   let h = baseHeight(x, z);
-  for (const P of Object.values(PLACES)) { const d = rectD(x, z, P); if (d < P.edge) h = lerp(P.y, h, ss(0, P.edge, d)); }
+  for (const P of Object.values(PLACES)) { const d = rectD(x, z, P); if (d < P.edge) h = lerp(planeY(P, x, z), h, ss(0, P.edge, d)); }
   return h;
 }
 
@@ -292,11 +302,11 @@ cGr = mix(cGr, gL * vec3(1.55, 1.35, 0.85), uDry * (0.5 + 0.5 * vn(P / 12.0))); 
 cGr = mix(cGr, cGr * vec3(0.6, 0.66, 0.5), vForest * 0.65); // chão de mata: sombra e folhas
 // pé de moleque
 vec3 cb = cobble(P / 0.17); float stone = smoothstep(0.05, 0.16, cb.x);
-vec3 sc = mix(vec3(0.25, 0.245, 0.23), vec3(0.33, 0.265, 0.2), smoothstep(0.5, 0.95, cb.y)) * (0.78 + 0.42 * fract(cb.y * 7.13));
+vec3 sc = mix(vec3(0.27, 0.25, 0.215), vec3(0.34, 0.27, 0.2), smoothstep(0.5, 0.95, cb.y)) * (0.78 + 0.42 * fract(cb.y * 7.13));
 sc *= 0.7 + 0.5 * smoothstep(0.02, 0.2, cb.x); // (a pedra é abaulada: clara no alto, escura na beira onde encosta na terra)
 vec3 mortar = tri(tGround, P / 2.0).rgb * vec3(0.34, 0.26, 0.2);
 vec3 cT = mix(mortar, sc * (0.8 + 0.35 * tri(tTrail, P / 1.6).r), stone);
-cT *= 0.85 + 0.25 * vn(P / 3.0); // (trechos mais gastos e mais sujos)
+cT *= (0.85 + 0.25 * vn(P / 3.0)) * vec3(1.04, 1.0, 0.9); // (trechos mais gastos e mais sujos; o quartzito puxa para o amarelo, não para o azul)
 cT = mix(cT, vec3(0.2, 0.18, 0.15) * (0.9 + 0.2 * vn(P / 6.0)), smoothstep(22.0, 70.0, length(vViewPosition))); // (de longe, a média das pedras e da terra: sem o calçamento virar risco branco)
 vec3 baseC = (cS * w.x + cG * w.y + cGr * w.z + cT * w.w) * 1.08;
 vec3 bw = pow(abs(vWN), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);

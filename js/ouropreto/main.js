@@ -15,7 +15,9 @@ import { skipHiddenMatrices, frameGate, distanceCull } from '../comum/desempenho
 import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, prFloor, PROFILE, LEVELS } from '../comum/qualidade.js';
 import { makeWaterFX } from '../comum/waterfx.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
-import { buildTerrain, buildHorizon, placeName, houseBand, streetAt, PLACES, STREAMS, BRIDGES, BOUNDS, polyDist } from './terrain.js';
+import { buildCity } from './buildings.js';
+import { saoFrancisco } from './modelos.js';
+import { buildTerrain, buildHorizon, pressTerrain, placeName, houseBand, streetAt, PLACES, STREAMS, BRIDGES, BOUNDS, polyDist } from './terrain.js';
 import { buildNature } from './natureza.js';
 import { buildBridges } from './pontes.js';
 import { loadHumanModel } from '../comum/mixamo.js';
@@ -77,8 +79,12 @@ async function main() {
   await step(0.3, 'Erguendo os morros e cavando o vale do ribeirão...');
   const world = buildTerrain(scene, tex);
   const horizon = buildHorizon(scene);
-  await step(0.5, 'Fechando os arcos das pontes de pedra...');
+  await step(0.42, 'Fechando os arcos das pontes de pedra...');
   const bridges = buildBridges(scene, tex);
+  await step(0.48, 'Levantando as casas das ladeiras, uma a uma...');
+  const city = buildCity(scene, tex);
+  saoFrancisco(scene, city.M, city);
+  { const n = pressTerrain(world.terrain, city.floors); pressTerrain(world.mid, []); console.info('casas:', city.houses.length, '· pisos:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.6, 'Deixando a mata só nas grotas...');
   // (nada de árvore nas faixas das casas, nos largos nem nas pontes)
   const avoid = (x, z, m) => houseBand(x, z, m) || bridges.some((b) => Math.hypot(x - b.x, z - b.z) < b.half + 4 + m);
@@ -105,7 +111,7 @@ async function main() {
   player.events.wadeStep = (p, run) => { fx.ripple(p, run ? 1.1 : 0.8); fx.splash(p, run ? 0.22 : 0.14); audio.wade(run); };
 
   await step(0.9, 'Acendendo as lamparinas...');
-  const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: null, materials: {}, torches: [], glowTex: tex.glow, lightsDef: [] });
+  const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: null, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: [] });
   sky.horizon = horizon; upgradeSky(sky, { cover: 0.55, haze: [30, 360, 0.9], leve: quality !== 'alto' }); sky.apply(sky.state);
   sky.bakeEnvironments();
   const quests = new Quests(ui, audio);
@@ -198,7 +204,7 @@ async function main() {
     });
   };
 
-  window.__game = { cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { city, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
