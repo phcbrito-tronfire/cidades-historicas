@@ -12,6 +12,7 @@ import { stillWater } from '../comum/aguaparada.js';
 import { addBox, addCircle } from '../comum/collision.js';
 import { frame, roofGeo, moldura } from './kit.js';
 import { casa } from './casas.js';
+import { igrejaInterior, interiorMaterials, teatro } from './interiores.js';
 import { terrainHeight, PLACES, STREETS, RESERVED, polyDist } from './terrain.js';
 
 const V2 = THREE.Vector2;
@@ -82,7 +83,7 @@ export function igreja(B, M, out, o) {
   const W0 = f.W;
   // embasamento de pedra (do ponto mais baixo do chão até o piso) e o piso
   let low = Infinity; for (const [lx, lz] of [[-nW / 2 - tS, zF], [nW / 2 + tS, zF], [-nW / 2, zC], [nW / 2, zC], [0, zN], [-cW / 2 - 5, zC], [cW / 2 + 5, zC]]) low = Math.min(low, terrainHeight(...W0(lx, lz)));
-  const base = (w, d, cx, cz) => { f.box(M.pedra, w, o.y - low + 0.4, d, cx, low - o.y - 0.4, cz, { noGround: true }); f.solid(cx, cz, w, d, low - o.y - 0.4, 0.02, true); };
+  const base = (w, d, cx, cz) => { f.box(M.pedra, w, o.y - low + 0.4 - 0.14, d, cx, low - o.y - 0.4, cz, { noGround: true }); f.solid(cx, cz, w, d, low - o.y - 0.4, 0.0, true); }; // (o topo da pedra abaixo do soalho)
   base(nW + 2 * tS - 1.6, nL, 0, zF - nL / 2); base(cW, cL, 0, zN - cL / 2); base(5.5, cL - 1, (cW / 2 + 2.75) * (o.sacristia || 1), zN - cL / 2);
   out.press.push({ ...(() => { const [x, z] = W0(0, (zF + zC) / 2); return { x, z }; })(), w: nW + 2 * tS, d: nL + cL, ry: o.ry, top: o.y });
   // os degraus da frente (três degraus de cantaria largos, diante da portada)
@@ -99,7 +100,7 @@ export function igreja(B, M, out, o) {
   // ---- a capela-mor (mais estreita e mais baixa) e a sacristia ao lado
   for (const sx of [-1, 1]) f.wall(M.cal, sx * (cW / 2 - T / 2), zC, sx * (cW / 2 - T / 2), zN + 0.02, Hc, T, [[cL * 0.5, 1.2, 2.2, Hc - 4.2]]);
   f.wall(M.cal, -cW / 2, zC + T / 2, cW / 2, zC + T / 2, Hc, T);
-  f.wall(M.cal, -nW / 2 + T, zN + T / 2, nW / 2 - T, zN + T / 2, Hn, T); // a parede do arco-cruzeiro (por fora, o oitão da nave sobre a capela)
+  f.wall(M.cal, -nW / 2 + T, zN + T / 2, nW / 2 - T, zN + T / 2, Hn, T, [[nW / 2 - T, cW - 2 * T, Hc - 2.4, 0]]); // a parede do arco-cruzeiro, com o arco aberto para a capela-mor (por fora, o oitão da nave sobre a capela)
   { const ss = o.sacristia || 1, sx0 = ss * (cW / 2), sx1 = ss * (cW / 2 + 5.5); f.wall(M.cal, sx1 - ss * 0.35, zC + 0.5, sx1 - ss * 0.35, zN, 5.2, 0.7, [[cL * 0.4, 1.0, 1.3, 1.6]]); f.wall(M.cal, sx0, zC + 0.85, sx1, zC + 0.85, 5.2, 0.7); f.wall(M.cal, sx0, zN - 0.35, sx1, zN - 0.35, 5.2, 0.7);
     f.geo(roofGeo(cL - 0.2, 6.6, 2.4, { thick: 0.16 }), M.telhaVelha, (sx0 + sx1) / 2, 5.0, zN - cL / 2 + 0.2, { ry: Math.PI / 2, uv: false }); }
   // cunhais e cimalha de cantaria
@@ -117,7 +118,8 @@ export function igreja(B, M, out, o) {
   const fz = zF - T / 2, coroY = Hn * 0.55;
   f.wall(M.cal, -nW / 2 + 0.3, fz, nW / 2 - 0.3, fz, Hn, T, [[nW / 2 - 0.3, 2.6, 5.0, 0]]);
   // a portada: moldura larga de cantaria, a verga com a cartela e o frontãozinho por cima (no Pilar e em Antônio Dias, de pedra-sabão)
-  f.box(pt.door, 2.6, 5.0, 0.1, 0, 0, zF - 0.32, { noGround: true });
+  for (const sx of [-1, 1]) f.box(pt.door, 1.3, 5.0, 0.1, sx * 1.95, 0, zF - T - 0.08, { noGround: true }); // (as duas folhas da porta abertas, encostadas na parede de dentro: a igreja fica aberta de dia)
+  igrejaInterior(f, M, out, { nW, nL, cW, cL, Hn, Hc, T, zF, zN, zC }, o);
   f.box(M.cantaria, 0.5, 5.6, 0.32, -1.55, 0, zF + 0.06, { noGround: true }); f.box(M.cantaria, 0.5, 5.6, 0.32, 1.55, 0, zF + 0.06, { noGround: true });
   f.box(M.cantaria, 3.6, 0.5, 0.36, 0, 5.1, zF + 0.08, { noGround: true });
   f.box(M.sabao, 1.4, 1.2, 0.2, 0, 5.6, zF + 0.12, { noGround: true }); // a cartela (o medalhão sobre a porta)
@@ -310,14 +312,16 @@ export function buildMonuments(B, M, out) {
   M.bronze = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, metalness: 0.8, roughness: 0.45 });
   M.jato = new THREE.MeshStandardMaterial({ color: 0xd8e4e4, roughness: 0.1, transparent: true, opacity: 0.6, depthWrite: false });
   M.agua = stillWater(new THREE.MeshStandardMaterial({ color: 0x3a4a40, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.9 }), { scale: 0.35, strength: 0.8 });
-  out.churches = []; out.fountains = [];
+  out.churches = []; out.fountains = []; out.candles = []; out.interiors = []; out.statues = [];
+  interiorMaterials(M);
   adroWalls(B, M, out);
   for (const Pq of Object.values(P)) for (const st of Pq.stairs || []) escadaria(B, M, Pq, st);
   // as matrizes, o Carmo e Santa Efigênia (prontas)
-  igreja(B, M, out, { id: 'pilar', x: P.pilar.x - 4, z: P.pilar.z, ry: Math.PI / 2, y: P.pilar.y + 0.5, nW: 13, nL: 26, cW: 9, cL: 12, Hn: 12.5, Hc: 10.5, torres: 'quadrada', tS: 4.4, tH: 24, cor: 'madeira', sacristia: 1 });
-  igreja(B, M, out, { id: 'antoniodias', x: P.antoniodias.x + 6, z: P.antoniodias.z, ry: -Math.PI / 2, y: P.antoniodias.y + 0.5, nW: 13, nL: 25, cW: 9, cL: 12, Hn: 12.5, Hc: 10.5, torres: 'quadrada', tS: 4.4, tH: 23.5, cor: 'verde', sacristia: -1 });
-  igreja(B, M, out, { id: 'carmo', x: P.carmo.x, z: P.carmo.z + 4, ry: Math.PI, y: P.carmo.y + 0.5, nW: 11.5, nL: 22, cW: 8, cL: 10, Hn: 11.5, Hc: 9.5, torres: 'redonda', tS: 4.0, tH: 21.5, cor: 'madeira', sacristia: 1 });
-  igreja(B, M, out, { id: 'efigenia', x: P.efigenia.x, z: P.efigenia.z - 4, ry: 0, y: P.efigenia.y + 0.5, nW: 11, nL: 21, cW: 7.5, cL: 9.5, Hn: 11, Hc: 9, torres: 'quadrada', tS: 4.0, tH: 20.5, cor: 'almagre', sacristia: -1 });
+  const S = (key, extra = {}) => ({ key, ...extra }); // (as imagens: estátuas de madeira policromada escaneadas, ver modelos.js)
+  igreja(B, M, out, { santos: { mor: S('rosario', { pilar: true }), col: [S('antonio'), S('paulo')], lat: [S('roque'), S('fpaula')] }, id: 'pilar', x: P.pilar.x - 4, z: P.pilar.z, ry: Math.PI / 2, y: P.pilar.y + 0.5, nW: 13, nL: 26, cW: 9, cL: 12, Hn: 12.5, Hc: 10.5, torres: 'quadrada', tS: 4.4, tH: 24, cor: 'madeira', sacristia: 1 });
+  igreja(B, M, out, { santos: { mor: S('inmaculada'), col: [S('pedro_alc'), S('antonio')], lat: [S('paulo'), S('roque')] }, id: 'antoniodias', x: P.antoniodias.x + 6, z: P.antoniodias.z, ry: -Math.PI / 2, y: P.antoniodias.y + 0.5, nW: 13, nL: 25, cW: 9, cL: 12, Hn: 12.5, Hc: 10.5, torres: 'quadrada', tS: 4.4, tH: 23.5, cor: 'verde', sacristia: -1 });
+  igreja(B, M, out, { santos: { mor: S('rosario'), col: [S('fpaula'), S('pedro_alc')], lat: [S('antonio'), S('paulo')] }, id: 'carmo', x: P.carmo.x, z: P.carmo.z + 4, ry: Math.PI, y: P.carmo.y + 0.5, nW: 11.5, nL: 22, cW: 8, cL: 10, Hn: 11.5, Hc: 9.5, torres: 'redonda', tS: 4.0, tH: 21.5, cor: 'madeira', sacristia: 1 });
+  igreja(B, M, out, { santos: { mor: S('rosario'), col: [S('benedito'), S('antonio')], lat: [S('roque'), S('pedro_alc')] }, id: 'efigenia', x: P.efigenia.x, z: P.efigenia.z - 4, ry: 0, y: P.efigenia.y + 0.5, nW: 11, nL: 21, cW: 7.5, cL: 9.5, Hn: 11, Hc: 9, torres: 'quadrada', tS: 4.0, tH: 20.5, cor: 'almagre', sacristia: -1 });
   rosarioObra(B, M, out, { x: P.rosario.x - 3, z: P.rosario.z, ry: Math.PI / 2, y: P.rosario.y + 0.05 });
   palacio(B, M, out);
   camaraObra(B, M, out);
@@ -325,7 +329,7 @@ export function buildMonuments(B, M, out) {
   // a Casa dos Contos (três pisos sobre o córrego, cantaria, vidraças) e a Casa da Ópera (sobrado simples, comprido)
   for (const R of RESERVED) {
     if (R.id === 'contos') casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'nobre', floors: 3, paint: 'verde', open: true, upX: 1, sacadas: true, sideWin: [-1, 1] });
-    if (R.id === 'opera') casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'sobrado', paint: 'almagre', open: true, upX: -1, sacadas: true });
+    if (R.id === 'opera') { const g = casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'sobrado', paint: 'almagre', open: true, upX: -1, sacadas: true, hall: true, yard: false }); teatro(g.f, M, out, g); }
   }
   chafariz(B, M, out, -246, 12.5, 0, 'Chafariz dos Contos');
   chafariz(B, M, out, 352, 40, Math.PI / 2 + 0.2, 'Chafariz de Antônio Dias');

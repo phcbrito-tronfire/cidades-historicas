@@ -70,20 +70,21 @@ export function createMaterials(tex) {
   const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.88, metalness: 0, ...o });
   const M = {};
   M.cal = std({ ...pbrSet(P.cal_branca, 1), color: 0xf4efe4, roughness: 0.95 }); M.cal.userData.uv = { s: 3 }; // a caiação
-  M.calVelha = std({ ...pbrSet(P.white_plaster_rough_01, 1), color: 0xe6dccb, roughness: 0.95 }); M.calVelha.userData.uv = { s: 3 }; // a cal mais suja, das casas mais velhas e dos fundos
+  M.calVelha = std({ ...pbrSet(P.white_plaster_rough_01, 1), color: 0xe9dfcc, roughness: 0.95 }); M.calVelha.userData.uv = { s: 3 }; // a cal mais suja, das casas mais velhas e dos fundos
   M.barro = std({ ...pbrSet(P.barro_ocre, 1), color: 0xb08868, roughness: 1 }); M.barro.userData.uv = { s: 2.5 }; // o pau a pique sem caiar das casinhas da periferia
   M.pedra = std({ ...pbrSet(P.rock_wall_08, 1), color: 0xd2c4aa }); M.pedra.userData.uv = { s: 2.5 }; // a alvenaria de pedra (embasamento, muros de arrimo)
   M.cantaria = std({ ...pbrSet(P.pedra_clara, 1), color: 0xcfc2a6 }); M.cantaria.userData.uv = { s: 1.6 }; // a cantaria de quartzito (cunhais e molduras das casas ricas, portadas)
   M.telha = std({ map: P.clay_roof_tiles_02.map, normalMap: P.clay_roof_tiles_02.normalMap, color: 0xd2b8a4, roughness: 0.9 }); // telha capa e canal (a geometria do telhado já leva o UV certo)
   M.telhaVelha = std({ map: P.clay_roof_tiles_02.map, normalMap: P.clay_roof_tiles_02.normalMap, color: 0x9a8a7a, roughness: 0.95 }); // a telha escurecida pelo tempo e pelo limo
   M.madeira = std({ ...pbrSet(P.weathered_planks, 1), color: 0x8a6e52 }); M.madeira.userData.uv = { s: 2 };
+  M.lajedo = std({ ...pbrSet(P.monastery_stone_floor, 1), color: 0xd8ccb8 }); M.lajedo.userData.uv = { s: 3 }; // o lajeado de pedra (patamares, sacristias, a loja da Casa dos Contos)
   M.madeiraEsc = std({ ...pbrSet(P.madeira_clara, 1), color: 0x4a3426 }); M.madeiraEsc.userData.uv = { s: 2 };
-  M.soalho = std({ map: boardsTex('#8a6a4c', 'rgba(40,26,16,0.6)'), roughness: 0.85 }); M.soalho.userData.uv = { s: 2.4 };
+  M.soalho = std({ ...pbrSet(P.weathered_planks, 1), color: 0xc09a78, roughness: 0.85 }); M.soalho.userData.uv = { s: 2.2 }; // o soalho de tábuas largas, gasto
   M.forro = std({ map: boardsTex('#e2dccf', 'rgba(60,50,40,0.35)'), roughness: 0.9 }); M.forro.userData.uv = { s: 2.4 }; // o forro caiado de tábuas
   M.chaoTerra = std({ ...pbrSet(P.dry_ground_rocks, 1), color: 0x8a6a54, roughness: 1 }); M.chaoTerra.userData.uv = { s: 3 }; // chão de terra batida (cozinhas, casebres)
   M.escuro = std({ color: 0x0e0b08, roughness: 1 }); // o fundo escuro de dentro (atrás das rótulas)
   M.ferro = std({ color: 0x1e1c1a, metalness: 0.55, roughness: 0.55 });
-  M.palha = std({ color: 0x9a8458, roughness: 1 }); M.palha.userData.uv = { s: 2 };
+  M.palha = std({ map: toTexture(cv(256, 256, (x, W, H) => { x.fillStyle = '#7a6a48'; x.fillRect(0, 0, W, H); for (let i = 0; i < 5200; i++) { const px = R() * W, py = R() * H, l = 8 + R() * 26, v = R(); x.strokeStyle = v < 0.3 ? 'rgba(52,42,26,0.6)' : v < 0.8 ? 'rgba(160,140,96,0.55)' : 'rgba(205,186,132,0.5)'; x.lineWidth = 1 + R() * 1.2; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (R() - 0.5) * 4, py + l); x.stroke(); } for (let y = 0; y < H; y += 32) { x.fillStyle = 'rgba(40,30,16,0.3)'; x.fillRect(0, y, W, 3); } })), roughness: 1 }); // o capim seco das cobertas (sapé), em camadas amarradas
   // pintura das esquadrias: cada cor tem a porta, a folha cega, a rótula e o madeirame (cunhal, cimalha, cachorro)
   const rot = rotulaTex(), door = doorTex(), shut = shutterTex();
   M.paint = {};

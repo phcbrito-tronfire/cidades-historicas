@@ -55,3 +55,25 @@ export function saoFrancisco(scene, M, out) {
   out.churches.push({ id: 'saofrancisco', x: cx, z: cz, ry, y: P.y, door: toW(SF.cx, SF.front - 3), obra: true });
   return job;
 }
+
+// ---------------- as imagens dos altares: estátuas de madeira policromada escaneadas (Sketchfab, CC BY) ----------------
+// todas do barroco ibérico e colonial, do tipo que se via nos retábulos de Minas (créditos no README):
+// a Imaculada de "herrera"; a Senhora do Rosário
+// ("mare de deu roser", despertaelpatrimoni); Santo Antônio, São Francisco de Paula e São Paulo de Lluís Bonifàs (1766,
+// Museu de Valls, giravolt); São Pedro de Alcântara de Pedro de Mena (Museu Frederic Marès, giravolt); São Roque de
+// Domènec Rovira (giravolt); São Benedito da Estância Jesuítica de La Candelaria (tatomaffini).
+// (todas reduzidas para 14 a 22 mil triângulos e textura de 1024 com tools fora do jogo; os originais ficam em _arquivos)
+const YAW = { roque: Math.PI / 2 }; // (o escaneamento de São Roque veio de lado)
+export function statues(scene, list) {
+  const keys = [...new Set(list.map((s) => s.key).filter(Boolean))];
+  return Promise.all(keys.map((k) => track(loader.loadAsync(ver('assets/models/ouropreto/santos/' + k + '.glb'))).then((gl) => {
+    const src = gl.scene; src.updateMatrixWorld(true);
+    src.traverse((o) => { if (o.isMesh && !o.geometry.attributes.normal) o.geometry.computeVertexNormals(); if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.material.roughness = Math.max(0.5, o.material.roughness ?? 0.6); o.material.metalness = 0; o.material.envMapIntensity = 0.7; } });
+    const box = new THREE.Box3().setFromObject(src, true), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    for (const s of list.filter((q) => q.key === k)) {
+      const k2 = s.h / size.y, inner = new THREE.Group(), g = new THREE.Group();
+      inner.add(src.clone()); inner.scale.setScalar(k2); inner.position.set(-c.x * k2, -box.min.y * k2, -c.z * k2); // (o pé da imagem no chão do nicho, no meio)
+      g.add(inner); g.rotation.y = s.ry + (YAW[k] || 0); g.position.set(s.x, s.y, s.z); scene.add(g); g.updateMatrixWorld(true);
+    }
+  })));
+}

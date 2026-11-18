@@ -16,7 +16,7 @@ import { detectQuality, applyQuality, saveQuality, slowWatch, qualityLabel, prFl
 import { makeWaterFX } from '../comum/waterfx.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { buildCity } from './buildings.js';
-import { saoFrancisco } from './modelos.js';
+import { saoFrancisco, statues } from './modelos.js';
 import { buildTerrain, buildHorizon, pressTerrain, placeName, houseBand, streetAt, PLACES, STREAMS, BRIDGES, BOUNDS, polyDist } from './terrain.js';
 import { buildNature } from './natureza.js';
 import { buildBridges } from './pontes.js';
@@ -84,6 +84,7 @@ async function main() {
   await step(0.48, 'Levantando as casas das ladeiras, uma a uma...');
   const city = buildCity(scene, tex);
   saoFrancisco(scene, city.M, city);
+  statues(scene, city.statues);
   { const n = pressTerrain(world.terrain, city.floors); pressTerrain(world.mid, []); console.info('casas:', city.houses.length, '· pisos:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.6, 'Deixando a mata só nas grotas...');
   // (nada de árvore nas faixas das casas, nos largos nem nas pontes)
@@ -114,6 +115,16 @@ async function main() {
   const sky = new TimeOfDay({ scene, renderer, sunLight: sun, hemi, water: null, materials: city.M, torches: city.torches, glowTex: tex.glow, lightsDef: [] });
   sky.horizon = horizon; upgradeSky(sky, { cover: 0.55, haze: [30, 360, 0.9], leve: quality !== 'alto' }); sky.apply(sky.state);
   sky.bakeEnvironments();
+  // as velas dos altares (as chamas, sempre acesas) e a luz de dentro das igrejas: duas luzes quentes que vão para a
+  // igreja onde o explorador está (o número de luzes nunca muda: trocar a quantidade recompilaria todos os materiais)
+  const candles = (() => { const g = new THREE.BufferGeometry(); g.setFromPoints(city.candles); const m = new THREE.PointsMaterial({ map: tex.glow, color: 0xffb860, size: 0.22, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); const p = new THREE.Points(g, m); p.frustumCulled = false; scene.add(p); return p; })();
+  const inLights = [0, 1].map(() => { const l = new THREE.PointLight(0xffb468, 0, 30, 1.2); scene.add(l); return l; });
+  const interiorLight = (dt, P) => {
+    let best = null, bd = 45; for (const it of city.interiors) { const d = Math.hypot(P.x - it.at[0], P.z - it.at[1]); if (d < bd) { bd = d; best = it; } }
+    const want = best ? 1 - Math.max(0, bd - 25) / 20 : 0;
+    inLights.forEach((l, i) => { if (best) { const L = i ? best.light2 : best.light; l.position.set(L[0][0], L[1], L[0][1]); } l.intensity += ((want * (i ? 22 : 30)) - l.intensity) * Math.min(1, dt * 3); });
+    candles.material.size = 0.2 + Math.sin(performance.now() * 0.013) * 0.015; // (a chama tremendo)
+  };
   const quests = new Quests(ui, audio);
   setupWardrobe({ player, city: 'ouropreto', quests, objectives: OBJECTIVES, toast: (m, k, ms) => ui.toast(m, k, ms) });
 
@@ -246,6 +257,7 @@ async function main() {
     quests.update(dt, t, player, camera);
     sky.update(dt, t, player.pos);
     nature.update(dt); nature.cull(camera, dt);
+    interiorLight(dt, player.pos);
     world.mat.userData.U.uTime.value = t;
     fx.update(dt);
     if (started) {

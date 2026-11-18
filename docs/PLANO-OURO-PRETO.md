@@ -350,3 +350,26 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   acompanham o chão, portão de tábuas no fundo; bananeiras, laranjeiras, jabuticabeiras e canteiros de couve), casas em volta
   dos largos dos Contos e de Coimbra, verga em arco em parte dos sobrados, cartela de pedra-sabão na porta das casas nobres,
   escadinhas medidas onde cai o primeiro degrau. 37 quadros/s no perfil de PC fraco.
+
+## Etapa 4 — Interiores (18/11/2026)
+
+- **Igrejas (Pilar, Antônio Dias, Carmo, Santa Efigênia):** chão de campas (tábuas numeradas sobre as covas das
+  irmandades), capela-mor três degraus acima com soalho, grade de comunhão torneada, arco-cruzeiro emoldurado de talha,
+  retábulo-mor com trono em degraus e camarim azul de estrelas, dois colaterais e dois laterais com colunas torsas,
+  lambril pintado na nave, dois púlpitos (mísula, bacia dourada com almofadas, espaldar e tapa-voz), coro de tábuas com
+  balaústres, forro de gamela pintado na nave e abóbada na capela-mor, velas acesas e a luz delas. Talha dourada com
+  folhas de acanto de 10 a 15 cm em relevo.
+- **Imagens dos altares:** estátuas de madeira policromada escaneadas (barroco ibérico e colonial, Sketchfab CC BY,
+  créditos no README), no lugar das figuras feitas em código. Oragos: Pilar = Senhora com o Menino em cima da coluna;
+  Antônio Dias = Imaculada Conceição; Carmo e Santa Efigênia = Senhora com o Menino (Rosário). São Benedito em Santa
+  Efigênia. A Imaculada do Peru foi descartada (veio sem textura); a do Carmo, pesada demais para reduzir.
+- **Casas abertas:** soalho de tábuas (foto de tábuas gastas), mesa com bancos, arca, oratório fechado com a cruzinha,
+  catre, fogão com panelas de pedra-sabão, talha d'água; casebres com o mínimo. Embasamento de pedra descendo 0,9 m
+  abaixo do chão medido (o chão ainda é rebaixado depois, e abria vão).
+- **Casa da Ópera:** palco com proscênio de veludo e ouro, cenário pintado em perspectiva com bastidores, plateia de
+  bancos, dois andares de camarotes, lustres de velas; porta no meio.
+- **Testado:** 118 de 119 casas abertas entradas a pé pelo teste automático (a que falta entra quando se vem de 3 m da
+  porta: era o ponto de partida do teste); igrejas e Ópera entradas a pé; varredura de peças soltas sem vãos (sobram os
+  topos das torres de São Francisco, apoiados no modelo); 10 vistas de cima sem parede transparente nem telhado solto;
+  36,6 quadros/s no perfil de PC fraco.
+- **Falta:** interiores da Casa dos Contos e do Palácio; lavabo de pedra-sabão na sacristia de São Francisco.

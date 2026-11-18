@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../comum/util.js';
 import { addRotBox } from '../comum/collision.js';
+import { mobilia } from './interiores.js';
 import { frame, roofGeo, janela, porta, sacada, cachorrada, arco } from './kit.js';
 import { terrainHeight, STREETS, STREAMS, PLACES, BRIDGES, BOUNDS, RESERVED, polyDist, pointAt, inPlace } from './terrain.js';
 
@@ -46,21 +47,22 @@ export function casa(B, M, out, o) {
   const wallM = poor ? (o.caiado ? M.calVelha : M.barro) : o.velha ? M.calVelha : M.cal;
   const zf = hd; // a face de fora da fachada
   // embasamento de pedra: do ponto mais baixo do chão até o piso (vence o desnível da ladeira)
-  if (low < -0.02 + y) f.box(M.pedra, w, y - low + 0.35, d, 0, low - y - 0.35, 0);
-  else f.box(M.pedra, w, 0.4, d, 0, -0.4, 0);
+  if (low < -0.02 + y) f.box(M.pedra, w, y - low + 0.9 - 0.13, d, 0, low - y - 0.9, 0); // (o topo da pedra fica 13 cm abaixo do piso: as duas faces no mesmo plano brigavam, e a pedra aparecia por cima do soalho)
+  else f.box(M.pedra, w, 0.95, d, 0, -1.08, 0); /* (fundo: o chão ainda é rebaixado debaixo das casas depois) */
   // piso, forro e o que segura a câmera
   const iw = w - 2 * T, id = d - 2 * T;
   f.box(poor ? M.chaoTerra : M.soalho, iw, 0.12, id, 0, -0.12, 0, { noGround: true });
   f.solid(0, 0, iw, id, -1.2, 0, true);
   out.press.push({ x: o.x, z: o.z, w: w - 0.2, d: d - 0.2, ry: o.ry, top: y });
-  f.box(two ? M.madeira : M.forro, iw, 0.14, id, 0, H1 - 0.3, 0, { noGround: true }); // o forro (no sobrado, o soalho de cima)
-  f.solid(0, 0, w + 0.6, d + 0.6, H1 - 0.2, Htop + 3.5, true);
+  if (!o.hall) { f.box(two ? M.madeira : M.forro, iw, 0.14, id, 0, H1 - 0.3, 0, { noGround: true }); f.solid(0, 0, w + 0.6, d + 0.6, H1 - 0.2, Htop + 3.5, true); } // o forro (no sobrado, o soalho de cima)
+  else { f.box(M.forro, iw, 0.14, id, 0, Htop - 0.3, 0, { noGround: true }); f.solid(0, 0, w + 0.6, d + 0.6, Htop - 0.2, Htop + 3.5, true); } // (o salão: o pé-direito inteiro, forrado lá em cima)
   // ---- a fachada: os vãos
   const nb = Math.max(2, Math.floor((w - 0.6) / (rich ? 2.1 : 1.85))), bx = (i) => -hw + (i + 0.5) * w / nb;
   // a porta fica no vão onde a rua chega mais perto do piso (o lado de cima da ladeira); a segunda porta (a da loja)
   // só onde a rua também está perto — senão ali embaixo vira a portinha do porão, aberta no embasamento
   const gapAt = (lx) => y - street(lx);
   let doorI = 0; for (let i = 1; i < nb; i++) if (gapAt(bx(i)) < gapAt(bx(doorI))) doorI = i;
+  if (o.hall) doorI = Math.floor(nb / 2); // (o salão da Ópera: a porta no meio, de frente para o palco)
   let lojaI = -1; if (two && nb >= 3 && !rich) { const cand = doorI === 0 ? nb - 1 : 0; if (gapAt(bx(cand)) < 0.6) lojaI = cand; }
   const cant = rich ? M.cantaria : null;
   const g1 = [], win1 = [];
@@ -90,7 +92,7 @@ export function casa(B, M, out, o) {
     }
     // a faixa entre os pisos (no nobre, de cantaria)
     f.box(cant || pt.wood, w, 0.14, 0.1, 0, Hb - 0.08, zf + 0.03, { noGround: true });
-    if (fl > 1) f.box(M.madeira, w - 2 * T, 0.14, d - 2 * T, 0, Hb - 0.3, 0, { noGround: true });
+    if (fl > 1 && !o.hall) f.box(M.madeira, w - 2 * T, 0.14, d - 2 * T, 0, Hb - 0.3, 0, { noGround: true });
   }
   // ---- as outras paredes: os fundos com a porta do quintal e uma janela (fechadas), os lados cegos
   const bk = M.paint.madeira;
@@ -108,7 +110,8 @@ export function casa(B, M, out, o) {
     }
   }
   // ---- a divisória: a sala da frente (onde se recebe) e a alcova e a cozinha do fundo
-  if (d > 6.5) { const zp = zf - Math.min(4.6, d * 0.45); f.wall(M.cal, -hw + T, zp, hw - T, zp, H1 - 0.3, 0.16, [[(w - 2 * T) * 0.5, 0.9, 2.15, 0]]); }
+  const zp = zf - Math.min(4.6, d * 0.45);
+  if (d > 6.5 && !o.hall) { f.wall(M.cal, -hw + T, zp, hw - T, zp, H1 - 0.3, 0.16, [[(w - 2 * T) * 0.5, 0.9, 2.15, 0]]); }
   // ---- cunhais, cimalha e beiral
   const quina = cant || pt.wood;
   if (!poor) for (const sx of [-1, 1]) { f.box(quina, 0.28, Htop, 0.1, sx * (hw - 0.14), 0, zf + 0.04, { noGround: true }); f.box(quina, 0.1, Htop, 0.28, sx * (hw - 0.04), 0, zf - 0.1, { noGround: true }); }
@@ -124,13 +127,16 @@ export function casa(B, M, out, o) {
   // ---- os degraus de cada porta (uma escadinha de pedra, se a rua cai) e as portinhas de porão no embasamento
   for (const [k, cx, ww] of win1) {
     let gap = Math.max(gapAt(cx), y - terrainHeight(...W0(cx, zf + 0.6)));
-    if (k === 'porta' && gap > 0.2) for (let it = 0; it < 3; it++) gap = Math.max(gap, y - terrainHeight(...W0(cx, zf + 0.3 * Math.ceil(gap / 0.22) + 0.25))); // (o chão medido onde cai o primeiro degrau: se ele desce, a escada cresce)
-    if (k === 'porta' && gap > 0.2) { const n = Math.min(6, Math.ceil(gap / 0.22)), sh = gap / n; for (let j = 0; j < n; j++) { const dz = 0.3 * (n - j); f.box(M.cantaria, ww + 0.5, sh * (j + 1) + 0.3, 0.32, cx, -gap - 0.3, zf + dz - 0.16); f.solid(cx, zf + dz - 0.16, ww + 0.5, 0.32, -gap - 0.6, -gap + sh * (j + 1), true); } }
+    const RUN = 0.42, RISE = 0.19; // (degrau de pedra: 19 cm de altura e 42 de piso — o explorador sobe sem tropeçar)
+    if (k === 'porta' && gap > 0.2) for (let it = 0; it < 4; it++) gap = Math.max(gap, y - terrainHeight(...W0(cx, zf + RUN * Math.ceil(gap / RISE) + 0.25))); // (o chão medido onde cai o primeiro degrau: se ele desce, a escada cresce)
+    if (k === 'porta' && gap > 0.2) { const n = Math.min(10, Math.ceil(gap / RISE)), sh = gap / n; for (let j = 0; j < n; j++) { const dz = RUN * (n - j); f.box(M.cantaria, ww + 0.5, sh * (j + 1) + 0.3, RUN + 0.02, cx, -gap - 0.3, zf + dz - RUN / 2); f.solid(cx, zf + dz - RUN / 2, ww + 0.5, RUN, -gap - 0.6, -gap + sh * (j + 1), true); } }
     else if (k !== 'porta' && gap > 1.75 && !poor) { const ph = Math.min(1.9, gap - 0.25); f.box(M.paint.madeira.door, 0.85, ph, 0.08, cx, -gap + 0.02, zf - 0.05, { noGround: true }); f.box(M.cantaria, 1.1, 0.14, 0.12, cx, -gap + ph, zf + 0.02, { noGround: true }); }
   }
   const dcx = bx(doorI);
   const [cx, cz] = W0(0, 0), [dx, dz] = W0(dcx, zf + 1.2), [ix, iz] = W0(0, zf - 2.2);
+  if (o.open && !o.hall) mobilia(f, M, { hw, hd, T, zf, zp, dcx, back: -hw + w * 0.3, poor, rich, rnd });
   out.houses.push({ x: cx, z: cz, ry: o.ry, w, d, y, kind, open: o.open, door: [dx, dz], inside: [ix, iz], top: y + Htop + Hr });
+  return { f, y, hw, hd, T, zf, top: Htop - 0.3, dcx };
 }
 
 // ---------------- as fileiras ao longo das ruas ----------------

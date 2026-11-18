@@ -149,7 +149,7 @@ export function getTextures() {
 // Texturas fotográficas PBR em assets/textures/<id>/{diff,nor,rough}.jpg
 // ---------------------------------------------------------------------------
 export const PBR_IDS = ['rock_face_03', 'dry_ground_01', 'dry_ground_rocks', 'barro_ocre', 'sparse_grass', 'rocky_trail', 'rock_boulder_dry', 'rock_wall_08', // chão: terra vermelha, cascalho, capim e o quartzito dos morros
-  'weathered_planks', 'madeira_clara', 'white_plaster_rough_01', 'cal_branca', 'pedra_clara', 'clay_roof_tiles_02']; // madeira, cal, pedra e telha (para as casas, na Etapa 3)
+  'weathered_planks', 'madeira_clara', 'white_plaster_rough_01', 'cal_branca', 'pedra_clara', 'clay_roof_tiles_02', 'monastery_stone_floor']; // madeira, cal, pedra e telha (para as casas, na Etapa 3)
 
 export async function loadPBR(base, onProgress) {
   const loader = new THREE.TextureLoader();
