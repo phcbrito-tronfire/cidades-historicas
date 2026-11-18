@@ -13,6 +13,7 @@ import { addBox, addCircle } from '../comum/collision.js';
 import { frame, roofGeo, moldura } from './kit.js';
 import { casa } from './casas.js';
 import { igrejaInterior, interiorMaterials, teatro } from './interiores.js';
+import { contosInterior, palacioInterior } from './nobres.js';
 import { terrainHeight, PLACES, STREETS, RESERVED, polyDist } from './terrain.js';
 
 const V2 = THREE.Vector2;
@@ -210,15 +211,21 @@ function obraRancho(f, M, x, z) {
 export function palacio(B, M, out) {
   const P = PLACES.palacio, f = frame(B, P.x, P.y, P.z, 0), wd = 40, dd = 16, H = 9.5, zb = -P.d / 2 + dd / 2 + 2;
   // o casarão: dois pisos de cantaria, janelas de verga reta, a portada no meio, telhado de quatro águas
-  f.wall(M.cantaria, -wd / 2, zb + dd / 2 - 0.4, wd / 2, zb + dd / 2 - 0.4, H, 0.8, [[wd / 2, 2.6, 4.2, 0]]);
+  const U = 4.6, wxs = [0, 1, 2, 3, 5, 6, 7, 8].map((i) => -wd / 2 + 2.4 + i * (wd - 4.8) / 8); // (o andar nobre a 4,6 m; as janelas, sem a do meio)
+  f.wall(M.cantaria, -wd / 2, zb + dd / 2 - 0.4, wd / 2, zb + dd / 2 - 0.4, U, 0.8, [[wd / 2, 2.6, 4.2, 0], ...wxs.map((c) => [c + wd / 2, 1.2, 1.7, 1.4])]);
+  f.wall(M.cantaria, -wd / 2, zb + dd / 2 - 0.4, wd / 2, zb + dd / 2 - 0.4, H - U, 0.8, wxs.map((c) => [c + wd / 2, 1.2, 2.3, 0.8]), { y0: U });
   f.wall(M.cantaria, -wd / 2, zb - dd / 2 + 0.4, wd / 2, zb - dd / 2 + 0.4, H, 0.8);
   for (const sx of [-1, 1]) f.wall(M.cantaria, sx * (wd / 2 - 0.4), zb - dd / 2 + 0.8, sx * (wd / 2 - 0.4), zb + dd / 2 - 0.8, H, 0.8);
   const pt = M.paint.verde, zf = zb + dd / 2;
   for (let i = 0; i < 9; i++) { const cx = -wd / 2 + 2.4 + i * (wd - 4.8) / 8; if (i === 4) continue;
-    f.box(M.escuro, 1.2, 1.7, 0.1, cx, 1.4, zf - 0.02, { noGround: true }); moldura(f, M.cantaria, cx, 1.4, 1.2, 1.7, zf - 0.04, { larg: 0.22 }); f.box(pt.shutter, 1.2, 1.7, 0.06, cx, 1.4, zf - 0.12, { noGround: true }); for (let k = 0; k < 5; k++) f.box(M.ferro, 0.04, 1.7, 0.04, cx - 0.48 + k * 0.24, 1.4, zf + 0.06, { noGround: true });
-    f.box(M.escuro, 1.2, 2.3, 0.1, cx, 5.4, zf - 0.02, { noGround: true }); moldura(f, M.cantaria, cx, 5.4, 1.2, 2.3, zf - 0.04, { larg: 0.22 }); f.box(pt.shutter, 1.2, 2.3, 0.06, cx, 5.4, zf - 0.12, { noGround: true }); }
-  f.box(pt.door, 2.6, 4.2, 0.1, 0, 0, zf - 0.3, { noGround: true });
-  f.box(M.cantaria, 3.8, 6.2, 0.5, 0, 0, zf + 0.15, { noGround: true }); f.box(M.escuro, 2.6, 4.2, 0.3, 0, 0, zf + 0.3, { noGround: true }); // (a portada saliente, o vão escuro da porta)
+    moldura(f, M.cantaria, cx, 1.4, 1.2, 1.7, zf - 0.04, { larg: 0.22 }); for (let k = 0; k < 5; k++) f.box(M.ferro, 0.04, 1.7, 0.04, cx - 0.48 + k * 0.24, 1.4, zf + 0.06, { noGround: true });
+    moldura(f, M.cantaria, cx, 5.4, 1.2, 2.3, zf - 0.04, { larg: 0.22 });
+    for (const [y0, h] of [[1.4, 1.7], [5.4, 2.3]]) { // (a vidraça no vão e as duas folhas de madeira abertas para dentro, encostadas no reboco)
+      f.box(M.glass, 1.2, h, 0.03, cx, y0, zf - 0.3, { noGround: true }); f.box(pt.wood, 1.2, 0.05, 0.05, cx, y0 + h / 2, zf - 0.3, { noGround: true }); f.box(pt.wood, 0.05, h, 0.05, cx, y0, zf - 0.3, { noGround: true });
+      for (const s of [-1, 1]) f.box(pt.shutter, 0.06, h, 0.6, cx + s * 0.57, y0, zf - 0.84 - 0.3, { noGround: true });
+      f.box(M.madeira, 1.3, 0.05, 0.4, cx, y0 - 0.05, zf - 0.7, { noGround: true }); } }
+  for (const s of [-1, 1]) { f.box(M.cantaria, 0.6, 4.2, 0.5, s * 1.6, 0, zf + 0.15, { noGround: true }); f.box(pt.door, 0.08, 4.2, 1.3, s * 1.25, 0, zf - 0.8 - 0.67, { noGround: true }); } f.box(M.cantaria, 3.8, 2.0, 0.5, 0, 4.2, zf + 0.15, { noGround: true }); // (a portada saliente de cantaria e as folhas da porta abertas para dentro)
+  f.box(M.cantaria, 2.7, 0.08, 1.2, 0, -0.06, zf - 0.3, { noGround: true }); // (a soleira)
   f.box(M.sabao, 1.6, 1.4, 0.3, 0, 4.6, zf + 0.42, { noGround: true }); // (a pedra com as armas reais sobre a porta)
   f.box(M.cantaria, wd + 0.6, 0.5, dd + 0.6, 0, H - 0.5, zb, { noGround: true });
   f.geo(roofGeo(wd + 1.4, dd + 1.6, 4.6, { hip: true, thick: 0.2 }), M.telha, 0, H, zb, { uv: false });
@@ -240,6 +247,7 @@ export function palacio(B, M, out) {
     for (let k = 0; k < n; k++) { const top = -rise * (k + 1) + rise, zz = z0 + run * (k + 0.5); f.box(M.cantaria, 7.5, top - (-rise * n - 0.6), run + 0.02, 0, -rise * n - 0.6, zz); f.solid(0, zz, 7.5, run, -rise * n - 1, top, true); }
     for (const sx of [-1, 1]) { f.box(M.pedra, 0.6, 1.1, z1 - z0, sx * 4.05, -rise * n, (z0 + z1) / 2); f.solid(sx * 4.05, (z0 + z1) / 2, 0.6, z1 - z0, -rise * n - 1, 0.9); } }
   out.spots.palacio = f.W(0, mz + 3);
+  palacioInterior(f, M, out, { wd, dd, H, zb });
 }
 
 // ---------------- a Casa de Câmara e Cadeia em obra ----------------
@@ -328,7 +336,7 @@ export function buildMonuments(B, M, out) {
   pelourinho(B, M, out, -8, 40);
   // a Casa dos Contos (três pisos sobre o córrego, cantaria, vidraças) e a Casa da Ópera (sobrado simples, comprido)
   for (const R of RESERVED) {
-    if (R.id === 'contos') casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'nobre', floors: 3, paint: 'verde', open: true, upX: 1, sacadas: true, sideWin: [-1, 1] });
+    if (R.id === 'contos') { const g = casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'nobre', floors: 3, paint: 'verde', open: true, upX: 1, sacadas: true, sideWin: [-1, 1], custom: true, doorMid: true }); contosInterior(g.f, M, out, g); }
     if (R.id === 'opera') { const g = casa(B, M, out, { x: R.x, z: R.z, ry: R.ry, w: R.w, d: R.d, kind: 'sobrado', paint: 'almagre', open: true, upX: -1, sacadas: true, hall: true, yard: false }); teatro(g.f, M, out, g); }
   }
   chafariz(B, M, out, -246, 12.5, 0, 'Chafariz dos Contos');

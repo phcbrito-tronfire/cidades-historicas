@@ -372,4 +372,23 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   porta: era o ponto de partida do teste); igrejas e Ópera entradas a pé; varredura de peças soltas sem vãos (sobram os
   topos das torres de São Francisco, apoiados no modelo); 10 vistas de cima sem parede transparente nem telhado solto;
   36,6 quadros/s no perfil de PC fraco.
-- **Falta:** interiores da Casa dos Contos e do Palácio; lavabo de pedra-sabão na sacristia de São Francisco.
+- **Casa dos Contos por dentro (18/11, madrugada):** porta no meio da fachada; vestíbulo lajeado com a escadaria de pedra
+  de 18 degraus e corrimão de balaústres até o andar nobre (sobe-se a pé); **o cubículo debaixo da escada**, com a porta de
+  grade, o catre, a bilha e a vela (é onde Cláudio Manuel da Costa é achado morto em 4/7/1789 — sóbrio, sem nada de
+  morte à vista); escritório do contrato (escrivaninha de pano verde, balcão com a balança do ouro, cofre de três
+  chaves, estante dos livros, carta da comarca), depósito (barris, sacos, caixotes, rolos de fumo), sala dos caixeiros
+  com as espingardas e a **senzala** (chão de terra, esteiras, cobertas, potes, roupa no varal). Em cima: salão de forro
+  pintado com tapete de pontos, canapé de palhinha, mesa de jogo com as cartas, cravo, cômoda com espelho, oratório
+  aberto com Santo Antônio e lustre de velas; sala de jantar (toalha, louça, aparador) e quarto com cama de dossel,
+  baú, lavatório e oratorinho. A sacada não deixa sair.
+- **Palácio dos Governadores por dentro:** janelas de vidro de verdade com as folhas abertas para dentro, portada de
+  cantaria com a porta aberta; vestíbulo com a **escadaria de três lanços** (um sobe até o patamar, dois voltam) e as
+  **armas reais** no fundo, vistas de quem sobe; corpo da guarda (tarimba, espingardas, tambor, capotes e chapéus de
+  três bicos nos cabides), sala das armas (barris de pólvora, balas, lanças, espadas), secretaria do governo e sala de
+  espera das audiências. Em cima: **sala do dossel** (pano vermelho com as armas reais, sobrecéu franjado, a cadeira
+  vazia sobre o estrado — o governador fala em nome da rainha), gabinete com a carta da capitania e a **capela** com
+  retábulo de colunas torsas e a Imaculada.
+- **Testado:** sobe-se a pé nas duas escadas e anda-se por todos os cômodos; nada solto; 118/119 casas abertas
+  entradas; 45,7 quadros/s no PC fraco. (A Casa dos Contos continua "gastando" o sorteio da mobília comum, para as
+  outras casas da cidade não mudarem.)
+- **Falta:** lavabo de pedra-sabão na sacristia de São Francisco.

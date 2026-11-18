@@ -88,7 +88,8 @@ async function main() {
   { const n = pressTerrain(world.terrain, city.floors); pressTerrain(world.mid, []); console.info('casas:', city.houses.length, '· pisos:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.6, 'Deixando a mata só nas grotas...');
   // (nada de árvore nas faixas das casas, nos largos nem nas pontes)
-  const avoid = (x, z, m) => houseBand(x, z, m) || bridges.some((b) => Math.hypot(x - b.x, z - b.z) < b.half + 4 + m);
+  const inHouse = (x, z, m) => city.houses.some((h) => { const dx = x - h.x, dz = z - h.z; if (Math.abs(dx) + Math.abs(dz) > h.w + h.d + m) return false; const c = Math.cos(h.ry), s = Math.sin(h.ry), lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < h.w / 2 + m && Math.abs(lz) < h.d / 2 + m; });
+  const avoid = (x, z, m) => houseBand(x, z, m) || inHouse(x, z, m) || bridges.some((b) => Math.hypot(x - b.x, z - b.z) < b.half + 4 + m);
   const nature = buildNature(scene, tex, quality, (x, z, m) => avoid(x, z, m) || (city.yards || []).some((r) => Math.hypot(x - r.x, z - r.z) < (r.w + r.d) / 2 + m), city.yardPlants);
   console.info('plantas:', nature.counts, '· pontes:', bridges.length);
   const fx = makeWaterFX(scene);

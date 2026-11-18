@@ -54,7 +54,8 @@ export function casa(B, M, out, o) {
   f.box(poor ? M.chaoTerra : M.soalho, iw, 0.12, id, 0, -0.12, 0, { noGround: true });
   f.solid(0, 0, iw, id, -1.2, 0, true);
   out.press.push({ x: o.x, z: o.z, w: w - 0.2, d: d - 0.2, ry: o.ry, top: y });
-  if (!o.hall) { f.box(two ? M.madeira : M.forro, iw, 0.14, id, 0, H1 - 0.3, 0, { noGround: true }); f.solid(0, 0, w + 0.6, d + 0.6, H1 - 0.2, Htop + 3.5, true); } // o forro (no sobrado, o soalho de cima)
+  if (o.custom) { /* (o interior próprio faz os pisos e o forro: nobres.js) */ }
+  else if (!o.hall) { f.box(two ? M.madeira : M.forro, iw, 0.14, id, 0, H1 - 0.3, 0, { noGround: true }); f.solid(0, 0, w + 0.6, d + 0.6, H1 - 0.2, Htop + 3.5, true); } // o forro (no sobrado, o soalho de cima)
   else { f.box(M.forro, iw, 0.14, id, 0, Htop - 0.3, 0, { noGround: true }); f.solid(0, 0, w + 0.6, d + 0.6, Htop - 0.2, Htop + 3.5, true); } // (o salão: o pé-direito inteiro, forrado lá em cima)
   // ---- a fachada: os vãos
   const nb = Math.max(2, Math.floor((w - 0.6) / (rich ? 2.1 : 1.85))), bx = (i) => -hw + (i + 0.5) * w / nb;
@@ -62,7 +63,7 @@ export function casa(B, M, out, o) {
   // só onde a rua também está perto — senão ali embaixo vira a portinha do porão, aberta no embasamento
   const gapAt = (lx) => y - street(lx);
   let doorI = 0; for (let i = 1; i < nb; i++) if (gapAt(bx(i)) < gapAt(bx(doorI))) doorI = i;
-  if (o.hall) doorI = Math.floor(nb / 2); // (o salão da Ópera: a porta no meio, de frente para o palco)
+  if (o.hall || o.doorMid) doorI = Math.floor(nb / 2); // (o salão da Ópera: a porta no meio, de frente para o palco)
   let lojaI = -1; if (two && nb >= 3 && !rich) { const cand = doorI === 0 ? nb - 1 : 0; if (gapAt(bx(cand)) < 0.6) lojaI = cand; }
   const cant = rich ? M.cantaria : null;
   const g1 = [], win1 = [];
@@ -86,7 +87,7 @@ export function casa(B, M, out, o) {
     }
     f.wall(wallM, -hw, zf - T / 2, hw, zf - T / 2, H2, T, g2, { y0: Hb });
     for (const [k, cx, ww, h, s, ferro] of win2) {
-      if (k === 'sacada') { janela(f, M, pt, rich ? 'vidro' : 'cega', cx, Hb + 0.02, ww, h, zf, T, { cant }); sacada(f, M, pt, cx, Hb + 0.02, ww + 0.5, zf, { ferro }); }
+      if (k === 'sacada') { janela(f, M, pt, rich ? 'vidro' : 'cega', cx, Hb + 0.02, ww, h, zf, T, { cant }); sacada(f, M, pt, cx, Hb + 0.02, ww + 0.5, zf, { ferro }); if (o.custom) f.solid(cx, zf - T / 2, ww, T + 0.1, Hb - 0.3, Hb + 1.0); } // (onde se anda no andar de cima, a porta da sacada não deixa sair)
       else janela(f, M, pt, k, cx, Hb + s, ww, h, zf, T, { cant });
       if (o.arco) arco(f, cant || pt.wood, cx, (k === 'sacada' ? Hb + 0.02 : Hb + s) + h + 0.16, ww + 0.28, zf + 0.03);
     }
@@ -111,7 +112,7 @@ export function casa(B, M, out, o) {
   }
   // ---- a divisória: a sala da frente (onde se recebe) e a alcova e a cozinha do fundo
   const zp = zf - Math.min(4.6, d * 0.45);
-  if (d > 6.5 && !o.hall) { f.wall(M.cal, -hw + T, zp, hw - T, zp, H1 - 0.3, 0.16, [[(w - 2 * T) * 0.5, 0.9, 2.15, 0]]); }
+  if (d > 6.5 && !o.hall && !o.custom) { f.wall(M.cal, -hw + T, zp, hw - T, zp, H1 - 0.3, 0.16, [[(w - 2 * T) * 0.5, 0.9, 2.15, 0]]); }
   // ---- cunhais, cimalha e beiral
   const quina = cant || pt.wood;
   if (!poor) for (const sx of [-1, 1]) { f.box(quina, 0.28, Htop, 0.1, sx * (hw - 0.14), 0, zf + 0.04, { noGround: true }); f.box(quina, 0.1, Htop, 0.28, sx * (hw - 0.04), 0, zf - 0.1, { noGround: true }); }
@@ -134,9 +135,10 @@ export function casa(B, M, out, o) {
   }
   const dcx = bx(doorI);
   const [cx, cz] = W0(0, 0), [dx, dz] = W0(dcx, zf + 1.2), [ix, iz] = W0(0, zf - 2.2);
-  if (o.open && !o.hall) mobilia(f, M, { hw, hd, T, zf, zp, dcx, back: -hw + w * 0.3, poor, rich, rnd });
+  if (o.open && o.custom && !poor) rnd(); /* (o sorteio da arca que a mobília comum faria: as casas seguintes continuam iguais) */
+  if (o.open && !o.hall && !o.custom) mobilia(f, M, { hw, hd, T, zf, zp, dcx, back: -hw + w * 0.3, poor, rich, rnd });
   out.houses.push({ x: cx, z: cz, ry: o.ry, w, d, y, kind, open: o.open, door: [dx, dz], inside: [ix, iz], top: y + Htop + Hr });
-  return { f, y, hw, hd, T, zf, top: Htop - 0.3, dcx };
+  return { f, y, hw, hd, T, zf, top: Htop - 0.3, dcx, H1, H2 };
 }
 
 // ---------------- as fileiras ao longo das ruas ----------------

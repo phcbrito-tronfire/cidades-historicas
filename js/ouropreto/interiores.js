@@ -109,7 +109,7 @@ export function interiorMaterials(M) {
 }
 
 // ---------------- coluna torsa (salomônica): o fuste torcido em espiral ----------------
-function colunaTorsa(h, r) {
+export function colunaTorsa(h, r) {
   const g = new THREE.CylinderGeometry(r, r, h, 14, 28), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), k = 1 + 0.22 * Math.cos(2 * a - (y / h) * Math.PI * 7); p.setX(i, x * k); p.setZ(i, z * k); }
   g.translate(0, h / 2, 0); g.computeVertexNormals(); return g;
