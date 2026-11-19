@@ -4,6 +4,11 @@
 const PRESS = new Map(), PCELL = 8;
 export const pressAt = (x, z) => { const L = PRESS.get(Math.floor(x / PCELL) + ',' + Math.floor(z / PCELL)); if (!L) return Infinity; let t = Infinity;
   for (const r of L) { const dx = x - r.x, dz = z - r.z, u = dx * r.c - dz * r.s, v = dx * r.s + dz * r.c; if (Math.abs(u) <= r.w / 2 + r.m && Math.abs(v) <= r.d / 2 + r.m) t = Math.min(t, r.top); } return t; };
+// a mesma consulta com uma folga pequena (mm): o chão rebaixado só debaixo do piso de verdade. A folga grande serve à
+// malha de 2 m (o triângulo que cruza a beira do piso não pode furar o piso), mas abre uma vala em volta de quem está
+// encostado no morro; quem quiser o chão de verdade (a colisão, a tampa das valas de Vila Rica) usa esta
+export const pressAtTight = (x, z, mm = 0.15) => { const L = PRESS.get(Math.floor(x / PCELL) + ',' + Math.floor(z / PCELL)); if (!L) return Infinity; let t = Infinity;
+  for (const r of L) { const dx = x - r.x, dz = z - r.z, u = dx * r.c - dz * r.s, v = dx * r.s + dz * r.c; if (Math.abs(u) <= r.w / 2 + mm && Math.abs(v) <= r.d / 2 + mm) t = Math.min(t, r.top); } return t; };
 export function pressTerrain(mesh, rects, margin = 1.8) {
   for (const q of rects) {
     const r = { ...q, c: Math.cos(q.ry), s: Math.sin(q.ry), m: margin, top: q.top - 0.07 }, R = Math.hypot(q.w, q.d) / 2 + margin;

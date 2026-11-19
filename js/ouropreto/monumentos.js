@@ -245,7 +245,7 @@ export function palacio(B, M, out) {
   }
   { const yP = (z) => (PLACES.praca.y + (PLACES.praca.sz || 0) * (z - PLACES.praca.z)) - P.y; const z0 = mz + 0.6, z1 = P.d / 2 + 6.5, n = Math.max(3, Math.round(-yP(P.z + z1) / 0.18)), run = (z1 - z0) / n, rise = -yP(P.z + z1) / n;
     for (let k = 0; k < n; k++) { const top = -rise * (k + 1) + rise, zz = z0 + run * (k + 0.5); f.box(M.cantaria, 7.5, top - (-rise * n - 0.6), run + 0.02, 0, -rise * n - 0.6, zz); f.solid(0, zz, 7.5, run, -rise * n - 1, top, true); }
-    for (const sx of [-1, 1]) { f.box(M.pedra, 0.6, 1.1, z1 - z0, sx * 4.05, -rise * n, (z0 + z1) / 2); f.solid(sx * 4.05, (z0 + z1) / 2, 0.6, z1 - z0, -rise * n - 1, 0.9); } }
+    for (const sx of [-1, 1]) for (let k = 0; k < n; k++) { const top = -rise * (k + 1) + rise + 0.9, zz = z0 + run * (k + 0.5); f.box(M.pedra, 0.6, top - (-rise * n - 0.6), run + 0.02, sx * 4.05, -rise * n - 0.6, zz); f.solid(sx * 4.05, zz, 0.6, run, -rise * n - 1, top); } } // (o guarda-corpo em degraus, acompanhando a escada)
   out.spots.palacio = f.W(0, mz + 3);
   palacioInterior(f, M, out, { wd, dd, H, zb });
 }

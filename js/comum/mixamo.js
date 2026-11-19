@@ -1228,7 +1228,7 @@ function aimBone(bone, child, dir) {
   bone.quaternion.copy(_qp.invert().multiply(_qw));
   bone.updateMatrixWorld(true);
 }
-export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22, { freeRight = false } = {}) {
+export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22, { freeRight = false, lat: latK = null } = {}) {
   const B = r.bones; if (!B.Hips || !B.LeftUpLeg) return;
   r.root.updateMatrixWorld(true);
   // quadril em cima do lombo
@@ -1243,7 +1243,7 @@ export function ridePose(r, seat, fwd, width = 0.3, shinBack = 0.22, { freeRight
     const out = side.clone().multiplyScalar(sg), L = H.distanceTo(kn.getWorldPosition(new THREE.Vector3()));
     // coxa: desce para a frente encostada no flanco (o joelho logo para fora da barriga, não espetado para o lado),
     // como se monta de verdade — o peso no assento, as pernas abraçando o animal
-    const lat = Math.min(0.22, Math.max(0.1, width * 0.55)), fw = 0.2, dn = Math.sqrt(Math.max(0.02, L * L - lat * lat - fw * fw));
+    const lat = latK ?? Math.min(0.22, Math.max(0.1, width * 0.55)), fw = 0.2, dn = Math.sqrt(Math.max(0.02, L * L - lat * lat - fw * fw));
     aimBone(th, kn, out.clone().multiplyScalar(lat).addScaledVector(fwd, fw).addScaledVector(up, -dn).normalize());
     // canela: desce junto à barriga, um pouco para trás (no jumento, baixo, o joelho dobra mais) e encostada nele
     aimBone(kn, ft, out.clone().multiplyScalar(-0.04).addScaledVector(fwd, -shinBack).addScaledVector(up, -1).normalize());

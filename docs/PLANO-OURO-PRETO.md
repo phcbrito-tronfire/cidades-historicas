@@ -531,3 +531,25 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
   23,9 s e 28 MB (Japão: 31 s); as outras quatro cidades sem erro; a página dos professores sem rolagem lateral no
   celular.
 - O cartão de Vila Rica na tela de entrada deixou de dizer "em construção".
+
+## Correções depois do primeiro teste do Pedro (19/11/2026)
+
+- **A praça e os adros:** a praça terminava 6 m antes da muralha do Palácio e 3 m antes da Câmara, e nesses vãos
+  aparecia o morro natural — um monte por cima da escadaria do Palácio (enterrada) e uma vala na frente da Câmara (o
+  que se via logo ao nascer). Agora o chão da praça vai até a muralha e a escadaria aparece inteira, com o guarda-corpo
+  em degraus acompanhando a escada; na Câmara, a praça desce numa rampa suave até o canteiro (a Câmara subiu 1 m).
+  Emendas em `terrain.js` (JOINS).
+- **As valas em volta das casas e das igrejas:** a malha do chão (um vértice a cada 2 m) era rebaixada até 1,8 m em
+  volta de cada piso; onde a casa ficava abaixo do morro, isso abria uma vala de terra em V encostada nas paredes (89
+  dos 329 pisos; atrás da capela-mor de Antônio Dias, 4 m de fundo), e o pé da parede da vizinha ficava no ar. Agora,
+  como se vê em Ouro Preto, cada prédio tem atrás e dos lados um corredor no nível do piso (1,2 m; na frente da porta,
+  não) segurado por um **muro de arrimo de pedra** até o chão do morro, e um retalho fino de chão (0,5 m) refaz o morro
+  fora do corredor, sem fresta. A colisão segue o mesmo chão. Módulo `js/ouropreto/arrimos.js`; `comum/chao.js` ganhou
+  `pressAtTight`. Nenhuma casa mudou de lugar (o sorteio é o mesmo).
+- **A mula (e o jumento do Egito):** o assento usava um osso que fica dentro da barriga, 0,2 m abaixo do pelo, e atrás
+  do meio do lombo: o explorador afundava e as coxas atravessavam o corpo; a manta ficava nessa altura e só as abas
+  apareciam, soltas no flanco. Agora o explorador senta em cima do lombo, as coxas se abrem para fora da barriga e as
+  pernas descem pelos flancos; a manta é curva, abraça o lombo e cai pelos lados. Os cavalos ficaram como eram.
+- **Testado:** a escadaria do Palácio, a frente da Câmara, os fundos de Antônio Dias e de várias casas nas ladeiras
+  (foto antes e depois); o explorador andando sozinho por todas as ruas e pelos leitos dos córregos sem travar; a gente
+  da vila sem ninguém preso; as outras quatro cidades sem erro; PC fraco 24,2 quadros/s (Japão 18,3 na mesma rodada).

@@ -21,8 +21,8 @@ const KINDS = {
   // cavalo japonês (raça nativa, como o kiso): baixo e robusto, ~1,3 m na cernelha — os cavalos do Japão de Edo eram pequenos
   uma: { len: 2.25, back: 1.3, seat: 0.1, belly: 0.32, shin: 0.24, walk: 2.0, run: 12.5, trot: 6.2, wade: 0.7, r: 0.5, name: 'cavalo', model: 'cavalo', blanket: 0x2a2a3a, border: 0xb8261e },
   // a mula do tropeiro (Minas): o modelo do jumento, maior e castanho, com a manta de baeta
-  mula: { len: 2.05, back: 1.16, seat: -0.04, belly: 0.29, shin: 0.75, walk: 1.9, run: 9.8, trot: 5.6, wade: 0.6, r: 0.48, name: 'mula', art: 'A', model: 'jumento', blanket: 0x7a2a22, border: 0xd8c8a0, tint: [1.15, 0.85, 0.62] },
-  jumento: { len: 1.85, back: 1.05, seat: -0.05, belly: 0.27, shin: 0.75, walk: 1.8, run: 9.2, trot: 5.4, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
+  mula: { len: 2.05, back: 1.16, seat: 0.11, seatUp: 0.17, girth: 0.29, lat: 0.24, belly: 0.29, shin: 0.35, walk: 1.9, run: 9.8, trot: 5.6, wade: 0.6, r: 0.48, name: 'mula', art: 'A', model: 'jumento', blanket: 0x7a2a22, border: 0xd8c8a0, tint: [1.15, 0.85, 0.62] },
+  jumento: { len: 1.85, back: 1.05, seat: 0.1, seatUp: 0.155, girth: 0.265, lat: 0.22, belly: 0.27, shin: 0.35, walk: 1.8, run: 9.2, trot: 5.4, wade: 0.55, r: 0.45, name: 'jumento', blanket: 0x3a6a8a, border: 0xe8dcc0 },
 };
 
 export class Mount {
@@ -44,9 +44,13 @@ export class Mount {
       const m = new THREE.MeshStandardMaterial({ color: this.K.blanket, roughness: 0.95 }), mb = new THREE.MeshStandardMaterial({ color: this.K.border, roughness: 0.9 });
       const g = new THREE.Group(), L = this.K.len;
       // manta: cobre o lombo e cai um palmo de cada lado (largura do corpo ~0,2 do comprimento)
-      const bw = L * 0.2, bl = L * 0.3, drop = L * 0.1;
-      const cloth = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.025, bl), m); g.add(cloth);
-      for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.BoxGeometry(0.025, drop, bl), m); side.position.set(s * bw / 2, -drop / 2, 0); side.rotation.z = s * 0.12; g.add(side); const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, bl + 0.01), mb); b.position.set(s * (bw / 2 + drop * 0.12), -drop, 0); g.add(b); }
+      const bw = this.K.girth ? this.K.girth * 2 + 0.05 : L * 0.2, bl = L * 0.3, drop = this.K.girth ? 0.3 : L * 0.1; // (no jumento e na mula, a manta na largura do corpo, caindo pelos flancos)
+      if (this.K.girth) { // (jumento e mula: a manta curva, abraçando o lombo e caindo pelos flancos, com a barra na beira)
+        const r = this.K.girth + 0.035, a = 1.2, geo = new THREE.CylinderGeometry(r, r, bl, 22, 1, true, -a, 2 * a); geo.rotateX(-Math.PI / 2);
+        m.side = THREE.DoubleSide; const cloth = new THREE.Mesh(geo, m); cloth.position.y = -r; g.add(cloth);
+        for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, bl + 0.01), mb); b.position.set(s * Math.sin(a) * r, -r + Math.cos(a) * r, 0); b.rotation.z = -s * a; g.add(b); }
+      } else { const cloth = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.025, bl), m); g.add(cloth); }
+      if (!this.K.girth) for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.BoxGeometry(0.025, drop, bl), m); side.position.set(s * bw / 2, -drop / 2, 0); side.rotation.z = s * 0.12; g.add(side); const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, bl + 0.01), mb); b.position.set(s * (bw / 2 + drop * 0.12), -drop, 0); g.add(b); }
       if (this.roman) { // cavalo da cavalaria romana: castanho escuro, sela de quatro cornos (sem estribos) e faleras no peitoral
         c.o.traverse((o) => { if (o.isMesh && o.material && !o.userData.romano) { o.material = o.material.clone(); o.material.color.setHex(0x8a5a3a); o.userData.romano = true; } });
         const leather = new THREE.MeshStandardMaterial({ color: 0x4a2a1a, roughness: 0.7 }), bronze = new THREE.MeshStandardMaterial({ color: 0xc89a48, metalness: 0.9, roughness: 0.3 });
@@ -71,6 +75,11 @@ export class Mount {
       return true;
     });
     return this.loading;
+  }
+  // a manta no lombo, no ponto do assento (no quadro do animal: o osso do lombo não fica no meio do comprimento)
+  placeBlanket(seat) {
+    const H = this.obj.holder; H.updateMatrixWorld(true); const p = H.worldToLocal(seat.clone());
+    if (this.K.girth) this.blanket.position.set(0, p.y + 0.04, p.z); else this.blanket.position.set(0, seat.y - this.pos.y + 0.04, this.K.seat); // (no cavalo, como sempre foi)
   }
   // H: chama (aparece a uns metros, em chão seco, e vem trotando), monta quando está perto, desmonta montado
   async key(player) {
@@ -178,17 +187,17 @@ export class Mount {
       H.updateMatrixWorld(true);
       const seat = new V3();
       if (this.back) this.back.getWorldPosition(seat); else seat.set(this.pos.x, this.pos.y + K.back, this.pos.z);
-      seat.addScaledVector(new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.seat);
-      if (this.blanket) { this.blanket.position.set(0, seat.y - this.pos.y + 0.04, K.seat); }
+      seat.addScaledVector(new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.seat); seat.y += K.seatUp || 0;
+      if (this.blanket) this.placeBlanket(seat);
       // subir no lombo: meio segundo de transição a partir de onde o explorador estava
       this.mountT = Math.min(1, (this.mountT || 0) + dt / 0.5);
       const seatRoot = seat.clone().add(new V3(0, -0.5, 0));
       const pos = this.mountT < 1 ? this.from.clone().lerp(seatRoot, this.mountT).add(new V3(0, Math.sin(this.mountT * Math.PI) * 0.6, 0)) : seatRoot;
       player.ride(dt, t, pos, this.h, 'sit', this.v, null);
-      if (this.mountT >= 1) ridePose(player.rig, seat.clone().add(new V3(0, 0.04, 0)), new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.belly, K.shin, { freeRight: (player.torch?.on || 0) > 0.01 || !!player.holding }); // montado de verdade: pernas abraçando o animal, mãos nas rédeas
+      if (this.mountT >= 1) ridePose(player.rig, seat.clone().add(new V3(0, 0.04, 0)), new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.belly, K.shin, { freeRight: (player.torch?.on || 0) > 0.01 || !!player.holding, lat: K.lat }); // montado de verdade: pernas abraçando o animal, mãos nas rédeas
       player.riding = true;
     } else {
-      if (this.blanket && this.back) { H.updateMatrixWorld(true); const b = new V3(); this.back.getWorldPosition(b); this.blanket.position.set(0, b.y - this.pos.y + 0.04, K.seat); }
+      if (this.blanket && this.back) { H.updateMatrixWorld(true); const b = new V3(); this.back.getWorldPosition(b); b.addScaledVector(new V3(Math.sin(this.h), 0, Math.cos(this.h)), K.seat); b.y += K.seatUp || 0; this.placeBlanket(b); }
       player.riding = false;
     }
   }

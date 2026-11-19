@@ -18,6 +18,7 @@ import { makeWaterFX } from '../comum/waterfx.js';
 import { isTouch, canTouch, setupTouch } from '../comum/touch.js';
 import { buildCity } from './buildings.js';
 import { saoFrancisco, statues } from './modelos.js';
+import { arrimos } from './arrimos.js';
 import { buildTerrain, buildHorizon, pressTerrain, placeName, houseBand, streetAt, PLACES, STREAMS, BRIDGES, BOUNDS, polyDist } from './terrain.js';
 import { buildNature } from './natureza.js';
 import { buildBridges } from './pontes.js';
@@ -92,7 +93,9 @@ async function main() {
   const city = buildCity(scene, tex);
   saoFrancisco(scene, city.M, city);
   statues(scene, city.statues);
-  { const n = pressTerrain(world.terrain, city.floors); pressTerrain(world.mid, []); console.info('casas:', city.houses.length, '· pisos:', city.floors.length, '· vértices do chão rebaixados:', n); }
+  { const n = pressTerrain(world.terrain, city.floors); pressTerrain(world.mid, []);
+    arrimos(scene, city.M, city, world); /* (os quintais de arrimo: corredor no nível do piso, muro de pedra e o morro de volta — sem vala em volta das casas) */
+    console.info('casas:', city.houses.length, '· pisos:', city.floors.length, '· vértices do chão rebaixados:', n); }
   await step(0.6, 'Deixando a mata só nas grotas...');
   // (nada de árvore nas faixas das casas, nos largos nem nas pontes)
   const inHouse = (x, z, m) => city.houses.some((h) => { const dx = x - h.x, dz = z - h.z; if (Math.abs(dx) + Math.abs(dz) > h.w + h.d + m) return false; const c = Math.cos(h.ry), s = Math.sin(h.ry), lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < h.w / 2 + m && Math.abs(lz) < h.d / 2 + m; });
@@ -267,7 +270,7 @@ async function main() {
     });
   };
 
-  window.__game = { city, gente, dias, artifacts, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
+  window.__game = { city, gente, dias, artifacts, mount, cull, player, quests, sky, post, renderer, scene, camera, health, nature, world, bridges, tp: (x, z, f) => player.place(x, z, f) };
 
   // ---------------- laço ----------------
   const clock = new THREE.Clock();
