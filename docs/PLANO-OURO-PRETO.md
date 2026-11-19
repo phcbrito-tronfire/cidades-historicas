@@ -553,3 +553,23 @@ Código: `js/ouropreto/kit.js` (materiais e peças), `casas.js`, `monumentos.js`
 - **Testado:** a escadaria do Palácio, a frente da Câmara, os fundos de Antônio Dias e de várias casas nas ladeiras
   (foto antes e depois); o explorador andando sozinho por todas as ruas e pelos leitos dos córregos sem travar; a gente
   da vila sem ninguém preso; as outras quatro cidades sem erro; PC fraco 24,2 quadros/s (Japão 18,3 na mesma rodada).
+
+## Segunda correção (19/11/2026) — o portão do Palácio e os vãos
+- **O que estava errado (foto do Pedro, dentro do pátio do Palácio):** a emenda que baixou o chão da praça se misturava
+  2 m para dentro da muralha — abriu um buraco no chão do vão do portão e deixou os pilares pendurados; nas quinas da
+  frente, um barranco de capim subia até a muralha. Na varredura que veio depois apareceram mais: frestas rentes às
+  paredes das casas, a rampa da vala antiga dentro dos corredores de arrimo, buraquinhos na beira dos corredores e,
+  nos muros dos adros (já de antes), o capim por cima da rua lá embaixo.
+- **Corrigido:** a emenda tem corte seco na face de fora da muralha e cobre a largura toda dela; os pilares do portão
+  descem até a praça; a faixa na frente da muralha e as beiras de todos os largos e adros ganharam o retalho fino de
+  chão (0,5 m), com a malha grossa rebaixada por baixo — o degrau fica dentro da grossura do muro; o retalho cobre
+  também os quadrinhos que encostam na beira dos pisos (sem fresta rente à parede); a malha grossa desce até o nível dos
+  corredores (sem rampa dentro deles); a beira do corredor fica plana só onde o muro de arrimo a cobre; o pé de cada
+  muro de arrimo desce abaixo do chão mais baixo em volta, em lanços de meio metro (rente à casa vizinha); a frente da
+  escadaria é terra batida, como a praça.
+- **Nova varredura (`buracos.js`, ferramenta de teste):** em 570 mil pontos onde se anda em volta de todos os prédios,
+  largos e adros, compara o chão em que se pisa com o chão que se vê. Antes: 593 grupos com diferença acima de 0,3 m;
+  agora nenhum buraco — sobram só encostas íngremes de morro, onde o capim fica um pouco acima do chão de verdade (como
+  em toda a cidade).
+- **Testado:** fotos do portão de dentro e de fora, das quinas, dos corredores; todas as ruas a pé sem travar; gente sem
+  ninguém preso; nada solto; outras cidades sem erro; PC fraco 25,8 quadros/s (Japão 13,6 na mesma rodada).

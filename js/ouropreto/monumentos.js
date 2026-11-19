@@ -237,7 +237,7 @@ export function palacio(B, M, out) {
   for (const sx of [-1, 1]) f.wall(M.pedra, sx * mx, -P.d / 2 + 1, sx * mx, mz, mh, 1.2);
   f.box(M.cantaria, 2 * mx + 1.4, 0.3, 1.5, 0, mh, mz, { noGround: true });
   for (const sx of [-1, 1]) f.box(M.cantaria, 1.5, 0.3, P.d - 1.6, sx * mx, mh, (mz - P.d / 2 + 1) / 2, { noGround: true });
-  for (const sx of [-1, 1]) { f.box(M.cantaria, 0.9, 4.8, 1.6, sx * 2.5, 0, mz, { noGround: true }); f.geo(new THREE.SphereGeometry(0.45, 10, 8), M.cantaria, sx * 2.5, 5.2, mz, { uv: false }); } // os pilares do portão
+  for (const sx of [-1, 1]) { f.box(M.cantaria, 0.9, 4.8, 1.6, sx * 2.5, 0, mz); f.geo(new THREE.SphereGeometry(0.45, 10, 8), M.cantaria, sx * 2.5, 5.2, mz, { uv: false }); } // os pilares do portão
   for (const [gx, gz] of [[-mx, mz], [mx, mz], [-mx, -P.d / 2 + 1], [mx, -P.d / 2 + 1]]) { // as guaritas: torreões redondos em balanço sobre as quinas
     f.geo(lathe([[0, 0], [0.4, 0], [1.1, 1.2], [1.1, 3.6], [1.2, 3.7], [0, 3.7]], 16), M.cantaria, gx, mh - 1.2, gz, { uv: false });
     f.box(M.escuro, 0.3, 0.9, 0.3, gx + Math.sign(gx) * 0.9, mh + 0.9, gz + Math.sign(gz) * 0.45, { noGround: true });

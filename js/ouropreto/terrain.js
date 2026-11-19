@@ -10,7 +10,7 @@
 // Eixos: +x leste, +z sul (o norte é -z). A praça está em (0, 0).
 import * as THREE from 'three';
 import { fbm, smoothstep, lerp, clamp } from '../comum/util.js';
-import { setTerrain, setWater } from '../comum/collision.js';
+import { setTerrain, setWater, blocked } from '../comum/collision.js';
 import { pressAt, pressAtTight } from '../comum/chao.js';
 export { pressTerrain } from '../comum/chao.js';
 
@@ -121,14 +121,19 @@ export function inPlace(x, z, P, m = 0) { return Math.abs(x - P.x) < P.w / 2 + m
 // as emendas da praça com os adros do Palácio e da Câmara: a praça acabava 6 m antes da muralha do Palácio e 3 m antes
 // da Câmara, e no vão aparecia o morro natural — um monte por cima da escadaria do Palácio e uma vala na frente da Câmara.
 // O chão da praça vai agora até a muralha (a escadaria desce dela) e desce numa rampa suave até o canteiro da Câmara
+export const PATCH_AREAS = [[-33, 33, -61, -54]]; // (x0, x1, z0, z1: a frente da muralha do Palácio)
+// e as beiras de todos os largos e adros: o chão cai (ou sobe) em 2 m na beira, e a malha de 2 m fazia ali uma rampa —
+// encostada no muro do adro, por cima da rua lá embaixo (andava-se 10 m abaixo do capim que se via)
+for (const P of Object.values(PLACES)) { const m = (P.edge || 2) + 2.5, x0 = P.x - P.w / 2, x1 = P.x + P.w / 2, z0 = P.z - P.d / 2, z1 = P.z + P.d / 2;
+  PATCH_AREAS.push([x0 - m, x1 + m, z0 - m, z0 + m], [x0 - m, x1 + m, z1 - m, z1 + m], [x0 - m, x0 + m, z0 - m, z1 + m], [x1 - m, x1 + m, z0 - m, z1 + m]); }
 const JOINS = [
-  { x0: -23, x1: 23, z0: -58.5, z1: -51, y: (x, z) => planeY(PLACES.praca, x, z) },
+  { x0: -30, x1: 30, z0: -58.0, z1: -51, cut: 'z0', y: (x, z) => planeY(PLACES.praca, x, z) }, // (na largura toda da muralha; corte seco na face de fora dela: nada da emenda entra no pátio nem no vão do portão)
   { x0: -23, x1: 27, z0: 51, z1: 55.5, y: (x, z) => lerp(planeY(PLACES.praca, x, 51), PLACES.camara.y, ss(51, 55.5, z)) },
 ];
 function withPlaces(x, z) {
   let h = baseHeight(x, z);
   for (const P of Object.values(PLACES)) { const d = rectD(x, z, P); if (d < P.edge) h = lerp(planeY(P, x, z), h, ss(0, P.edge, d)); }
-  for (const J of JOINS) { const d = Math.max(J.x0 - x, x - J.x1, J.z0 - z, z - J.z1, 0); if (d < 2) h = lerp(J.y(x, z), h, ss(0, 2, d)); }
+  for (const J of JOINS) { if (J.cut === 'z0' && z < J.z0) continue; const d = Math.max(J.x0 - x, x - J.x1, J.z0 - z, z - J.z1, 0); if (d < 2) h = lerp(J.y(x, z), h, ss(0, 2, d)); }
   return h;
 }
 
@@ -211,7 +216,7 @@ export function terrainHeight(x, z) {
 // a altura do chão para andar: o terreno, mas logo abaixo das lajes de piso
 // os corredores dos quintais de arrimo (arrimos.js): em volta de cada prédio, menos na frente da porta, o chão no nível
 // do piso. Guardados numa grade de 8 m para a consulta ser rápida
-let PASS = new Map();
+let PASS = new Map(); const PASS_E = 1.2;
 export function setPassagens(prs) { PASS = new Map();
   for (const p of prs) { const R = Math.hypot(p.w, p.d) / 2 + 2; for (let i = Math.floor((p.x - R) / 8); i <= Math.floor((p.x + R) / 8); i++) for (let j = Math.floor((p.z - R) / 8); j <= Math.floor((p.z + R) / 8); j++) { const k = i + ',' + j; if (!PASS.has(k)) PASS.set(k, []); PASS.get(k).push(p); } } }
 export function passAt(x, z) { const L = PASS.get(Math.floor(x / 8) + ',' + Math.floor(z / 8)); if (!L) return Infinity; let t = Infinity;
@@ -263,6 +268,7 @@ function surface(x, z) {
   let bed = 0; for (const C of Object.values(STREAMS)) { if (!near(C, x, z)) continue; const q = polyDist(C.pts, x, z); bed = Math.max(bed, 1 - ss(C.hw + 0.6, C.bank + 0.5, q.d)); }
   const st = streetAt(x, z), cob = st ? 1 - ss(st.S.hw - 0.35, st.S.hw, st.d) : 0;
   let place = 0; for (const [id, P] of Object.entries(PLACES)) if (id !== 'queimada' && id !== 'palacio') place = Math.max(place, 1 - ss(0, 1.2, rectD(x, z, P)));
+  for (const J of JOINS) place = Math.max(place, 1 - ss(0, 1.2, Math.max(J.x0 - x, x - J.x1, J.z0 - z, z - J.z1, 0))); /* (as emendas são chão da praça: terra batida também) */
   // nos largos: terra batida com pedras soltas (só os caminhos principais eram calçados); a praça é de terra também
   const mine = mineAt(x, z);
   let earth = Math.max(place * 0.9, mine, ss(0.62, 0.8, n2) * 0.35);
@@ -421,26 +427,51 @@ export function tamparValas(core, floors, isBuilding) {
   const coarse = (x, z) => { const fx = (x - X0) / ST, fz = (z - Z0) / ST, ix = Math.floor(fx), iz = Math.floor(fz), u = fx - ix, v = fz - iz; // (a mesma divisão em triângulos da PlaneGeometry)
     if (u + v <= 1) return vy(ix, iz) + u * (vy(ix + 1, iz) - vy(ix, iz)) + v * (vy(ix, iz + 1) - vy(ix, iz));
     return vy(ix + 1, iz + 1) + (1 - u) * (vy(ix, iz + 1) - vy(ix + 1, iz + 1)) + (1 - v) * (vy(ix + 1, iz) - vy(ix + 1, iz + 1)); };
+  // nas faixas de degrau (PATCH_AREAS), a malha grossa desce até o ponto mais baixo do chão de verdade em volta (2 m):
+  // lá ela nunca fica por cima — a rampa encostada no muro do adro sumia por baixo do retalho fino, que mostra o degrau certo
+  { let k = 0; for (const [ax0, ax1, az0, az1] of PATCH_AREAS) for (let ix = Math.ceil((ax0 + 2 - X0) / ST); X0 + ix * ST <= ax1 - 2; ix++) for (let iz = Math.ceil((az0 + 2 - Z0) / ST); Z0 + iz * ST <= az1 - 2; iz++) {
+      if (ix < 1 || iz < 1 || ix >= NX - 1 || iz * NX + ix >= pos.count - NX) continue; const x = X0 + ix * ST, z = Z0 + iz * ST, id = iz * NX + ix; let lo = pos.getY(id);
+      for (let a = -2; a <= 2; a += 1) for (let b = -2; b <= 2; b += 1) lo = Math.min(lo, terrainHeight(x + a, z + b), pressAt(x + a, z + b));
+      if (lo < pos.getY(id) - 0.01) { pos.setY(id, lo - 0.05); k++; } }
+    // e em volta dos prédios: a malha desce até o nível do corredor (2 m em volta dele). Senão sobrava dentro do corredor a
+    // rampa da vala antiga, mais alta que o chão em que se pisa; fora do corredor, o retalho fino refaz o morro por cima
+    const seen = new Set(); for (const L of PASS.values()) for (const p of L) { if (seen.has(p)) continue; seen.add(p); const R = Math.hypot(p.w, p.d) / 2 + PASS_E + 2.5;
+      for (let ix = Math.ceil((p.x - R - X0) / ST); X0 + ix * ST <= p.x + R; ix++) for (let iz = Math.ceil((p.z - R - Z0) / ST); Z0 + iz * ST <= p.z + R; iz++) {
+        if (ix < 1 || iz < 1 || ix >= NX - 1 || iz * NX + ix >= pos.count - NX) continue; const x = X0 + ix * ST, z = Z0 + iz * ST, id = iz * NX + ix; let lo = pos.getY(id);
+        for (let a = -2; a <= 2; a += 1) for (let b = -2; b <= 2; b += 1) lo = Math.min(lo, passAt(x + a, z + b) - 0.05);
+        if (lo < pos.getY(id) - 0.01) { pos.setY(id, lo); k++; } } }
+    if (k) { pos.needsUpdate = true; core.geometry.computeVertexNormals(); } }
   const S = 0.5, done = new Set(), P = [], C = [], SP = [], F = [], I = [], vid = new Map();
   const H = (x, z) => { const t = pressAtTight(x, z, 0); const n = Math.min(terrainHeight(x, z), passAt(x, z) - 0.03); return t < Infinity && !isBuilding(x, z) ? Math.min(n, t - 0.02) : n; };
   const vert = (i, j) => { const k = i + ',' + j; let v = vid.get(k); if (v !== undefined) return v; const x = i * S, z = j * S, s = surface(x, z);
     v = P.length / 3; P.push(x, H(x, z) + 0.015, z); C.push(s[0], s[1], s[2]); SP.push(s[3], s[4], s[5], s[6]); F.push(forestAt(x, z)); vid.set(k, v); return v; };
   // (1) os quadrinhos onde a malha grossa ficou abaixo do chão de verdade, perto de um piso rebaixado
   const sel = new Set(), ok = (i, j) => { const cx = (i + 0.5) * S, cz = (j + 0.5) * S; if (cx <= X0 + 2 || cx >= X1 - 2 || cz <= Z0 + 2 || cz >= Z1 - 2) return false;
-    if (pressAtTight(cx, cz, 0) < Infinity) return false; // (debaixo de um piso: lá a malha rebaixada é que vale)
-    const np = [[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]].filter(([p, q]) => passAt(p * S, q * S) < Infinity).length; return np === 0 || np === 4; }; // (o quadrinho que cruza a beira do corredor fica de fora: a beira cai dentro da grossura do muro de arrimo)
-  for (const f of floors) { const R = Math.hypot(f.w, f.d) / 2 + 4.2;
+    if ([[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]].every(([p, q]) => pressAtTight(p * S, q * S, 0) < Infinity)) return false; /* (inteiro debaixo de um piso: lá a laje cobre; o que encosta na beira entra, senão sobrava uma fresta rente à parede) */
+    const cs = [[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]], np = cs.filter(([p, q]) => passAt(p * S, q * S) < Infinity).length; if (np === 0 || np === 4) return true;
+    let pt = Infinity, out = -Infinity, wall = true; for (const [p, q] of cs) { const a = passAt(p * S, q * S); if (a < Infinity) pt = Math.min(pt, a); else { const h = terrainHeight(p * S, q * S); out = Math.max(out, h); if (!blocked(p * S, q * S, h - 0.6, 0.02, 0.3)) wall = false; } }
+    return out - pt < 0.35 || !wall ? true : { flat: pt - 0.03 }; }; // (com degrau e com o muro de arrimo por cima: plano, no nível do corredor; sem muro ali, o chão sobe do corredor até o morro) // (o quadrinho que cruza a beira do corredor fica de fora quando ali há degrau — a beira cai dentro da grossura do muro de arrimo; sem degrau, sem muro, ele entra)
+  for (const f of floors) { const R = Math.hypot(f.w, f.d) / 2 + 6.5; /* (até onde a malha grossa pode ter descido em volta do corredor) */
     for (let i = Math.floor((f.x - R) / S); i <= Math.ceil((f.x + R) / S); i++) for (let j = Math.floor((f.z - R) / S); j <= Math.ceil((f.z + R) / S); j++) {
       const k = i + ',' + j; if (done.has(k)) continue; done.add(k); if (!ok(i, j)) continue;
       const cx = (i + 0.5) * S, cz = (j + 0.5) * S, gx = Math.floor((cx - X0) / ST), gz = Math.floor((cz - Z0) / ST); if (!(pressed(gx, gz) || pressed(gx + 1, gz) || pressed(gx, gz + 1) || pressed(gx + 1, gz + 1))) continue;
       let gap = 0; for (const [x, z] of [[i * S, j * S], [(i + 1) * S, j * S], [i * S, (j + 1) * S], [(i + 1) * S, (j + 1) * S]]) gap = Math.max(gap, H(x, z) - coarse(x, z)); if (gap >= 0.05) sel.add(k); } }
+  // (1b) as faixas com degrau seco no chão (a praça encostada na muralha do Palácio): a malha de 2 m faria uma rampa ou
+  // um buraco junto da parede; o retalho fino põe o degrau dentro da grossura dela
+  for (const [ax0, ax1, az0, az1] of PATCH_AREAS) for (let i = Math.floor(ax0 / S); i < Math.ceil(ax1 / S); i++) for (let j = Math.floor(az0 / S); j < Math.ceil(az1 / S); j++) {
+    const k = i + ',' + j; if (sel.has(k) || !ok(i, j)) continue; let gap = 0; for (const [x, z] of [[i * S, j * S], [(i + 1) * S, j * S], [i * S, (j + 1) * S], [(i + 1) * S, (j + 1) * S]]) gap = Math.max(gap, Math.abs(H(x, z) - coarse(x, z))); if (gap > 0.02) sel.add(k); }
   if (!sel.size) return null;
   // (2) alargado em 2 quadrinhos (1 m): a beira do retalho cai onde a malha grossa já está no chão de verdade, sem fresta
   const all = new Set(sel); for (const k of sel) { const [i, j] = k.split(',').map(Number); for (let di = -2; di <= 2; di++) for (let dj = -2; dj <= 2; dj++) { const k2 = (i + di) + ',' + (j + dj); if (!all.has(k2) && ok(i + di, j + dj)) all.add(k2); } }
-  for (const k of all) { const [i, j] = k.split(',').map(Number); const a = vert(i, j), b = vert(i + 1, j), c = vert(i + 1, j + 1), d = vert(i, j + 1); I.push(a, d, b, b, d, c); }
+  const flatV = (i, j, y) => { const x = i * S, z = j * S, s = surface(x, z), v = P.length / 3; P.push(x, y + 0.015, z); C.push(s[0], s[1], s[2]); SP.push(s[3], s[4], s[5], s[6]); F.push(forestAt(x, z)); return v; };
+  for (const k of all) { const [i, j] = k.split(',').map(Number), o = ok(i, j);
+    if (o && o.flat !== undefined) { const a = flatV(i, j, o.flat), b = flatV(i + 1, j, o.flat), c = flatV(i + 1, j + 1, o.flat), d = flatV(i, j + 1, o.flat); I.push(a, d, b, b, d, c); continue; } // (a beira do corredor: plana, sob o muro de arrimo)
+    const a = vert(i, j), b = vert(i + 1, j), c = vert(i + 1, j + 1), d = vert(i, j + 1); I.push(a, d, b, b, d, c); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
   g.setAttribute('splat', new THREE.Float32BufferAttribute(SP, 4)); g.setAttribute('forest', new THREE.Float32BufferAttribute(F, 1)); g.setIndex(I); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, core.material); m.receiveShadow = true; m.name = 'tampa-valas'; return m;
+  const m = new THREE.Mesh(g, core.material); m.receiveShadow = true; m.name = 'tampa-valas';
+  m.userData.vista = (x, z) => { const i = Math.floor(x / S), j = Math.floor(z / S); if (!all.has(i + ',' + j)) return coarse(x, z); const o = ok(i, j); return (o && o.flat !== undefined ? o.flat : H(x, z)) + 0.015; }; // (a altura do chão que se vê; só para os testes)
+  return m;
 }
 
 // as serras no horizonte (o Espinhaço ao norte e a leste, a Serra do Itacolomi ao sul), azuladas pela distância
